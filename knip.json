@@ -1,0 +1,15 @@
+{
+  "entry": ["src/**/index.ts"],
+  "ignoreBinaries": ["plantuml"],
+  "ignoreUnresolved": [
+    "typescript={incremental:false,outputToFilesystem:false}"
+  ],
+  "project": ["*/**", "!docs/**"],
+  "rules": {
+    "exports": "off",
+    "types": "off"
+  },
+  "vitest": {
+    "entry": ["*/**/*.test.!(*.*)"]
+  }
+}
