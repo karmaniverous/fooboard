@@ -1,6 +1,7 @@
 /**
  * ESLint flat config: strict type-checked TypeScript rules, TSDoc syntax,
- * import sorting & Prettier for all TS files; Vitest rules for tests.
+ * import sorting, React Hooks / Fast Refresh rules & Prettier for all
+ * TS/TSX files; Vitest rules for tests.
  *
  * @module
  */
@@ -9,27 +10,28 @@ import vitest from '@vitest/eslint-plugin';
 import { defineConfig } from 'eslint/config';
 import prettierConfig from 'eslint-config-prettier';
 import prettierPlugin from 'eslint-plugin-prettier';
+import reactHooks from 'eslint-plugin-react-hooks';
+import reactRefresh from 'eslint-plugin-react-refresh';
 import simpleImportSortPlugin from 'eslint-plugin-simple-import-sort';
 import tsdocPlugin from 'eslint-plugin-tsdoc';
+import globals from 'globals';
 import tseslint from 'typescript-eslint';
 
 export default defineConfig(
   {
-    ignores: [
-      '.rollup.cache/**/*',
-      'assets/**/*',
-      'coverage/**/*',
-      'diagrams/out/**/*',
-      'dist/**/*',
-      'docs/**/*',
-      'node_modules/**/*',
-    ],
+    ignores: ['coverage/**/*', 'dist/**/*', 'node_modules/**/*'],
   },
   eslint.configs.recommended,
   {
     files: ['**/*.{ts,tsx}'],
-    extends: [tseslint.configs.strictTypeChecked],
+    extends: [
+      tseslint.configs.strictTypeChecked,
+      reactHooks.configs.flat.recommended,
+      reactRefresh.configs.vite,
+    ],
     languageOptions: {
+      ecmaVersion: 2020,
+      globals: globals.browser,
       parserOptions: {
         projectService: true,
         tsconfigRootDir: import.meta.dirname,

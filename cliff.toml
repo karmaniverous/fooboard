@@ -1,4 +1,4 @@
-# git-cliff config for @karmaniverous/npm-package-template-ts
+# git-cliff config for fooboard
 # https://git-cliff.org/docs/configuration
 
 [changelog]
@@ -20,7 +20,7 @@ body = """
             {% if commit.breaking %}[**breaking**] {% endif %}\
             {{ commit.message | upper_first }}\
             {% if commit.remote.pr_number %} \
-                ([#{{ commit.remote.pr_number }}](https://github.com/karmaniverous/npm-package-template-ts/pull/{{ commit.remote.pr_number }}))\
+                ([#{{ commit.remote.pr_number }}](https://github.com/karmaniverous/fooboard/pull/{{ commit.remote.pr_number }}))\
             {% endif %}\
     {% endfor %}
 {% endfor %}

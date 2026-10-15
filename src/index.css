@@ -1,0 +1,108 @@
+/*
+ * Tailwind v4 entry point: base import, class-based dark mode, theme
+ * tokens (shadcn-style neutrals copied from jeeves-server) plus fooboard's
+ * status fill / badge tokens (spec.md §3).
+ */
+@import 'tailwindcss';
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-border: var(--border);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-destructive: var(--destructive);
+  --color-ring: var(--ring);
+
+  /* Status fill tokens (spec.md §3). */
+  --color-status-success: var(--status-success);
+  --color-status-started: var(--status-started);
+  --color-status-partial: var(--status-partial);
+  --color-status-failure: var(--status-failure);
+  --color-status-cancelled: var(--status-cancelled);
+  --color-status-queued: var(--status-queued);
+  --color-status-queued-text: var(--status-queued-text);
+
+  /* Staleness badge tokens (spec.md §3). */
+  --color-badge-behind: var(--badge-behind);
+  --color-badge-behind-text: var(--badge-behind-text);
+  --color-badge-diverged: var(--badge-diverged);
+  --color-badge-diverged-text: var(--badge-diverged-text);
+
+  --radius: 0.5rem;
+  --font-sans:
+    -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+@layer base {
+  :root {
+    color-scheme: light;
+    --background: #ffffff;
+    --foreground: #0a0a0a;
+    --muted: #f5f5f5;
+    --muted-foreground: #737373;
+    --border: #e5e5e5;
+    --primary: #171717;
+    --primary-foreground: #fafafa;
+    --accent: #f5f5f5;
+    --accent-foreground: #171717;
+    --popover: #ffffff;
+    --popover-foreground: #0a0a0a;
+    --destructive: #ef4444;
+    --ring: #171717;
+
+    --status-success: #15803d;
+    --status-started: #2563eb;
+    --status-partial: #0e7490;
+    --status-failure: #dc2626;
+    --status-cancelled: #475569;
+    --status-queued: #e2e8f0;
+    --status-queued-text: #1e293b;
+
+    --badge-behind: #f59e0b;
+    --badge-behind-text: #1e293b;
+    --badge-diverged: #c2410c;
+    --badge-diverged-text: #ffffff;
+  }
+
+  .dark {
+    color-scheme: dark;
+    --background: #0a0a0a;
+    --foreground: #fafafa;
+    --muted: #262626;
+    --muted-foreground: #a3a3a3;
+    --border: #262626;
+    --primary: #fafafa;
+    --primary-foreground: #0a0a0a;
+    --accent: #3a3a3a;
+    --accent-foreground: #fafafa;
+    --popover: #1c1c1c;
+    --popover-foreground: #fafafa;
+    --destructive: #f87171;
+    --ring: #d4d4d4;
+
+    /* Status/badge colors are fixed in the spec (fill tokens, not theme
+       neutrals), so they stay the same in dark mode; only text/ring
+       choices already baked into the light tokens above apply. */
+  }
+}
+
+body {
+  font-family: var(--font-sans);
+  background-color: var(--color-background);
+  color: var(--color-foreground);
+}

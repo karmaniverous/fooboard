@@ -1,15 +1,11 @@
 {
-  "entry": ["src/**/index.ts"],
-  "ignoreBinaries": ["plantuml"],
-  "ignoreUnresolved": [
-    "typescript={incremental:false,outputToFilesystem:false}"
+  "project": ["src/**/*.{ts,tsx,css}"],
+  "ignore": [
+    "src/components/ui/alert-dialog.tsx",
+    "src/components/ui/dropdown-menu.tsx"
   ],
-  "project": ["*/**", "!docs/**"],
-  "rules": {
-    "exports": "off",
-    "types": "off"
-  },
-  "vitest": {
-    "entry": ["*/**/*.test.!(*.*)"]
-  }
+  "ignoreDependencies": [
+    "@radix-ui/react-alert-dialog",
+    "@radix-ui/react-dropdown-menu"
+  ]
 }
