@@ -154,11 +154,18 @@ export function BoardGrid({
         </div>
         {rows.map((row) => {
           const divider = rowDividers.get(row.id);
+          // A labelled divider draws its line above the label, which then
+          // heads the group; an unlabelled one sits on the row itself.
+          const rowLine =
+            divider && !divider.label ? DIVIDER_ROW[divider.style] : undefined;
           return (
             <Fragment key={row.id}>
               {divider?.label && (
                 <div
-                  className="col-span-full pt-1 text-[0.85em] font-semibold uppercase tracking-wide text-muted-foreground"
+                  className={cn(
+                    'col-span-full pt-1 text-[0.85em] font-semibold uppercase tracking-wide text-muted-foreground',
+                    DIVIDER_ROW[divider.style],
+                  )}
                   role="presentation"
                 >
                   {divider.label}
@@ -169,7 +176,7 @@ export function BoardGrid({
                   role="rowheader"
                   className={cn(
                     'flex items-center truncate px-1 font-medium',
-                    divider && DIVIDER_ROW[divider.style],
+                    rowLine,
                   )}
                   title={row.repo}
                 >
@@ -184,7 +191,7 @@ export function BoardGrid({
                       role="gridcell"
                       className={cn(
                         'min-h-0 min-w-0',
-                        divider && DIVIDER_ROW[divider.style],
+                        rowLine,
                         colDivider && DIVIDER_COL[colDivider.style],
                       )}
                     >
