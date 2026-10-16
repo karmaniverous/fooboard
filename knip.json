@@ -1,6 +1,10 @@
 {
   "project": ["src/**/*.{ts,tsx,css}"],
-  "entry": ["src/domain/index.ts", "src/engine/index.ts"],
+  "entry": [
+    "src/domain/index.ts",
+    "src/engine/index.ts",
+    "src/storage/index.ts"
+  ],
   "ignore": [
     "src/components/ui/alert-dialog.tsx",
     "src/components/ui/dropdown-menu.tsx"

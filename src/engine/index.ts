@@ -7,6 +7,7 @@
  *
  * @module
  */
+export { credentialProviders } from './credentialProviders';
 export { demoProviders } from './demoProviders';
 export { type BoardEngine, createBoardEngine } from './engine';
 export {
