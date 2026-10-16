@@ -6,7 +6,7 @@ Standing rules for everyone who changes this repo, human or coding agent. What t
 
 - **One PR at a time.** Each PR ships a meaningful block of features. Never work on two PRs in parallel; start the next from an up-to-date `main` after the previous one is merged.
 - **Branches** are named `feature/<slug>` (lefthook enforces the prefix).
-- **Commit and push** after every green commit. Before every push, check the branch's PR state (`gh pr list --head <branch> --json number,state`); if it is merged or closed, stop.
+- **Commit and push** after every green commit. Before every push, check the branch's PR state with `gh pr list --head <branch> --state all --json number,state` (without `--state all`, merged and closed PRs are hidden and the branch looks PR-free). If any PR on the branch is merged or closed, stop: a merged branch only takes new work through a new PR opened from it, by agreement.
 - **Open the PR as a draft early** so progress is visible; mark it ready only after the pre-review checks below.
 - **Only the maintainer merges, deploys and releases.** Don't edit `CHANGELOG.md` by hand; it is generated at release.
 
@@ -42,6 +42,7 @@ These checks **start from the code the PR touched**. That is the point of depart
 
 - **TypeScript, strict.** No `any`; use `unknown` and narrow.
 - **Zod schemas are the source of truth** for data shapes; derive types with `z.infer`.
+- **Don't reinvent the wheel: use [`radash`](https://radash-docs.vercel.app)** for general-purpose utilities (grouping, sorting, picking max/min, uniqueness, deep cloning, retries, debouncing and the like) instead of hand-rolled helpers. Write a local helper only when radash has nothing suitable, and say why in a comment.
 - **Ports and adapters**: pure domain logic in `src/domain`; providers behind interfaces; React components render and hold UI state only.
 - **Files stay under 300 lines.** Split by responsibility before that.
 - **Every non-test module starts with a TSDoc `@module` comment** saying what it is for.

@@ -15,6 +15,11 @@ import type { GithubRunWithJobs } from './types';
 
 const EXCLUDED_EVENTS = new Set(['pull_request', 'pull_request_target']);
 
+/** Is this a pull-request run, which fooboard never maps (spec.md §4.3.2)? */
+export function isExcludedEvent(event: string): boolean {
+  return EXCLUDED_EVENTS.has(event);
+}
+
 /** Does this run pass the workflow filter (spec.md §4.3.1: empty `include`
  * means include all; empty `exclude` excludes nothing)? */
 export function passesWorkflowFilter(
@@ -33,7 +38,7 @@ export function isCandidateRun(
   mapping: MappingSettings,
   branchPattern: string,
 ): boolean {
-  if (EXCLUDED_EVENTS.has(run.event)) return false;
+  if (isExcludedEvent(run.event)) return false;
   if (!passesWorkflowFilter(run.workflowName, mapping)) return false;
   return (
     run.headBranch !== null &&

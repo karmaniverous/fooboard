@@ -6,6 +6,7 @@
  * @module
  */
 import type { JobSummary } from '@aws-sdk/client-amplify';
+import { max } from 'radash';
 
 function startedAt(job: JobSummary): number {
   return job.startTime ? new Date(job.startTime).getTime() : 0;
@@ -13,8 +14,5 @@ function startedAt(job: JobSummary): number {
 
 /** Return the job with the latest `startTime`, or `undefined` if none. */
 export function newestJob(jobs: readonly JobSummary[]): JobSummary | undefined {
-  return jobs.reduce<JobSummary | undefined>(
-    (best, job) => (best && startedAt(best) >= startedAt(job) ? best : job),
-    undefined,
-  );
+  return max(jobs, startedAt) ?? undefined;
 }
