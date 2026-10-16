@@ -1,12 +1,6 @@
 {
   "project": ["src/**/*.{ts,tsx,css}"],
-  "entry": ["src/domain/index.ts", "src/engine/index.ts"],
-  "ignore": [
-    "src/components/ui/alert-dialog.tsx",
-    "src/components/ui/dropdown-menu.tsx"
-  ],
-  "ignoreDependencies": [
-    "@radix-ui/react-alert-dialog",
-    "@radix-ui/react-dropdown-menu"
-  ]
+  "entry": ["src/domain/index.ts", "src/engine/credentialProviders.ts"],
+  "ignore": ["src/components/ui/alert-dialog.tsx"],
+  "ignoreDependencies": ["@radix-ui/react-alert-dialog"]
 }

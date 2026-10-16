@@ -9,6 +9,8 @@
 /** Product identity and outbound links. */
 export const site = {
   name: 'fooboard',
+  /** Product tagline (spec.md C-19); also the X bio. */
+  tagline: "Welcome to DevOps hell. Here's your map.",
   license: 'BSD-3-Clause',
   xHandle: '@fooboarding',
   xUrl: 'https://x.com/fooboarding',
