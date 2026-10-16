@@ -1,7 +1,8 @@
 /**
  * AlertDialog: shadcn-style wrapper over Radix's alert dialog primitive,
- * copied from the jeeves-server client
- * (`packages/service/client/src/components/ui/alert-dialog.tsx`).
+ * adapted from the jeeves-server client
+ * (`packages/service/client/src/components/ui/alert-dialog.tsx`); action and
+ * cancel take their classes from the shared `buttonVariants` recipe.
  *
  * @module
  */
@@ -9,6 +10,8 @@ import * as AlertDialogPrimitive from '@radix-ui/react-alert-dialog';
 import * as React from 'react';
 
 import { cn } from '@/lib/utils';
+
+import { buttonVariants } from './buttonVariants';
 
 const AlertDialog = AlertDialogPrimitive.Root;
 const AlertDialogTrigger = AlertDialogPrimitive.Trigger;
@@ -78,10 +81,7 @@ const AlertDialogAction = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <AlertDialogPrimitive.Action
     ref={ref}
-    className={cn(
-      'inline-flex h-10 items-center justify-center rounded-md bg-destructive px-4 py-2 text-sm font-semibold text-white ring-offset-background transition-colors hover:bg-destructive/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50',
-      className,
-    )}
+    className={buttonVariants({ variant: 'destructive', className })}
     {...props}
   />
 ));
@@ -93,10 +93,7 @@ const AlertDialogCancel = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <AlertDialogPrimitive.Cancel
     ref={ref}
-    className={cn(
-      'inline-flex h-10 items-center justify-center rounded-md border border-border bg-background px-4 py-2 text-sm font-semibold ring-offset-background transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50',
-      className,
-    )}
+    className={buttonVariants({ variant: 'outline', className })}
     {...props}
   />
 ));
