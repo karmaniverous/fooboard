@@ -5,6 +5,8 @@
  *
  * @module
  */
+import { max } from 'radash';
+
 import type { Phase, RelevantJob } from './githubPhase';
 import type { GithubWorkflowJob } from './types';
 
@@ -47,15 +49,10 @@ function finishedAt(job: GithubWorkflowJob): number {
  * are broken by phase order: phases run deploy then test, so on equal
  * times the later phase counts as finishing last. */
 function latestByPhaseOrder(candidates: readonly RelevantJob[]): RelevantJob {
-  return candidates.reduce((best, current) => {
-    const bestTime = finishedAt(best.job);
-    const currentTime = finishedAt(current.job);
-    if (currentTime !== bestTime)
-      return currentTime > bestTime ? current : best;
-    return PHASE_ORDER.indexOf(current.phase) > PHASE_ORDER.indexOf(best.phase)
-      ? current
-      : best;
-  });
+  // Sort key: finish time, then phase index as the tie-breaker.
+  const key = (j: RelevantJob): number =>
+    finishedAt(j.job) * PHASE_ORDER.length + PHASE_ORDER.indexOf(j.phase);
+  return max(candidates, key) ?? candidates[0];
 }
 
 /** A cell's status and the job that determined it. `phase` is the

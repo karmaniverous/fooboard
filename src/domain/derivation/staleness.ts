@@ -7,6 +7,8 @@
  *
  * @module
  */
+import { max } from 'radash';
+
 import { isLiteralPattern } from '@/domain/matching/branchPattern';
 
 /** `ahead_by`/`behind_by` from `GET compare/{cellBranch}...{sourceBranch}`
@@ -65,13 +67,9 @@ export function resolveStalenessBranch(input: {
   if (isLiteralPattern(input.pattern)) {
     return input.literalBranchExists ? input.pattern : undefined;
   }
-  const branches = input.matchingBranches ?? [];
-  if (branches.length === 0) return undefined;
-  return branches.reduce((best, candidate) =>
-    new Date(candidate.updatedAt).getTime() > new Date(best.updatedAt).getTime()
-      ? candidate
-      : best,
-  ).name;
+  return max(input.matchingBranches ?? [], (b) =>
+    new Date(b.updatedAt).getTime(),
+  )?.name;
 }
 
 /**

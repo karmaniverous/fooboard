@@ -12,7 +12,7 @@ import type { MappingSettings } from '@/domain/config/mappingSettings';
 import type { MatchTest } from '@/domain/config/matchTest';
 import type { Stage } from '@/domain/config/stage';
 
-import { isCandidateRun } from './candidateRuns';
+import { isCandidateRun, isExcludedEvent } from './candidateRuns';
 import { relevantJobs } from './githubPhase';
 import type { GithubRunWithJobs } from './types';
 
@@ -52,8 +52,7 @@ export function classifyUnmappedRun(
   rows: readonly RowKeyInput[],
   mapping: MappingSettings,
 ): UnmappedReason | undefined {
-  const EXCLUDED_EVENTS = new Set(['pull_request', 'pull_request_target']);
-  if (EXCLUDED_EVENTS.has(entry.run.event)) return undefined;
+  if (isExcludedEvent(entry.run.event)) return undefined;
 
   const matchedStages = stages.filter((stage) =>
     isCandidateRun(entry, mapping, stage.branchPattern),
