@@ -8,6 +8,9 @@
  * @module
  */
 
+/** One minute, for demo timelines. */
+export const MINUTE = 60_000;
+
 /** What one demo cell is set up to show. */
 export type DemoScenario =
   | 'success'

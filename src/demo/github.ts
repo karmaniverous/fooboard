@@ -12,18 +12,16 @@ import { GitHubAuthError, GitHubHttpError } from '@/lib/github/errors';
 import type { GitHubReader, RepoRef } from '@/lib/github/reader';
 import type { Job, WorkflowRun } from '@/lib/github/schemas';
 
-import { DEMO_GITHUB_REPOS, demoDashboard } from './board';
+import { DEMO_GITHUB_REPOS, DEMO_STAGE_IDS } from './board';
 import {
   type DemoJobState,
   jobStates,
+  MINUTE,
   scenarioFor,
   stageBranch,
   stageForBranch,
   stalenessCounts,
 } from './scenarios';
-
-const STAGES = demoDashboard.stages.map((s) => s.id);
-const MINUTE = 60_000;
 
 const repoIndex = (repo: string): number =>
   (DEMO_GITHUB_REPOS as readonly string[]).indexOf(repo);
@@ -90,7 +88,7 @@ function demoRuns(repo: string, startMs: number): DemoRun[] {
     run_attempt: 1,
   });
 
-  STAGES.forEach((stageId, s) => {
+  DEMO_STAGE_IDS.forEach((stageId, s) => {
     const scenario = scenarioFor(repo, stageId);
     if (scenario === 'noBranch' || scenario === 'noRuns') return;
     const id = 1000 + r * 100 + s * 10;
@@ -127,9 +125,9 @@ function demoRuns(repo: string, startMs: number): DemoRun[] {
 
 /** Branches that exist in a demo repo (stages without `noBranch`). */
 function demoBranches(repo: string): string[] {
-  return STAGES.filter((id) => scenarioFor(repo, id) !== 'noBranch').map(
-    stageBranch,
-  );
+  return DEMO_STAGE_IDS.filter(
+    (id) => scenarioFor(repo, id) !== 'noBranch',
+  ).map(stageBranch);
 }
 
 /** Create the demo GitHub reader; `clock` drives scenario progress. */

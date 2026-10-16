@@ -101,3 +101,6 @@ export const demoDashboard: Dashboard = DashboardSchema.parse({
     { id: DEMO_AWS_CREDENTIAL, kind: 'aws', label: 'Demo AWS' },
   ],
 });
+
+/** The demo stage ids, in column order. */
+export const DEMO_STAGE_IDS = demoDashboard.stages.map((s) => s.id);

@@ -16,16 +16,14 @@ import type {
 import type { AmplifyReader } from '@/lib/amplify/reader';
 import type { AmplifyReaderFor } from '@/lib/amplify/rowJobs';
 
-import { DEMO_AMPLIFY_APPS, demoDashboard } from './board';
+import { DEMO_AMPLIFY_APPS, DEMO_STAGE_IDS } from './board';
 import {
   type DemoJobState,
   jobStates,
+  MINUTE,
   scenarioFor,
   stageBranch,
 } from './scenarios';
-
-const STAGES = demoDashboard.stages.map((s) => s.id);
-const MINUTE = 60_000;
 
 const AMPLIFY_STATUS: Record<DemoJobState, JobStatus> = {
   waiting: 'PENDING',
@@ -64,16 +62,18 @@ export function createDemoAmplifyReaderFor(
       const owner = appOwner(appId);
       if (!owner) return Promise.resolve([]);
       return Promise.resolve(
-        STAGES.filter((id) => scenarioFor(owner.row, id) !== 'noBranch').map(
-          (id) => ({ branchName: stageBranch(id) }) as Branch,
-        ),
+        DEMO_STAGE_IDS.filter(
+          (id) => scenarioFor(owner.row, id) !== 'noBranch',
+        ).map((id) => ({ branchName: stageBranch(id) }) as Branch),
       );
     },
     listJobs: (appId, branchName) => {
       const owner = appOwner(appId);
-      const s = STAGES.findIndex((id) => stageBranch(id) === branchName);
+      const s = DEMO_STAGE_IDS.findIndex(
+        (id) => stageBranch(id) === branchName,
+      );
       if (!owner || s < 0) return Promise.resolve([]);
-      const scenario = scenarioFor(owner.row, STAGES[s] ?? '');
+      const scenario = scenarioFor(owner.row, DEMO_STAGE_IDS[s] ?? '');
       if (scenario === 'noRuns') return Promise.resolve([]);
       const live = scenario === 'started' || scenario === 'queued';
       // Older sources (higher index) started earlier, so the first wins.

@@ -11,14 +11,17 @@ it makes directly to GitHub and AWS; the host serves static files only.
 See [spec.md](https://github.com/karmaniverous/fooboard) (tracked
 separately) for the full product spec.
 
-**Status:** the app shell is scaffolded (Vite + React + TypeScript +
-Tailwind v4, shadcn-style UI kit shared with
-[jeeves-server](https://github.com/karmaniverous/jeeves-server)) with
-removable Amplify and GitHub browser spikes, and the domain core has landed: the
-config schema, branch presets, matching primitives and cell-derivation
-rules under `src/domain/` (pure TypeScript, no React, network or
-storage; see `spec.md` §8 PR A). PR B (in progress) adds the live GitHub and Amplify providers, demo
-data and the board engine; the grid UI follows.
+**Status:** pre-release, built in the PRs listed in `spec.md` §8. Landed so far:
+
+- **App shell** (Vite + React + TypeScript + Tailwind v4), with a shadcn-style UI kit shared with [jeeves-server](https://github.com/karmaniverous/jeeves-server).
+- **Domain core** (`src/domain/`): the config schema, branch presets, matching rules and cell derivation. Pure TypeScript.
+- **Live data**:
+  - the GitHub and Amplify providers (`src/lib/github/`, `src/lib/amplify/`);
+  - a fictional `acme/*` demo board with demo providers (`src/demo/`);
+  - the board engine and poll scheduler (`src/engine/`), which turn provider data into the cell model.
+- **Browser spikes**: two removable dev pages (below).
+
+The board UI that renders the engine's model comes next.
 
 ## Dev commands
 
