@@ -1,0 +1,69 @@
+/**
+ * Board engine types (spec.md §8 step 7): the per-dashboard cell model the
+ * UI renders, and the provider lookup the engine reads through. Cells hold
+ * the domain derivation plus the staleness badge and compare detail.
+ *
+ * @module
+ */
+import type {
+  AmplifyCellDerivation,
+  GithubCellDerivation,
+  StalenessBadge,
+  UnmappedReason,
+} from '@/domain/derivation';
+import type { AmplifyReaderFor } from '@/lib/amplify/rowJobs';
+import type { GitHubReader } from '@/lib/github';
+import type { RateLimitBudget } from '@/lib/github';
+
+/** Compare detail for a cell with a source stage (spec.md §4.3.5). */
+export interface CompareDetail {
+  sourceBranch: string;
+  htmlUrl: string;
+  /** Commits the source has that the cell lacks (why it's behind). */
+  behindSubjects: string[];
+  /** Commits the cell has that the source lacks (why it's diverged). */
+  aheadSubjects: string[];
+}
+
+/** One rendered cell. */
+export interface BoardCell {
+  rowId: string;
+  stageId: string;
+  derivation: GithubCellDerivation | AmplifyCellDerivation;
+  badge: StalenessBadge;
+  compare?: CompareDetail;
+}
+
+/** A run the board couldn't place, for the Unmapped runs panel (C-15). */
+export interface UnmappedRun {
+  rowId: string;
+  runId: number;
+  workflowName: string;
+  branch: string | null;
+  htmlUrl: string;
+  reason: UnmappedReason;
+}
+
+/** Everything the board renders for one dashboard. */
+export interface BoardModel {
+  /** Keyed by `cellKey(rowId, stageId)`; a cell is absent until its row
+   * first refreshes. */
+  cells: Partial<Record<string, BoardCell>>;
+  unmapped: UnmappedRun[];
+  /** Latest known GitHub budget per credential id (spec.md C-16). */
+  budgets: Record<string, RateLimitBudget | undefined>;
+  /** When each row last refreshed (ms), keyed by row id. */
+  refreshedAt: Record<string, number>;
+}
+
+/** The key of one cell in `BoardModel.cells`. */
+export const cellKey = (rowId: string, stageId: string): string =>
+  `${rowId}:${stageId}`;
+
+/** Readers for the dashboard's credentials; `undefined` means the
+ * credential is missing (no token or key entered), so its cells show
+ * *needs credential*. */
+export interface EngineProviders {
+  github(credentialId: string): GitHubReader | undefined;
+  amplify(credentialId: string): AmplifyReaderFor | undefined;
+}

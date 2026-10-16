@@ -23,7 +23,7 @@ export interface RateLimitBudget {
 }
 
 /** Fraction of `limit` at or under which the budget is reported `'low'`. */
-export const DEFAULT_LOW_BUDGET_THRESHOLD = 0.1;
+const DEFAULT_LOW_BUDGET_THRESHOLD = 0.1;
 
 /**
  * Parse rate-limit headers into a `RateLimitBudget`, or `undefined` if the

@@ -9,7 +9,7 @@
  */
 
 /** Base class for all typed GitHub adapter errors. */
-export abstract class GitHubReaderError extends Error {
+abstract class GitHubReaderError extends Error {
   readonly path: string;
 
   constructor(message: string, path: string) {
