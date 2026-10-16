@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Tests for `buildAmplifyConsoleLink`, including slashed branch names
  * (e.g. `preview/bali`), which must be URL-encoded as a single path
  * segment.
@@ -7,7 +7,7 @@
  */
 import { describe, expect, it } from 'vitest';
 
-import { buildAmplifyConsoleLink } from './amplifyConsoleLink';
+import { buildAmplifyConsoleLink } from './consoleLink';
 
 describe('buildAmplifyConsoleLink', () => {
   it('composes a link for a literal branch', () => {

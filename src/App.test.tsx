@@ -1,6 +1,6 @@
 /**
- * Smoke test for the app shell: renders without throwing and shows the
- * header brand and the empty-state home page.
+ * Smoke test for the app shell: each route renders inside the shared
+ * header and footer.
  *
  * @module
  */
@@ -8,27 +8,29 @@ import { render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { describe, expect, it } from 'vitest';
 
+import { site } from '@/lib/site';
+
 import App from './App';
 
+function renderAt(path: string): void {
+  render(
+    <MemoryRouter initialEntries={[path]}>
+      <App />
+    </MemoryRouter>,
+  );
+}
+
 describe('App', () => {
-  it('renders the header brand and the empty-state home page', () => {
-    render(
-      <MemoryRouter initialEntries={['/']}>
-        <App />
-      </MemoryRouter>,
+  it.each([
+    ['/', 'No dashboards yet'],
+    ['/spike/amplify', 'Amplify browser spike'],
+  ])('renders %s inside the shell', (path, heading) => {
+    renderAt(path);
+    expect(screen.getByText(site.name)).toBeInTheDocument();
+    expect(screen.getByText(heading)).toBeInTheDocument();
+    expect(screen.getByText('Report an issue')).toHaveAttribute(
+      'rel',
+      'noopener noreferrer',
     );
-
-    expect(screen.getByText('fooboard')).toBeInTheDocument();
-    expect(screen.getByText('No dashboards yet')).toBeInTheDocument();
-  });
-
-  it('renders the Amplify spike page at /spike/amplify', () => {
-    render(
-      <MemoryRouter initialEntries={['/spike/amplify']}>
-        <App />
-      </MemoryRouter>,
-    );
-
-    expect(screen.getByText('Amplify browser spike')).toBeInTheDocument();
   });
 });

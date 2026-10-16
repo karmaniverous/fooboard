@@ -1,6 +1,7 @@
 /**
- * Zod schema for the Amplify browser-spike form (spec.md §6 spike 1 / C-6).
- * Credentials are validated shape-only and never leave component state.
+ * Amplify spike form: Zod schema (source of truth for the values type),
+ * defaults, and the field list the page renders, so each field's name,
+ * label and validation are declared once.
  *
  * @module
  */
@@ -23,3 +24,24 @@ export const amplifySpikeFormDefaults: AmplifySpikeFormValues = {
   appId: '',
   branch: '',
 };
+
+/** One rendered form field. */
+interface SpikeField {
+  name: keyof AmplifySpikeFormValues;
+  label: string;
+  type: 'text' | 'password';
+  placeholder?: string;
+}
+
+export const amplifySpikeFields: readonly SpikeField[] = [
+  { name: 'accessKeyId', label: 'Access key ID', type: 'text' },
+  { name: 'secretAccessKey', label: 'Secret access key', type: 'password' },
+  { name: 'region', label: 'Region', type: 'text', placeholder: 'us-east-1' },
+  { name: 'appId', label: 'App ID', type: 'text' },
+  {
+    name: 'branch',
+    label: 'Branch (optional)',
+    type: 'text',
+    placeholder: 'leave blank to use the first branch found',
+  },
+];
