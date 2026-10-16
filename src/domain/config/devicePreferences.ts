@@ -22,6 +22,9 @@ export const DEFAULT_ZOOM = 1;
 export const DashboardViewPreferencesSchema = z.object({
   zoom: z.number().positive().default(DEFAULT_ZOOM),
   rowHeight: RowHeightSchema.default(DEFAULT_ROW_HEIGHT),
+  /** `rows x stages` when `zoom` was saved; zoom resets to Fit when the
+   * board's size changes (spec.md C-13). */
+  boardSize: z.string().optional(),
 });
 export type DashboardViewPreferences = z.infer<
   typeof DashboardViewPreferencesSchema

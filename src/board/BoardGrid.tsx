@@ -57,6 +57,8 @@ export interface BoardGridProps {
   model: BoardModel;
   rowHeight: 'compact' | 'full';
   now: number;
+  /** Keep stage and row headers in view while the zoomed grid scrolls. */
+  pinnedHeaders?: boolean;
 }
 
 export function BoardGrid({
@@ -64,7 +66,10 @@ export function BoardGrid({
   model,
   rowHeight,
   now,
+  pinnedHeaders = false,
 }: BoardGridProps): React.JSX.Element {
+  const pinTop = pinnedHeaders && 'sticky top-0 z-10 bg-background';
+  const pinLeft = pinnedHeaders && 'sticky left-0 z-10 bg-background';
   const { rows, stages, statusColors } = dashboard;
   const rowDividers = byBefore(dashboard.rowDividers);
   const colDividers = byBefore(dashboard.columnDividers);
@@ -133,7 +138,10 @@ export function BoardGrid({
           </div>
         )}
         <div role="row" className="contents">
-          <div role="columnheader" />
+          <div
+            role="columnheader"
+            className={cn(pinTop, pinLeft, pinnedHeaders && 'z-20')}
+          />
           {stages.map((stage, i) => {
             const divider = colDividers.get(stage.id);
             return (
@@ -143,6 +151,7 @@ export function BoardGrid({
                 role="columnheader"
                 className={cn(
                   'truncate px-1 font-semibold',
+                  pinTop,
                   divider && DIVIDER_COL[divider.style],
                 )}
                 title={stage.branchPattern}
@@ -176,6 +185,7 @@ export function BoardGrid({
                   role="rowheader"
                   className={cn(
                     'flex items-center truncate px-1 font-medium',
+                    pinLeft,
                     rowLine,
                   )}
                   title={row.repo}

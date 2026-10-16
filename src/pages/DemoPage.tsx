@@ -1,20 +1,26 @@
 /**
  * *Try the demo* (spec.md C-23): the fictional `acme/*` board, driven by
  * the bundled demo providers, so visitors see fooboard before creating a
- * token. Nothing is stored and nothing leaves the browser.
+ * token. Only the view settings (zoom, row height) are saved, per device.
  *
  * @module
  */
 import { useMemo } from 'react';
 
-import { BoardGrid } from '@/board/BoardGrid';
+import { BoardViewport } from '@/board/BoardViewport';
 import { useBoardEngine } from '@/board/useBoardEngine';
+import { useBoardView } from '@/board/useBoardView';
 import { demoDashboard } from '@/demo/board';
 import { demoProviders } from '@/engine';
 
 export function DemoPage(): React.JSX.Element {
   const providers = useMemo(() => demoProviders(), []);
   const { model, now } = useBoardEngine(demoDashboard, providers);
+  const view = useBoardView(
+    demoDashboard.id,
+    demoDashboard.rows.length,
+    demoDashboard.stages.length,
+  );
   return (
     <div className="flex h-[calc(100vh-7rem)] flex-col gap-2 px-4 py-2">
       <div className="flex items-baseline gap-3">
@@ -24,11 +30,11 @@ export function DemoPage(): React.JSX.Element {
         </span>
       </div>
       <div className="min-h-0 flex-1">
-        <BoardGrid
+        <BoardViewport
           dashboard={demoDashboard}
           model={model}
-          rowHeight="compact"
           now={now}
+          view={view}
         />
       </div>
     </div>
