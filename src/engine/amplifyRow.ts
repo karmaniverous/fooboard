@@ -7,6 +7,10 @@
  *
  * @module
  */
+import {
+  type DefaultCredentials,
+  resolveCredentialId,
+} from '@/domain/config/credentialRefs';
 import type { AmplifyRow } from '@/domain/config/row';
 import type { Stage } from '@/domain/config/stage';
 import {
@@ -16,7 +20,11 @@ import {
   type ProviderFailure,
 } from '@/domain/derivation';
 import { AmplifyAuthError, AmplifyThrottledError } from '@/lib/amplify/errors';
-import { type AmplifyReaderFor, collectRowJobs } from '@/lib/amplify/rowJobs';
+import {
+  type AmplifyReaderFor,
+  collectRowJobs,
+  type ResolvedAmplifySource,
+} from '@/lib/amplify/rowJobs';
 import { describeError } from '@/lib/errors';
 
 /** A refreshed Amplify row, or throttled (keep the previous cells). */
@@ -43,15 +51,28 @@ function emptyRow(
   return { kind: 'refreshed', cells };
 }
 
-/** Refresh one Amplify row. `readersFor(credentialId)` is `undefined` when
- * that credential is missing. */
+/** Refresh one Amplify row. Each source uses its own AWS key if set, else
+ * the dashboard default; `readersFor(credentialId)` is `undefined` when
+ * that key hasn't been entered. Any source without a usable key makes the
+ * row *needs credential*. */
 export async function refreshAmplifyRow(
   row: AmplifyRow,
   stages: readonly Stage[],
+  defaults: DefaultCredentials,
   readersFor: (credentialId: string) => AmplifyReaderFor | undefined,
 ): Promise<AmplifyRowRefresh> {
+  const sources: ResolvedAmplifySource[] = [];
+  for (const source of row.sources) {
+    const credentialId = resolveCredentialId(
+      defaults,
+      'aws',
+      source.credentialId,
+    );
+    if (!credentialId) return emptyRow(stages, 'missing');
+    sources.push({ ...source, credentialId });
+  }
   const readers = new Map(
-    row.sources.map((s) => [s.credentialId, readersFor(s.credentialId)]),
+    sources.map((s) => [s.credentialId, readersFor(s.credentialId)]),
   );
   if ([...readers.values()].some((r) => r === undefined)) {
     return emptyRow(stages, 'missing');
@@ -66,7 +87,7 @@ export async function refreshAmplifyRow(
     const cells: Record<string, AmplifyCellDerivation> = {};
     for (const stage of stages) {
       const jobs = await collectRowJobs(
-        row.sources,
+        sources,
         stage.branchPattern,
         readerFor,
       );

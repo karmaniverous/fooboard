@@ -53,7 +53,7 @@ const amplify = Object.entries(DEMO_AMPLIFY_APPS).map(([name, sources]) => ({
   id: name,
   repo: `acme/${name}`,
   displayName: name,
-  sources: sources.map((s) => ({ credentialId: DEMO_AWS_CREDENTIAL, ...s })),
+  sources: sources.map((s) => ({ ...s })),
 }));
 
 /** The demo dashboard, validated by the real schema. */
@@ -100,6 +100,10 @@ export const demoDashboard: Dashboard = DashboardSchema.parse({
     { id: DEMO_GITHUB_CREDENTIAL, kind: 'github', label: 'Demo GitHub' },
     { id: DEMO_AWS_CREDENTIAL, kind: 'aws', label: 'Demo AWS' },
   ],
+  defaultCredentials: {
+    github: DEMO_GITHUB_CREDENTIAL,
+    aws: DEMO_AWS_CREDENTIAL,
+  },
 });
 
 /** The demo stage ids, in column order. */

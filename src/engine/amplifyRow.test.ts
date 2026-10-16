@@ -20,6 +20,7 @@ const row: AmplifyRow = {
   sources: [{ credentialId: 'aws', region: 'us-east-1', appId: 'a1' }],
 };
 const stages = [{ id: 'prod', name: 'Prod', branchPattern: 'main' }];
+const defaults = {};
 
 const failing = (err: Error) => () =>
   ({
@@ -30,8 +31,26 @@ const failing = (err: Error) => () =>
   }) satisfies AmplifyReader;
 
 describe('refreshAmplifyRow', () => {
+  it('shows needs credential when no source has a key and there is no default', async () => {
+    const keyless: AmplifyRow = {
+      ...row,
+      sources: [{ region: 'us-east-1', appId: 'a1' }],
+    };
+    const result = await refreshAmplifyRow(keyless, stages, defaults, () =>
+      failing(new Error('never called')),
+    );
+    expect(result).toMatchObject({
+      cells: { prod: { state: 'needs-credential' } },
+    });
+  });
+
   it('shows needs credential when the key is missing', async () => {
-    const result = await refreshAmplifyRow(row, stages, () => undefined);
+    const result = await refreshAmplifyRow(
+      row,
+      stages,
+      defaults,
+      () => undefined,
+    );
     expect(result).toMatchObject({
       kind: 'refreshed',
       cells: { prod: { kind: 'empty', state: 'needs-credential' } },
@@ -39,7 +58,7 @@ describe('refreshAmplifyRow', () => {
   });
 
   it('shows needs credential when AWS rejects the key', async () => {
-    const result = await refreshAmplifyRow(row, stages, () =>
+    const result = await refreshAmplifyRow(row, stages, defaults, () =>
       failing(new AmplifyAuthError('denied', 'ListBranches')),
     );
     expect(result).toMatchObject({
@@ -48,14 +67,14 @@ describe('refreshAmplifyRow', () => {
   });
 
   it('keeps the previous cells while throttled', async () => {
-    const result = await refreshAmplifyRow(row, stages, () =>
+    const result = await refreshAmplifyRow(row, stages, defaults, () =>
       failing(new AmplifyThrottledError('slow down', 'ListBranches', 5_000)),
     );
     expect(result).toEqual({ kind: 'rate-limited' });
   });
 
   it('shows error with the reason for other failures', async () => {
-    const result = await refreshAmplifyRow(row, stages, () =>
+    const result = await refreshAmplifyRow(row, stages, defaults, () =>
       failing(new Error('socket hang up')),
     );
     expect(result).toMatchObject({

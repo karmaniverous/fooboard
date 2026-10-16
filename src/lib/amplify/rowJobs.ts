@@ -17,6 +17,11 @@ import { matchesBranchPattern } from '@/domain/matching/branchPattern';
 import { AmplifyNotFoundError } from './errors';
 import type { AmplifyReader } from './reader';
 
+/** A source with its credential resolved (override or dashboard default). */
+export type ResolvedAmplifySource = Omit<AmplifySource, 'credentialId'> & {
+  credentialId: string;
+};
+
 /** Supplies the reader for a source's credential and region. */
 export type AmplifyReaderFor = (source: {
   credentialId: string;
@@ -35,7 +40,7 @@ export interface RowJobs {
 
 /** Gather the jobs for one Amplify row and one stage's branch pattern. */
 export async function collectRowJobs(
-  sources: readonly AmplifySource[],
+  sources: readonly ResolvedAmplifySource[],
   branchPattern: string,
   readerFor: AmplifyReaderFor,
 ): Promise<RowJobs> {

@@ -7,6 +7,7 @@
  *
  * @module
  */
+import { resolveCredentialId } from '@/domain/config/credentialRefs';
 import type { Dashboard } from '@/domain/config/dashboard';
 import type { AmplifyRow, GithubRow } from '@/domain/config/row';
 import type { GitHubReader } from '@/lib/github';
@@ -60,13 +61,24 @@ export function createBoardEngine({
   now?: () => number;
 }): BoardEngine {
   const { stages, mapping } = dashboard;
-  // Rows carry no credential; GitHub rows read through the dashboard's
-  // first GitHub credential (spec.md C-1a).
-  const githubCredential = dashboard.credentials.find(
-    (c) => c.kind === 'github',
-  );
-  const github = (): GitHubReader | undefined =>
-    githubCredential ? providers.github(githubCredential.id) : undefined;
+  const { defaultCredentials } = dashboard;
+
+  /** The GitHub token a row reads with: its override, else the dashboard
+   * default (spec.md C-1a). */
+  interface GithubAccess {
+    credentialId: string;
+    reader: GitHubReader | undefined;
+  }
+  const githubAccess = (override?: string): GithubAccess | undefined => {
+    const credentialId = resolveCredentialId(
+      defaultCredentials,
+      'github',
+      override,
+    );
+    return credentialId
+      ? { credentialId, reader: providers.github(credentialId) }
+      : undefined;
+  };
 
   let model = emptyModel();
   const listeners = new Set<(m: BoardModel) => void>();
@@ -80,6 +92,7 @@ export function createBoardEngine({
     cells: Partial<Record<string, BoardCell['derivation']>>,
     staleness: Partial<Record<string, CellStaleness>>,
     unmapped: UnmappedRun[],
+    access: GithubAccess | undefined,
   ): void => {
     const nextCells = { ...model.cells };
     for (const stage of stages) {
@@ -92,28 +105,26 @@ export function createBoardEngine({
         ...(staleness[stage.id] ?? { badge: undefined }),
       };
     }
-    const reader = github();
     publish({
       cells: nextCells,
       unmapped: [
         ...model.unmapped.filter((u) => u.rowId !== rowId),
         ...unmapped,
       ],
-      budgets:
-        githubCredential && reader
-          ? { ...model.budgets, [githubCredential.id]: reader.getBudget() }
-          : model.budgets,
+      budgets: access?.reader
+        ? { ...model.budgets, [access.credentialId]: access.reader.getBudget() }
+        : model.budgets,
       refreshedAt: { ...model.refreshedAt, [rowId]: now() },
     });
   };
 
   /** Badges are best-effort: a failed compare leaves the row unbadged. */
   const stalenessFor = async (
+    reader: GitHubReader | undefined,
     repo: string,
     cells: Record<string, BoardCell['derivation']>,
     branches: { name: string; updatedAt: string }[] | undefined,
   ): Promise<Record<string, CellStaleness>> => {
-    const reader = github();
     if (!reader) return {};
     try {
       const ref = repoRef(repo);
@@ -132,22 +143,37 @@ export function createBoardEngine({
   };
 
   const refreshGithub = async (row: GithubRow): Promise<void> => {
-    const result = await refreshGithubRow(row, stages, mapping, github());
+    const access = githubAccess(row.credentialId);
+    const result = await refreshGithubRow(row, stages, mapping, access?.reader);
     if (result.kind === 'rate-limited') return;
     const staleness =
       result.branches.length > 0
-        ? await stalenessFor(row.repo, result.cells, result.branches)
+        ? await stalenessFor(
+            access?.reader,
+            row.repo,
+            result.cells,
+            result.branches,
+          )
         : {};
-    applyRow(row.id, result.cells, staleness, result.unmapped);
+    applyRow(row.id, result.cells, staleness, result.unmapped, access);
   };
 
   const refreshAmplify = async (row: AmplifyRow): Promise<void> => {
-    const result = await refreshAmplifyRow(row, stages, (id) =>
-      providers.amplify(id),
+    const result = await refreshAmplifyRow(
+      row,
+      stages,
+      defaultCredentials,
+      (id) => providers.amplify(id),
     );
     if (result.kind === 'rate-limited') return;
-    const staleness = await stalenessFor(row.repo, result.cells, undefined);
-    applyRow(row.id, result.cells, staleness, []);
+    const access = githubAccess(row.githubCredentialId);
+    const staleness = await stalenessFor(
+      access?.reader,
+      row.repo,
+      result.cells,
+      undefined,
+    );
+    applyRow(row.id, result.cells, staleness, [], access);
   };
 
   const targets: PollTarget[] = dashboard.rows.map((row) => ({

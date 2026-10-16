@@ -25,15 +25,18 @@ export const GithubRowSchema = z.object({
   repo: RepoSchema,
   displayName: z.string().min(1),
   rowKeyTests: z.array(MatchTestSchema).default(() => []),
+  /** Overrides the dashboard's default GitHub token for this row. */
+  credentialId: z.string().min(1).optional(),
 });
 export type GithubRow = z.infer<typeof GithubRowSchema>;
 
 /**
- * One Amplify app to read for a row: a credential (AWS account), region
- * and app id. The app id is picked via `ListApps` at edit time, not typed.
+ * One Amplify app to read for a row: region and app id, plus an optional
+ * AWS key overriding the dashboard default (for an app in another AWS
+ * account). The app id is picked via `ListApps` at edit time, not typed.
  */
 export const AmplifySourceSchema = z.object({
-  credentialId: z.string().min(1),
+  credentialId: z.string().min(1).optional(),
   region: z.string().min(1),
   appId: z.string().min(1),
 });
@@ -50,6 +53,8 @@ export const AmplifyRowSchema = z.object({
   sources: z.array(AmplifySourceSchema).min(1),
   repo: RepoSchema,
   displayName: z.string().min(1),
+  /** Overrides the dashboard's default GitHub token for `repo`. */
+  githubCredentialId: z.string().min(1).optional(),
 });
 export type AmplifyRow = z.infer<typeof AmplifyRowSchema>;
 

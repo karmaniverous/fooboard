@@ -90,6 +90,37 @@ describe('board engine over the demo', () => {
 });
 
 describe('board engine credentials and limits', () => {
+  it('reads a row with its own token when it overrides the default', async () => {
+    const dashboard = {
+      ...demoDashboard,
+      credentials: [
+        ...demoDashboard.credentials,
+        { id: 'org-b', kind: 'github' as const, label: 'Org B' },
+      ],
+      rows: demoDashboard.rows.map((r) =>
+        r.id === 'api-core' ? { ...r, credentialId: 'org-b' } : r,
+      ),
+    };
+    const demo = demoProviders(() => 0);
+    const engine = createBoardEngine({
+      dashboard,
+      // Only the default token is entered; org-b is missing.
+      providers: {
+        ...demo,
+        github: (id) => (id === 'org-b' ? undefined : demo.github(id)),
+      },
+      visibility: visible,
+    });
+    await engine.refreshAll();
+    const model = engine.getModel();
+    expect(cell(model, 'api-core', 'dev')?.derivation).toMatchObject({
+      state: 'needs-credential',
+    });
+    expect(cell(model, 'web-app', 'dev')?.derivation).toMatchObject({
+      kind: 'ok',
+    });
+  });
+
   it('shows needs credential when a token is missing', async () => {
     const engine = createBoardEngine({
       dashboard: demoDashboard,
