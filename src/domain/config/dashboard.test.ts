@@ -34,6 +34,7 @@ describe('DashboardSchema', () => {
     const dashboard = DashboardSchema.parse({
       id: 'd1',
       name: 'Dashboard 1',
+      credentials: [{ id: 'c1', kind: 'aws', label: 'AWS' }],
       rows: [
         {
           type: 'github',

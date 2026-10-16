@@ -25,6 +25,7 @@ function fakeReader(
   );
   return {
     reader: {
+      listApps: vi.fn(() => Promise.resolve([])),
       listBranches: vi.fn(() => Promise.resolve(branches)),
       listJobs: vi.fn(() => Promise.resolve(jobs)),
       getJob,

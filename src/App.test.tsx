@@ -24,6 +24,7 @@ describe('App', () => {
   it.each([
     ['/', 'No dashboards yet'],
     ['/spike/amplify', 'Amplify browser spike'],
+    ['/spike/github', 'GitHub browser spike'],
   ])('renders %s inside the shell', (path, heading) => {
     renderAt(path);
     expect(screen.getByText(site.name)).toBeInTheDocument();

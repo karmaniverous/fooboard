@@ -9,6 +9,10 @@
 import { z } from 'zod';
 
 import { StatusColorsSchema } from './colors';
+import {
+  credentialReferenceIssues,
+  DefaultCredentialsSchema,
+} from './credentialRefs';
 import { CredentialRefSchema } from './credentials';
 import { findAnyCycle } from './cycle';
 import { DividerSchema } from './dividers';
@@ -32,8 +36,14 @@ export const DashboardSchema = z
     rowDividers: z.array(DividerSchema).default(() => []),
     columnDividers: z.array(DividerSchema).default(() => []),
     credentials: z.array(CredentialRefSchema).default(() => []),
+    /** Default GitHub token and AWS key; rows and sources may override. */
+    defaultCredentials: DefaultCredentialsSchema.default(() => ({})),
   })
   .superRefine((dashboard, ctx) => {
+    for (const issue of credentialReferenceIssues(dashboard)) {
+      ctx.addIssue({ code: 'custom', ...issue });
+    }
+
     // Duplicate ids make source references ambiguous and would let a cycle
     // hide behind a later stage with the same id, so reject them first.
     const seen = new Set<string>();

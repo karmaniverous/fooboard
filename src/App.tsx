@@ -1,6 +1,6 @@
 /**
- * App shell: router wiring for the empty-state home page and the Amplify
- * browser spike.
+ * App shell: router wiring for the empty-state home page and the removable
+ * Amplify and GitHub browser spikes.
  *
  * @module
  */
@@ -10,6 +10,7 @@ import { Footer } from '@/components/Footer';
 import { Header } from '@/components/Header';
 import { Home } from '@/pages/Home';
 import { AmplifySpikePage } from '@/pages/spike/AmplifySpikePage';
+import { GithubSpikePage } from '@/pages/spike/GithubSpikePage';
 
 export default function App(): React.JSX.Element {
   return (
@@ -19,6 +20,7 @@ export default function App(): React.JSX.Element {
         <Routes>
           <Route path="/" element={<Home />} />
           <Route path="/spike/amplify" element={<AmplifySpikePage />} />
+          <Route path="/spike/github" element={<GithubSpikePage />} />
         </Routes>
       </main>
       <Footer />
