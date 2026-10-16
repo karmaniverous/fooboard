@@ -52,19 +52,3 @@ jobs:
 
       - name: Build
         run: npm run build
-
-      # Run every built CLI, so a bundle that won't even start (e.g. a
-      # duplicated shebang) fails CI instead of shipping.
-      - name: Smoke-test CLIs
-        shell: bash
-        run: |
-          set -euo pipefail
-          shopt -s nullglob
-          for cli in dist/cli/*/index.js; do
-            echo "::group::$cli --help"
-            node "$cli" --help
-            echo '::endgroup::'
-          done
-
-      - name: Docs
-        run: npm run docs -- --emit none

@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+  <title>fooboard</title>
+  <rect width="1024" height="1024" fill="#1e293b"/>
+  <rect x="116" y="116" width="233.33" height="233.33" rx="28" fill="#22c55e"/>
+  <rect x="395.33" y="116" width="233.33" height="233.33" rx="28" fill="#22c55e"/>
+  <rect x="674.67" y="116" width="233.33" height="233.33" rx="28" fill="#22c55e"/>
+  <rect x="116" y="395.33" width="233.33" height="233.33" rx="28" fill="#22c55e"/>
+  <rect x="395.33" y="395.33" width="233.33" height="233.33" rx="28" fill="#22c55e"/>
+  <rect x="674.67" y="395.33" width="233.33" height="233.33" rx="28" fill="#3b82f6"/>
+  <rect x="116" y="674.67" width="233.33" height="233.33" rx="28" fill="#22c55e"/>
+  <rect x="395.33" y="674.67" width="233.33" height="233.33" rx="28" fill="#3b82f6"/>
+  <rect x="674.67" y="674.67" width="233.33" height="233.33" rx="28" fill="#ef4444"/>
+  <circle cx="584.67" cy="439.33" r="44" fill="#f59e0b" stroke="#1e293b" stroke-width="14"/>
+</svg>
