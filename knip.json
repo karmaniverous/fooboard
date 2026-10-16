@@ -1,5 +1,6 @@
 {
   "project": ["src/**/*.{ts,tsx,css}"],
+  "entry": ["src/domain/index.ts"],
   "ignore": [
     "src/components/ui/alert-dialog.tsx",
     "src/components/ui/dropdown-menu.tsx"
