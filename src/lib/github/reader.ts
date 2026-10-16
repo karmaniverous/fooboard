@@ -112,14 +112,20 @@ export function createGitHubReader({
   const get = async <T>(path: string, schema: Parser<T>): Promise<T> =>
     parse(schema, path, (await http.getJson(path)).data);
 
-  const getAll = <T>(firstUrl: string, schema: Parser<T[]>): Promise<T[]> =>
+  /** Every page's items; `items` extracts them from one parsed page. */
+  const getAll = <P, T>(
+    firstUrl: string,
+    schema: Parser<P>,
+    items: (page: P) => T[],
+  ): Promise<T[]> =>
     paginateAll<T>(firstUrl, async (url) => {
       const { data, headers } = await http.getJson(url);
       return {
-        items: parse(schema, url, data),
+        items: items(parse(schema, url, data)),
         linkHeader: headers.get('link'),
       };
     });
+  const asIs = <T>(page: T[]): T[] => page;
 
   /** `base...head`: commits on `head` that `base` lacks. */
   const compareOnce = (ref: RepoRef, base: string, head: string) =>
@@ -142,23 +148,22 @@ export function createGitHubReader({
       ).workflow_runs;
     },
 
-    async listRunJobs(ref, runId, { filter = 'latest' } = {}) {
-      return (
-        await get(
-          repoUrl(ref, `actions/runs/${String(runId)}/jobs?filter=${filter}`),
-          JobsResponseSchema,
-        )
-      ).jobs;
-    },
+    listRunJobs: (ref, runId, { filter = 'latest' } = {}) =>
+      getAll(
+        repoUrl(
+          ref,
+          `actions/runs/${String(runId)}/jobs?filter=${filter}&per_page=100`,
+        ),
+        JobsResponseSchema,
+        (page) => page.jobs,
+      ),
 
-    async listWorkflows(ref) {
-      return (
-        await get(
-          repoUrl(ref, 'actions/workflows?per_page=100'),
-          WorkflowsResponseSchema,
-        )
-      ).workflows;
-    },
+    listWorkflows: (ref) =>
+      getAll(
+        repoUrl(ref, 'actions/workflows?per_page=100'),
+        WorkflowsResponseSchema,
+        (page) => page.workflows,
+      ),
 
     matchingRefs: (ref, prefix) =>
       get(
@@ -184,13 +189,18 @@ export function createGitHubReader({
     },
 
     listBranches: (ref) =>
-      getAll<Branch>(
+      getAll(
         repoUrl(ref, 'branches?per_page=100'),
         BranchesResponseSchema,
+        asIs<Branch>,
       ),
 
     listRepos: () =>
-      getAll<Repo>(`${API_BASE}/user/repos?per_page=100`, ReposResponseSchema),
+      getAll(
+        `${API_BASE}/user/repos?per_page=100`,
+        ReposResponseSchema,
+        asIs<Repo>,
+      ),
 
     getBudget: () => http.getBudget(),
     getTokenExpiration: () => http.getTokenExpiration(),

@@ -66,29 +66,29 @@ describe('createGitHubReader', () => {
     expect(runs[0].head_branch).toBe('main');
   });
 
-  it('listRunJobs requests filter=latest and parses jobs', async () => {
-    const url =
-      'https://api.github.com/repos/acme/api-core/actions/runs/1/jobs?filter=latest';
+  it('listRunJobs follows pages, so a job on page two is not lost', async () => {
+    const base =
+      'https://api.github.com/repos/acme/api-core/actions/runs/1/jobs?filter=latest&per_page=100';
+    const page2 = `${base}&page=2`;
+    const job = (id: number, name: string) => ({
+      id,
+      run_id: 1,
+      name,
+      status: 'completed',
+      conclusion: 'success',
+      html_url: `https://github.com/acme/api-core/actions/runs/1/jobs/${String(id)}`,
+    });
     const { fetchImpl } = fakeFetch({
-      [url]: () =>
-        jsonResponse({
-          total_count: 1,
-          jobs: [
-            {
-              id: 5,
-              run_id: 1,
-              name: 'deploy',
-              status: 'completed',
-              conclusion: 'success',
-              html_url:
-                'https://github.com/acme/api-core/actions/runs/1/jobs/5',
-            },
-          ],
-        }),
+      [base]: () =>
+        jsonResponse(
+          { total_count: 2, jobs: [job(5, 'lint')] },
+          { link: `<${page2}>; rel="next"` },
+        ),
+      [page2]: () => jsonResponse({ total_count: 2, jobs: [job(6, 'deploy')] }),
     });
     const reader = createGitHubReader({ token: 't', fetchImpl });
     const jobs = await reader.listRunJobs(repo, 1);
-    expect(jobs[0].name).toBe('deploy');
+    expect(jobs.map((j) => j.name)).toEqual(['lint', 'deploy']);
   });
 
   it('matchingRefs requests /git/matching-refs/heads/{prefix}', async () => {

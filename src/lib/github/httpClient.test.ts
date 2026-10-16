@@ -14,6 +14,7 @@ import {
   GitHubHttpError,
   GitHubNetworkError,
   GitHubNotFoundError,
+  GitHubValidationError,
   RateLimitedError,
 } from './errors';
 import { type FetchLike, GitHubHttpClient } from './httpClient';
@@ -200,5 +201,83 @@ describe('GitHubHttpClient', () => {
     const err = await client.getJson('https://x/a').catch((e: unknown) => e);
     expect(seenHeaders[0].Authorization).toBe('Bearer secret-token-value');
     expect((err as Error).message).not.toContain('secret-token-value');
+  });
+
+  it('keeps the Link header when a 304 omits it', async () => {
+    const link = '<https://x/a?page=2>; rel="next"';
+    let n = 0;
+    const fetchImpl: FetchLike = () =>
+      Promise.resolve(
+        n++ === 0
+          ? jsonResponse(200, [1], { etag: '"e"', link })
+          : jsonResponse(304, undefined),
+      );
+    const client = new GitHubHttpClient({ token: 't', fetchImpl });
+    await client.getJson('https://x/a');
+    const revalidated = await client.getJson('https://x/a');
+    expect(revalidated.headers.get('link')).toBe(link);
+  });
+
+  it('treats a 403 secondary limit without headers as rate limited and pauses', async () => {
+    const fetchImpl = vi.fn<FetchLike>(() =>
+      Promise.resolve(
+        jsonResponse(
+          403,
+          { message: 'You have exceeded a secondary rate limit.' },
+          { 'x-ratelimit-remaining': '4000' },
+        ),
+      ),
+    );
+    const client = new GitHubHttpClient({ token: 't', fetchImpl });
+    const before = Date.now();
+    const err: unknown = await client
+      .getJson('https://x/a')
+      .catch((e: unknown) => e);
+    expect(err).toBeInstanceOf(RateLimitedError);
+    expect((err as RateLimitedError).retryAt).toBeGreaterThanOrEqual(
+      before + 60_000,
+    );
+  });
+
+  it('makes a queued request wait after a headerless 429', async () => {
+    vi.useFakeTimers();
+    try {
+      const fetchImpl = vi.fn<FetchLike>(() =>
+        Promise.resolve(jsonResponse(429, { message: 'slow down' })),
+      );
+      const client = new GitHubHttpClient({ token: 't', fetchImpl });
+      await expect(client.getJson('https://x/a')).rejects.toBeInstanceOf(
+        RateLimitedError,
+      );
+      void client.getJson('https://x/b').catch(() => undefined);
+      await vi.advanceTimersByTimeAsync(59_000);
+      expect(fetchImpl).toHaveBeenCalledTimes(1);
+      await vi.advanceTimersByTimeAsync(1_000);
+      expect(fetchImpl).toHaveBeenCalledTimes(2);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('maps a failed body read to a network error', async () => {
+    const res = jsonResponse(200, {});
+    vi.spyOn(res, 'text').mockRejectedValue(new Error('reset'));
+    const client = new GitHubHttpClient({
+      token: 't',
+      fetchImpl: () => Promise.resolve(res),
+    });
+    await expect(client.getJson('https://x/a')).rejects.toBeInstanceOf(
+      GitHubNetworkError,
+    );
+  });
+
+  it('maps malformed JSON to a validation error', async () => {
+    const client = new GitHubHttpClient({
+      token: 't',
+      fetchImpl: () => Promise.resolve(new Response('{oops', { status: 200 })),
+    });
+    await expect(client.getJson('https://x/a')).rejects.toBeInstanceOf(
+      GitHubValidationError,
+    );
   });
 });

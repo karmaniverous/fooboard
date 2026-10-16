@@ -78,8 +78,8 @@ describe('computeRetryAt', () => {
     ).toBe(1760000000 * 1000);
   });
 
-  it('falls back to now when neither header is present', () => {
-    expect(computeRetryAt(headers({}), now)).toBe(now);
+  it('waits a minute when neither header is present', () => {
+    expect(computeRetryAt(headers({}), now)).toBe(now + 60_000);
   });
 });
 

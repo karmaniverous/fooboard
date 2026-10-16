@@ -11,6 +11,8 @@
 interface CacheEntry {
   etag: string;
   data: unknown;
+  /** The original `Link` header: a 304 may omit it, but pagination needs it. */
+  link: string | null;
 }
 
 /** Per-URL ETag + body cache, scoped to one credential. */

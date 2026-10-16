@@ -69,8 +69,12 @@ export function computeRetryAt(headers: Headers, now = Date.now()): number {
     const resetSeconds = Number(reset);
     if (!Number.isNaN(resetSeconds)) return resetSeconds * 1000;
   }
-  return now;
+  // No hint: GitHub asks for at least a minute after a secondary limit.
+  return now + FALLBACK_RETRY_MS;
 }
+
+/** Wait after a rate limit that carries no retry or reset header. */
+const FALLBACK_RETRY_MS = 60_000;
 
 /**
  * True when a response looks like a rate-limit response rather than a plain

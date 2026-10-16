@@ -6,6 +6,7 @@
  *
  * @module
  */
+import { describeError } from '@/lib/errors';
 import { SerialQueue } from '@/lib/queue/serialQueue';
 
 import {
@@ -14,6 +15,7 @@ import {
   GitHubHttpError,
   GitHubNetworkError,
   GitHubNotFoundError,
+  GitHubValidationError,
   RateLimitedError,
 } from './errors';
 import { EtagCache } from './etagCache';
@@ -29,6 +31,9 @@ export type FetchLike = (
   url: string,
   init: { headers: Record<string, string> },
 ) => Promise<Response>;
+
+/** GitHub's message for a secondary rate limit. */
+const SECONDARY_LIMIT = /secondary rate limit/i;
 
 const TOKEN_EXPIRATION_HEADER = 'github-authentication-token-expiration';
 
@@ -97,12 +102,22 @@ export class GitHubHttpClient {
     this.recordTokenExpiration(res.headers);
 
     if (res.status === 304 && cached) {
-      return { data: cached.data, headers: res.headers };
+      // A 304 may omit `Link`; restore it so pagination continues.
+      const headers = new Headers(res.headers);
+      if (cached.link && !headers.has('link')) headers.set('link', cached.link);
+      return { data: cached.data, headers };
     }
     if (res.status === 401) throw new GitHubAuthError(path);
     if (res.status === 404) throw new GitHubNotFoundError(path);
+
+    const text = await this.readBody(res, path);
     if (res.status === 403 || res.status === 429) {
-      if (isRateLimitResponse(res.status, res.headers)) {
+      // Secondary limits can arrive as a plain 403 whose only signal is
+      // the error message.
+      if (
+        isRateLimitResponse(res.status, res.headers) ||
+        SECONDARY_LIMIT.test(text)
+      ) {
         const retryAt = computeRetryAt(res.headers);
         this.queue.pauseUntil(retryAt);
         throw new RateLimitedError(path, retryAt);
@@ -111,11 +126,28 @@ export class GitHubHttpClient {
     }
     if (!res.ok) throw new GitHubHttpError(path, res.status);
 
-    const text = await res.text();
-    const data: unknown = text.length > 0 ? JSON.parse(text) : undefined;
+    let data: unknown;
+    try {
+      data = text.length > 0 ? JSON.parse(text) : undefined;
+    } catch (err) {
+      throw new GitHubValidationError(
+        path,
+        `invalid JSON: ${describeError(err)}`,
+      );
+    }
     const etag = res.headers.get('etag');
-    if (etag) this.cache.set(path, { etag, data });
+    const link = res.headers.get('link');
+    if (etag) this.cache.set(path, { etag, data, link });
     return { data, headers: res.headers };
+  }
+
+  /** Read the body, mapping a failed read to a network error. */
+  private async readBody(res: Response, path: string): Promise<string> {
+    try {
+      return await res.text();
+    } catch (cause) {
+      throw new GitHubNetworkError(path, cause);
+    }
   }
 
   private recordBudget(headers: Headers): void {
