@@ -12,4 +12,5 @@ export {
   type BoardModel,
   cellKey,
   type EngineProviders,
+  type UnmappedRun,
 } from './types';

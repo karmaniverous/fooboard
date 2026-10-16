@@ -1,0 +1,45 @@
+/**
+ * *Add test* from an unmapped run (spec.md C-15): where in the editors
+ * the fix belongs, pre-filled from the run. A run no row key matches gets
+ * a row key test on its workflow name; a run on a branch no stage matches
+ * gets a new stage for that branch; a run whose jobs match no phase opens
+ * the mapping rules. Pure.
+ *
+ * @module
+ */
+import type { Dashboard } from '@/domain/config/dashboard';
+import type { MatchTest } from '@/domain/config/matchTest';
+import type { UnmappedRun } from '@/engine';
+
+export type EditorDraft =
+  | { tab: 'Rows'; rowId: string; test: MatchTest }
+  | { tab: 'Stages'; pattern: string }
+  | { tab: 'Mapping' };
+
+export function draftFor(
+  run: UnmappedRun,
+  dashboard: Pick<Dashboard, 'rows'>,
+): EditorDraft | undefined {
+  switch (run.reason.kind) {
+    case 'no-stage-matches-branch':
+      return { tab: 'Stages', pattern: run.reason.branch };
+    case 'no-phase-matches-job':
+      return { tab: 'Mapping' };
+    case 'no-row-key-matches': {
+      const row = dashboard.rows.find(
+        (r) => r.type === 'github' && r.repo === run.repo,
+      );
+      return row
+        ? {
+            tab: 'Rows',
+            rowId: row.id,
+            test: {
+              field: 'workflowName',
+              operator: 'is',
+              value: run.workflowName,
+            },
+          }
+        : undefined;
+    }
+  }
+}

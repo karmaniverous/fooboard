@@ -60,13 +60,15 @@ function AddStage({
   dashboard,
   providers,
   onAdd,
+  initialPattern = '',
 }: {
   dashboard: Dashboard;
   providers: EngineProviders;
   onAdd: (stage: Stage) => void;
+  initialPattern?: string;
 }): React.JSX.Element {
   const [found, load] = useLoad<Map<string, string[]>>();
-  const [pattern, setPattern] = useState('');
+  const [pattern, setPattern] = useState(initialPattern);
   const [name, setName] = useState('');
   const byRepo = found.kind === 'done' ? found.value : undefined;
   const preview = byRepo ? patternPreview(pattern, byRepo) : undefined;
@@ -176,10 +178,13 @@ export function StagesEditor({
   dashboard,
   providers,
   onChange,
+  draftPattern,
 }: {
   dashboard: Dashboard;
   providers: EngineProviders;
   onChange: (dashboard: Dashboard) => void;
+  /** Pre-fills a new stage (e.g. *Add test* for an unmatched branch). */
+  draftPattern?: string;
 }): React.JSX.Element {
   const { stages } = dashboard;
   const replace = (stage: Stage) => {
@@ -263,6 +268,7 @@ export function StagesEditor({
       <AddStage
         dashboard={dashboard}
         providers={providers}
+        initialPattern={draftPattern}
         onAdd={(stage) => {
           onChange({ ...dashboard, stages: [...stages, stage] });
         }}

@@ -8,7 +8,7 @@
 import { useState } from 'react';
 
 import type { Dashboard } from '@/domain/config/dashboard';
-import type { EngineProviders } from '@/engine';
+import type { BoardModel, EngineProviders } from '@/engine';
 
 import { BoardSummary, BudgetDisplay } from './BoardChrome';
 import { BoardViewport } from './BoardViewport';
@@ -26,8 +26,9 @@ export function BoardScreen({
   /** Must be stable between renders; a new object restarts the engine. */
   providers: EngineProviders;
   subtitle?: React.ReactNode;
-  /** Extra header controls, e.g. the dashboard's credentials. */
-  actions?: React.ReactNode;
+  /** Extra header controls (credentials, editors, unmapped runs); a
+   * function receives the live model. */
+  actions?: React.ReactNode | ((model: BoardModel) => React.ReactNode);
 }): React.JSX.Element {
   const { model, now } = useBoardEngine(dashboard, providers);
   const view = useBoardView(
@@ -46,7 +47,7 @@ export function BoardScreen({
         <BoardSummary model={model} filter={filter} onFilter={setFilter} />
         <div className="ml-auto flex items-center gap-3">
           <BudgetDisplay model={model} />
-          {actions}
+          {typeof actions === 'function' ? actions(model) : actions}
         </div>
       </div>
       <div className="min-h-0 flex-1">

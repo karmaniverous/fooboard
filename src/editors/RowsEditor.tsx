@@ -14,6 +14,7 @@ import { Input } from '@/components/ui/input';
 import { resolveCredentialId } from '@/domain/config/credentialRefs';
 import type { CredentialKind } from '@/domain/config/credentials';
 import type { Dashboard } from '@/domain/config/dashboard';
+import type { MatchTest } from '@/domain/config/matchTest';
 import type { AmplifyRow, Row } from '@/domain/config/row';
 import type { EngineProviders } from '@/engine';
 
@@ -324,10 +325,13 @@ export function RowsEditor({
   dashboard,
   providers,
   onChange,
+  draft,
 }: {
   dashboard: Dashboard;
   providers: EngineProviders;
   onChange: (dashboard: Dashboard) => void;
+  /** A row key test to pre-fill on one row. */
+  draft?: { rowId: string; test: MatchTest };
 }): React.JSX.Element {
   const replaceRow = (row: Row) => {
     onChange({
@@ -386,6 +390,7 @@ export function RowsEditor({
                 title={`Row key tests for ${row.displayName}`}
                 fields={['jobName', 'workflowName']}
                 tests={row.rowKeyTests}
+                draft={draft?.rowId === row.id ? draft.test : undefined}
                 onChange={(rowKeyTests) => {
                   replaceRow({ ...row, rowKeyTests });
                 }}

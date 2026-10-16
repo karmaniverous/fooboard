@@ -16,6 +16,7 @@ import { type Dashboard, DashboardSchema } from '@/domain/config/dashboard';
 import type { EngineProviders } from '@/engine';
 import { useStores } from '@/storage/storesContext';
 
+import type { EditorDraft } from './draft';
 import { duplicateDashboard } from './edit';
 import { CommitInput } from './fields';
 import { RowsEditor } from './RowsEditor';
@@ -88,12 +89,15 @@ export function DashboardEditor({
   dashboard,
   providers,
   onChange,
+  draft,
 }: {
   dashboard: Dashboard;
   providers: EngineProviders;
   onChange: (dashboard: Dashboard) => void;
+  /** Open on a pre-filled fix (*Add test* from an unmapped run). */
+  draft?: EditorDraft;
 }): React.JSX.Element {
-  const [tab, setTab] = useState<Tab>('General');
+  const [tab, setTab] = useState<Tab>(draft?.tab ?? 'General');
   const [error, setError] = useState<string | null>(null);
   const update = (next: Dashboard) => {
     const parsed = DashboardSchema.safeParse(next);
@@ -131,8 +135,18 @@ export function DashboardEditor({
         </p>
       )}
       {tab === 'General' && <GeneralEditor {...props} />}
-      {tab === 'Rows' && <RowsEditor {...props} />}
-      {tab === 'Stages' && <StagesEditor {...props} />}
+      {tab === 'Rows' && (
+        <RowsEditor
+          {...props}
+          draft={draft?.tab === 'Rows' ? draft : undefined}
+        />
+      )}
+      {tab === 'Stages' && (
+        <StagesEditor
+          {...props}
+          draftPattern={draft?.tab === 'Stages' ? draft.pattern : undefined}
+        />
+      )}
       {tab === 'Mapping' && <MappingEditor {...props} />}
       {tab === 'Colours' && <ColorsEditor {...props} />}
     </div>

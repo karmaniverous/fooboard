@@ -35,16 +35,22 @@ export function MatchTestsEditor<F extends MatchField>({
   fields,
   tests,
   onChange,
+  draft,
 }: {
   title: string;
   /** Fields a test may look at; the first is the default. */
   fields: readonly [F, ...F[]];
   tests: readonly TestOn<F>[];
   onChange: (tests: TestOn<F>[]) => void;
+  /** Pre-fills the new-test form (e.g. *Add test* from an unmapped run). */
+  draft?: MatchTest;
 }): React.JSX.Element {
-  const [value, setValue] = useState('');
-  const [field, setField] = useState<F>(fields[0]);
-  const [operator, setOperator] = useState<MatchOperator>('contains');
+  const draftField = fields.find((f) => f === draft?.field);
+  const [value, setValue] = useState(draft?.value ?? '');
+  const [field, setField] = useState<F>(draftField ?? fields[0]);
+  const [operator, setOperator] = useState<MatchOperator>(
+    draft?.operator ?? 'contains',
+  );
   const replace = (i: number, test: TestOn<F>) => {
     onChange(tests.map((t, j) => (j === i ? test : t)));
   };

@@ -10,12 +10,14 @@ import { useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 
 import { BoardScreen } from '@/board/BoardScreen';
+import { UnmappedPanel } from '@/board/UnmappedPanel';
 import { SidePanel } from '@/components/SidePanel';
 import { Button } from '@/components/ui/button';
 import { CredentialsPanel } from '@/credentials/CredentialsPanel';
 import { useCredentialVersion } from '@/credentials/useCredentialVersion';
 import type { Dashboard } from '@/domain/config/dashboard';
 import { DashboardEditor } from '@/editors/DashboardEditor';
+import { draftFor, type EditorDraft } from '@/editors/draft';
 import { credentialProviders } from '@/engine/credentialProviders';
 import { useStores } from '@/storage/storesContext';
 
@@ -40,13 +42,48 @@ function SavedDashboard({
     setDashboard(next);
   };
   const missing = dashboard.credentials.length === 0;
+  const [editorOpen, setEditorOpen] = useState(false);
+  const [draft, setDraft] = useState<{ n: number; draft?: EditorDraft }>({
+    n: 0,
+  });
+  const openEditor = (next?: EditorDraft) => {
+    setDraft((d) => ({ n: d.n + 1, draft: next }));
+    setEditorOpen(true);
+  };
   return (
     <BoardScreen
       dashboard={dashboard}
       providers={providers}
-      actions={
+      actions={(model) => (
         <>
+          {model.unmapped.length > 0 && (
+            <SidePanel
+              title="Unmapped runs"
+              trigger={
+                <Button size="sm" variant="outline">
+                  Unmapped ({model.unmapped.length})
+                </Button>
+              }
+            >
+              <UnmappedPanel
+                runs={model.unmapped}
+                onAddTest={(run) => {
+                  const next = draftFor(run, dashboard);
+                  return next
+                    ? () => {
+                        openEditor(next);
+                      }
+                    : undefined;
+                }}
+              />
+            </SidePanel>
+          )}
           <SidePanel
+            open={editorOpen}
+            onOpenChange={(open) => {
+              if (open) openEditor();
+              else setEditorOpen(false);
+            }}
             title="Edit dashboard"
             trigger={
               <Button size="sm" variant="outline">
@@ -55,6 +92,8 @@ function SavedDashboard({
             }
           >
             <DashboardEditor
+              key={draft.n}
+              draft={draft.draft}
               dashboard={dashboard}
               providers={providers}
               onChange={save}
@@ -76,7 +115,7 @@ function SavedDashboard({
             />
           </SidePanel>
         </>
-      }
+      )}
     />
   );
 }
