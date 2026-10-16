@@ -28,6 +28,35 @@ export type AmplifyReaderFor = (source: {
   region: string;
 }) => AmplifyReader;
 
+/** Wrap `readerFor` so each source's branch list and each branch's jobs
+ * are read once, however many stages ask (use one per row refresh). */
+export function memoizeReaderFor(
+  readerFor: AmplifyReaderFor,
+): AmplifyReaderFor {
+  const calls = new Map<string, Promise<unknown>>();
+  const once = <T>(key: string, call: () => Promise<T>): Promise<T> => {
+    let pending = calls.get(key) as Promise<T> | undefined;
+    if (!pending) {
+      pending = call();
+      calls.set(key, pending);
+    }
+    return pending;
+  };
+  return (source) => {
+    const reader = readerFor(source);
+    const scope = `${source.credentialId}|${source.region}`;
+    return {
+      ...reader,
+      listBranches: (appId) =>
+        once(`${scope}|branches|${appId}`, () => reader.listBranches(appId)),
+      listJobs: (appId, branch, max) =>
+        once(`${scope}|jobs|${appId}|${branch}|${String(max)}`, () =>
+          reader.listJobs(appId, branch, max),
+        ),
+    };
+  };
+}
+
 /** Jobs per matching branch; the cell needs only the newest, a few spare
  * cover a newer-but-undated job. */
 const JOBS_PER_BRANCH = 5;

@@ -5,6 +5,7 @@
  * @module
  */
 import { describe, expect, it } from 'vitest';
+import { vi } from 'vitest';
 
 import type { AmplifyRow } from '@/domain/config/row';
 import { AmplifyAuthError, AmplifyThrottledError } from '@/lib/amplify/errors';
@@ -80,5 +81,39 @@ describe('refreshAmplifyRow', () => {
     expect(result).toMatchObject({
       cells: { prod: { kind: 'empty', state: 'error' } },
     });
+  });
+});
+
+describe('refreshAmplifyRow request count', () => {
+  it('lists each source once, however many stages it has', async () => {
+    const listBranches = vi.fn(() =>
+      Promise.resolve([{ branchName: 'main' }, { branchName: 'dev' }]),
+    );
+    const listJobs = vi.fn(() => Promise.resolve([]));
+    const reader = {
+      listApps: vi.fn(() => Promise.resolve([])),
+      listBranches,
+      listJobs,
+      getJob: vi.fn(),
+    } as unknown as AmplifyReader;
+    const twoSources: AmplifyRow = {
+      ...row,
+      sources: [
+        { region: 'us-east-1', appId: 'a1', credentialId: 'aws' },
+        { region: 'eu-west-1', appId: 'a2', credentialId: 'aws' },
+      ],
+    };
+    const sixStages = ['dev', 'test', 'staging', 'main', 'main', 'dev'].map(
+      (branchPattern, i) => ({ id: `s${String(i)}`, name: 's', branchPattern }),
+    );
+    await refreshAmplifyRow(
+      twoSources,
+      sixStages,
+      defaults,
+      () => () => reader,
+    );
+    expect(listBranches).toHaveBeenCalledTimes(2);
+    // main and dev, per source: four job lists, not one per stage.
+    expect(listJobs).toHaveBeenCalledTimes(4);
   });
 });

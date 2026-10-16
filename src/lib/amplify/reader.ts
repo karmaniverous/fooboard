@@ -57,8 +57,9 @@ export interface AmplifyReaderConfig {
   client?: AmplifySender;
 }
 
-/** AWS caps one `ListApps`/`ListBranches`/`ListJobs` page at 100 items. */
-const PAGE_SIZE = 100;
+/** Page size valid for all three list calls: `ListBranches` and `ListJobs`
+ * accept at most 50 (`ListApps` allows 100). */
+const PAGE_SIZE = 50;
 
 /** Create an `AmplifyReader` backed by the AWS SDK (SigV4, browser-safe). */
 export function createAmplifyReader({

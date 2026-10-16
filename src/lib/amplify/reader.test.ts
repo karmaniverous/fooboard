@@ -65,6 +65,17 @@ describe('createAmplifyReader', () => {
     expect(inputs[0]?.input.maxResults).toBe(2);
   });
 
+  it('never asks for more than 50 items per page', async () => {
+    const { client, inputs } = fakeClient({
+      ListBranchesCommand: [{ branches: [] }],
+      ListJobsCommand: [{ jobSummaries: [] }],
+    });
+    const reader = createAmplifyReader({ ...config, client });
+    await reader.listBranches('a');
+    await reader.listJobs('a', 'main', 500);
+    expect(inputs.map((i) => i.input.maxResults)).toEqual([50, 50]);
+  });
+
   it.each([
     ['NotFoundException', AmplifyNotFoundError],
     ['UnrecognizedClientException', AmplifyAuthError],

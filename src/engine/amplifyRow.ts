@@ -25,6 +25,7 @@ import { AmplifyAuthError, AmplifyThrottledError } from '@/lib/amplify/errors';
 import {
   type AmplifyReaderFor,
   collectRowJobs,
+  memoizeReaderFor,
   type ResolvedAmplifySource,
 } from '@/lib/amplify/rowJobs';
 
@@ -80,11 +81,12 @@ export async function refreshAmplifyRow(
   if ([...readers.values()].some((r) => r === undefined)) {
     return emptyRow(stages, 'missing');
   }
-  const readerFor: AmplifyReaderFor = (source) => {
+  // One read per source and branch, however many stages share it.
+  const readerFor: AmplifyReaderFor = memoizeReaderFor((source) => {
     const forCredential = readers.get(source.credentialId);
     if (!forCredential) throw new Error('missing Amplify credential');
     return forCredential(source);
-  };
+  });
 
   try {
     const cells: Record<string, AmplifyCellDerivation> = {};
