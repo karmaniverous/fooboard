@@ -34,13 +34,25 @@ export interface PreferencesStore {
 
 export function createPreferencesStore(store: KeyValueStore): PreferencesStore {
   const load = (): DevicePreferences => {
-    const parsed = DevicePreferencesSchema.safeParse(readJson(store, KEY));
+    let raw: unknown;
+    try {
+      raw = readJson(store, KEY);
+    } catch {
+      raw = undefined;
+    }
+    const parsed = DevicePreferencesSchema.safeParse(raw);
     return parsed.success
       ? parsed.data
       : { schemaVersion: CURRENT_DEVICE_PREFERENCES_VERSION, dashboards: {} };
   };
+  // View settings are disposable: if storage refuses the write (quota,
+  // revoked access), keep working with the in-memory value.
   const save = (prefs: DevicePreferences): void => {
-    store.setItem(KEY, JSON.stringify(prefs));
+    try {
+      store.setItem(KEY, JSON.stringify(prefs));
+    } catch {
+      // best effort
+    }
   };
   const viewOf = (prefs: DevicePreferences, id: string) =>
     DashboardViewPreferencesSchema.parse(prefs.dashboards[id] ?? {});

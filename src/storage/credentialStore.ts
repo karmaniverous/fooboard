@@ -70,9 +70,10 @@ export function createCredentialStore(device: KeyValueStore): CredentialStore {
     isRemembered: (id) => read(device, id) !== undefined,
     set: (id, secret, remember) => {
       const value = JSON.stringify(CredentialSecretSchema.parse(secret));
-      // Exactly one home: remembering moves it out of the session and back.
-      (remember ? session : device).removeItem(keyFor(id));
+      // Exactly one home. Write the new home first, so a failed write (e.g.
+      // storage quota) leaves the existing copy in place.
       (remember ? device : session).setItem(keyFor(id), value);
+      (remember ? session : device).removeItem(keyFor(id));
       changed(id);
     },
     forget: (id) => {

@@ -31,25 +31,42 @@ export const EMPTY_LABEL: Record<EmptyCellState, string> = {
  * relative time; 3 adds the status label; 4 adds commit and phase. */
 export type DetailLevel = 1 | 2 | 3 | 4;
 
-/** Minimum cell width (px) for each level, per row height. Full cells put
- * time, commit and phase on a second line, so they need less width.
- * Tuned against the demo board; revisited with real boards (step 17). */
-const WIDTH_FOR_LEVEL = {
-  compact: [0, 64, 120, 190],
-  full: [0, 56, 96, 150],
+/** Minimum cell width, in ems of the cell's font, for each level, per row
+ * height. Full cells put time, commit and phase on a second line, so they
+ * need less width. Tuned against the demo board; revisited with real boards
+ * (step 17). */
+const EMS_FOR_LEVEL = {
+  compact: [0, 5.3, 10, 15.8],
+  full: [0, 4.7, 8, 12.5],
 } as const;
 
-/** The detail level a cell of `width` px shows. */
+/** The detail level a cell `width` px wide shows at font size `fontPx`. */
 export function detailLevel(
   width: number,
+  fontPx: number,
   rowHeight: 'compact' | 'full',
 ): DetailLevel {
-  const thresholds = WIDTH_FOR_LEVEL[rowHeight];
+  const ems = width / fontPx;
   let level: DetailLevel = 1;
-  for (const [i, min] of thresholds.entries()) {
-    if (width >= min) level = (i + 1) as DetailLevel;
+  for (const [i, min] of EMS_FOR_LEVEL[rowHeight].entries()) {
+    if (ems >= min) level = (i + 1) as DetailLevel;
   }
   return level;
+}
+
+/** Font bounds for the grid: readable at the bottom, not shouting at the top. */
+const MIN_FONT_PX = 7;
+const MAX_FONT_PX = 13;
+
+/** The grid's font size for a measured cell height (spec.md C-13). Rows
+ * shrink to fit the viewport, and text shrinks with them: one line fills
+ * ~60% of a Compact cell, two lines ~70% of a Full one. */
+export function fitFontSize(
+  cellHeight: number,
+  rowHeight: 'compact' | 'full',
+): number {
+  const px = cellHeight * (rowHeight === 'full' ? 0.33 : 0.6);
+  return Math.min(MAX_FONT_PX, Math.max(MIN_FONT_PX, px));
 }
 
 /** Badge text: a count when behind, `behind/ahead` when diverged. */

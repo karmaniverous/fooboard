@@ -12,8 +12,13 @@ import { demoDashboard } from '@/demo/board';
 
 import { createConfigStore } from './configStore';
 import { createCredentialStore } from './credentialStore';
-import { createAppStores } from './index';
-import { clearAppData, memoryStorage, webStorage } from './keyValue';
+import { createAppStores, deviceStorage } from './index';
+import {
+  clearAppData,
+  type KeyValueStore,
+  memoryStorage,
+  webStorage,
+} from './keyValue';
 import { createPreferencesStore } from './preferencesStore';
 
 describe('config store', () => {
@@ -151,5 +156,62 @@ describe('webStorage', () => {
     clearAppData(kv);
     expect(kv.keys()).toEqual(['other']);
     expect(kv.getItem('other')).toBe('2');
+  });
+});
+
+/** A store whose writes (or reads) fail, like a full or revoked storage. */
+const failing = (op: 'setItem' | 'getItem'): KeyValueStore => {
+  const inner = memoryStorage();
+  return {
+    ...inner,
+    [op]: () => {
+      throw new Error(`${op} refused`);
+    },
+  };
+};
+
+describe('unavailable or failing storage', () => {
+  it('falls back to memory, reported, when the browser blocks storage', () => {
+    const blocked = deviceStorage(() => {
+      throw new DOMException('denied', 'SecurityError');
+    });
+    expect(blocked.persistent).toBe(false);
+    blocked.store.setItem('fooboard:x', '1');
+    expect(blocked.store.getItem('fooboard:x')).toBe('1');
+
+    const full = deviceStorage(
+      () =>
+        ({
+          length: 0,
+          key: () => null,
+          getItem: () => null,
+          removeItem: () => undefined,
+          clear: () => undefined,
+          setItem: () => {
+            throw new DOMException('full', 'QuotaExceededError');
+          },
+        }) satisfies Storage,
+    );
+    expect(full.persistent).toBe(false);
+  });
+
+  it('keeps a session secret when remembering it fails to write', () => {
+    const device = failing('setItem');
+    const store = createCredentialStore(device);
+    store.set('gh', { kind: 'github', token: '***' }, false);
+    expect(() => {
+      store.set('gh', { kind: 'github', token: '***' }, true);
+    }).toThrow(/refused/);
+    expect(store.get('gh')).toEqual({ kind: 'github', token: '***' });
+  });
+
+  it('keeps view settings in memory when they cannot be saved', () => {
+    const store = createPreferencesStore(failing('setItem'));
+    expect(store.setView('d', { zoom: 2 }).zoom).toBe(2);
+  });
+
+  it('reports configuration as unreadable when storage cannot be read', () => {
+    const loaded = createConfigStore(failing('getItem')).load();
+    expect(loaded.kind === 'unreadable' && loaded.reason).toMatch(/refused/);
   });
 });

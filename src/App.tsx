@@ -12,11 +12,21 @@ import { DemoPage } from '@/pages/DemoPage';
 import { Home } from '@/pages/Home';
 import { AmplifySpikePage } from '@/pages/spike/AmplifySpikePage';
 import { GithubSpikePage } from '@/pages/spike/GithubSpikePage';
+import { useStores } from '@/storage/storesContext';
 
 export default function App(): React.JSX.Element {
   return (
     <div className="flex min-h-screen flex-col">
       <Header />
+      {!useStores().persistent && (
+        <p
+          role="status"
+          className="bg-badge-behind px-5 py-1 text-center text-xs text-badge-behind-text"
+        >
+          This browser is blocking storage, so nothing you set up here will be
+          kept after you close the tab.
+        </p>
+      )}
       <main className="flex-1">
         <Routes>
           <Route path="/" element={<Home />} />

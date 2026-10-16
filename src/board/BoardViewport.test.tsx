@@ -5,10 +5,15 @@
  * @module
  */
 import { fireEvent, render, screen } from '@testing-library/react';
-import { describe, expect, it } from 'vitest';
+import { beforeAll, describe, expect, it } from 'vitest';
 
 import { demoDashboard } from '@/demo/board';
-import { emptyModel } from '@/engine';
+import {
+  type BoardModel,
+  createBoardEngine,
+  demoProviders,
+  emptyModel,
+} from '@/engine';
 import { createAppStores } from '@/storage';
 import { memoryStorage } from '@/storage/keyValue';
 import { StoresContext } from '@/storage/storesContext';
@@ -16,23 +21,38 @@ import { StoresContext } from '@/storage/storesContext';
 import { BoardViewport } from './BoardViewport';
 import { useBoardView } from './useBoardView';
 
-function Harness(): React.JSX.Element {
+let demoModel: BoardModel = emptyModel();
+beforeAll(async () => {
+  const engine = createBoardEngine({
+    dashboard: demoDashboard,
+    providers: demoProviders(() => 0),
+    visibility: { isHidden: () => false, onChange: () => () => undefined },
+  });
+  await engine.refreshAll();
+  demoModel = engine.getModel();
+});
+
+function Harness({
+  model = emptyModel(),
+}: {
+  model?: BoardModel;
+}): React.JSX.Element {
   const view = useBoardView('demo', 19, 6);
   return (
     <BoardViewport
       dashboard={demoDashboard}
-      model={emptyModel()}
+      model={model}
       now={0}
       view={view}
     />
   );
 }
 
-const setup = () => {
+const setup = (model?: BoardModel) => {
   const stores = createAppStores(memoryStorage());
   render(
     <StoresContext value={stores}>
-      <Harness />
+      <Harness model={model} />
     </StoresContext>,
   );
   return stores;
@@ -72,5 +92,31 @@ describe('BoardViewport', () => {
       'aria-pressed',
       'true',
     );
+  });
+
+  it('pans on a zoomed drag without opening the cell it started on', () => {
+    setup(demoModel);
+    fireEvent.click(screen.getByRole('button', { name: 'Zoom in' }));
+    const cell = screen.getAllByRole('link', { name: /Success, dev/ })[0];
+    const drag = { pointerId: 1, pointerType: 'touch' };
+    fireEvent.pointerDown(cell, { ...drag, clientX: 200, clientY: 200 });
+    fireEvent.pointerMove(cell, { ...drag, clientX: 150, clientY: 160 });
+    fireEvent.pointerUp(cell, drag);
+    fireEvent.click(cell);
+    expect(screen.queryByRole('dialog')).toBeNull();
+
+    // A plain tap still opens the sheet.
+    fireEvent.pointerDown(cell, {
+      pointerId: 2,
+      pointerType: 'touch',
+      clientX: 10,
+      clientY: 10,
+      timeStamp: 10_000,
+    });
+    fireEvent.pointerUp(cell, { pointerId: 2, pointerType: 'touch' });
+    fireEvent.click(cell);
+    expect(
+      screen.getByRole('dialog', { name: 'Cell detail' }),
+    ).toBeInTheDocument();
   });
 });

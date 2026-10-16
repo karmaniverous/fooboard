@@ -16,7 +16,8 @@ import { cn } from '@/lib/utils';
 
 import { Cell } from './Cell';
 import { CellDetail, CellSheet, CellTooltip } from './CellDetail';
-import { detailLevel } from './cellView';
+import { detailLevel, fitFontSize } from './cellView';
+import { columnGroups } from './columnGroups';
 import { type CellFilter, matchesFilter } from './summary';
 
 /** Divider line per style, drawn on the top (rows) or left (stages). */
@@ -39,22 +40,6 @@ const DIVIDER: Record<DividerStyle, { top: string; left: string }> = {
 
 const byBefore = (dividers: readonly Divider[]) =>
   new Map(dividers.map((d) => [d.beforeId, d]));
-
-/** Column group labels: each labelled divider heads the stages up to the
- * next divider. */
-function columnGroups(
-  stages: Dashboard['stages'],
-  dividers: ReadonlyMap<string, Divider>,
-): { label: string; start: number; span: number }[] {
-  const groups: { label: string; start: number; span: number }[] = [];
-  stages.forEach((stage, i) => {
-    const divider = dividers.get(stage.id);
-    if (divider) groups.push({ label: divider.label ?? '', start: i, span: 0 });
-    const current = groups.at(-1);
-    if (current) current.span += 1;
-  });
-  return groups.filter((g) => g.label);
-}
 
 export interface BoardGridProps {
   dashboard: Dashboard;
@@ -83,20 +68,25 @@ export function BoardGrid({
   const groups = columnGroups(stages, colDividers);
 
   const probe = useRef<HTMLDivElement>(null);
-  const [cellWidth, setCellWidth] = useState(0);
+  const [cellSize, setCellSize] = useState({ width: 0, height: 0 });
   useEffect(() => {
     const el = probe.current;
     if (!el) return;
     const observer = new ResizeObserver((entries) => {
       const entry = entries.at(0);
-      if (entry) setCellWidth(entry.contentRect.width);
+      if (entry) {
+        const { width, height } = entry.contentRect;
+        setCellSize({ width, height });
+      }
     });
     observer.observe(el);
     return () => {
       observer.disconnect();
     };
   }, []);
-  const level = detailLevel(cellWidth, rowHeight);
+  // Rows shrink to fit (no minimum track size), and text shrinks with them.
+  const fontPx = fitFontSize(cellSize.height, rowHeight);
+  const level = detailLevel(cellSize.width, fontPx, rowHeight);
 
   const [tip, setTip] = useState<{ key: string; rect: DOMRect } | null>(null);
   const [sheet, setSheet] = useState<string | null>(null);
@@ -107,9 +97,11 @@ export function BoardGrid({
       stageName: stages.find((s) => s.id === stageId)?.name ?? stageId,
     };
   };
-  const detail = (key: string) => {
+  const detail = (key: string, interactive: boolean) => {
     const cell = model.cells[key];
-    return cell ? <CellDetail cell={cell} {...names(key)} /> : null;
+    return cell ? (
+      <CellDetail cell={cell} interactive={interactive} {...names(key)} />
+    ) : null;
   };
 
   const columns = `minmax(6rem, max-content) repeat(${String(stages.length)}, minmax(0, 1fr))`;
@@ -121,14 +113,14 @@ export function BoardGrid({
         aria-label={dashboard.name}
         aria-rowcount={rows.length + 1}
         aria-colcount={stages.length + 1}
-        className="grid h-full gap-[3px] text-xs"
+        className="grid h-full gap-[3px]"
         style={{
           gridTemplateColumns: columns,
-          gridAutoRows:
-            rowHeight === 'full' ? 'minmax(2.6em, 1fr)' : 'minmax(1.6em, 1fr)',
+          gridAutoRows: 'minmax(0, 1fr)',
+          fontSize: `${String(fontPx)}px`,
         }}
       >
-        {groups.length > 0 && (
+        {groups.some((g) => g.label) && (
           <div role="row" className="contents">
             <div />
             {groups.map((g) => (
@@ -242,7 +234,7 @@ export function BoardGrid({
       </div>
 
       {tip && !sheet && (
-        <CellTooltip rect={tip.rect}>{detail(tip.key)}</CellTooltip>
+        <CellTooltip rect={tip.rect}>{detail(tip.key, false)}</CellTooltip>
       )}
       {sheet && (
         <CellSheet
@@ -250,7 +242,7 @@ export function BoardGrid({
             setSheet(null);
           }}
         >
-          {detail(sheet)}
+          {detail(sheet, true)}
         </CellSheet>
       )}
     </>

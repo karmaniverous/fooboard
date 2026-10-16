@@ -42,7 +42,13 @@ const emptyRoot = (): ConfigRoot => ({
 
 export function createConfigStore(store: KeyValueStore): ConfigStore {
   const load = (): ConfigLoad => {
-    if (store.getItem(KEY) === null) return { kind: 'ok', root: emptyRoot() };
+    let text: string | null;
+    try {
+      text = store.getItem(KEY);
+    } catch (err) {
+      return { kind: 'unreadable', reason: describeError(err) };
+    }
+    if (text === null) return { kind: 'ok', root: emptyRoot() };
     const raw = readJson(store, KEY);
     if (raw === undefined) {
       return { kind: 'unreadable', reason: 'stored configuration is not JSON' };

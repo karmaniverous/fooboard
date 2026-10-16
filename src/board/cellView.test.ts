@@ -6,19 +6,32 @@
  */
 import { describe, expect, it } from 'vitest';
 
-import { badgeText, detailLevel, relativeTime } from './cellView';
+import { badgeText, detailLevel, fitFontSize, relativeTime } from './cellView';
 
 describe('detailLevel', () => {
   it.each([
-    [40, 'compact', 1],
-    [64, 'compact', 2],
-    [119, 'compact', 2],
-    [120, 'compact', 3],
-    [190, 'compact', 4],
-    [96, 'full', 3],
-    [150, 'full', 4],
-  ] as const)('%ipx %s shows level %i', (width, height, level) => {
-    expect(detailLevel(width, height)).toBe(level);
+    [40, 12, 'compact', 1],
+    [64, 12, 'compact', 2],
+    [120, 12, 'compact', 3],
+    [190, 12, 'compact', 4],
+    [96, 12, 'full', 3],
+    [150, 12, 'full', 4],
+    // the same width at a smaller font fits more detail
+    [96, 8, 'compact', 3],
+  ] as const)(
+    '%ipx at %ipx font, %s, shows level %i',
+    (width, font, height, level) => {
+      expect(detailLevel(width, font, height)).toBe(level);
+    },
+  );
+});
+
+describe('fitFontSize', () => {
+  it('scales with the cell height within readable bounds', () => {
+    expect(fitFontSize(20, 'compact')).toBe(12);
+    expect(fitFontSize(8, 'compact')).toBe(7);
+    expect(fitFontSize(200, 'compact')).toBe(13);
+    expect(fitFontSize(36, 'full')).toBeCloseTo(11.88);
   });
 });
 

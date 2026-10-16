@@ -6,8 +6,11 @@
  * alone outside it):
  * - desktop: Ctrl/Cmd + wheel or trackpad pinch, the -/Fit/+ buttons, and
  *   `+`, `-`, `0` while the grid has focus;
- * - touch: pinch, or double-tap to zoom in a step (`touch-action: none`
- *   on the grid only).
+ * - touch: pinch, or double-tap to zoom in a step.
+ *
+ * The grid sets `touch-action: none` (so pinch is ours, not the
+ * browser's) and therefore pans itself: a one-finger or mouse drag scrolls
+ * the zoomed grid, and a drag never activates the cell it started on.
  *
  * @module
  */
@@ -26,6 +29,8 @@ import type { BoardView } from './useBoardView';
 import { MIN_ZOOM, stepZoom, wheelZoom } from './zoom';
 
 const DOUBLE_TAP_MS = 300;
+/** Movement (px) after which a press is a drag, not a tap or click. */
+const DRAG_THRESHOLD = 8;
 
 export function BoardViewport({
   dashboard,
@@ -42,6 +47,7 @@ export function BoardViewport({
 }): React.JSX.Element {
   const { zoom, setZoom, rowHeight, setRowHeight } = view;
   const scroller = useRef<HTMLDivElement>(null);
+
   // The native wheel listener reads the latest zoom through refs, updated
   // after each render (refs may not be written during render).
   const zoomRef = useRef(zoom);
@@ -67,15 +73,20 @@ export function BoardViewport({
     };
   }, []);
 
-  // Touch: two-pointer pinch and double-tap.
+  // Pointer state: pinch (two pointers), pan (one), double-tap.
   const pointers = useRef(new Map<number, { x: number; y: number }>());
   const pinch = useRef<{ distance: number; zoom: number } | null>(null);
+  const press = useRef<{ x: number; y: number; dragged: boolean } | null>(null);
   const lastTap = useRef(0);
   const distance = () => {
     const points = [...pointers.current.values()];
     const a = points.at(0);
     const b = points.at(1);
     return a && b ? Math.hypot(a.x - b.x, a.y - b.y) : 0;
+  };
+  const release = (id: number) => {
+    pointers.current.delete(id);
+    if (pointers.current.size < 2) pinch.current = null;
   };
 
   // Mini-map: the visible fraction of the grid.
@@ -158,7 +169,7 @@ export function BoardViewport({
           aria-label="Board: plus and minus zoom, 0 fits"
           className={cn(
             'h-full touch-none rounded-md outline-none focus-visible:ring-2 focus-visible:ring-ring',
-            zoomed ? 'overflow-auto' : 'overflow-hidden',
+            zoomed ? 'overflow-auto select-none' : 'overflow-hidden',
           )}
           onScroll={measure}
           onKeyDown={(e) => {
@@ -171,8 +182,12 @@ export function BoardViewport({
           }}
           onPointerDown={(e) => {
             pointers.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
+            if (pointers.current.size === 1) {
+              press.current = { x: e.clientX, y: e.clientY, dragged: false };
+            }
             if (pointers.current.size === 2) {
               pinch.current = { distance: distance(), zoom };
+              if (press.current) press.current.dragged = true; // not a tap
             }
             if (e.pointerType === 'touch' && pointers.current.size === 1) {
               const t = e.timeStamp;
@@ -183,27 +198,57 @@ export function BoardViewport({
             }
           }}
           onPointerMove={(e) => {
-            if (!pointers.current.has(e.pointerId)) return;
+            const last = pointers.current.get(e.pointerId);
+            if (!last) return;
             pointers.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
             const start = pinch.current;
-            if (start && start.distance > 0) {
-              setZoom((start.zoom * distance()) / start.distance);
+            if (start) {
+              if (start.distance > 0) {
+                setZoom((start.zoom * distance()) / start.distance);
+              }
+              return;
+            }
+            const p = press.current;
+            const el = scroller.current;
+            if (!p || !el || !zoomed) return;
+            if (
+              !p.dragged &&
+              Math.hypot(e.clientX - p.x, e.clientY - p.y) > DRAG_THRESHOLD
+            ) {
+              p.dragged = true;
+              // Capture only once it is a drag, so taps still reach cells.
+              try {
+                el.setPointerCapture(e.pointerId);
+              } catch {
+                // not supported (e.g. test DOM); panning still works
+              }
+            }
+            if (p.dragged) {
+              el.scrollLeft -= e.clientX - last.x;
+              el.scrollTop -= e.clientY - last.y;
             }
           }}
           onPointerUp={(e) => {
-            pointers.current.delete(e.pointerId);
-            if (pointers.current.size < 2) pinch.current = null;
+            release(e.pointerId);
           }}
           onPointerCancel={(e) => {
-            pointers.current.delete(e.pointerId);
-            pinch.current = null;
+            release(e.pointerId);
+            press.current = null;
+          }}
+          onClickCapture={(e) => {
+            // A drag or pinch ends with a click on the cell it started on;
+            // swallow it so panning never opens a job or a sheet.
+            if (press.current?.dragged) {
+              e.preventDefault();
+              e.stopPropagation();
+            }
+            press.current = null;
           }}
         >
           <div
             style={{
               width: `${String(zoom * 100)}%`,
               height: `${String(zoom * 100)}%`,
-              fontSize: `${String(Math.min(zoom, 2))}em`,
             }}
           >
             <BoardGrid

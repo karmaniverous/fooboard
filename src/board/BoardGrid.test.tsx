@@ -6,7 +6,13 @@
  *
  * @module
  */
-import { fireEvent, render, screen, within } from '@testing-library/react';
+import {
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from '@testing-library/react';
 import { beforeAll, describe, expect, it } from 'vitest';
 
 import { demoDashboard } from '@/demo/board';
@@ -74,7 +80,7 @@ describe('BoardGrid', () => {
     ).toBeInTheDocument();
   });
 
-  it('shows status, commit subjects and links in the hover tooltip', () => {
+  it('shows commit subjects in the hover tooltip, without unreachable links', () => {
     renderBoard();
     const badge = screen.getAllByLabelText(/commits behind/)[0];
     const cellLink = badge.parentElement?.querySelector('a');
@@ -84,13 +90,45 @@ describe('BoardGrid', () => {
     expect(
       within(tip).getByText('Missing from this branch'),
     ).toBeInTheDocument();
-    expect(within(tip).getByText('Compare on GitHub')).toHaveAttribute(
+    expect(within(tip).queryByRole('link')).toBeNull();
+    fireEvent.mouseLeave(cellLink);
+    expect(screen.queryByRole('tooltip')).toBeNull();
+  });
+
+  it('opens a modal sheet with the links, focused, closing on Escape', async () => {
+    renderBoard();
+    const badge = screen.getAllByLabelText(/commits behind/)[0];
+    const cellLink = badge.parentElement?.querySelector('a');
+    if (!cellLink) throw new Error('cell link not found');
+    cellLink.focus();
+    fireEvent.pointerDown(cellLink, { pointerType: 'touch' });
+    fireEvent.click(cellLink);
+    const sheet = screen.getByRole('dialog', { name: 'Cell detail' });
+    expect(within(sheet).getByText('Compare on GitHub')).toHaveAttribute(
       'target',
       '_blank',
     );
-    expect(within(tip).getByText('Open job')).toBeInTheDocument();
-    fireEvent.mouseLeave(cellLink);
-    expect(screen.queryByRole('tooltip')).toBeNull();
+    expect(within(sheet).getByText('Open job')).toBeInTheDocument();
+    expect(sheet.contains(document.activeElement)).toBe(true);
+    fireEvent.keyDown(document.activeElement ?? sheet, { key: 'Escape' });
+    expect(screen.queryByRole('dialog')).toBeNull();
+    // Radix returns focus after a tick.
+    await waitFor(() => {
+      expect(document.activeElement).toBe(cellLink);
+    });
+  });
+
+  it('makes empty cells reachable and openable at the smallest size', () => {
+    renderBoard(); // jsdom measures 0px cells: detail level 1, no text
+    const needs = screen.getAllByRole('button', { name: /needs credential/ });
+    expect(needs.length).toBeGreaterThan(0);
+    expect(needs[0]).toHaveTextContent('');
+    fireEvent.click(needs[0]);
+    expect(
+      within(screen.getByRole('dialog', { name: 'Cell detail' })).getByText(
+        'needs credential',
+      ),
+    ).toBeInTheDocument();
   });
 
   it('renders a 40 x 8 board (spec.md step 10 size check)', () => {

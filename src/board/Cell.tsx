@@ -32,7 +32,8 @@ export interface CellProps {
   now: number;
   /** Hover or focus: show the tooltip for this cell. */
   onInspect?: (target: HTMLElement | null) => void;
-  /** Touch tap: open the detail sheet instead of following the link. */
+  /** Open the detail sheet: a touch tap on a status cell, or any activation
+   * of an empty cell (which has no link to follow). */
   onOpenSheet?: () => void;
 }
 
@@ -67,24 +68,28 @@ export function Cell({
 
   const { derivation, badge, compare } = cell;
   if (derivation.kind === 'empty') {
+    const label =
+      derivation.state === 'no-recent-runs' && derivation.branch
+        ? `${derivation.branch}: ${EMPTY_LABEL[derivation.state]}`
+        : EMPTY_LABEL[derivation.state];
+    // A button, so every empty state can be reached and opened (keyboard,
+    // tap, click) even at the smallest size, where it shows no text.
     return (
-      <div
+      <button
+        type="button"
+        aria-label={
+          derivation.reason ? `${label}: ${derivation.reason}` : label
+        }
         className={cn(
-          'flex h-full items-center overflow-hidden rounded-md border px-2 text-[0.85em] italic text-muted-foreground',
+          'flex h-full w-full items-center overflow-hidden rounded-md border px-2 text-left text-[0.85em] italic text-muted-foreground focus-visible:outline-2 focus-visible:outline-ring',
           EMPTY_CLASS[derivation.state],
         )}
         title={derivation.reason}
-        tabIndex={derivation.state === 'error' ? 0 : undefined}
+        onClick={onOpenSheet}
         {...inspect}
       >
-        {level >= 2 && (
-          <span className="truncate">
-            {derivation.state === 'no-recent-runs' && derivation.branch
-              ? `${derivation.branch}: ${EMPTY_LABEL[derivation.state]}`
-              : EMPTY_LABEL[derivation.state]}
-          </span>
-        )}
-      </div>
+        {level >= 2 && <span className="truncate">{label}</span>}
+      </button>
     );
   }
 

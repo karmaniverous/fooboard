@@ -1,10 +1,14 @@
 /**
- * Cell detail (spec.md C-13): the hover tooltip and the touch detail sheet,
- * and what both show: status, phase, branch, commit, exact time, the
- * behind/diverged commit subjects in both directions, and the links.
+ * Cell detail (spec.md C-13): status, phase, branch, commit, exact time,
+ * and the behind/diverged commit subjects in both directions. Shown in a
+ * hover/focus tooltip (informational: the cell and its badge are the
+ * links, C-13a) and in a touch detail sheet, which also carries the links.
  *
  * @module
  */
+import * as Dialog from '@radix-ui/react-dialog';
+import { useLayoutEffect, useRef, useState } from 'react';
+
 import { ExternalLink } from '@/components/ExternalLink';
 import type { BoardCell } from '@/engine';
 
@@ -14,21 +18,25 @@ import {
   shortSha,
   STATUS_META,
 } from './cellView';
+import { type Placement, placeTooltip } from './placement';
 
 export function CellDetail({
   cell,
   rowName,
   stageName,
+  interactive,
 }: {
   cell: BoardCell;
   rowName: string;
   stageName: string;
+  /** Include links (the sheet); the hover tooltip can't be clicked. */
+  interactive: boolean;
 }): React.JSX.Element {
   const { derivation, badge, compare } = cell;
   return (
     <div className="flex flex-col gap-1 text-xs">
       <div className="font-semibold">
-        {rowName} · {stageName}
+        {rowName} &middot; {stageName}
       </div>
       {derivation.kind === 'empty' ? (
         <div>
@@ -73,16 +81,18 @@ export function CellDetail({
             title="Only on this branch"
             subjects={compare.aheadSubjects}
           />
-          <ExternalLink
-            unstyled
-            href={compare.htmlUrl}
-            className="text-sky-400"
-          >
-            Compare on GitHub
-          </ExternalLink>
+          {interactive && (
+            <ExternalLink
+              unstyled
+              href={compare.htmlUrl}
+              className="text-sky-400"
+            >
+              Compare on GitHub
+            </ExternalLink>
+          )}
         </div>
       )}
-      {derivation.kind === 'ok' && derivation.linkUrl && (
+      {interactive && derivation.kind === 'ok' && derivation.linkUrl && (
         <ExternalLink
           unstyled
           href={derivation.linkUrl}
@@ -117,7 +127,7 @@ function SubjectList({
   );
 }
 
-/** Hover/focus tooltip placed under the cell. */
+/** Hover/focus tooltip, measured and placed to stay inside the viewport. */
 export function CellTooltip({
   rect,
   children,
@@ -125,21 +135,33 @@ export function CellTooltip({
   rect: DOMRect;
   children: React.ReactNode;
 }): React.JSX.Element {
+  const ref = useRef<HTMLDivElement>(null);
+  const [place, setPlace] = useState<Placement | null>(null);
+  useLayoutEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    setPlace(
+      placeTooltip(
+        rect,
+        { width: el.offsetWidth, height: el.scrollHeight },
+        { width: window.innerWidth, height: window.innerHeight },
+      ),
+    );
+  }, [rect]);
   return (
     <div
+      ref={ref}
       role="tooltip"
-      className="pointer-events-none fixed z-50 w-80 rounded-lg bg-slate-900 p-3 text-slate-100 shadow-xl"
-      style={{
-        left: Math.min(rect.left, window.innerWidth - 330),
-        top: rect.bottom + 6,
-      }}
+      className="pointer-events-none fixed z-50 w-80 max-w-[calc(100vw-12px)] overflow-hidden rounded-lg bg-slate-900 p-3 text-slate-100 shadow-xl"
+      style={place ?? { left: rect.left, top: rect.bottom, opacity: 0 }}
     >
       {children}
     </div>
   );
 }
 
-/** Bottom sheet opened by a touch tap; closes on the backdrop or Close. */
+/** Bottom sheet opened from a cell: a modal dialog that takes focus,
+ * traps Tab, closes on Escape, the backdrop or Close, and returns focus. */
 export function CellSheet({
   onClose,
   children,
@@ -147,29 +169,36 @@ export function CellSheet({
   onClose: () => void;
   children: React.ReactNode;
 }): React.JSX.Element {
+  // Focus goes back to the cell that opened the sheet.
+  const [opener] = useState(() =>
+    document.activeElement instanceof HTMLElement
+      ? document.activeElement
+      : null,
+  );
   return (
-    <div
-      role="dialog"
-      aria-modal
-      aria-label="Cell detail"
-      className="fixed inset-0 z-50 flex items-end bg-black/40"
-      onClick={onClose}
+    <Dialog.Root
+      open
+      onOpenChange={(open) => {
+        if (!open) onClose();
+      }}
     >
-      <div
-        className="w-full rounded-t-xl bg-slate-900 p-4 text-slate-100"
-        onClick={(e) => {
-          e.stopPropagation();
-        }}
-      >
-        {children}
-        <button
-          type="button"
-          className="mt-3 text-sm text-sky-400"
-          onClick={onClose}
+      <Dialog.Portal>
+        <Dialog.Overlay className="fixed inset-0 z-50 bg-black/40" />
+        <Dialog.Content
+          aria-describedby={undefined}
+          onCloseAutoFocus={(e) => {
+            e.preventDefault();
+            opener?.focus();
+          }}
+          className="fixed inset-x-0 bottom-0 z-50 max-h-[80vh] overflow-auto rounded-t-xl bg-slate-900 p-4 text-slate-100"
         >
-          Close
-        </button>
-      </div>
-    </div>
+          <Dialog.Title className="sr-only">Cell detail</Dialog.Title>
+          {children}
+          <Dialog.Close className="mt-3 text-sm text-sky-400">
+            Close
+          </Dialog.Close>
+        </Dialog.Content>
+      </Dialog.Portal>
+    </Dialog.Root>
   );
 }
