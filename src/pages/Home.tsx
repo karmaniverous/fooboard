@@ -8,8 +8,8 @@
 import { LayoutGrid } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
-import { Button } from '@/components/ui/button';
 import { buttonVariants } from '@/components/ui/buttonVariants';
+import { CreateDashboard } from '@/editors/CreateDashboard';
 import { site } from '@/lib/site';
 import { useStores } from '@/storage/storesContext';
 
@@ -52,12 +52,10 @@ export function Home(): React.JSX.Element {
         workflow changes required. Create a dashboard or import one to get
         started.
       </p>
-      <div className="flex gap-2">
-        <Button disabled>Create a dashboard</Button>
-        <Link to="/demo" className={buttonVariants({ variant: 'outline' })}>
-          Try the demo
-        </Link>
-      </div>
+      <CreateDashboard />
+      <Link to="/demo" className={buttonVariants({ variant: 'outline' })}>
+        Try the demo
+      </Link>
     </div>
   );
 }

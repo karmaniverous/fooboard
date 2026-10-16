@@ -1,0 +1,164 @@
+/**
+ * A list of match tests (spec.md §4.3): field, operator and value. Used
+ * for row key tests, phase tests and the workflow filter.
+ *
+ * @module
+ */
+import { useState } from 'react';
+
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import type {
+  MatchField,
+  MatchOperator,
+  MatchTest,
+} from '@/domain/config/matchTest';
+
+import { CommitInput } from './fields';
+
+const OPERATORS: MatchOperator[] = [
+  'is',
+  'startsWith',
+  'endsWith',
+  'contains',
+  'regex',
+];
+const FIELD_LABEL: Record<MatchField, string> = {
+  jobName: 'job name',
+  workflowName: 'workflow name',
+};
+
+type TestOn<F extends MatchField> = MatchTest & { field: F };
+
+export function MatchTestsEditor<F extends MatchField>({
+  title,
+  fields,
+  tests,
+  onChange,
+}: {
+  title: string;
+  /** Fields a test may look at; the first is the default. */
+  fields: readonly [F, ...F[]];
+  tests: readonly TestOn<F>[];
+  onChange: (tests: TestOn<F>[]) => void;
+}): React.JSX.Element {
+  const [value, setValue] = useState('');
+  const [field, setField] = useState<F>(fields[0]);
+  const [operator, setOperator] = useState<MatchOperator>('contains');
+  const replace = (i: number, test: TestOn<F>) => {
+    onChange(tests.map((t, j) => (j === i ? test : t)));
+  };
+  const fieldSelect = (current: F, onPick: (f: F) => void, label: string) =>
+    fields.length > 1 ? (
+      <select
+        aria-label={label}
+        className="h-8 rounded-md border bg-background px-1"
+        value={current}
+        onChange={(e) => {
+          onPick(e.target.value as F);
+        }}
+      >
+        {fields.map((f) => (
+          <option key={f} value={f}>
+            {FIELD_LABEL[f]}
+          </option>
+        ))}
+      </select>
+    ) : (
+      <span className="text-muted-foreground">{FIELD_LABEL[current]}</span>
+    );
+  const operatorSelect = (
+    current: MatchOperator,
+    onPick: (o: MatchOperator) => void,
+    label: string,
+  ) => (
+    <select
+      aria-label={label}
+      className="h-8 rounded-md border bg-background px-1"
+      value={current}
+      onChange={(e) => {
+        onPick(e.target.value as MatchOperator);
+      }}
+    >
+      {OPERATORS.map((o) => (
+        <option key={o} value={o}>
+          {o}
+        </option>
+      ))}
+    </select>
+  );
+
+  return (
+    <fieldset className="flex flex-col gap-1 text-xs">
+      <legend className="font-semibold">{title}</legend>
+      {tests.length === 0 && <p className="text-muted-foreground">None.</p>}
+      {tests.map((t, i) => (
+        <div
+          key={`${String(i)}-${t.field}`}
+          className="flex items-center gap-1"
+        >
+          {fieldSelect(
+            t.field,
+            (f) => {
+              replace(i, { ...t, field: f });
+            },
+            `${title} ${String(i + 1)} field`,
+          )}
+          {operatorSelect(
+            t.operator,
+            (o) => {
+              replace(i, { ...t, operator: o });
+            },
+            `${title} ${String(i + 1)} operator`,
+          )}
+          <CommitInput
+            label={`${title} ${String(i + 1)} value`}
+            className="h-8 text-xs"
+            value={t.value}
+            onCommit={(v) => {
+              replace(i, { ...t, value: v });
+            }}
+          />
+          <Button
+            size="sm"
+            variant="ghost"
+            aria-label={`Delete ${title} ${String(i + 1)}`}
+            onClick={() => {
+              onChange(tests.filter((_, j) => j !== i));
+            }}
+          >
+            Delete
+          </Button>
+        </div>
+      ))}
+      <form
+        className="flex items-center gap-1"
+        onSubmit={(e) => {
+          e.preventDefault();
+          if (!value.trim()) return;
+          onChange([...tests, { field, operator, value: value.trim() }]);
+          setValue('');
+        }}
+      >
+        {fieldSelect(field, setField, `New ${title} field`)}
+        {operatorSelect(operator, setOperator, `New ${title} operator`)}
+        <Input
+          aria-label={`New ${title} value`}
+          className="h-8 text-xs"
+          value={value}
+          onChange={(e) => {
+            setValue(e.target.value);
+          }}
+        />
+        <Button
+          type="submit"
+          size="sm"
+          variant="outline"
+          disabled={!value.trim()}
+        >
+          Add
+        </Button>
+      </form>
+    </fieldset>
+  );
+}

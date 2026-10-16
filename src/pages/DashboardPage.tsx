@@ -15,6 +15,7 @@ import { Button } from '@/components/ui/button';
 import { CredentialsPanel } from '@/credentials/CredentialsPanel';
 import { useCredentialVersion } from '@/credentials/useCredentialVersion';
 import type { Dashboard } from '@/domain/config/dashboard';
+import { DashboardEditor } from '@/editors/DashboardEditor';
 import { credentialProviders } from '@/engine/credentialProviders';
 import { useStores } from '@/storage/storesContext';
 
@@ -44,21 +45,37 @@ function SavedDashboard({
       dashboard={dashboard}
       providers={providers}
       actions={
-        <SidePanel
-          title="Credentials"
-          trigger={
-            <Button size="sm" variant={missing ? 'default' : 'outline'}>
-              {missing ? 'Add a credential' : 'Credentials'}
-            </Button>
-          }
-        >
-          <CredentialsPanel
-            dashboard={dashboard}
-            otherDashboards={others}
-            onChange={save}
-            tokenExpiry={(id) => providers.github(id)?.getTokenExpiration()}
-          />
-        </SidePanel>
+        <>
+          <SidePanel
+            title="Edit dashboard"
+            trigger={
+              <Button size="sm" variant="outline">
+                Edit
+              </Button>
+            }
+          >
+            <DashboardEditor
+              dashboard={dashboard}
+              providers={providers}
+              onChange={save}
+            />
+          </SidePanel>
+          <SidePanel
+            title="Credentials"
+            trigger={
+              <Button size="sm" variant={missing ? 'default' : 'outline'}>
+                {missing ? 'Add a credential' : 'Credentials'}
+              </Button>
+            }
+          >
+            <CredentialsPanel
+              dashboard={dashboard}
+              otherDashboards={others}
+              onChange={save}
+              tokenExpiry={(id) => providers.github(id)?.getTokenExpiration()}
+            />
+          </SidePanel>
+        </>
       }
     />
   );
