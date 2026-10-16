@@ -108,6 +108,19 @@ describe('DashboardSchema', () => {
     ).toThrow();
   });
 
+  it('rejects duplicate stage ids, even when they hide a self-cycle', () => {
+    const parsed = DashboardSchema.safeParse({
+      id: 'd1',
+      name: 'Dashboard 1',
+      stages: [
+        { id: 's1', name: 'dev', branchPattern: 'dev', sourceStageId: 's1' },
+        { id: 's1', name: 'prod', branchPattern: 'main' },
+      ],
+    });
+    expect(parsed.success).toBe(false);
+    expect(parsed.error?.issues[0]?.message).toBe('duplicate stage id: s1');
+  });
+
   it('accepts an acyclic source-stage chain', () => {
     const dashboard = DashboardSchema.parse({
       id: 'd1',

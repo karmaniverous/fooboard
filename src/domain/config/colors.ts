@@ -17,17 +17,19 @@ export const DEFAULT_STATUS_COLORS = {
   cancelled: '#475569',
 } as const;
 
-/** Editable status fill colors, one hex string per status (spec.md §3). */
+/** A `#rrggbb` hex color, the only form the status fills use. */
+export const HexColorSchema = z
+  .string()
+  .regex(/^#[0-9a-fA-F]{6}$/, 'expected a #rrggbb hex color');
+
+/** Editable status fill colors, one hex color per status (spec.md §3). */
 export const StatusColorsSchema = z.object({
-  queued: z.string().min(1).default(DEFAULT_STATUS_COLORS.queued),
-  started: z.string().min(1).default(DEFAULT_STATUS_COLORS.started),
-  partialSuccess: z
-    .string()
-    .min(1)
-    .default(DEFAULT_STATUS_COLORS.partialSuccess),
-  success: z.string().min(1).default(DEFAULT_STATUS_COLORS.success),
-  failure: z.string().min(1).default(DEFAULT_STATUS_COLORS.failure),
-  cancelled: z.string().min(1).default(DEFAULT_STATUS_COLORS.cancelled),
+  queued: HexColorSchema.default(DEFAULT_STATUS_COLORS.queued),
+  started: HexColorSchema.default(DEFAULT_STATUS_COLORS.started),
+  partialSuccess: HexColorSchema.default(DEFAULT_STATUS_COLORS.partialSuccess),
+  success: HexColorSchema.default(DEFAULT_STATUS_COLORS.success),
+  failure: HexColorSchema.default(DEFAULT_STATUS_COLORS.failure),
+  cancelled: HexColorSchema.default(DEFAULT_STATUS_COLORS.cancelled),
 });
 export type StatusColors = z.infer<typeof StatusColorsSchema>;
 

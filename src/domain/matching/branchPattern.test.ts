@@ -50,6 +50,14 @@ describe('matchesBranchPattern', () => {
     expect(matchesBranchPattern('release/24.3', 'release/24x3')).toBe(false);
     expect(matchesBranchPattern('release/24.3', 'release/24.3')).toBe(true);
   });
+
+  it('treats metacharacters in wildcard patterns literally', () => {
+    expect(matchesBranchPattern('release/v?*', 'release/v?1')).toBe(true);
+    expect(matchesBranchPattern('release/v?*', 'release/123')).toBe(false);
+    expect(matchesBranchPattern('release/24.*', 'release/24x3')).toBe(false);
+    expect(() => matchesBranchPattern('?*', '?x')).not.toThrow();
+    expect(matchesBranchPattern('?*', '?x')).toBe(true);
+  });
 });
 
 describe('branchPatternPrefix', () => {

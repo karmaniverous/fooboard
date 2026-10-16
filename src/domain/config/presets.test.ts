@@ -52,6 +52,16 @@ describe('buildPresetStages', () => {
   it('returns no stages for custom', () => {
     expect(buildPresetStages('custom')).toEqual([]);
   });
+
+  it('rejects an unknown preset id', () => {
+    expect(() => buildPresetStages('nope' as never)).toThrow();
+  });
+
+  it('rejects a blank preview name', () => {
+    expect(() =>
+      buildPresetStages('previews-release-train', { previewNames: [' '] }),
+    ).toThrow();
+  });
 });
 
 describe('createDashboard', () => {

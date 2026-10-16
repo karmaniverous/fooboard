@@ -34,6 +34,23 @@ export const DashboardSchema = z
     credentials: z.array(CredentialRefSchema).default(() => []),
   })
   .superRefine((dashboard, ctx) => {
+    // Duplicate ids make source references ambiguous and would let a cycle
+    // hide behind a later stage with the same id, so reject them first.
+    const seen = new Set<string>();
+    const duplicates = dashboard.stages.flatMap((stage, index) => {
+      const isDuplicate = seen.has(stage.id);
+      seen.add(stage.id);
+      return isDuplicate ? [{ id: stage.id, index }] : [];
+    });
+    for (const { id, index } of duplicates) {
+      ctx.addIssue({
+        code: 'custom',
+        message: `duplicate stage id: ${id}`,
+        path: ['stages', index, 'id'],
+      });
+    }
+    if (duplicates.length > 0) return;
+
     const cycle = findAnyCycle(dashboard.stages);
     if (cycle) {
       ctx.addIssue({

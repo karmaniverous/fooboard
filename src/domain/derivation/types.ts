@@ -67,6 +67,8 @@ export interface GithubRunWithJobs {
 /** An Amplify job summary with the branch it belongs to (ListJobs is
  * per-branch, so callers attach the branch name when combining sources). */
 export interface AmplifyJobWithBranch {
+  /** The row source (app) the job came from, so the link can target it. */
+  source: { region: string; appId: string };
   branch: string;
   job: AmplifyJobSummary;
 }

@@ -12,7 +12,7 @@ export function isLiteralPattern(pattern: string): boolean {
 }
 
 function escapeRegExp(segment: string): string {
-  return segment.replace(/[.+^${}()|[\]\\]/g, '\\$&');
+  return segment.replace(/[.+?^${}()|[\]\\]/g, '\\$&');
 }
 
 /** Compile a branch pattern to an anchored regular expression. */

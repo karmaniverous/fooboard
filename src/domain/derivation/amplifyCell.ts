@@ -6,6 +6,7 @@
  *
  * @module
  */
+import { buildAmplifyConsoleLink } from '@/lib/amplify/consoleLink';
 import { newestJob } from '@/lib/amplify/newestJob';
 
 import type {
@@ -61,7 +62,11 @@ export interface AmplifyCellResult {
   branch: string;
   commit: string | undefined;
   time: string | undefined;
-  linkUrl: undefined;
+  /** The winning job's source app and id, and its console link (C-13a). */
+  region: string;
+  appId: string;
+  jobId: string | undefined;
+  linkUrl: string | undefined;
 }
 
 export type AmplifyCellDerivation = AmplifyCellResult | EmptyCellResult;
@@ -87,15 +92,20 @@ export function deriveAmplifyCell(input: {
   if (emptyState) return emptyState;
   if (!bestEntry) return { kind: 'empty', state: 'no-recent-runs' };
 
+  const { source, branch, job } = bestEntry;
   return {
     kind: 'ok',
-    status: mapAmplifyStatus(bestEntry.job.status),
+    status: mapAmplifyStatus(job.status),
     phase: 'deploy',
-    branch: bestEntry.branch,
-    commit: bestEntry.job.commitId,
-    time:
-      bestEntry.job.endTime?.toISOString() ??
-      bestEntry.job.startTime?.toISOString(),
-    linkUrl: undefined,
+    branch,
+    commit: job.commitId,
+    time: job.endTime?.toISOString() ?? job.startTime?.toISOString(),
+    region: source.region,
+    appId: source.appId,
+    jobId: job.jobId,
+    linkUrl:
+      job.jobId === undefined
+        ? undefined
+        : buildAmplifyConsoleLink({ ...source, branch, jobId: job.jobId }),
   };
 }

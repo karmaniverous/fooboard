@@ -5,28 +5,39 @@
  *
  * @module
  */
+import { z } from 'zod';
+
 import { type Dashboard, DashboardSchema } from './dashboard';
 import type { Stage } from './stage';
 
 /** Branch preset ids (spec.md §3 table). */
-export type BranchPresetId =
-  'env-branches' | 'gitflow-ish' | 'previews-release-train' | 'custom';
+export const BranchPresetIdSchema = z.enum([
+  'env-branches',
+  'gitflow-ish',
+  'previews-release-train',
+  'custom',
+]);
+export type BranchPresetId = z.infer<typeof BranchPresetIdSchema>;
 
 /** Options for presets that need input at setup (spec.md §3). */
-export interface PresetOptions {
+export const PresetOptionsSchema = z.object({
   /** Preview names, for `previews-release-train` (one stage each). */
-  previewNames?: readonly string[];
-}
+  previewNames: z.array(z.string().trim().min(1)).optional(),
+});
+export type PresetOptions = z.input<typeof PresetOptionsSchema>;
 
 function nextStageId(): string {
   return crypto.randomUUID();
 }
 
-/** Build the stages for a branch preset (spec.md §3 table). */
+/** Build the stages for a branch preset (spec.md §3 table). Inputs are
+ * validated here, since they come from the UI or an import. */
 export function buildPresetStages(
-  presetId: BranchPresetId,
-  options: PresetOptions = {},
+  presetIdInput: BranchPresetId,
+  optionsInput: PresetOptions = {},
 ): Stage[] {
+  const presetId = BranchPresetIdSchema.parse(presetIdInput);
+  const options = PresetOptionsSchema.parse(optionsInput);
   switch (presetId) {
     case 'env-branches': {
       const dev: Stage = {

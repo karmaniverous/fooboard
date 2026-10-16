@@ -22,13 +22,24 @@ export const MatchOperatorSchema = z.enum([
 ]);
 export type MatchOperator = z.infer<typeof MatchOperatorSchema>;
 
+const testOn = <F extends z.ZodType<MatchField>>(field: F) =>
+  z.object({
+    field,
+    operator: MatchOperatorSchema,
+    value: z.string().min(1),
+  });
+
 /**
- * One `field · operator · value` test. A list of tests on one item (row key
- * tests, workflow include/exclude, phase tests) is OR'd together.
+ * One `field · operator · value` test on either field (row key tests). A
+ * list of tests on one item is OR'd together.
  */
-export const MatchTestSchema = z.object({
-  field: MatchFieldSchema,
-  operator: MatchOperatorSchema,
-  value: z.string().min(1),
-});
+export const MatchTestSchema = testOn(MatchFieldSchema);
 export type MatchTest = z.infer<typeof MatchTestSchema>;
+
+/** A test on job name only (phase tests: the evaluator has no workflow
+ * name in that context, so a workflow-name test could never match). */
+export const JobNameTestSchema = testOn(z.literal('jobName'));
+
+/** A test on workflow name only (workflow filters: there is no single job
+ * name at that point). */
+export const WorkflowNameTestSchema = testOn(z.literal('workflowName'));

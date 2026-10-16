@@ -35,13 +35,18 @@ describe('mapAmplifyStatus', () => {
   });
 });
 
+const appA = { region: 'us-east-1', appId: 'appA' };
+const appB = { region: 'eu-west-1', appId: 'appB' };
+
 describe('deriveAmplifyCell', () => {
-  it('picks the newest job across multiple sources and matching branches', () => {
+  it('picks the newest job across sources and links to that job', () => {
     const older: AmplifyJobWithBranch = {
+      source: appA,
       branch: 'main',
       job: job({ jobId: 'a', startTime: new Date('2026-10-01T00:00:00Z') }),
     };
     const newer: AmplifyJobWithBranch = {
+      source: appB,
       branch: 'release/24.3',
       job: job({
         jobId: 'b',
@@ -58,7 +63,22 @@ describe('deriveAmplifyCell', () => {
       kind: 'ok',
       branch: 'release/24.3',
       commit: 'def456',
+      appId: 'appB',
+      jobId: 'b',
+      linkUrl:
+        'https://eu-west-1.console.aws.amazon.com/amplify/apps/appB/branches/release%2F24.3/deployments/b',
     });
+  });
+
+  it('has no link when the winning job has no id', () => {
+    const result = deriveAmplifyCell({
+      jobsByBranch: [
+        { source: appA, branch: 'main', job: job({ jobId: undefined }) },
+      ],
+      branchExists: true,
+      credentialStatus: 'ok',
+    });
+    expect(result).toMatchObject({ kind: 'ok', linkUrl: undefined });
   });
 
   it('needs-credential takes priority over everything else', () => {
@@ -90,6 +110,7 @@ describe('deriveAmplifyCell', () => {
 
   it('maps a failed job to Failure with its branch and commit', () => {
     const entry: AmplifyJobWithBranch = {
+      source: appA,
       branch: 'main',
       job: job({ status: 'FAILED' }),
     };
