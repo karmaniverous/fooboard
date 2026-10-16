@@ -10,6 +10,7 @@ import { Link } from 'react-router-dom';
 
 import { Button } from '@/components/ui/button';
 import { buttonVariants } from '@/components/ui/buttonVariants';
+import { site } from '@/lib/site';
 import { useStores } from '@/storage/storesContext';
 
 export function Home(): React.JSX.Element {
@@ -17,6 +18,7 @@ export function Home(): React.JSX.Element {
   return (
     <div className="mx-auto flex max-w-xl flex-col items-center gap-4 px-6 py-24 text-center">
       <LayoutGrid className="size-10 text-muted-foreground" aria-hidden />
+      <p className="text-lg font-medium">{site.tagline}</p>
       <h1 className="text-xl font-semibold">No dashboards yet</h1>
       {loaded.kind === 'unreadable' && (
         <p role="alert" className="text-sm text-status-failure">

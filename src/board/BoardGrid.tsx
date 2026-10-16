@@ -17,6 +17,7 @@ import { cn } from '@/lib/utils';
 import { Cell } from './Cell';
 import { CellDetail } from './CellDetail';
 import { detailLevel } from './cellView';
+import { type CellFilter, matchesFilter } from './summary';
 
 const DIVIDER_ROW: Record<DividerStyle, string> = {
   thin: 'border-t border-border',
@@ -59,6 +60,8 @@ export interface BoardGridProps {
   now: number;
   /** Keep stage and row headers in view while the zoomed grid scrolls. */
   pinnedHeaders?: boolean;
+  /** Highlight only the cells in this summary category (spec.md C-14a). */
+  filter?: CellFilter | null;
 }
 
 export function BoardGrid({
@@ -67,6 +70,7 @@ export function BoardGrid({
   rowHeight,
   now,
   pinnedHeaders = false,
+  filter = null,
 }: BoardGridProps): React.JSX.Element {
   const pinTop = pinnedHeaders && 'sticky top-0 z-10 bg-background';
   const pinLeft = pinnedHeaders && 'sticky left-0 z-10 bg-background';
@@ -200,7 +204,10 @@ export function BoardGrid({
                       key={key}
                       role="gridcell"
                       className={cn(
-                        'min-h-0 min-w-0',
+                        'min-h-0 min-w-0 transition-opacity',
+                        filter &&
+                          !matchesFilter(model.cells[key], filter) &&
+                          'opacity-25',
                         rowLine,
                         colDivider && DIVIDER_COL[colDivider.style],
                       )}

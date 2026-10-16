@@ -20,6 +20,7 @@ import type { BoardModel } from '@/engine';
 import { cn } from '@/lib/utils';
 
 import { BoardGrid } from './BoardGrid';
+import type { CellFilter } from './summary';
 import type { BoardView } from './useBoardView';
 import { MIN_ZOOM, stepZoom, wheelZoom } from './zoom';
 
@@ -30,11 +31,13 @@ export function BoardViewport({
   model,
   now,
   view,
+  filter = null,
 }: {
   dashboard: Dashboard;
   model: BoardModel;
   now: number;
   view: BoardView;
+  filter?: CellFilter | null;
 }): React.JSX.Element {
   const { zoom, setZoom, rowHeight, setRowHeight } = view;
   const scroller = useRef<HTMLDivElement>(null);
@@ -214,6 +217,7 @@ export function BoardViewport({
               rowHeight={rowHeight}
               now={now}
               pinnedHeaders={zoomed}
+              filter={filter}
             />
           </div>
         </div>

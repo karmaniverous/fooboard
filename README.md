@@ -1,5 +1,7 @@
 # fooboard
 
+**Welcome to DevOps hell. Here's your map.**
+
 > `fooboard.dev` &middot; open source (BSD-3-Clause) &middot; X: [@fooboarding](https://x.com/fooboarding)
 
 fooboard is a free, open-source, client-only browser app that shows the
