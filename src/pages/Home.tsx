@@ -15,11 +15,31 @@ import { useStores } from '@/storage/storesContext';
 
 export function Home(): React.JSX.Element {
   const loaded = useStores().config.load();
+  const dashboards = loaded.kind === 'ok' ? loaded.root.dashboards : [];
   return (
     <div className="mx-auto flex max-w-xl flex-col items-center gap-4 px-6 py-24 text-center">
       <LayoutGrid className="size-10 text-muted-foreground" aria-hidden />
       <p className="text-lg font-medium">{site.tagline}</p>
-      <h1 className="text-xl font-semibold">No dashboards yet</h1>
+      <h1 className="text-xl font-semibold">
+        {dashboards.length === 0 ? 'No dashboards yet' : 'Your dashboards'}
+      </h1>
+      {dashboards.length > 0 && (
+        <ul className="flex w-full flex-col gap-1 text-left">
+          {dashboards.map((d) => (
+            <li key={d.id}>
+              <Link
+                to={`/d/${d.id}`}
+                className="block rounded-md border px-3 py-2 hover:bg-muted"
+              >
+                {d.name}
+                <span className="ml-2 text-xs text-muted-foreground">
+                  {d.rows.length} rows &times; {d.stages.length} stages
+                </span>
+              </Link>
+            </li>
+          ))}
+        </ul>
+      )}
       {loaded.kind === 'unreadable' && (
         <p role="alert" className="text-sm text-status-failure">
           Saved dashboards can't be read ({loaded.reason}). They have not been
