@@ -1,8 +1,7 @@
 /**
- * Job-state mapping and status rules for a GitHub cell (spec.md §4.3.3):
- * each relevant job maps to queued/running/succeeded/failed/cancelled; the
- * run's final phase and the five status rules then decide the cell's
- * status, phase and determining job. Pure; no network.
+ * GitHub cell status (spec.md §4.3.3): map each relevant job to a state,
+ * apply rules 1-5 in order, and pick the determining job, which supplies
+ * the cell's phase label, link and time. Pure.
  *
  * @module
  */
@@ -44,74 +43,67 @@ function finishedAt(job: GithubWorkflowJob): number {
   return time ? new Date(time).getTime() : 0;
 }
 
-/** Pick the latest-finishing job among candidates, ties broken by phase
- * order (deploy before test, spec.md §4.3.3). */
+/** Pick the latest-finishing job among candidates (spec.md §4.3.3). Ties
+ * are broken by phase order: phases run deploy then test, so on equal
+ * times the later phase counts as finishing last. */
 function latestByPhaseOrder(candidates: readonly RelevantJob[]): RelevantJob {
   return candidates.reduce((best, current) => {
     const bestTime = finishedAt(best.job);
     const currentTime = finishedAt(current.job);
     if (currentTime !== bestTime)
       return currentTime > bestTime ? current : best;
-    const bestOrder = PHASE_ORDER.indexOf(best.phase);
-    const currentOrder = PHASE_ORDER.indexOf(current.phase);
-    return currentOrder < bestOrder ? current : best;
+    return PHASE_ORDER.indexOf(current.phase) > PHASE_ORDER.indexOf(best.phase)
+      ? current
+      : best;
   });
 }
 
-/** The cell status, final phase and determining job for a run's relevant
- * jobs (spec.md §4.3.3 rules 1-5), or `undefined` if there are no relevant
- * jobs (caller shows an empty state instead). */
+/** A cell's status and the job that determined it. `phase` is the
+ * determining job's phase: the determining job supplies the phase label
+ * (spec.md §4.3.3), so Partial success after a deploy reads `deploy`. */
 export interface GithubCellStatus {
   status: CellStatus;
   phase: Phase;
   determiningJob: GithubWorkflowJob;
 }
 
+function determinedBy(
+  status: CellStatus,
+  candidates: readonly RelevantJob[],
+): GithubCellStatus {
+  const { job, phase } = latestByPhaseOrder(candidates);
+  return { status, phase, determiningJob: job };
+}
+
+const EARLY_RULES = [
+  ['failed', 'failure'],
+  ['cancelled', 'cancelled'],
+  ['running', 'started'],
+] as const satisfies readonly (readonly [JobState, CellStatus])[];
+
+/** Derive a cell's status from a run's relevant jobs (spec.md §4.3.3 rules
+ * 1-5, first that applies), or `undefined` if there are none (the caller
+ * shows an empty state instead). */
 export function deriveGithubCellStatus(
   jobs: readonly RelevantJob[],
 ): GithubCellStatus | undefined {
   if (jobs.length === 0) return undefined;
-  const phase = finalPhase(jobs);
-  const states = jobs.map((j) => ({ ...j, state: jobState(j.job) }));
+  const inState = (state: JobState): RelevantJob[] =>
+    jobs.filter((j) => jobState(j.job) === state);
 
-  const failed = states.filter((j) => j.state === 'failed');
-  if (failed.length > 0) {
-    return {
-      status: 'failure',
-      phase,
-      determiningJob: latestByPhaseOrder(failed).job,
-    };
+  for (const [state, status] of EARLY_RULES) {
+    const matching = inState(state);
+    if (matching.length > 0) return determinedBy(status, matching);
   }
-  const cancelled = states.filter((j) => j.state === 'cancelled');
-  if (cancelled.length > 0) {
-    return {
-      status: 'cancelled',
-      phase,
-      determiningJob: latestByPhaseOrder(cancelled).job,
-    };
-  }
-  const running = states.filter((j) => j.state === 'running');
-  if (running.length > 0) {
-    return {
-      status: 'started',
-      phase,
-      determiningJob: latestByPhaseOrder(running).job,
-    };
-  }
-  const succeeded = states.filter((j) => j.state === 'succeeded');
+
+  const succeeded = inState('succeeded');
   if (succeeded.length > 0) {
-    const finalPhaseSucceeded = succeeded.filter((j) => j.phase === phase);
-    const winner =
-      finalPhaseSucceeded.length > 0 ? finalPhaseSucceeded : succeeded;
-    return {
-      status: finalPhaseSucceeded.length > 0 ? 'success' : 'partialSuccess',
-      phase,
-      determiningJob: latestByPhaseOrder(winner).job,
-    };
+    const phase = finalPhase(jobs);
+    const finalPhaseSucceeded = succeeded.some((j) => j.phase === phase);
+    return determinedBy(
+      finalPhaseSucceeded ? 'success' : 'partialSuccess',
+      succeeded,
+    );
   }
-  return {
-    status: 'queued',
-    phase,
-    determiningJob: latestByPhaseOrder(states).job,
-  };
+  return determinedBy('queued', jobs);
 }

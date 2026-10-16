@@ -140,7 +140,8 @@ describe('deriveGithubCellStatus', () => {
     ];
     const result = deriveGithubCellStatus(jobs);
     expect(result?.status).toBe('partialSuccess');
-    expect(result?.phase).toBe('test');
+    // The determining job (the succeeded deploy) supplies the phase label.
+    expect(result?.phase).toBe('deploy');
     expect(result?.determiningJob.id).toBe(1);
   });
 
@@ -160,16 +161,8 @@ describe('deriveGithubCellStatus', () => {
     expect(result?.determiningJob.id).toBe(2);
   });
 
-  it('breaks a finish-time tie between phases in favor of deploy (two failures)', () => {
+  it('breaks a finish-time tie between phases in favor of the later phase (two failures)', () => {
     const jobs: RelevantJob[] = [
-      {
-        job: makeJob({
-          name: 'test',
-          conclusion: 'failure',
-          completedAt: '2026-10-01T00:05:00Z',
-        }),
-        phase: 'test',
-      },
       {
         job: makeJob({
           id: 2,
@@ -179,9 +172,19 @@ describe('deriveGithubCellStatus', () => {
         }),
         phase: 'deploy',
       },
+      {
+        job: makeJob({
+          id: 3,
+          name: 'test',
+          conclusion: 'failure',
+          completedAt: '2026-10-01T00:05:00Z',
+        }),
+        phase: 'test',
+      },
     ];
     const result = deriveGithubCellStatus(jobs);
-    expect(result?.determiningJob.id).toBe(2);
+    expect(result?.determiningJob.id).toBe(3);
+    expect(result?.phase).toBe('test');
   });
 
   it('all jobs queued (an approval wait) yields Queued', () => {
