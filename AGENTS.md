@@ -27,7 +27,7 @@ npm run build
 
 ## Before review (every PR)
 
-These checks cover **the code the PR touched**, not the whole code base.
+These checks **start from the code the PR touched**. That is the point of departure, not a hard boundary: follow breadcrumbs from it (callers, callees, duplicated logic elsewhere) wherever SOLID/DRY leads, but don't re-review the whole code base.
 
 1. **Dependencies**: run `npx npm-check-updates --peer`. Use current versions; never add an outdated major. Report anything held back, and why, in the PR body.
 2. **SOLID/DRY pass** over the touched code: single responsibility per module, callers depend on ports (interfaces) rather than on SDKs or `fetch`, and no duplicated logic, markup or configuration.
