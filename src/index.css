@@ -106,3 +106,12 @@ body {
   background-color: var(--color-background);
   color: var(--color-foreground);
 }
+
+/* Hatched fill for cells that need a credential or failed (spec.md §4.3.5). */
+@utility bg-hatched {
+  background-image: repeating-linear-gradient(
+    135deg,
+    transparent 0 6px,
+    var(--color-border) 6px 8px
+  );
+}

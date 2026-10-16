@@ -2,8 +2,6 @@
  * The app's local stores (spec.md C-1, C-4, C-5, C-13), built over browser
  * local storage, plus *Reset*.
  *
- * Listed as a knip `entry` point until the app shell consumes it (step 9).
- *
  * @module
  */
 import { type ConfigStore, createConfigStore } from './configStore';
@@ -13,9 +11,6 @@ import {
   createPreferencesStore,
   type PreferencesStore,
 } from './preferencesStore';
-
-export type { ConfigLoad } from './configStore';
-export type { CredentialSecret } from './credentialStore';
 
 export interface AppStores {
   config: ConfigStore;

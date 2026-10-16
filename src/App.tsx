@@ -8,6 +8,7 @@ import { Route, Routes } from 'react-router-dom';
 
 import { Footer } from '@/components/Footer';
 import { Header } from '@/components/Header';
+import { DemoPage } from '@/pages/DemoPage';
 import { Home } from '@/pages/Home';
 import { AmplifySpikePage } from '@/pages/spike/AmplifySpikePage';
 import { GithubSpikePage } from '@/pages/spike/GithubSpikePage';
@@ -19,6 +20,7 @@ export default function App(): React.JSX.Element {
       <main className="flex-1">
         <Routes>
           <Route path="/" element={<Home />} />
+          <Route path="/demo" element={<DemoPage />} />
           <Route path="/spike/amplify" element={<AmplifySpikePage />} />
           <Route path="/spike/github" element={<GithubSpikePage />} />
         </Routes>

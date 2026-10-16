@@ -9,20 +9,26 @@ import { MemoryRouter } from 'react-router-dom';
 import { describe, expect, it } from 'vitest';
 
 import { site } from '@/lib/site';
+import { createAppStores } from '@/storage';
+import { memoryStorage } from '@/storage/keyValue';
+import { StoresContext } from '@/storage/storesContext';
 
 import App from './App';
 
 function renderAt(path: string): void {
   render(
-    <MemoryRouter initialEntries={[path]}>
-      <App />
-    </MemoryRouter>,
+    <StoresContext value={createAppStores(memoryStorage())}>
+      <MemoryRouter initialEntries={[path]}>
+        <App />
+      </MemoryRouter>
+    </StoresContext>,
   );
 }
 
 describe('App', () => {
   it.each([
     ['/', 'No dashboards yet'],
+    ['/demo', 'Acme platform (demo)'],
     ['/spike/amplify', 'Amplify browser spike'],
     ['/spike/github', 'GitHub browser spike'],
   ])('renders %s inside the shell', (path, heading) => {

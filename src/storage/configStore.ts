@@ -21,7 +21,7 @@ import { KEY_PREFIX, type KeyValueStore, readJson } from './keyValue';
 const KEY = `${KEY_PREFIX}config`;
 
 /** What loading found. */
-export type ConfigLoad =
+type ConfigLoad =
   | { kind: 'ok'; root: ConfigRoot }
   /** Stored data exists but can't be read; nothing is written over it. */
   | { kind: 'unreadable'; reason: string };
