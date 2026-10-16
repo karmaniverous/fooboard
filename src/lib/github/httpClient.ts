@@ -42,7 +42,6 @@ export interface JsonResponse {
 export interface GitHubHttpClientConfig {
   token: string;
   fetchImpl?: FetchLike;
-  lowBudgetThreshold?: number;
 }
 
 /**
@@ -53,38 +52,24 @@ export interface GitHubHttpClientConfig {
 export class GitHubHttpClient {
   private readonly token: string;
   private readonly fetchImpl: FetchLike;
-  private readonly lowBudgetThreshold: number;
   private readonly cache = new EtagCache();
   private readonly queue = new SerialQueue();
   private budget: RateLimitBudget | undefined;
   private tokenExpiration: string | undefined;
-  private lastRequestWasCached: boolean | undefined;
 
-  constructor({
-    token,
-    fetchImpl,
-    lowBudgetThreshold,
-  }: GitHubHttpClientConfig) {
+  constructor({ token, fetchImpl }: GitHubHttpClientConfig) {
     this.token = token;
     this.fetchImpl = fetchImpl ?? ((url, init) => fetch(url, init));
-    this.lowBudgetThreshold = lowBudgetThreshold ?? 0.1;
   }
 
-  /** Current rate-limit budget, or `undefined` before the first response. */
+  /** The latest rate-limit budget seen, if any response carried one. */
   getBudget(): RateLimitBudget | undefined {
     return this.budget;
   }
 
-  /** The `github-authentication-token-expiration` header's last value, if GitHub sent one. */
+  /** The token's expiry (`github-authentication-token-expiration`), if sent. */
   getTokenExpiration(): string | undefined {
     return this.tokenExpiration;
-  }
-
-  /** Whether the most recent `getJson` call returned a `304` cache hit
-   * (spec.md §6 spike 2: a dev aid confirms this manually). `undefined`
-   * before the first request. */
-  wasLastRequestCached(): boolean | undefined {
-    return this.lastRequestWasCached;
   }
 
   /** GET `path`, returning the parsed JSON body and headers; queued and cached per credential. */
@@ -112,10 +97,8 @@ export class GitHubHttpClient {
     this.recordTokenExpiration(res.headers);
 
     if (res.status === 304 && cached) {
-      this.lastRequestWasCached = true;
       return { data: cached.data, headers: res.headers };
     }
-    this.lastRequestWasCached = false;
     if (res.status === 401) throw new GitHubAuthError(path);
     if (res.status === 404) throw new GitHubNotFoundError(path);
     if (res.status === 403 || res.status === 429) {
@@ -136,7 +119,7 @@ export class GitHubHttpClient {
   }
 
   private recordBudget(headers: Headers): void {
-    const budget = parseRateLimitHeaders(headers, this.lowBudgetThreshold);
+    const budget = parseRateLimitHeaders(headers);
     if (budget) this.budget = budget;
   }
 

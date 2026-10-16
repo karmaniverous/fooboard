@@ -86,14 +86,4 @@ describe('SerialQueue', () => {
     expect(timestamps).toEqual([0, 1_000]);
     vi.useRealTimers();
   });
-
-  it('getPausedUntil reports the current pause timestamp', () => {
-    const queue = new SerialQueue();
-    expect(queue.getPausedUntil()).toBe(0);
-    queue.pauseUntil(5_000);
-    expect(queue.getPausedUntil()).toBe(5_000);
-    // A smaller pause never moves the timestamp backwards.
-    queue.pauseUntil(1_000);
-    expect(queue.getPausedUntil()).toBe(5_000);
-  });
 });

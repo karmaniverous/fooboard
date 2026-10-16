@@ -93,7 +93,7 @@ describe('createGitHubReader', () => {
 
   it('matchingRefs requests /git/matching-refs/heads/{prefix}', async () => {
     const url =
-      'https://api.github.com/repos/acme/api-core/git/matching-refs/heads/release%2F';
+      'https://api.github.com/repos/acme/api-core/git/matching-refs/heads/release/';
     const { fetchImpl } = fakeFetch({
       [url]: () =>
         jsonResponse([

@@ -7,6 +7,8 @@
  *
  * @module
  */
+import { objectify } from 'radash';
+
 import type { Stage } from '@/domain/config/stage';
 import {
   type AmplifyCellDerivation,
@@ -54,15 +56,17 @@ export async function rowStaleness(
   branches: readonly DatedBranch[],
   compare: (base: string, head: string) => Promise<CompareResult>,
 ): Promise<Record<string, CellStaleness>> {
-  const branchOf = new Map(
-    stages.map((s) => [s.id, cellBranch(s, cells[s.id], branches)]),
+  const branchOf = objectify(
+    stages,
+    (s) => s.id,
+    (s) => cellBranch(s, cells[s.id], branches),
   );
   const result: Record<string, CellStaleness> = {};
 
   for (const stage of stages) {
-    const own = branchOf.get(stage.id);
+    const own = branchOf[stage.id];
     const source = stage.sourceStageId
-      ? branchOf.get(stage.sourceStageId)
+      ? branchOf[stage.sourceStageId]
       : undefined;
     if (!own || !source || own === source) {
       result[stage.id] = { badge: undefined };

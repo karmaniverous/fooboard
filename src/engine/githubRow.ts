@@ -8,6 +8,8 @@
  *
  * @module
  */
+import { objectify } from 'radash';
+
 import type { MappingSettings } from '@/domain/config/mappingSettings';
 import type { GithubRow } from '@/domain/config/row';
 import type { Stage } from '@/domain/config/stage';
@@ -21,7 +23,6 @@ import {
   type ProviderFailure,
 } from '@/domain/derivation';
 import { matchesBranchPattern } from '@/domain/matching/branchPattern';
-import { describeError } from '@/lib/errors';
 import {
   GitHubAuthError,
   type GitHubReader,
@@ -31,6 +32,7 @@ import {
   type WorkflowRun,
 } from '@/lib/github';
 
+import { failureOutcome } from './providerOutcome';
 import type { UnmappedRun } from './types';
 
 /** At most this many candidate runs per cell have their jobs fetched. */
@@ -71,9 +73,10 @@ function emptyRow(
   credentialStatus: CredentialStatus,
   providerFailure?: ProviderFailure,
 ): GithubRowRefresh {
-  const cells = Object.fromEntries(
-    stages.map((s) => [
-      s.id,
+  const cells = objectify(
+    stages,
+    (s) => s.id,
+    (s) =>
       deriveGithubCell({
         runs: [],
         mapping,
@@ -83,7 +86,6 @@ function emptyRow(
         credentialStatus,
         providerFailure,
       }),
-    ]),
   );
   return { kind: 'refreshed', cells, unmapped: [], branches: [] };
 }
@@ -99,14 +101,19 @@ export async function refreshGithubRow(
   try {
     return await refreshWith(row, stages, mapping, reader);
   } catch (err) {
-    if (err instanceof RateLimitedError) return { kind: 'rate-limited' };
-    if (err instanceof GitHubAuthError) {
-      return emptyRow(row, stages, mapping, 'expired');
-    }
-    return emptyRow(row, stages, mapping, 'ok', {
-      message: describeError(err),
-      isRateLimit: false,
+    const outcome = failureOutcome(err, {
+      isRateLimit: (e) => e instanceof RateLimitedError,
+      isAuth: (e) => e instanceof GitHubAuthError,
     });
+    return outcome.kind === 'rate-limited'
+      ? outcome
+      : emptyRow(
+          row,
+          stages,
+          mapping,
+          outcome.credentialStatus,
+          outcome.providerFailure,
+        );
   }
 }
 

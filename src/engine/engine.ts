@@ -10,7 +10,7 @@
 import { resolveCredentialId } from '@/domain/config/credentialRefs';
 import type { Dashboard } from '@/domain/config/dashboard';
 import type { AmplifyRow, GithubRow } from '@/domain/config/row';
-import type { GitHubReader } from '@/lib/github';
+import { type GitHubReader, isOverPollingShare } from '@/lib/github';
 
 import { refreshAmplifyRow } from './amplifyRow';
 import { refreshGithubRow, repoRef } from './githubRow';
@@ -192,7 +192,7 @@ export function createBoardEngine({
   const scheduler = createPollScheduler({
     targets,
     overBudget: () =>
-      Object.values(model.budgets).some((b) => b && b.used > b.limit / 2),
+      Object.values(model.budgets).some((b) => b && isOverPollingShare(b)),
     timers,
     visibility,
   });

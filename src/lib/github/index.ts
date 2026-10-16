@@ -8,6 +8,6 @@
  */
 export { GitHubAuthError, RateLimitedError } from './errors';
 export { mapRunWithJobs, mapWorkflowRun } from './mapToDerivation';
-export type { RateLimitBudget } from './rateLimit';
+export { isOverPollingShare, type RateLimitBudget } from './rateLimit';
 export type { CompareResult, GitHubReader } from './reader';
 export type { WorkflowRun } from './schemas';

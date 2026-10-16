@@ -8,10 +8,7 @@
  *
  * @module
  */
-
-function sleep(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
+import { sleep } from 'radash';
 
 /** Serializes async tasks for one credential: one in flight at a time, FIFO. */
 export class SerialQueue {

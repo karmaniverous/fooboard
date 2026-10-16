@@ -7,6 +7,8 @@
  *
  * @module
  */
+import { objectify } from 'radash';
+
 import {
   type DefaultCredentials,
   resolveCredentialId,
@@ -25,7 +27,8 @@ import {
   collectRowJobs,
   type ResolvedAmplifySource,
 } from '@/lib/amplify/rowJobs';
-import { describeError } from '@/lib/errors';
+
+import { failureOutcome } from './providerOutcome';
 
 /** A refreshed Amplify row, or throttled (keep the previous cells). */
 export type AmplifyRowRefresh =
@@ -37,16 +40,16 @@ function emptyRow(
   credentialStatus: CredentialStatus,
   providerFailure?: ProviderFailure,
 ): AmplifyRowRefresh {
-  const cells = Object.fromEntries(
-    stages.map((s) => [
-      s.id,
+  const cells = objectify(
+    stages,
+    (s) => s.id,
+    () =>
       deriveAmplifyCell({
         jobsByBranch: [],
         branchExists: false,
         credentialStatus,
         providerFailure,
       }),
-    ]),
   );
   return { kind: 'refreshed', cells };
 }
@@ -95,11 +98,12 @@ export async function refreshAmplifyRow(
     }
     return { kind: 'refreshed', cells };
   } catch (err) {
-    if (err instanceof AmplifyThrottledError) return { kind: 'rate-limited' };
-    if (err instanceof AmplifyAuthError) return emptyRow(stages, 'expired');
-    return emptyRow(stages, 'ok', {
-      message: describeError(err),
-      isRateLimit: false,
+    const outcome = failureOutcome(err, {
+      isRateLimit: (e) => e instanceof AmplifyThrottledError,
+      isAuth: (e) => e instanceof AmplifyAuthError,
     });
+    return outcome.kind === 'rate-limited'
+      ? outcome
+      : emptyRow(stages, outcome.credentialStatus, outcome.providerFailure);
   }
 }

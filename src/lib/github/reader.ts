@@ -8,7 +8,7 @@
  */
 import { GitHubValidationError } from './errors';
 import { type FetchLike, GitHubHttpClient } from './httpClient';
-import { type Page, paginateAll } from './pagination';
+import { paginateAll } from './pagination';
 import type { RateLimitBudget } from './rateLimit';
 import {
   type Branch,
@@ -71,17 +71,20 @@ export interface GitHubReader {
 /** Credentials and options for a `GitHubReader`. */
 export interface GitHubReaderConfig {
   token: string;
-  /** Injectable for tests; defaults to the global `fetch`. */
   fetchImpl?: FetchLike;
-  /** Fraction of the rate limit at/under which the budget reports `'low'`. Default `0.1`. */
-  lowBudgetThreshold?: number;
 }
 
-function parse<T>(
-  schema: { parse: (data: unknown) => T },
-  path: string,
-  data: unknown,
-): T {
+/** Encode a branch name or prefix for a URL path, keeping its `/`
+ * separators (GitHub expects `heads/release/`, not `heads/release%2F`). */
+const encodeRef = (ref: string): string =>
+  ref.split('/').map(encodeURIComponent).join('/');
+
+const repoUrl = ({ owner, repo }: RepoRef, suffix: string): string =>
+  `${API_BASE}/repos/${owner}/${repo}/${suffix}`;
+
+type Parser<T> = { parse: (data: unknown) => T };
+
+function parse<T>(schema: Parser<T>, path: string, data: unknown): T {
   try {
     return schema.parse(data);
   } catch (err) {
@@ -92,6 +95,7 @@ function parse<T>(
   }
 }
 
+/** The newest ten commit subjects of a compare (GitHub lists oldest first). */
 function commitSubjects(result: CompareApiResult): string[] {
   return result.commits
     .slice(-10)
@@ -99,107 +103,96 @@ function commitSubjects(result: CompareApiResult): string[] {
     .map((c) => c.commit.message.split('\n')[0]);
 }
 
-/** Create a `GitHubReader` backed by plain `fetch` (browser-safe, no Octokit). */
 export function createGitHubReader({
   token,
   fetchImpl,
-  lowBudgetThreshold,
 }: GitHubReaderConfig): GitHubReader {
-  const http = new GitHubHttpClient({ token, fetchImpl, lowBudgetThreshold });
+  const http = new GitHubHttpClient({ token, fetchImpl });
 
-  async function getPage<T>(url: string): Promise<Page<T>> {
-    const { data, headers } = await http.getJson(url);
-    return { items: data as T[], linkHeader: headers.get('link') };
-  }
+  const get = async <T>(path: string, schema: Parser<T>): Promise<T> =>
+    parse(schema, path, (await http.getJson(path)).data);
+
+  const getAll = <T>(firstUrl: string, schema: Parser<T[]>): Promise<T[]> =>
+    paginateAll<T>(firstUrl, async (url) => {
+      const { data, headers } = await http.getJson(url);
+      return {
+        items: parse(schema, url, data),
+        linkHeader: headers.get('link'),
+      };
+    });
+
+  /** `base...head`: commits on `head` that `base` lacks. */
+  const compareOnce = (ref: RepoRef, base: string, head: string) =>
+    get(
+      repoUrl(ref, `compare/${encodeRef(base)}...${encodeRef(head)}`),
+      CompareSchema,
+    );
 
   return {
     async listWorkflowRuns(
-      { owner, repo }: RepoRef,
+      ref,
       { perPage = 100, excludePullRequests = true } = {},
     ) {
-      const path = `${API_BASE}/repos/${owner}/${repo}/actions/runs?per_page=${String(
-        perPage,
-      )}&exclude_pull_requests=${String(excludePullRequests)}`;
-      const { data } = await http.getJson(path);
-      return parse(WorkflowRunsResponseSchema, path, data).workflow_runs;
+      const query = `per_page=${String(perPage)}&exclude_pull_requests=${String(excludePullRequests)}`;
+      return (
+        await get(
+          repoUrl(ref, `actions/runs?${query}`),
+          WorkflowRunsResponseSchema,
+        )
+      ).workflow_runs;
     },
 
-    async listRunJobs(
-      { owner, repo }: RepoRef,
-      runId: number,
-      { filter = 'latest' } = {},
-    ) {
-      const path = `${API_BASE}/repos/${owner}/${repo}/actions/runs/${String(
-        runId,
-      )}/jobs?filter=${filter}`;
-      const { data } = await http.getJson(path);
-      return parse(JobsResponseSchema, path, data).jobs;
+    async listRunJobs(ref, runId, { filter = 'latest' } = {}) {
+      return (
+        await get(
+          repoUrl(ref, `actions/runs/${String(runId)}/jobs?filter=${filter}`),
+          JobsResponseSchema,
+        )
+      ).jobs;
     },
 
-    async listWorkflows({ owner, repo }: RepoRef) {
-      const path = `${API_BASE}/repos/${owner}/${repo}/actions/workflows?per_page=100`;
-      const { data } = await http.getJson(path);
-      return parse(WorkflowsResponseSchema, path, data).workflows;
+    async listWorkflows(ref) {
+      return (
+        await get(
+          repoUrl(ref, 'actions/workflows?per_page=100'),
+          WorkflowsResponseSchema,
+        )
+      ).workflows;
     },
 
-    async matchingRefs({ owner, repo }: RepoRef, prefix: string) {
-      const path = `${API_BASE}/repos/${owner}/${repo}/git/matching-refs/heads/${encodeURIComponent(
-        prefix,
-      )}`;
-      const { data } = await http.getJson(path);
-      return parse(MatchingRefsSchema, path, data);
-    },
+    matchingRefs: (ref, prefix) =>
+      get(
+        repoUrl(ref, `git/matching-refs/heads/${encodeRef(prefix)}`),
+        MatchingRefsSchema,
+      ),
 
-    async compare({ owner, repo }: RepoRef, base: string, head: string) {
-      const forwardPath = `${API_BASE}/repos/${owner}/${repo}/compare/${encodeURIComponent(
-        base,
-      )}...${encodeURIComponent(head)}`;
-      const reversePath = `${API_BASE}/repos/${owner}/${repo}/compare/${encodeURIComponent(
-        head,
-      )}...${encodeURIComponent(base)}`;
+    /** Counts come from `base...head`; the reverse compare supplies the
+     * subjects of commits `base` has that `head` lacks. Both are cached
+     * by ETag, so an unchanged pair costs nothing on later polls. */
+    async compare(ref, base, head) {
       const [forward, reverse] = await Promise.all([
-        http.getJson(forwardPath),
-        http.getJson(reversePath),
+        compareOnce(ref, base, head),
+        compareOnce(ref, head, base),
       ]);
-      const forwardResult = parse(CompareSchema, forwardPath, forward.data);
-      const reverseResult = parse(CompareSchema, reversePath, reverse.data);
       return {
-        aheadBy: forwardResult.ahead_by,
-        behindBy: forwardResult.behind_by,
-        htmlUrl: forwardResult.html_url,
-        aheadCommitSubjects: commitSubjects(forwardResult),
-        behindCommitSubjects: commitSubjects(reverseResult),
+        aheadBy: forward.ahead_by,
+        behindBy: forward.behind_by,
+        htmlUrl: forward.html_url,
+        aheadCommitSubjects: commitSubjects(forward),
+        behindCommitSubjects: commitSubjects(reverse),
       };
     },
 
-    listBranches({ owner, repo }: RepoRef) {
-      const firstUrl = `${API_BASE}/repos/${owner}/${repo}/branches?per_page=100`;
-      return paginateAll<Branch>(firstUrl, async (url) => {
-        const page = await getPage<unknown>(url);
-        return {
-          items: parse(BranchesResponseSchema, url, page.items),
-          linkHeader: page.linkHeader,
-        };
-      });
-    },
+    listBranches: (ref) =>
+      getAll<Branch>(
+        repoUrl(ref, 'branches?per_page=100'),
+        BranchesResponseSchema,
+      ),
 
-    listRepos() {
-      const firstUrl = `${API_BASE}/user/repos?per_page=100`;
-      return paginateAll<Repo>(firstUrl, async (url) => {
-        const page = await getPage<unknown>(url);
-        return {
-          items: parse(ReposResponseSchema, url, page.items),
-          linkHeader: page.linkHeader,
-        };
-      });
-    },
+    listRepos: () =>
+      getAll<Repo>(`${API_BASE}/user/repos?per_page=100`, ReposResponseSchema),
 
-    getBudget() {
-      return http.getBudget();
-    },
-
-    getTokenExpiration() {
-      return http.getTokenExpiration();
-    },
+    getBudget: () => http.getBudget(),
+    getTokenExpiration: () => http.getTokenExpiration(),
   };
 }

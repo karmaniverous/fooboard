@@ -18,12 +18,12 @@ export interface RateLimitBudget {
   reset: number;
   /** Requests used in the current window. */
   used: number;
-  /** `'low'` once `remaining` is at or under the configured threshold. */
+  /** `'low'` once `remaining` is at or under 10% of `limit`. */
   status: 'ok' | 'low';
 }
 
 /** Fraction of `limit` at or under which the budget is reported `'low'`. */
-const DEFAULT_LOW_BUDGET_THRESHOLD = 0.1;
+const LOW_BUDGET_FRACTION = 0.1;
 
 /**
  * Parse rate-limit headers into a `RateLimitBudget`, or `undefined` if the
@@ -31,7 +31,6 @@ const DEFAULT_LOW_BUDGET_THRESHOLD = 0.1;
  */
 export function parseRateLimitHeaders(
   headers: Headers,
-  thresholdFraction = DEFAULT_LOW_BUDGET_THRESHOLD,
 ): RateLimitBudget | undefined {
   const limitHeader = headers.get('x-ratelimit-limit');
   const remainingHeader = headers.get('x-ratelimit-remaining');
@@ -48,7 +47,7 @@ export function parseRateLimitHeaders(
   const usedHeader = headers.get('x-ratelimit-used');
   const used = usedHeader === null ? limit - remaining : Number(usedHeader);
   const status: RateLimitBudget['status'] =
-    remaining <= limit * thresholdFraction ? 'low' : 'ok';
+    remaining <= limit * LOW_BUDGET_FRACTION ? 'low' : 'ok';
 
   return { limit, remaining, reset, used, status };
 }
@@ -82,4 +81,10 @@ export function isRateLimitResponse(status: number, headers: Headers): boolean {
   if (status === 429) return true;
   if (headers.get('retry-after') !== null) return true;
   return headers.get('x-ratelimit-remaining') === '0';
+}
+
+/** Has this credential used more than half its hourly budget? Polling backs
+ * off past this point so other tools keep headroom (spec.md C-16). */
+export function isOverPollingShare(budget: RateLimitBudget): boolean {
+  return budget.used > budget.limit / 2;
 }

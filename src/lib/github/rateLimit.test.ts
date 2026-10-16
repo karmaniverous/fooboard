@@ -8,6 +8,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
   computeRetryAt,
+  isOverPollingShare,
   isRateLimitResponse,
   parseRateLimitHeaders,
 } from './rateLimit';
@@ -53,18 +54,6 @@ describe('parseRateLimitHeaders', () => {
         'x-ratelimit-remaining': '500',
         'x-ratelimit-reset': '1760000000',
       }),
-    );
-    expect(budget?.status).toBe('low');
-  });
-
-  it('honours a custom threshold', () => {
-    const budget = parseRateLimitHeaders(
-      headers({
-        'x-ratelimit-limit': '100',
-        'x-ratelimit-remaining': '40',
-        'x-ratelimit-reset': '1',
-      }),
-      0.5,
     );
     expect(budget?.status).toBe('low');
   });
@@ -115,5 +104,22 @@ describe('isRateLimitResponse', () => {
     expect(
       isRateLimitResponse(403, headers({ 'x-ratelimit-remaining': '10' })),
     ).toBe(false);
+  });
+});
+
+describe('isOverPollingShare', () => {
+  it.each([
+    [2500, false],
+    [2501, true],
+  ])('used %i of 5000 => %s', (used, expected) => {
+    expect(
+      isOverPollingShare({
+        limit: 5000,
+        remaining: 5000 - used,
+        reset: 0,
+        used,
+        status: 'ok',
+      }),
+    ).toBe(expected);
   });
 });

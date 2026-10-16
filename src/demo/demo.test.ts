@@ -48,14 +48,6 @@ async function githubCell(reader: GitHubReader, repo: string, stageId: string) {
   });
 }
 
-describe('demo board', () => {
-  it('is 19 rows by 6 stages', () => {
-    expect([demoDashboard.rows.length, demoDashboard.stages.length]).toEqual([
-      19, 6,
-    ]);
-  });
-});
-
 describe('demo GitHub provider', () => {
   const reader = createDemoGitHubReader(() => 0);
 

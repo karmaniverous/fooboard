@@ -8,6 +8,8 @@
  *
  * @module
  */
+import { alphabetical } from 'radash';
+
 import { GitHubAuthError, GitHubHttpError } from '@/lib/github/errors';
 import type { GitHubReader, RepoRef } from '@/lib/github/reader';
 import type { Job, WorkflowRun } from '@/lib/github/schemas';
@@ -120,7 +122,7 @@ function demoRuns(repo: string, startMs: number): DemoRun[] {
       jobs: () => [job(id, 1, 'lint', 'success', startMs - 2 * MINUTE)],
     });
   }
-  return runs.sort((a, b) => b.run.created_at.localeCompare(a.run.created_at));
+  return alphabetical(runs, (d) => d.run.created_at, 'desc');
 }
 
 /** Branches that exist in a demo repo (stages without `noBranch`). */

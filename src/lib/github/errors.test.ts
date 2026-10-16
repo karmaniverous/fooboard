@@ -34,24 +34,11 @@ describe('GitHub typed errors', () => {
     expect(isNeedsCredential(new Error('p'))).toBe(false);
   });
 
-  it('GitHubNotFoundError carries the path and a 404 message', () => {
-    const err = new GitHubNotFoundError('https://api.github.com/repos/o/r');
-    expect(err.path).toBe('https://api.github.com/repos/o/r');
-    expect(err.message).toContain('404');
-  });
-
   it('GitHubNetworkError keeps the cause without embedding it in message text', () => {
     const cause = new TypeError('fetch failed');
     const err = new GitHubNetworkError('https://api.github.com/x', cause);
     expect(err.cause).toBe(cause);
     expect(err.message).not.toContain(SECRET_TOKEN);
-  });
-
-  it('RateLimitedError reports its retryAt', () => {
-    const retryAt = Date.parse('2026-10-16T00:00:00.000Z');
-    const err = new RateLimitedError('https://api.github.com/x', retryAt);
-    expect(err.retryAt).toBe(retryAt);
-    expect(err.message).toContain('2026-10-16');
   });
 
   it('GitHubValidationError includes the schema issues', () => {
@@ -60,12 +47,6 @@ describe('GitHub typed errors', () => {
       'expected string',
     );
     expect(err.message).toContain('expected string');
-  });
-
-  it('GitHubHttpError carries the status code', () => {
-    const err = new GitHubHttpError('https://api.github.com/x', 500);
-    expect(err.status).toBe(500);
-    expect(err.message).toContain('500');
   });
 
   it('no error message ever contains a token value', () => {

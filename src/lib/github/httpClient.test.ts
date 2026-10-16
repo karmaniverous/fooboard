@@ -57,26 +57,6 @@ describe('GitHubHttpClient', () => {
     expect(calls[1].headers['If-None-Match']).toBe('"abc"');
   });
 
-  it('reports wasLastRequestCached per request', async () => {
-    const calls: { url: string; headers: Record<string, string> }[] = [];
-    const fetchImpl: FetchLike = (url, init) => {
-      calls.push({ url, headers: init.headers });
-      if (calls.length === 1) {
-        return Promise.resolve(
-          jsonResponse(200, { hello: 'world' }, { etag: '"abc"' }),
-        );
-      }
-      return Promise.resolve(jsonResponse(304, undefined));
-    };
-    const client = new GitHubHttpClient({ token: 't', fetchImpl });
-
-    expect(client.wasLastRequestCached()).toBeUndefined();
-    await client.getJson('https://x/a');
-    expect(client.wasLastRequestCached()).toBe(false);
-    await client.getJson('https://x/a');
-    expect(client.wasLastRequestCached()).toBe(true);
-  });
-
   it('tracks rate-limit headers as the budget', async () => {
     const fetchImpl: FetchLike = () =>
       Promise.resolve(
