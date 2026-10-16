@@ -94,4 +94,23 @@ describe('createPollScheduler', () => {
     await vi.advanceTimersByTimeAsync(10 * IDLE_INTERVAL_MS);
     expect(t.refresh).toHaveBeenCalledTimes(1);
   });
+
+  it('keeps polling after a refresh fails, and reports the error', async () => {
+    const refresh = vi
+      .fn<() => Promise<void>>()
+      .mockRejectedValueOnce(new Error('boom'))
+      .mockResolvedValue(undefined);
+    const onError = vi.fn();
+    const s = createPollScheduler({
+      targets: [{ id: 't', refresh, isActive: () => true }],
+      overBudget: () => false,
+      visibility: fakeVisibility(),
+      onError,
+    });
+    s.start();
+    await vi.advanceTimersByTimeAsync(ACTIVE_INTERVAL_MS);
+    expect(onError).toHaveBeenCalledWith('t', expect.any(Error));
+    expect(refresh).toHaveBeenCalledTimes(2);
+    s.stop();
+  });
 });

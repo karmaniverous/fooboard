@@ -5,15 +5,22 @@
  * and kept fresh by the poll scheduler (C-16). Plain TypeScript with a
  * subscribe API; every update publishes a new model object.
  *
+ * Poll targets are GitHub repos (all rows reading one repo with one token,
+ * fetched together) and Amplify rows. A target never refreshes twice at
+ * once: polling and `refreshAll` share its in-flight refresh.
+ *
  * @module
  */
+import { group, unique } from 'radash';
+
 import { resolveCredentialId } from '@/domain/config/credentialRefs';
 import type { Dashboard } from '@/domain/config/dashboard';
 import type { AmplifyRow, GithubRow } from '@/domain/config/row';
-import { type GitHubReader, isOverPollingShare } from '@/lib/github';
+import type { CompareResult, GitHubReader } from '@/lib/github';
+import { isOverPollingShare } from '@/lib/github';
 
 import { refreshAmplifyRow } from './amplifyRow';
-import { refreshGithubRow, repoRef } from './githubRow';
+import { type DatedBranch, refreshGithubRepo, repoRef } from './githubRow';
 import {
   createPollScheduler,
   type PollTarget,
@@ -39,6 +46,15 @@ export interface BoardEngine {
   subscribe(listener: (model: BoardModel) => void): () => void;
 }
 
+/** What a provider refresh yields per cell, before staleness. */
+type CellView = Pick<BoardCell, 'derivation' | 'active'>;
+
+/** The GitHub token a row reads with, and its reader if entered. */
+interface GithubAccess {
+  credentialId: string;
+  reader: GitHubReader | undefined;
+}
+
 const emptyModel = (): BoardModel => ({
   cells: {},
   unmapped: [],
@@ -53,22 +69,18 @@ export function createBoardEngine({
   timers,
   visibility,
   now = Date.now,
+  onError,
 }: {
   dashboard: Dashboard;
   providers: EngineProviders;
   timers?: Timers;
   visibility?: Visibility;
   now?: () => number;
+  onError?: (targetId: string, err: unknown) => void;
 }): BoardEngine {
-  const { stages, mapping } = dashboard;
-  const { defaultCredentials } = dashboard;
+  const { stages, mapping, defaultCredentials } = dashboard;
 
-  /** The GitHub token a row reads with: its override, else the dashboard
-   * default (spec.md C-1a). */
-  interface GithubAccess {
-    credentialId: string;
-    reader: GitHubReader | undefined;
-  }
+  /** A row's override, else the dashboard default (spec.md C-1a). */
   const githubAccess = (override?: string): GithubAccess | undefined => {
     const credentialId = resolveCredentialId(
       defaultCredentials,
@@ -81,81 +93,146 @@ export function createBoardEngine({
   };
 
   let model = emptyModel();
+  const unmappedByTarget = new Map<string, UnmappedRun[]>();
   const listeners = new Set<(m: BoardModel) => void>();
   const publish = (next: BoardModel): void => {
     model = next;
     for (const listener of listeners) listener(model);
   };
 
-  const applyRow = (
-    rowId: string,
-    cells: Partial<Record<string, BoardCell['derivation']>>,
-    staleness: Partial<Record<string, CellStaleness>>,
+  const budgetsWith = (access: GithubAccess | undefined) =>
+    access?.reader
+      ? { ...model.budgets, [access.credentialId]: access.reader.getBudget() }
+      : model.budgets;
+
+  /** Publish one target's rows, its unmapped runs and the token's budget. */
+  const apply = (
+    targetId: string,
+    rows: Record<
+      string,
+      {
+        cells: Partial<Record<string, CellView>>;
+        staleness: Record<string, CellStaleness>;
+      }
+    >,
     unmapped: UnmappedRun[],
     access: GithubAccess | undefined,
   ): void => {
-    const nextCells = { ...model.cells };
-    for (const stage of stages) {
-      const derivation = cells[stage.id];
-      if (!derivation) continue;
-      nextCells[cellKey(rowId, stage.id)] = {
-        rowId,
-        stageId: stage.id,
-        derivation,
-        ...(staleness[stage.id] ?? { badge: undefined }),
-      };
+    const cells = { ...model.cells };
+    const refreshedAt = { ...model.refreshedAt };
+    for (const [rowId, row] of Object.entries(rows)) {
+      for (const stage of stages) {
+        const view = row.cells[stage.id];
+        if (!view) continue;
+        cells[cellKey(rowId, stage.id)] = {
+          rowId,
+          stageId: stage.id,
+          ...view,
+          ...(row.staleness[stage.id] ?? { badge: undefined }),
+        };
+      }
+      refreshedAt[rowId] = now();
     }
+    unmappedByTarget.set(targetId, unmapped);
     publish({
-      cells: nextCells,
-      unmapped: [
-        ...model.unmapped.filter((u) => u.rowId !== rowId),
-        ...unmapped,
-      ],
-      budgets: access?.reader
-        ? { ...model.budgets, [access.credentialId]: access.reader.getBudget() }
-        : model.budgets,
-      refreshedAt: { ...model.refreshedAt, [rowId]: now() },
+      cells,
+      unmapped: unique(
+        [...unmappedByTarget.values()].flat(),
+        (u) => `${u.repo}#${String(u.runId)}`,
+      ),
+      budgets: budgetsWith(access),
+      refreshedAt,
     });
   };
 
-  /** Badges are best-effort: a failed compare leaves the row unbadged. */
+  /** Rate limited: keep the cells, but record the budget GitHub reported. */
+  const applyBudgetOnly = (access: GithubAccess | undefined): void => {
+    publish({ ...model, budgets: budgetsWith(access) });
+  };
+
+  /** Staleness for one row. Compares are shared across the rows of one
+   * refresh through `compare`; badges are best-effort. */
   const stalenessFor = async (
     reader: GitHubReader | undefined,
     repo: string,
-    cells: Record<string, BoardCell['derivation']>,
-    branches: { name: string; updatedAt: string }[] | undefined,
+    cells: Record<string, CellView>,
+    branches: DatedBranch[] | undefined,
+    compare: (base: string, head: string) => Promise<CompareResult>,
   ): Promise<Record<string, CellStaleness>> => {
     if (!reader) return {};
     try {
-      const ref = repoRef(repo);
       const dated =
         branches ??
-        (await reader.listBranches(ref)).map((b) => ({
+        (await reader.listBranches(repoRef(repo))).map((b) => ({
           name: b.name,
           updatedAt: new Date(0).toISOString(),
         }));
-      return await rowStaleness(stages, cells, dated, (base, head) =>
-        reader.compare(ref, base, head),
+      const derivations = Object.fromEntries(
+        Object.entries(cells).map(([id, c]) => [id, c.derivation]),
       );
+      return await rowStaleness(stages, derivations, dated, compare);
     } catch {
       return {};
     }
   };
 
-  const refreshGithub = async (row: GithubRow): Promise<void> => {
-    const access = githubAccess(row.credentialId);
-    const result = await refreshGithubRow(row, stages, mapping, access?.reader);
-    if (result.kind === 'rate-limited') return;
-    const staleness =
-      result.branches.length > 0
-        ? await stalenessFor(
-            access?.reader,
-            row.repo,
-            result.cells,
-            result.branches,
-          )
-        : {};
-    applyRow(row.id, result.cells, staleness, result.unmapped, access);
+  /** One compare per branch pair within a refresh. */
+  const compareOnce = (reader: GitHubReader, repo: string) => {
+    const seen = new Map<string, Promise<CompareResult>>();
+    return (base: string, head: string): Promise<CompareResult> => {
+      const key = `${base}...${head}`;
+      let pending = seen.get(key);
+      if (!pending) {
+        pending = reader.compare(repoRef(repo), base, head);
+        seen.set(key, pending);
+      }
+      return pending;
+    };
+  };
+
+  const githubRows = dashboard.rows.filter(
+    (r): r is GithubRow => r.type === 'github',
+  );
+  const rowsByRepo = group(githubRows, (r) => r.repo);
+
+  const refreshGithubGroup = async (
+    targetId: string,
+    rows: GithubRow[],
+  ): Promise<void> => {
+    const first = rows.at(0);
+    if (!first) return;
+    const access = githubAccess(first.credentialId);
+    const result = await refreshGithubRepo(
+      rows,
+      rowsByRepo[first.repo] ?? rows,
+      stages,
+      mapping,
+      access?.reader,
+    );
+    if (result.kind === 'rate-limited') {
+      applyBudgetOnly(access);
+      return;
+    }
+    const reader = access?.reader;
+    const compare = reader ? compareOnce(reader, first.repo) : undefined;
+    const applied: Parameters<typeof apply>[1] = {};
+    for (const row of rows) {
+      const cells = result.rows[row.id] ?? {};
+      applied[row.id] = {
+        cells,
+        staleness:
+          compare && result.branches.length > 0
+            ? await stalenessFor(
+                reader,
+                row.repo,
+                cells,
+                result.branches,
+                compare,
+              )
+            : {},
+      };
+    }
+    apply(targetId, applied, result.unmapped, access);
   };
 
   const refreshAmplify = async (row: AmplifyRow): Promise<void> => {
@@ -165,29 +242,77 @@ export function createBoardEngine({
       defaultCredentials,
       (id) => providers.amplify(id),
     );
-    if (result.kind === 'rate-limited') return;
     const access = githubAccess(row.githubCredentialId);
-    const staleness = await stalenessFor(
-      access?.reader,
-      row.repo,
-      result.cells,
-      undefined,
-    );
-    applyRow(row.id, result.cells, staleness, [], access);
+    if (result.kind === 'rate-limited') {
+      applyBudgetOnly(access);
+      return;
+    }
+    const cells: Record<string, CellView> = {};
+    for (const [stageId, derivation] of Object.entries(result.cells)) {
+      cells[stageId] = {
+        derivation,
+        active:
+          derivation.kind === 'ok' &&
+          (derivation.status === 'started' || derivation.status === 'queued'),
+      };
+    }
+    const reader = access?.reader;
+    const staleness = reader
+      ? await stalenessFor(
+          reader,
+          row.repo,
+          cells,
+          undefined,
+          compareOnce(reader, row.repo),
+        )
+      : {};
+    apply(row.id, { [row.id]: { cells, staleness } }, [], access);
   };
 
-  const targets: PollTarget[] = dashboard.rows.map((row) => ({
-    id: row.id,
-    refresh: () =>
-      row.type === 'github' ? refreshGithub(row) : refreshAmplify(row),
-    isActive: () =>
-      stages.some((s) => {
-        const d = model.cells[cellKey(row.id, s.id)]?.derivation;
-        return (
-          d?.kind === 'ok' && (d.status === 'started' || d.status === 'queued')
-        );
+  // GitHub targets: the rows reading one repo with one token.
+  const githubGroups = group(githubRows, (r) =>
+    JSON.stringify([
+      githubAccess(r.credentialId)?.credentialId ?? null,
+      r.repo,
+    ]),
+  );
+
+  const inFlight = new Map<string, Promise<void>>();
+  /** Join a target's running refresh rather than starting another. */
+  const once = (id: string, refresh: () => Promise<void>): Promise<void> => {
+    let pending = inFlight.get(id);
+    if (!pending) {
+      pending = refresh().finally(() => inFlight.delete(id));
+      inFlight.set(id, pending);
+    }
+    return pending;
+  };
+
+  const isActive = (rowIds: readonly string[]): boolean =>
+    rowIds.some((rowId) =>
+      stages.some((s) => model.cells[cellKey(rowId, s.id)]?.active === true),
+    );
+
+  const targets: PollTarget[] = [
+    ...Object.entries(githubGroups).map(([key, rows = []]) => {
+      const id = `github:${key}`;
+      return {
+        id,
+        refresh: () => once(id, () => refreshGithubGroup(id, rows)),
+        isActive: () => isActive(rows.map((r) => r.id)),
+      };
+    }),
+    ...dashboard.rows
+      .filter((r): r is AmplifyRow => r.type === 'amplify')
+      .map((row) => {
+        const id = `amplify:${row.id}`;
+        return {
+          id,
+          refresh: () => once(id, () => refreshAmplify(row)),
+          isActive: () => isActive([row.id]),
+        };
       }),
-  }));
+  ];
 
   const scheduler = createPollScheduler({
     targets,
@@ -195,6 +320,7 @@ export function createBoardEngine({
       Object.values(model.budgets).some((b) => b && isOverPollingShare(b)),
     timers,
     visibility,
+    onError,
   });
 
   return {

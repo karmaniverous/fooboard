@@ -18,7 +18,7 @@ import {
   type StalenessBadge,
 } from '@/domain/derivation';
 import { matchesBranchPattern } from '@/domain/matching/branchPattern';
-import type { CompareResult } from '@/lib/github';
+import { type CompareResult, RateLimitedError } from '@/lib/github';
 
 import type { DatedBranch } from './githubRow';
 import type { CompareDetail } from './types';
@@ -72,7 +72,16 @@ export async function rowStaleness(
       result[stage.id] = { badge: undefined };
       continue;
     }
-    const counts = await compare(own, source);
+    let counts: CompareResult;
+    try {
+      counts = await compare(own, source);
+    } catch (err) {
+      // One failed compare unbadges only its cell; once rate limited, the
+      // rest wait for the next poll, keeping the badges already computed.
+      result[stage.id] = { badge: undefined };
+      if (err instanceof RateLimitedError) break;
+      continue;
+    }
     result[stage.id] = {
       badge: deriveStalenessBadge({
         cellBranch: own,

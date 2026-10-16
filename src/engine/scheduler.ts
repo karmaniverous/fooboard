@@ -58,9 +58,13 @@ export function createPollScheduler({
   overBudget,
   timers = globalThis,
   visibility = documentVisibility,
+  onError = () => undefined,
 }: {
   targets: readonly PollTarget[];
   overBudget: () => boolean;
+  /** Called when a refresh throws (providers normally map their own errors
+   * to cell states, so this means a bug or an unexpected failure). */
+  onError?: (targetId: string, err: unknown) => void;
   timers?: Timers;
   visibility?: Visibility;
 }): PollScheduler {
@@ -96,11 +100,12 @@ export function createPollScheduler({
     running.add(target.id);
     try {
       await target.refresh();
+    } catch (err) {
+      onError(target.id, err);
     } finally {
       running.delete(target.id);
-    }
-    if (live()) {
-      schedule(target, intervalFor(target));
+      // Keep polling after a failure; the next refresh may succeed.
+      if (live()) schedule(target, intervalFor(target));
     }
   }
 

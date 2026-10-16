@@ -1,10 +1,12 @@
 /**
- * Refresh one GitHub row (spec.md §4.3.2-4.3.5): one runs request and one
- * branches request per repo, then, per stage, jobs for the newest candidate
- * runs until one has relevant jobs (jobs are fetched at most once per run).
- * Provider errors become cell states: a missing or rejected token shows
- * *needs credential*, rate limiting keeps the previous cells, anything else
- * shows *error*.
+ * Refresh the GitHub rows that read one repository with one token (spec.md
+ * §4.3.2-4.3.5). Several rows can share a repo (keyed monorepo rows), so
+ * runs and branches are read once per repo, and each run's jobs at most
+ * once, however many rows and stages need them. Unmapped runs are judged
+ * against every row on the repo, so a run another row shows isn't
+ * reported. Provider errors become cell states: a missing or rejected
+ * token shows *needs credential*, rate limiting keeps the previous cells,
+ * anything else shows *error*.
  *
  * @module
  */
@@ -21,6 +23,7 @@ import {
   type GithubRunWithJobs,
   isCandidateRun,
   type ProviderFailure,
+  relevantJobs,
 } from '@/domain/derivation';
 import { matchesBranchPattern } from '@/domain/matching/branchPattern';
 import {
@@ -45,17 +48,23 @@ export interface DatedBranch {
   updatedAt: string;
 }
 
-/** A refreshed row: per-stage derivations, unmapped runs, and the repo's
- * branches for staleness. */
-export interface GithubRowRefresh {
+/** One derived cell and whether its run is still going (jobs queued or in
+ * progress), which the displayed status alone can't tell. */
+interface CellView {
+  derivation: GithubCellDerivation;
+  active: boolean;
+}
+
+/** Refreshed rows of one repo: cells keyed by row then stage. */
+export interface GithubRepoRefresh {
   kind: 'refreshed';
-  cells: Record<string, GithubCellDerivation>;
+  rows: Record<string, Record<string, CellView>>;
   unmapped: UnmappedRun[];
   branches: DatedBranch[];
 }
 
 /** Rate limited: keep showing the previous cells (spec.md §4.3.5). */
-export interface GithubRowRateLimited {
+export interface GithubRepoRateLimited {
   kind: 'rate-limited';
 }
 
@@ -65,41 +74,52 @@ export const repoRef = (repo: string): { owner: string; repo: string } => {
   return { owner, repo: name };
 };
 
-/** Every stage shows the same empty state (missing token, error). */
-function emptyRow(
-  row: GithubRow,
+/** Every cell of every row shows the same empty state. */
+function emptyRows(
+  rows: readonly GithubRow[],
   stages: readonly Stage[],
   mapping: MappingSettings,
   credentialStatus: CredentialStatus,
   providerFailure?: ProviderFailure,
-): GithubRowRefresh {
-  const cells = objectify(
-    stages,
-    (s) => s.id,
-    (s) =>
-      deriveGithubCell({
-        runs: [],
-        mapping,
-        branchPattern: s.branchPattern,
-        rowKeyTests: row.rowKeyTests,
-        branchExists: false,
-        credentialStatus,
-        providerFailure,
+): GithubRepoRefresh {
+  const cellsOf = (row: GithubRow) =>
+    objectify(
+      stages,
+      (s) => s.id,
+      (s): CellView => ({
+        active: false,
+        derivation: deriveGithubCell({
+          runs: [],
+          mapping,
+          branchPattern: s.branchPattern,
+          rowKeyTests: row.rowKeyTests,
+          branchExists: false,
+          credentialStatus,
+          providerFailure,
+        }),
       }),
-  );
-  return { kind: 'refreshed', cells, unmapped: [], branches: [] };
+    );
+  return {
+    kind: 'refreshed',
+    rows: objectify(rows, (r) => r.id, cellsOf),
+    unmapped: [],
+    branches: [],
+  };
 }
 
-/** Refresh one GitHub row; `reader` is `undefined` if the token is missing. */
-export async function refreshGithubRow(
-  row: GithubRow,
+/** Refresh `rows` (one repo, one token). `repoRows` are all the
+ * dashboard's rows on that repo, for unmapped classification. `reader` is
+ * `undefined` if the token is missing. */
+export async function refreshGithubRepo(
+  rows: readonly GithubRow[],
+  repoRows: readonly GithubRow[],
   stages: readonly Stage[],
   mapping: MappingSettings,
   reader: GitHubReader | undefined,
-): Promise<GithubRowRefresh | GithubRowRateLimited> {
-  if (!reader) return emptyRow(row, stages, mapping, 'missing');
+): Promise<GithubRepoRefresh | GithubRepoRateLimited> {
+  if (!reader) return emptyRows(rows, stages, mapping, 'missing');
   try {
-    return await refreshWith(row, stages, mapping, reader);
+    return await refreshWith(rows, repoRows, stages, mapping, reader);
   } catch (err) {
     const outcome = failureOutcome(err, {
       isRateLimit: (e) => e instanceof RateLimitedError,
@@ -107,8 +127,8 @@ export async function refreshGithubRow(
     });
     return outcome.kind === 'rate-limited'
       ? outcome
-      : emptyRow(
-          row,
+      : emptyRows(
+          rows,
           stages,
           mapping,
           outcome.credentialStatus,
@@ -118,12 +138,14 @@ export async function refreshGithubRow(
 }
 
 async function refreshWith(
-  row: GithubRow,
+  rows: readonly GithubRow[],
+  repoRows: readonly GithubRow[],
   stages: readonly Stage[],
   mapping: MappingSettings,
   reader: GitHubReader,
-): Promise<GithubRowRefresh> {
-  const ref = repoRef(row.repo);
+): Promise<GithubRepoRefresh> {
+  const repo = rows[0]?.repo ?? '';
+  const ref = repoRef(repo);
   const raw = await reader.listWorkflowRuns(ref, {
     perPage: 100,
     excludePullRequests: true,
@@ -134,18 +156,19 @@ async function refreshWith(
   }));
   const branchNames = (await reader.listBranches(ref)).map((b) => b.name);
 
-  const fetched = new Map<number, GithubRunWithJobs>();
-  const withJobs = async (run: WorkflowRun): Promise<GithubRunWithJobs> => {
-    const cached = fetched.get(run.id);
-    if (cached) return cached;
-    const jobs = await reader.listRunJobs(ref, run.id, { filter: 'latest' });
-    const entry = mapRunWithJobs(run, jobs);
-    fetched.set(run.id, entry);
+  const fetched = new Map<number, Promise<GithubRunWithJobs>>();
+  const withJobs = (run: WorkflowRun): Promise<GithubRunWithJobs> => {
+    let entry = fetched.get(run.id);
+    if (!entry) {
+      entry = reader
+        .listRunJobs(ref, run.id, { filter: 'latest' })
+        .then((jobs) => mapRunWithJobs(run, jobs));
+      fetched.set(run.id, entry);
+    }
     return entry;
   };
 
-  const cells: Record<string, GithubCellDerivation> = {};
-  for (const stage of stages) {
+  const cellFor = async (row: GithubRow, stage: Stage): Promise<CellView> => {
     const input = {
       mapping,
       branchPattern: stage.branchPattern,
@@ -159,28 +182,47 @@ async function refreshWith(
       .filter((_, i) => isCandidateRun(runs[i], mapping, stage.branchPattern))
       .slice(0, MAX_RUNS_PER_CELL);
     const seen: GithubRunWithJobs[] = [];
-    let derived = deriveGithubCell({ ...input, runs: seen });
+    let derivation = deriveGithubCell({ ...input, runs: seen });
     for (const run of candidates) {
       seen.push(await withJobs(run));
-      derived = deriveGithubCell({ ...input, runs: seen });
-      if (derived.kind === 'ok') break;
+      derivation = deriveGithubCell({ ...input, runs: seen });
+      if (derivation.kind === 'ok') break;
     }
-    cells[stage.id] = derived;
+    const decided = derivation.kind === 'ok' ? seen.at(-1) : undefined;
+    const active = decided
+      ? relevantJobs(
+          decided.jobs,
+          decided.run.workflowName,
+          mapping.phases,
+          row.rowKeyTests,
+        ).some(({ job }) => job.status !== 'completed')
+      : false;
+    return { derivation, active };
+  };
+
+  const result: Record<string, Record<string, CellView>> = {};
+  for (const row of rows) {
+    const cells: Record<string, CellView> = {};
+    for (const stage of stages) cells[stage.id] = await cellFor(row, stage);
+    result[row.id] = cells;
   }
 
+  const settled = new Map<number, GithubRunWithJobs>();
+  for (const [id, entry] of fetched) settled.set(id, await entry);
   return {
     kind: 'refreshed',
-    cells,
-    unmapped: unmappedRuns(row, stages, mapping, runs, fetched),
+    rows: result,
+    unmapped: unmappedRuns(repo, repoRows, stages, mapping, runs, settled),
     branches: datedBranches(branchNames, runs),
   };
 }
 
-/** Runs the board couldn't place. Branch reasons need no jobs; job-based
- * reasons are reported only for runs whose jobs were fetched (older
- * candidates are superseded, not unmapped). */
+/** Runs no row on the repo could place. Branch reasons need no jobs;
+ * job-based reasons are reported only for runs whose jobs were fetched
+ * (older candidates are superseded, not unmapped). */
 function unmappedRuns(
-  row: GithubRow,
+  repo: string,
+  repoRows: readonly GithubRow[],
   stages: readonly Stage[],
   mapping: MappingSettings,
   runs: readonly GithubRunWithJobs[],
@@ -188,12 +230,17 @@ function unmappedRuns(
 ): UnmappedRun[] {
   return runs.flatMap((entry) => {
     const full = fetched.get(entry.run.id);
-    const reason = classifyUnmappedRun(full ?? entry, stages, [row], mapping);
+    const reason = classifyUnmappedRun(
+      full ?? entry,
+      stages,
+      repoRows,
+      mapping,
+    );
     if (!reason) return [];
     if (reason.kind !== 'no-stage-matches-branch' && !full) return [];
     return [
       {
-        rowId: row.id,
+        repo,
         runId: entry.run.id,
         workflowName: entry.run.workflowName,
         branch: entry.run.headBranch,

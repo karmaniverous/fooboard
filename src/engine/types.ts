@@ -30,13 +30,18 @@ export interface BoardCell {
   rowId: string;
   stageId: string;
   derivation: GithubCellDerivation | AmplifyCellDerivation;
+  /** A job in the cell's run is still queued or running; drives the fast
+   * poll even when the displayed status is final (e.g. a failed test with
+   * a deploy still running). */
+  active: boolean;
   badge: StalenessBadge;
   compare?: CompareDetail;
 }
 
 /** A run the board couldn't place, for the Unmapped runs panel (C-15). */
 export interface UnmappedRun {
-  rowId: string;
+  /** `owner/name`; a run is listed once per repo, not per row. */
+  repo: string;
   runId: number;
   workflowName: string;
   branch: string | null;
@@ -57,8 +62,9 @@ export interface BoardModel {
 }
 
 /** The key of one cell in `BoardModel.cells`. */
+/** Ids may contain any character, so the pair is encoded unambiguously. */
 export const cellKey = (rowId: string, stageId: string): string =>
-  `${rowId}:${stageId}`;
+  JSON.stringify([rowId, stageId]);
 
 /** Readers for the dashboard's credentials; `undefined` means the
  * credential is missing (no token or key entered), so its cells show

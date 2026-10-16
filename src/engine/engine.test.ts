@@ -72,12 +72,12 @@ describe('board engine over the demo', () => {
 
   it('lists the two unmapped demo runs with their reasons', async () => {
     const reasons = (await demoModel()).unmapped.map(
-      (u) => `${u.rowId}:${u.reason.kind}`,
+      (u) => `${u.repo}:${u.reason.kind}`,
     );
     expect(reasons).toEqual(
       expect.arrayContaining([
-        'api-core:no-stage-matches-branch',
-        'web-app:no-phase-matches-job',
+        'acme/api-core:no-stage-matches-branch',
+        'acme/web-app:no-phase-matches-job',
       ]),
     );
   });
@@ -148,8 +148,18 @@ describe('board engine credentials and limits', () => {
     vi.spyOn(reader, 'listWorkflowRuns').mockRejectedValue(
       new RateLimitedError('runs', 0),
     );
+    const exhausted = {
+      limit: 5000,
+      remaining: 0,
+      reset: 0,
+      used: 5000,
+      status: 'low' as const,
+    };
+    vi.spyOn(reader, 'getBudget').mockReturnValue(exhausted);
     await engine.refreshAll();
     expect(cell(engine.getModel(), 'api-core', 'dev')).toBe(before);
+    // The budget GitHub reported still reaches the model and scheduler.
+    expect(engine.getModel().budgets['demo-github']).toEqual(exhausted);
   });
 });
 
@@ -176,5 +186,69 @@ describe('board engine polling', () => {
     } finally {
       vi.useRealTimers();
     }
+  });
+});
+
+describe('board engine review regressions', () => {
+  const twoRowsOnApiCore = {
+    ...demoDashboard,
+    rows: [
+      ...demoDashboard.rows,
+      {
+        type: 'github' as const,
+        id: 'api-core-worker',
+        repo: 'acme/api-core',
+        displayName: 'api-core worker',
+        rowKeyTests: [
+          {
+            field: 'jobName' as const,
+            operator: 'contains' as const,
+            value: 'deploy',
+          },
+        ],
+      },
+    ],
+  };
+
+  it('reads a shared repo once and lists its unmapped runs once', async () => {
+    const reader = createDemoGitHubReader(() => 0);
+    const runs = vi.spyOn(reader, 'listWorkflowRuns');
+    const engine = createBoardEngine({
+      dashboard: twoRowsOnApiCore,
+      providers: { ...demoProviders(() => 0), github: () => reader },
+      visibility: visible,
+    });
+    await engine.refreshAll();
+    const apiCoreCalls = runs.mock.calls.filter(([r]) => r.repo === 'api-core');
+    expect(apiCoreCalls).toHaveLength(1);
+    const hotfix = engine
+      .getModel()
+      .unmapped.filter((u) => u.branch === 'hotfix/login');
+    expect(hotfix).toHaveLength(1);
+  });
+
+  it('joins a running refresh instead of overlapping it', async () => {
+    const reader = createDemoGitHubReader(() => 0);
+    const runs = vi.spyOn(reader, 'listWorkflowRuns');
+    const engine = createBoardEngine({
+      dashboard: demoDashboard,
+      providers: { ...demoProviders(() => 0), github: () => reader },
+      visibility: visible,
+    });
+    await Promise.all([engine.refreshAll(), engine.refreshAll()]);
+    expect(runs.mock.calls.filter(([r]) => r.repo === 'api-core')).toHaveLength(
+      1,
+    );
+  });
+
+  it('marks a cell active while a job is queued, whatever it displays', async () => {
+    const model = await demoModel();
+    // Partial success: deploy done, test still queued.
+    expect(cell(model, 'web-app', 'test')?.active).toBe(true);
+    expect(cell(model, 'mobile-bff', 'prod')?.active).toBe(false);
+  });
+
+  it('keeps cells apart when ids contain the key separator', () => {
+    expect(cellKey('a:b', 'c')).not.toBe(cellKey('a', 'b:c'));
   });
 });
