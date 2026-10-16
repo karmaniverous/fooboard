@@ -13,7 +13,7 @@ import { demoDashboard } from '@/demo/board';
 import { createConfigStore } from './configStore';
 import { createCredentialStore } from './credentialStore';
 import { createAppStores } from './index';
-import { clearAppData, memoryStorage } from './keyValue';
+import { clearAppData, memoryStorage, webStorage } from './keyValue';
 import { createPreferencesStore } from './preferencesStore';
 
 describe('config store', () => {
@@ -139,5 +139,17 @@ describe('createAppStores reset', () => {
     expect(stores.credentials.get('a')).toBeUndefined();
     expect(stores.credentials.get('b')).toBeUndefined();
     expect(kv.keys()).toEqual([]);
+  });
+});
+
+describe('webStorage', () => {
+  it('adapts browser local storage, including listing keys', () => {
+    localStorage.clear();
+    const kv = webStorage(localStorage);
+    kv.setItem('fooboard:a', '1');
+    kv.setItem('other', '2');
+    clearAppData(kv);
+    expect(kv.keys()).toEqual(['other']);
+    expect(kv.getItem('other')).toBe('2');
   });
 });

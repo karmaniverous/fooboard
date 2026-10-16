@@ -16,6 +16,8 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { site } from '@/lib/site';
 
+import { ExternalLink } from './ExternalLink';
+
 const logoUrl = `${import.meta.env.BASE_URL}favicon.svg`;
 
 export function Header(): React.JSX.Element {
@@ -44,14 +46,14 @@ export function Header(): React.JSX.Element {
           </DropdownMenuItem>
           <DropdownMenuSeparator />
           <DropdownMenuItem asChild>
-            <a href={site.xUrl} target="_blank" rel="noopener noreferrer">
+            <ExternalLink unstyled href={site.xUrl}>
               News &amp; support on X {site.xHandle}
-            </a>
+            </ExternalLink>
           </DropdownMenuItem>
           <DropdownMenuItem asChild>
-            <a href={site.issuesUrl} target="_blank" rel="noopener noreferrer">
+            <ExternalLink unstyled href={site.issuesUrl}>
               Report an issue
-            </a>
+            </ExternalLink>
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>

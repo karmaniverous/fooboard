@@ -55,7 +55,8 @@ interface GithubAccess {
   reader: GitHubReader | undefined;
 }
 
-const emptyModel = (): BoardModel => ({
+/** A model with nothing loaded yet. */
+export const emptyModel = (): BoardModel => ({
   cells: {},
   unmapped: [],
   budgets: {},

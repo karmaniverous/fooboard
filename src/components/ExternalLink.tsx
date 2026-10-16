@@ -13,10 +13,15 @@ import { cn } from '@/lib/utils';
 type ExternalLinkProps = Omit<
   AnchorHTMLAttributes<HTMLAnchorElement>,
   'target' | 'rel'
-> & { href: string };
+> & {
+  href: string | undefined;
+  /** Skip the underlined text-link style (cells, badges, menu items). */
+  unstyled?: boolean;
+};
 
 export function ExternalLink({
   className,
+  unstyled = false,
   ...props
 }: ExternalLinkProps): React.JSX.Element {
   return (
@@ -24,7 +29,7 @@ export function ExternalLink({
       target="_blank"
       rel="noopener noreferrer"
       className={cn(
-        'underline underline-offset-2 hover:text-foreground',
+        !unstyled && 'underline underline-offset-2 hover:text-foreground',
         className,
       )}
       {...props}

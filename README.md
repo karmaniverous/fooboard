@@ -21,9 +21,22 @@ separately) for the full product spec.
   - the GitHub and Amplify providers (`src/lib/github/`, `src/lib/amplify/`);
   - a fictional `acme/*` demo board with demo providers (`src/demo/`);
   - the board engine and poll scheduler (`src/engine/`), which turn provider data into the cell model.
+- **The board** (`src/board/`):
+  - cells in solid status colours, with as much detail as their size allows;
+  - behind/diverged badges linking to the GitHub compare page, and empty states;
+  - a hover tooltip, and a detail sheet on touch;
+  - dividers with group labels;
+  - fit, zoom (Ctrl/Cmd + wheel, pinch, the buttons, or `+` `-` `0`) and Compact/Full rows;
+  - summary counts that filter the board, and the remaining GitHub budget.
+- **Try the demo**: `/demo`, or _Try the demo_ on the home page, shows the demo board with no account.
+- **Local storage** (`src/storage/`), all in this browser:
+  - dashboards, saved under a versioned schema; data that can't be read is reported and never overwritten;
+  - zoom and row height, saved per dashboard on each device;
+  - tokens and AWS keys, kept only for the current tab unless _Remember on this device_ is ticked, with _Forget_ to remove them;
+  - _Reset_, which clears only fooboard's data.
 - **Browser spikes**: two removable dev pages (below).
 
-The board UI that renders the engine's model comes next.
+Creating and editing your own dashboards comes next.
 
 ## Dev commands
 

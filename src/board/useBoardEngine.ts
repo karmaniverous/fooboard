@@ -12,21 +12,15 @@ import type { Dashboard } from '@/domain/config/dashboard';
 import {
   type BoardModel,
   createBoardEngine,
+  emptyModel,
   type EngineProviders,
 } from '@/engine';
-
-const EMPTY: BoardModel = {
-  cells: {},
-  unmapped: [],
-  budgets: {},
-  refreshedAt: {},
-};
 
 export function useBoardEngine(
   dashboard: Dashboard,
   providers: EngineProviders,
 ): { model: BoardModel; now: number } {
-  const [model, setModel] = useState<BoardModel>(EMPTY);
+  const [model, setModel] = useState<BoardModel>(emptyModel);
   const [now, setNow] = useState(() => Date.now());
 
   useEffect(() => {

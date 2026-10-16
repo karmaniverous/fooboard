@@ -6,7 +6,7 @@
  * @module
  */
 export { demoProviders } from './demoProviders';
-export { createBoardEngine } from './engine';
+export { createBoardEngine, emptyModel } from './engine';
 export {
   type BoardCell,
   type BoardModel,

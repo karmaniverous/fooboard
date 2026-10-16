@@ -15,23 +15,26 @@ import { type BoardModel, cellKey } from '@/engine';
 import { cn } from '@/lib/utils';
 
 import { Cell } from './Cell';
-import { CellDetail } from './CellDetail';
+import { CellDetail, CellSheet, CellTooltip } from './CellDetail';
 import { detailLevel } from './cellView';
 import { type CellFilter, matchesFilter } from './summary';
 
-const DIVIDER_ROW: Record<DividerStyle, string> = {
-  thin: 'border-t border-border',
-  thick: 'border-t-2 border-foreground/40',
-  double: 'border-t-4 border-double border-foreground/40',
-  dashed: 'border-t border-dashed border-foreground/40',
-  blank: 'pt-2',
-};
-const DIVIDER_COL: Record<DividerStyle, string> = {
-  thin: 'border-l border-border',
-  thick: 'border-l-2 border-foreground/40',
-  double: 'border-l-4 border-double border-foreground/40',
-  dashed: 'border-l border-dashed border-foreground/40',
-  blank: 'pl-2',
+/** Divider line per style, drawn on the top (rows) or left (stages). */
+const DIVIDER: Record<DividerStyle, { top: string; left: string }> = {
+  thin: { top: 'border-t border-border', left: 'border-l border-border' },
+  thick: {
+    top: 'border-t-2 border-foreground/40',
+    left: 'border-l-2 border-foreground/40',
+  },
+  double: {
+    top: 'border-t-4 border-double border-foreground/40',
+    left: 'border-l-4 border-double border-foreground/40',
+  },
+  dashed: {
+    top: 'border-t border-dashed border-foreground/40',
+    left: 'border-l border-dashed border-foreground/40',
+  },
+  blank: { top: 'pt-2', left: 'pl-2' },
 };
 
 const byBefore = (dividers: readonly Divider[]) =>
@@ -156,7 +159,7 @@ export function BoardGrid({
                 className={cn(
                   'truncate px-1 font-semibold',
                   pinTop,
-                  divider && DIVIDER_COL[divider.style],
+                  divider && DIVIDER[divider.style].left,
                 )}
                 title={stage.branchPattern}
               >
@@ -170,14 +173,14 @@ export function BoardGrid({
           // A labelled divider draws its line above the label, which then
           // heads the group; an unlabelled one sits on the row itself.
           const rowLine =
-            divider && !divider.label ? DIVIDER_ROW[divider.style] : undefined;
+            divider && !divider.label ? DIVIDER[divider.style].top : undefined;
           return (
             <Fragment key={row.id}>
               {divider?.label && (
                 <div
                   className={cn(
                     'col-span-full pt-1 text-[0.85em] font-semibold uppercase tracking-wide text-muted-foreground',
-                    DIVIDER_ROW[divider.style],
+                    DIVIDER[divider.style].top,
                   )}
                   role="presentation"
                 >
@@ -209,7 +212,7 @@ export function BoardGrid({
                           !matchesFilter(model.cells[key], filter) &&
                           'opacity-25',
                         rowLine,
-                        colDivider && DIVIDER_COL[colDivider.style],
+                        colDivider && DIVIDER[colDivider.style].left,
                       )}
                     >
                       <Cell
@@ -239,46 +242,16 @@ export function BoardGrid({
       </div>
 
       {tip && !sheet && (
-        <div
-          role="tooltip"
-          className="pointer-events-none fixed z-50 w-80 rounded-lg bg-slate-900 p-3 text-slate-100 shadow-xl"
-          style={{
-            left: Math.min(tip.rect.left, window.innerWidth - 330),
-            top: tip.rect.bottom + 6,
-          }}
-        >
-          {detail(tip.key)}
-        </div>
+        <CellTooltip rect={tip.rect}>{detail(tip.key)}</CellTooltip>
       )}
-
       {sheet && (
-        <div
-          role="dialog"
-          aria-modal
-          aria-label="Cell detail"
-          className="fixed inset-0 z-50 flex items-end bg-black/40"
-          onClick={() => {
+        <CellSheet
+          onClose={() => {
             setSheet(null);
           }}
         >
-          <div
-            className="w-full rounded-t-xl bg-slate-900 p-4 text-slate-100"
-            onClick={(e) => {
-              e.stopPropagation();
-            }}
-          >
-            {detail(sheet)}
-            <button
-              type="button"
-              className="mt-3 text-sm text-sky-400"
-              onClick={() => {
-                setSheet(null);
-              }}
-            >
-              Close
-            </button>
-          </div>
-        </div>
+          {detail(sheet)}
+        </CellSheet>
       )}
     </>
   );

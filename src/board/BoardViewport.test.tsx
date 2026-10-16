@@ -8,6 +8,7 @@ import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
 import { demoDashboard } from '@/demo/board';
+import { emptyModel } from '@/engine';
 import { createAppStores } from '@/storage';
 import { memoryStorage } from '@/storage/keyValue';
 import { StoresContext } from '@/storage/storesContext';
@@ -15,14 +16,12 @@ import { StoresContext } from '@/storage/storesContext';
 import { BoardViewport } from './BoardViewport';
 import { useBoardView } from './useBoardView';
 
-const empty = { cells: {}, unmapped: [], budgets: {}, refreshedAt: {} };
-
 function Harness(): React.JSX.Element {
   const view = useBoardView('demo', 19, 6);
   return (
     <BoardViewport
       dashboard={demoDashboard}
-      model={empty}
+      model={emptyModel()}
       now={0}
       view={view}
     />

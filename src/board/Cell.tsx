@@ -9,6 +9,7 @@
  */
 import { useRef } from 'react';
 
+import { ExternalLink } from '@/components/ExternalLink';
 import type { StatusColors } from '@/domain/config/colors';
 import type { BoardCell } from '@/engine';
 import { cn } from '@/lib/utils';
@@ -113,10 +114,9 @@ export function Cell({
 
   return (
     <div className="relative h-full">
-      <a
+      <ExternalLink
+        unstyled
         href={derivation.linkUrl}
-        target="_blank"
-        rel="noreferrer"
         aria-label={`${meta.label}, ${derivation.branch}`}
         className={cn(
           'flex h-full overflow-hidden rounded-md px-2 font-medium no-underline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-ring',
@@ -159,12 +159,11 @@ export function Cell({
             {details}
           </span>
         )}
-      </a>
+      </ExternalLink>
       {badge && (
-        <a
+        <ExternalLink
+          unstyled
           href={compare?.htmlUrl}
-          target="_blank"
-          rel="noreferrer"
           title={badgeDescription(badge)}
           aria-label={badgeDescription(badge)}
           className={cn(
@@ -175,7 +174,7 @@ export function Cell({
           )}
         >
           {badgeText(badge)}
-        </a>
+        </ExternalLink>
       )}
     </div>
   );

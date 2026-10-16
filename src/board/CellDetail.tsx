@@ -1,10 +1,11 @@
 /**
- * Cell detail (spec.md C-13): what the hover tooltip and the touch detail
- * sheet both show: status, phase, branch, commit, exact time, the
+ * Cell detail (spec.md C-13): the hover tooltip and the touch detail sheet,
+ * and what both show: status, phase, branch, commit, exact time, the
  * behind/diverged commit subjects in both directions, and the links.
  *
  * @module
  */
+import { ExternalLink } from '@/components/ExternalLink';
 import type { BoardCell } from '@/engine';
 
 import {
@@ -72,25 +73,23 @@ export function CellDetail({
             title="Only on this branch"
             subjects={compare.aheadSubjects}
           />
-          <a
+          <ExternalLink
+            unstyled
             href={compare.htmlUrl}
-            target="_blank"
-            rel="noreferrer"
             className="text-sky-400"
           >
             Compare on GitHub
-          </a>
+          </ExternalLink>
         </div>
       )}
       {derivation.kind === 'ok' && derivation.linkUrl && (
-        <a
+        <ExternalLink
+          unstyled
           href={derivation.linkUrl}
-          target="_blank"
-          rel="noreferrer"
           className="text-sky-400"
         >
           Open job
-        </a>
+        </ExternalLink>
       )}
     </div>
   );
@@ -114,6 +113,63 @@ function SubjectList({
           </li>
         ))}
       </ul>
+    </div>
+  );
+}
+
+/** Hover/focus tooltip placed under the cell. */
+export function CellTooltip({
+  rect,
+  children,
+}: {
+  rect: DOMRect;
+  children: React.ReactNode;
+}): React.JSX.Element {
+  return (
+    <div
+      role="tooltip"
+      className="pointer-events-none fixed z-50 w-80 rounded-lg bg-slate-900 p-3 text-slate-100 shadow-xl"
+      style={{
+        left: Math.min(rect.left, window.innerWidth - 330),
+        top: rect.bottom + 6,
+      }}
+    >
+      {children}
+    </div>
+  );
+}
+
+/** Bottom sheet opened by a touch tap; closes on the backdrop or Close. */
+export function CellSheet({
+  onClose,
+  children,
+}: {
+  onClose: () => void;
+  children: React.ReactNode;
+}): React.JSX.Element {
+  return (
+    <div
+      role="dialog"
+      aria-modal
+      aria-label="Cell detail"
+      className="fixed inset-0 z-50 flex items-end bg-black/40"
+      onClick={onClose}
+    >
+      <div
+        className="w-full rounded-t-xl bg-slate-900 p-4 text-slate-100"
+        onClick={(e) => {
+          e.stopPropagation();
+        }}
+      >
+        {children}
+        <button
+          type="button"
+          className="mt-3 text-sm text-sky-400"
+          onClick={onClose}
+        >
+          Close
+        </button>
+      </div>
     </div>
   );
 }

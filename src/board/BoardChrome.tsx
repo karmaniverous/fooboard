@@ -4,6 +4,7 @@
  *
  * @module
  */
+import { ToggleButton } from '@/components/ToggleButton';
 import type { BoardModel } from '@/engine';
 import { cn } from '@/lib/utils';
 
@@ -28,21 +29,17 @@ export function BoardSummary({
   return (
     <div role="group" aria-label="Filter cells" className="flex gap-1.5">
       {FILTERS.map((f) => (
-        <button
+        <ToggleButton
           key={f}
-          type="button"
-          aria-pressed={filter === f}
-          className={cn(
-            'inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-xs',
-            filter === f ? 'bg-foreground text-background' : 'bg-background',
-          )}
+          pressed={filter === f}
+          className="inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5"
           onClick={() => {
             onFilter(filter === f ? null : f);
           }}
         >
           <span aria-hidden className={cn('size-2 rounded-full', DOT[f])} />
           {counts[f]} {f}
-        </button>
+        </ToggleButton>
       ))}
     </div>
   );

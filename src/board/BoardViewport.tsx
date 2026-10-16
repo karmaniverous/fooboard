@@ -14,6 +14,7 @@
 import { Minus, Plus } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 
+import { ToggleButton } from '@/components/ToggleButton';
 import { Button } from '@/components/ui/button';
 import type { Dashboard } from '@/domain/config/dashboard';
 import type { BoardModel } from '@/engine';
@@ -102,22 +103,16 @@ export function BoardViewport({
           className="inline-flex overflow-hidden rounded-md border"
         >
           {(['compact', 'full'] as const).map((h) => (
-            <button
+            <ToggleButton
               key={h}
-              type="button"
-              aria-pressed={rowHeight === h}
-              className={cn(
-                'px-2 py-0.5 text-xs capitalize',
-                rowHeight === h
-                  ? 'bg-foreground text-background'
-                  : 'bg-background',
-              )}
+              pressed={rowHeight === h}
+              className="px-2 py-0.5 capitalize"
               onClick={() => {
                 setRowHeight(h);
               }}
             >
               {h}
-            </button>
+            </ToggleButton>
           ))}
         </div>
         <div className="ml-auto flex items-center gap-1">

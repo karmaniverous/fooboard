@@ -19,7 +19,7 @@
   },
   "description": "fooboard: a free, open-source, client-only browser app showing the deployment state of every repo x stage at a glance, fed directly from GitHub Actions runs and Amplify jobs.",
   "devDependencies": {
-    "@dotenvx/dotenvx": "^2.36.0",
+    "@dotenvx/dotenvx": "^2.37.0",
     "@eslint/js": "^10.0.1",
     "@tailwindcss/vite": "^4.3.3",
     "@testing-library/jest-dom": "^7.0.1",

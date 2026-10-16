@@ -10,7 +10,12 @@ import { fireEvent, render, screen, within } from '@testing-library/react';
 import { beforeAll, describe, expect, it } from 'vitest';
 
 import { demoDashboard } from '@/demo/board';
-import { type BoardModel, createBoardEngine, demoProviders } from '@/engine';
+import {
+  type BoardModel,
+  createBoardEngine,
+  demoProviders,
+  emptyModel,
+} from '@/engine';
 
 import { BoardGrid } from './BoardGrid';
 
@@ -67,5 +72,53 @@ describe('BoardGrid', () => {
     expect(
       screen.getByRole('dialog', { name: 'Cell detail' }),
     ).toBeInTheDocument();
+  });
+
+  it('shows status, commit subjects and links in the hover tooltip', () => {
+    renderBoard();
+    const badge = screen.getAllByLabelText(/commits behind/)[0];
+    const cellLink = badge.parentElement?.querySelector('a');
+    if (!cellLink) throw new Error('cell link not found');
+    fireEvent.mouseEnter(cellLink);
+    const tip = screen.getByRole('tooltip');
+    expect(
+      within(tip).getByText('Missing from this branch'),
+    ).toBeInTheDocument();
+    expect(within(tip).getByText('Compare on GitHub')).toHaveAttribute(
+      'target',
+      '_blank',
+    );
+    expect(within(tip).getByText('Open job')).toBeInTheDocument();
+    fireEvent.mouseLeave(cellLink);
+    expect(screen.queryByRole('tooltip')).toBeNull();
+  });
+
+  it('renders a 40 x 8 board (spec.md step 10 size check)', () => {
+    const template = demoDashboard.rows[0];
+    const stages = Array.from({ length: 8 }, (_, i) => ({
+      id: `s${String(i)}`,
+      name: `Stage ${String(i)}`,
+      branchPattern: 'main',
+    }));
+    const big = {
+      ...demoDashboard,
+      stages,
+      rowDividers: [],
+      columnDividers: [],
+      rows: Array.from({ length: 40 }, (_, i) => ({
+        ...template,
+        id: `r${String(i)}`,
+        displayName: `repo ${String(i)}`,
+      })),
+    };
+    render(
+      <BoardGrid
+        dashboard={big}
+        model={emptyModel()}
+        rowHeight="compact"
+        now={0}
+      />,
+    );
+    expect(screen.getAllByRole('gridcell')).toHaveLength(320);
   });
 });
