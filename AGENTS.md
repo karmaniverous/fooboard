@@ -6,7 +6,7 @@ Standing rules for everyone who changes this repo, human or coding agent. What t
 
 - **One PR at a time.** Each PR ships a meaningful block of features. Never work on two PRs in parallel; start the next from an up-to-date `main` after the previous one is merged.
 - **Branches** are named `feature/<slug>` (lefthook enforces the prefix).
-- **Commit and push** after every green commit. Before every push, check the branch's PR state (`gh pr list --head <branch> --json number,state`); if it is merged or closed, stop.
+- **Commit and push** after every green commit. Before every push, check the branch's PR state with `gh pr list --head <branch> --state all --json number,state` (without `--state all`, merged and closed PRs are hidden and the branch looks PR-free). If any PR on the branch is merged or closed, stop: a merged branch only takes new work through a new PR opened from it, by agreement.
 - **Open the PR as a draft early** so progress is visible; mark it ready only after the pre-review checks below.
 - **Only the maintainer merges, deploys and releases.** Don't edit `CHANGELOG.md` by hand; it is generated at release.
 
