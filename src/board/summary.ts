@@ -1,17 +1,22 @@
 /**
- * Summary header counts (spec.md C-14a): failing, running and behind
- * cells, each usable as a filter that highlights the matching cells. Pure.
+ * Summary header counts (spec.md C-14a): failing, running, behind and
+ * diverged cells, each usable as a filter that highlights the matching cells. Pure.
  *
  * @module
  */
 import type { BoardCell, BoardModel } from '@/engine';
 
 /** A summary category, and the filter it toggles. */
-export type CellFilter = 'failing' | 'running' | 'behind';
+export type CellFilter = 'failing' | 'running' | 'behind' | 'diverged';
 
-export const FILTERS: readonly CellFilter[] = ['failing', 'running', 'behind'];
+export const FILTERS: readonly CellFilter[] = [
+  'failing',
+  'running',
+  'behind',
+  'diverged',
+];
 
-/** Does `cell` belong to `filter`? Behind includes diverged. */
+/** Does `cell` belong to `filter`? Behind and diverged are separate. */
 export function matchesFilter(
   cell: BoardCell | undefined,
   filter: CellFilter,
@@ -24,7 +29,9 @@ export function matchesFilter(
     case 'running':
       return cell.active;
     case 'behind':
-      return cell.badge !== undefined;
+      return cell.badge?.kind === 'behind';
+    case 'diverged':
+      return cell.badge?.kind === 'diverged';
   }
 }
 
@@ -35,5 +42,6 @@ export function summarize(model: BoardModel): Record<CellFilter, number> {
     failing: cells.filter((c) => matchesFilter(c, 'failing')).length,
     running: cells.filter((c) => matchesFilter(c, 'running')).length,
     behind: cells.filter((c) => matchesFilter(c, 'behind')).length,
+    diverged: cells.filter((c) => matchesFilter(c, 'diverged')).length,
   };
 }

@@ -25,6 +25,25 @@ import {
 } from '@/engine';
 
 import { BoardGrid } from './BoardGrid';
+import type { Layout } from './layout';
+
+/** Rung 1, one line, as on a small screen. */
+const testLayout: Layout = {
+  rung: 1,
+  format: 'line',
+  lineOf: {},
+  fontPx: 13,
+  rowNameWidth: 120,
+  colWidth: 100,
+  rowHeight: 26,
+  lineRowHeight: 26,
+  gap: 3,
+  padX: 8,
+  padY: 4,
+  overflowX: false,
+  overflowY: false,
+  boardHeight: 600,
+};
 
 let model: BoardModel;
 
@@ -39,13 +58,13 @@ beforeAll(async () => {
 });
 
 // The detail sheet links to the credential guide, so render inside a router.
-const renderBoard = () =>
+const renderBoard = (layout: Layout = testLayout) =>
   render(
     <MemoryRouter>
       <BoardGrid
         dashboard={demoDashboard}
         model={model}
-        rowHeight="compact"
+        layout={layout}
         now={0}
       />
     </MemoryRouter>,
@@ -64,7 +83,7 @@ describe('BoardGrid', () => {
     const billing = screen.getByRole('rowheader', { name: 'billing' });
     const row = billing.parentElement;
     if (!row) throw new Error('row not found');
-    const badge = within(row).getByLabelText(/3 commits behind/);
+    const badge = within(row).getByRole('link', { name: /^3 commits behind/ });
     expect(badge).toHaveAttribute(
       'href',
       expect.stringContaining('acme/billing/compare/'),
@@ -72,6 +91,30 @@ describe('BoardGrid', () => {
     const job = within(row).getAllByRole('link')[0];
     expect(job).toHaveAttribute('target', '_blank');
     expect(job.getAttribute('href')).toMatch(/actions\/runs\/\d+\/job\//);
+  });
+
+  it('puts the badge after the commit from rung 3, and in the lead below', () => {
+    const badgeIn = (rung: Layout['rung']) => {
+      const { unmount } = renderBoard({
+        ...testLayout,
+        rung,
+        format: 'packed',
+        lineOf: { time: 1, commit: 1, phase: 1 },
+      });
+      const row = screen.getByRole('rowheader', {
+        name: 'billing',
+      }).parentElement;
+      if (!row) throw new Error('row not found');
+      const badge = within(row).getByRole('link', {
+        name: /^3 commits behind/,
+      });
+      // The commit hash is the badge's previous sibling only after the commit.
+      const before = badge.previousElementSibling?.textContent ?? '';
+      unmount();
+      return /^[0-9a-f]{7}$/.test(before);
+    };
+    expect(badgeIn(1)).toBe(false);
+    expect(badgeIn(3)).toBe(true);
   });
 
   it('opens the detail sheet on a touch tap', () => {
@@ -86,9 +129,10 @@ describe('BoardGrid', () => {
 
   it('shows commit subjects in the hover tooltip, without unreachable links', () => {
     renderBoard();
-    const badge = screen.getAllByLabelText(/commits behind/)[0];
-    const cellLink = badge.parentElement?.querySelector('a');
-    if (!cellLink) throw new Error('cell link not found');
+    // The cell link's name ends with its badge description.
+    const cellLink = screen.getAllByRole('link', {
+      name: /, \d+ commits behind/,
+    })[0];
     fireEvent.mouseEnter(cellLink);
     const tip = screen.getByRole('tooltip');
     expect(
@@ -101,9 +145,9 @@ describe('BoardGrid', () => {
 
   it('opens a modal sheet with the links, focused, closing on Escape', async () => {
     renderBoard();
-    const badge = screen.getAllByLabelText(/commits behind/)[0];
-    const cellLink = badge.parentElement?.querySelector('a');
-    if (!cellLink) throw new Error('cell link not found');
+    const cellLink = screen.getAllByRole('link', {
+      name: /, \d+ commits behind/,
+    })[0];
     cellLink.focus();
     fireEvent.pointerDown(cellLink, { pointerType: 'touch' });
     fireEvent.click(cellLink);
@@ -122,11 +166,11 @@ describe('BoardGrid', () => {
     });
   });
 
-  it('makes empty cells reachable and openable at the smallest size', () => {
-    renderBoard(); // jsdom measures 0px cells: detail level 1, no text
+  it('makes empty cells reachable and openable at rung 1', () => {
+    renderBoard(); // rung 1 shows the state label
     const needs = screen.getAllByRole('button', { name: /needs credential/ });
     expect(needs.length).toBeGreaterThan(0);
-    expect(needs[0]).toHaveTextContent('');
+    expect(needs[0]).toHaveTextContent('needs credential');
     fireEvent.click(needs[0]);
     expect(
       within(screen.getByRole('dialog', { name: 'Cell detail' })).getByText(
@@ -157,7 +201,7 @@ describe('BoardGrid', () => {
       <BoardGrid
         dashboard={big}
         model={emptyModel()}
-        rowHeight="compact"
+        layout={testLayout}
         now={0}
       />,
     );

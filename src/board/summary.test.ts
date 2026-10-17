@@ -1,7 +1,7 @@
 /**
  * Tests for the summary counts and filters: failing is a failure result,
- * running follows the cell's active flag (not its colour), and behind
- * includes diverged.
+ * running follows the cell's active flag (not its colour), and behind and
+ * diverged are counted separately.
  *
  * @module
  */
@@ -31,7 +31,7 @@ const cell = (extra: Partial<BoardCell>): BoardCell => ({
 });
 
 describe('summarize', () => {
-  it('counts failing, running and behind (including diverged) cells', () => {
+  it('counts failing, running, behind and diverged cells separately', () => {
     const model: BoardModel = {
       cells: {
         a: cell({ derivation: ok('failure') }),
@@ -44,6 +44,11 @@ describe('summarize', () => {
       budgets: {},
       refreshedAt: {},
     };
-    expect(summarize(model)).toEqual({ failing: 1, running: 1, behind: 2 });
+    expect(summarize(model)).toEqual({
+      failing: 1,
+      running: 1,
+      behind: 1,
+      diverged: 1,
+    });
   });
 });

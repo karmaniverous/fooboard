@@ -61,6 +61,9 @@ function demoRuns(repo: string, startMs: number): DemoRun[] {
     name,
     head_branch: branch,
     head_sha: sha(id),
+    head_commit: {
+      message: DEMO_MESSAGES[id % DEMO_MESSAGES.length] ?? 'Update',
+    },
     status: 'completed',
     conclusion: 'success',
     created_at: iso(createdMs),
@@ -133,6 +136,16 @@ function demoBranches(repo: string): string[] {
 }
 
 /** Create the demo GitHub reader; `clock` drives scenario progress. */
+/** Plausible commit messages for the demo's richest detail (C-13 rung 5). */
+const DEMO_MESSAGES = [
+  'Fix flaky checkout test',
+  'Bump dependencies',
+  'Add retry to payment webhook',
+  'Tune cache headers',
+  'Refactor auth middleware',
+  'Release notes for 24.3',
+];
+
 export function createDemoGitHubReader(
   clock: () => number = Date.now,
 ): GitHubReader {

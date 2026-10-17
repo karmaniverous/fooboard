@@ -18,7 +18,7 @@ export function Home(): React.JSX.Element {
   const loaded = useStores().config.load();
   const dashboards = dashboardsOf(loaded);
   return (
-    <div className="mx-auto flex max-w-xl flex-col items-center gap-4 px-6 py-24 text-center">
+    <div className="mx-auto flex w-full min-w-0 max-w-xl flex-col items-center gap-4 px-6 py-24 text-center">
       <LayoutGrid className="size-10 text-muted-foreground" aria-hidden />
       <p className="text-lg font-medium">{site.tagline}</p>
       <h1 className="text-xl font-semibold">

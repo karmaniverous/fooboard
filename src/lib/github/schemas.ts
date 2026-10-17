@@ -15,6 +15,8 @@ const WorkflowRunSchema = z.object({
   name: z.string().nullable().optional(),
   head_branch: z.string().nullable(),
   head_sha: z.string(),
+  /** The head commit; its message is the board's richest detail (C-13). */
+  head_commit: z.object({ message: z.string() }).nullable().optional(),
   status: z.string().nullable(),
   conclusion: z.string().nullable(),
   created_at: z.string(),

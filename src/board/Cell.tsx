@@ -1,9 +1,13 @@
 /**
  * One board cell (spec.md §3, §4.3.5, C-13, C-13a): a solid block of its
- * status colour with as much detail as its size allows, or an empty state.
- * The cell is a real link to the job (or Amplify console); the
- * behind/diverged badge is a separate link to the compare page, placed
- * beside the cell link rather than inside it (links can't nest).
+ * status colour showing the board's detail rung packed by the board's line
+ * map, or an empty state. Every cell on the board gets the same rung and
+ * arrangement; rung 0 shows only the icon and badge.
+ *
+ * The whole cell is a link to the job (or Amplify console) laid under its
+ * text; the behind/diverged badge is a separate link to the compare page,
+ * placed above it (links can't nest). The cell link's accessible name
+ * carries status, time and badge, whatever the rung shows.
  *
  * @module
  */
@@ -17,17 +21,20 @@ import { cn } from '@/lib/utils';
 import {
   badgeDescription,
   badgeText,
-  type DetailLevel,
   EMPTY_LABEL,
+  EMPTY_SYMBOL,
   relativeTime,
   shortSha,
   STATUS_META,
 } from './cellView';
+import { ITEM_GAP_EM, type ItemKey, type LineMap, type Rung } from './layout';
+import { firstLine } from './layoutContents';
 
 export interface CellProps {
   cell: BoardCell | undefined;
-  level: DetailLevel;
-  rowHeight: 'compact' | 'full';
+  rung: Rung;
+  /** The board's line map: which line each item sits on (C-13). */
+  lineOf: LineMap;
   colors: StatusColors;
   now: number;
   /** Hover or focus: show the tooltip for this cell. */
@@ -44,10 +51,68 @@ const EMPTY_CLASS = {
   error: 'border-border bg-hatched',
 } as const;
 
+const gapStyle = { gap: `${String(ITEM_GAP_EM)}em` };
+
+type Keyed = { key: ItemKey; node: React.ReactNode; free?: boolean };
+
+/** Arrange the lead and items by the board's line map (C-13): the lead on
+ * line 0, each item on its line. Fixed items keep their width; free text
+ * takes what is left and is cut off. */
+function Lines({
+  lineOf,
+  lead,
+  items,
+  center = false,
+}: {
+  /** Centre the content horizontally (rung 0, icons only). */
+  center?: boolean;
+  lineOf: LineMap;
+  lead: React.ReactNode;
+  items: Keyed[];
+}): React.JSX.Element {
+  const line = 'flex min-w-0 items-center overflow-hidden whitespace-nowrap';
+  const lines: React.ReactNode[][] = [[lead]];
+  for (const item of items) {
+    const n = lineOf[item.key] ?? 0;
+    while (lines.length <= n) lines.push([]);
+    lines[n]?.push(
+      <span
+        key={item.key}
+        className={item.free ? 'flex min-w-0 flex-1' : 'flex flex-none'}
+      >
+        {item.node}
+      </span>,
+    );
+  }
+  return (
+    <span className="flex min-w-0 flex-1 flex-col justify-center">
+      {lines.map((content, i) =>
+        content.length === 0 ? null : (
+          // Lines are positional and never reorder.
+          <span
+            key={i}
+            className={cn(line, center && 'justify-center')}
+            style={gapStyle}
+          >
+            {content}
+          </span>
+        ),
+      )}
+    </span>
+  );
+}
+
+/** Free text: cut off with an ellipsis at the column width. */
+const Free = ({ children }: { children: string }) => (
+  <span className="min-w-0 truncate" title={children}>
+    {children}
+  </span>
+);
+
 export function Cell({
   cell,
-  level,
-  rowHeight,
+  rung,
+  lineOf,
   colors,
   now,
   onInspect,
@@ -61,6 +126,7 @@ export function Cell({
     onFocus: (e: React.FocusEvent<HTMLElement>) => onInspect?.(e.currentTarget),
     onBlur: () => onInspect?.(null),
   };
+  const pad = 'px-[var(--cell-pad-x)] py-[var(--cell-pad-y)]';
 
   if (!cell) {
     return <div className="h-full rounded-md bg-muted/40" aria-busy />;
@@ -68,27 +134,37 @@ export function Cell({
 
   const { derivation, badge, compare } = cell;
   if (derivation.kind === 'empty') {
-    const label =
-      derivation.state === 'no-recent-runs' && derivation.branch
-        ? `${derivation.branch}: ${EMPTY_LABEL[derivation.state]}`
-        : EMPTY_LABEL[derivation.state];
+    const label = EMPTY_LABEL[derivation.state];
+    const extra = derivation.reason ?? derivation.branch;
     // A button, so every empty state can be reached and opened (keyboard,
-    // tap, click) even at the smallest size, where it shows no text.
+    // tap, click).
     return (
       <button
         type="button"
-        aria-label={
-          derivation.reason ? `${label}: ${derivation.reason}` : label
-        }
+        aria-label={extra ? `${label}: ${extra}` : label}
         className={cn(
-          'flex h-full w-full items-center overflow-hidden rounded-md border px-2 text-left text-[0.85em] italic text-muted-foreground focus-visible:outline-2 focus-visible:outline-ring',
+          'flex h-full w-full items-center overflow-hidden rounded-md border text-left text-[0.9em] italic text-muted-foreground focus-visible:outline-2 focus-visible:outline-ring',
+          pad,
           EMPTY_CLASS[derivation.state],
         )}
         title={derivation.reason}
         onClick={onOpenSheet}
         {...inspect}
       >
-        {level >= 2 && <span className="truncate">{label}</span>}
+        <Lines
+          lineOf={lineOf}
+          center={rung === 0}
+          lead={
+            <span title={rung === 0 ? label : undefined}>
+              {rung === 0 ? EMPTY_SYMBOL[derivation.state] : label}
+            </span>
+          }
+          items={
+            rung >= 4 && extra
+              ? [{ key: 'extra', node: <Free>{extra}</Free>, free: true }]
+              : []
+          }
+        />
       </button>
     );
   }
@@ -96,44 +172,109 @@ export function Cell({
   const { status } = derivation;
   const meta = STATUS_META[status];
   const queued = status === 'queued';
-  const time = derivation.time;
-  const details = (
-    <>
-      {level >= 2 && time && (
-        <time dateTime={time} title={new Date(time).toLocaleString()}>
-          {relativeTime(time, now)}
+  const { time, commit, branch, message } = derivation;
+  const relative = time ? relativeTime(time, now) : undefined;
+
+  const badgeLink = badge && (
+    <ExternalLink
+      unstyled
+      href={compare?.htmlUrl}
+      title={badgeDescription(badge)}
+      aria-label={badgeDescription(badge)}
+      className={cn(
+        // Coloured fill and solid border in the badge colour; nothing drawn
+        // outside the border (C-13).
+        'pointer-events-auto flex-none rounded-full border-[1.5px] px-[0.45em] text-[0.8em] font-bold leading-[1.45] no-underline',
+        badge.kind === 'behind'
+          ? 'border-badge-behind bg-badge-behind text-badge-behind-text'
+          : 'border-badge-diverged bg-badge-diverged text-badge-diverged-text',
+      )}
+    >
+      {badgeText(badge)}
+    </ExternalLink>
+  );
+  // From rung 3 the badge follows the commit it describes (C-13).
+  const badgeAfterCommit = rung >= 3 && Boolean(commit);
+
+  // Items are hidden from assistive tech (the cover link's name says it
+  // all), except the badge link, which stays reachable.
+  const items: Keyed[] = [];
+  if (rung >= 2 && time) {
+    items.push({
+      key: 'time',
+      node: (
+        <time aria-hidden dateTime={time}>
+          {relative}
         </time>
-      )}
-      {level >= 4 && derivation.commit && (
-        <span className="font-mono text-[0.9em] opacity-90">
-          {shortSha(derivation.commit)}
-        </span>
-      )}
-      {level >= 4 && (status === 'started' || status === 'partialSuccess') && (
-        <span className="rounded border border-current px-1 text-[0.8em]">
+      ),
+    });
+  }
+  if (rung >= 3) {
+    if (commit) {
+      items.push({
+        key: 'commit',
+        node: (
+          <span className="flex items-center" style={gapStyle}>
+            <span aria-hidden className="font-mono text-[0.95em] opacity-90">
+              {shortSha(commit)}
+            </span>
+            {badgeLink}
+          </span>
+        ),
+      });
+    }
+    items.push({
+      key: 'phase',
+      node: (
+        <span
+          aria-hidden
+          className="rounded border border-current px-1 text-[0.85em]"
+        >
           {derivation.phase}
         </span>
-      )}
-    </>
-  );
+      ),
+    });
+  }
+  if (rung >= 4 && branch) {
+    items.push({
+      key: 'branch',
+      node: <Free>{branch}</Free>,
+      free: true,
+    });
+  }
+  if (rung >= 5 && message) {
+    items.push({
+      key: 'message',
+      node: <Free>{firstLine(message)}</Free>,
+      free: true,
+    });
+  }
+
+  const name = [
+    meta.label,
+    branch,
+    relative && `${relative} ago`,
+    badge && badgeDescription(badge),
+  ]
+    .filter(Boolean)
+    .join(', ');
 
   return (
-    <div className="relative h-full">
+    <div
+      className={cn(
+        'relative flex h-full overflow-hidden rounded-md font-medium',
+        pad,
+        queued
+          ? 'border border-dashed border-slate-500 text-status-queued-text'
+          : 'text-white',
+      )}
+      style={{ backgroundColor: colors[status] }}
+    >
       <ExternalLink
         unstyled
         href={derivation.linkUrl}
-        aria-label={`${meta.label}, ${derivation.branch}`}
-        className={cn(
-          'flex h-full overflow-hidden rounded-md px-2 font-medium no-underline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-ring',
-          rowHeight === 'full'
-            ? 'flex-col justify-center gap-0.5'
-            : 'items-center gap-1.5',
-          queued
-            ? 'border border-dashed border-slate-500 text-status-queued-text'
-            : 'text-white',
-          badge && 'pr-9',
-        )}
-        style={{ backgroundColor: colors[status] }}
+        aria-label={name}
+        className="absolute inset-0 rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-white"
         onPointerDown={(e) => {
           touched.current = e.pointerType === 'touch';
         }}
@@ -145,42 +286,36 @@ export function Cell({
           }
         }}
         {...inspect}
-      >
-        <span className="flex min-w-0 items-center gap-1.5 whitespace-nowrap">
-          <span
-            aria-hidden
-            className={cn(
-              'w-[1em] flex-none text-center',
-              status === 'started' && 'animate-pulse',
-            )}
-          >
-            {meta.icon}
-          </span>
-          {level >= 3 && <span className="font-semibold">{meta.label}</span>}
-          {rowHeight === 'compact' && details}
-        </span>
-        {rowHeight === 'full' && level >= 2 && (
-          <span className="flex min-w-0 items-center gap-1.5 whitespace-nowrap text-[0.9em] opacity-90">
-            {details}
-          </span>
-        )}
-      </ExternalLink>
-      {badge && (
-        <ExternalLink
-          unstyled
-          href={compare?.htmlUrl}
-          title={badgeDescription(badge)}
-          aria-label={badgeDescription(badge)}
-          className={cn(
-            'absolute right-1 top-1/2 -translate-y-1/2 rounded-full px-1.5 text-[0.8em] font-bold leading-[1.5] no-underline ring-2 ring-white',
-            badge.kind === 'behind'
-              ? 'bg-badge-behind text-badge-behind-text'
-              : 'bg-badge-diverged text-badge-diverged-text',
-          )}
-        >
-          {badgeText(badge)}
-        </ExternalLink>
-      )}
+      />
+      {/* Text sits above the cover link but lets clicks through; the badge
+          link inside it takes its own clicks. Text is hidden from assistive
+          tech because the cover link's name already says it all. */}
+      <span className="pointer-events-none relative flex min-w-0 flex-1 items-center">
+        <Lines
+          lineOf={lineOf}
+          center={rung === 0}
+          lead={
+            <>
+              <span
+                aria-hidden
+                className={cn(
+                  'w-[1em] flex-none text-center',
+                  status === 'started' && 'animate-pulse',
+                )}
+              >
+                {meta.icon}
+              </span>
+              {rung >= 1 && (
+                <span aria-hidden className="font-semibold">
+                  {meta.label}
+                </span>
+              )}
+              {!badgeAfterCommit && badgeLink}
+            </>
+          }
+          items={items}
+        />
+      </span>
     </div>
   );
 }

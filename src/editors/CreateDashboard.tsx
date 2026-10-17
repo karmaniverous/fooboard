@@ -57,7 +57,7 @@ export function CreateDashboard(): React.JSX.Element {
       />
       <NativeSelect
         aria-label="Starting stages"
-        className="h-9 px-2 text-sm"
+        className="h-9 w-full px-2 text-sm"
         value={preset}
         onChange={(e) => {
           setPreset(e.target.value as BranchPresetId);

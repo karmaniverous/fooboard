@@ -15,6 +15,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { site } from '@/lib/site';
+import { PINNED_FULL } from '@/lib/utils';
 
 import { ExternalLink } from './ExternalLink';
 
@@ -22,7 +23,9 @@ const logoUrl = `${import.meta.env.BASE_URL}favicon.svg`;
 
 export function Header(): React.JSX.Element {
   return (
-    <header className="flex items-center gap-3 border-b border-border bg-primary px-5 py-3 text-primary-foreground">
+    <header
+      className={`${PINNED_FULL} z-40 flex items-center gap-3 border-b border-border bg-primary px-5 py-3 text-primary-foreground`}
+    >
       <Link to="/" className="flex items-center gap-2.5 font-bold">
         <img
           src={logoUrl}
@@ -33,7 +36,9 @@ export function Header(): React.JSX.Element {
         />
         <span>{site.name}</span>
       </Link>
-      <DropdownMenu>
+      {/* Non-modal: no scroll lock, so the page scrollbar stays and the
+          layout does not shift when the menu opens. */}
+      <DropdownMenu modal={false}>
         <DropdownMenuTrigger
           aria-label="Menu"
           className="ml-auto rounded-md p-1 hover:bg-white/10"

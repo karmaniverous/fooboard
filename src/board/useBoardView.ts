@@ -1,31 +1,33 @@
 /**
- * A dashboard's view settings on this device (spec.md C-13): zoom and row
- * height, read from and saved to the preferences store. Zoom is saved with
- * the board's size and resets to Fit when that size changes; switching
- * dashboards loads that dashboard's own settings.
+ * A dashboard's view settings on this device (spec.md C-13): zoom and
+ * density, read from and saved to the preferences store. Zoom is saved
+ * with the board's size and resets to 100% when that size changes;
+ * switching dashboards loads that dashboard's own settings. Zoom is
+ * clamped where it is laid out (its upper bound depends on the board).
  *
  * @module
  */
 import { useState } from 'react';
 
-import type { RowHeight } from '@/domain/config/devicePreferences';
+import { DEFAULT_ZOOM, type Density } from '@/domain/config/devicePreferences';
 import { useStores } from '@/storage/storesContext';
-
-import { boardSizeKey, clampZoom, MIN_ZOOM, restoredZoom } from './zoom';
 
 export interface BoardView {
   zoom: number;
   setZoom: (zoom: number) => void;
-  rowHeight: RowHeight;
-  setRowHeight: (rowHeight: RowHeight) => void;
+  density: Density;
+  setDensity: (density: Density) => void;
 }
 
 interface ViewState {
   dashboardId: string;
   sizeKey: string;
   zoom: number;
-  rowHeight: RowHeight;
+  density: Density;
 }
+
+const boardSizeKey = (rows: number, stages: number): string =>
+  `${String(rows)}x${String(stages)}`;
 
 export function useBoardView(
   dashboardId: string,
@@ -39,8 +41,8 @@ export function useBoardView(
     return {
       dashboardId,
       sizeKey,
-      zoom: restoredZoom(saved, sizeKey),
-      rowHeight: saved.rowHeight,
+      zoom: saved.boardSize === sizeKey ? saved.zoom : DEFAULT_ZOOM,
+      density: saved.density,
     };
   };
   const [state, setState] = useState(load);
@@ -52,21 +54,20 @@ export function useBoardView(
     current = load();
     setState(current);
   } else if (state.sizeKey !== sizeKey) {
-    current = { ...state, sizeKey, zoom: MIN_ZOOM };
+    current = { ...state, sizeKey, zoom: DEFAULT_ZOOM };
     setState(current);
   }
 
   return {
     zoom: current.zoom,
-    setZoom: (next) => {
-      const zoom = clampZoom(next);
+    setZoom: (zoom) => {
       setState({ ...current, zoom });
       preferences.setView(dashboardId, { zoom, boardSize: sizeKey });
     },
-    rowHeight: current.rowHeight,
-    setRowHeight: (rowHeight) => {
-      setState({ ...current, rowHeight });
-      preferences.setView(dashboardId, { rowHeight });
+    density: current.density,
+    setDensity: (density) => {
+      setState({ ...current, density });
+      preferences.setView(dashboardId, { density });
     },
   };
 }

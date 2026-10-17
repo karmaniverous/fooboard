@@ -27,53 +27,25 @@ export const EMPTY_LABEL: Record<EmptyCellState, string> = {
   error: 'error',
 };
 
-/** Detail levels, smallest first (spec.md C-13): 1 icon and badge; 2 adds
- * relative time; 3 adds the status label; 4 adds commit and phase. */
-export type DetailLevel = 1 | 2 | 3 | 4;
-
-/** Minimum cell width, in ems of the cell's font, for each level, per row
- * height. Full cells put time, commit and phase on a second line, so they
- * need less width. Tuned against the demo board; revisited with real boards
- * (step 17). */
-const EMS_FOR_LEVEL = {
-  compact: [0, 5.3, 10, 15.8],
-  full: [0, 4.7, 8, 12.5],
-} as const;
-
-/** The detail level a cell `width` px wide shows at font size `fontPx`. */
-export function detailLevel(
-  width: number,
-  fontPx: number,
-  rowHeight: 'compact' | 'full',
-): DetailLevel {
-  const ems = width / fontPx;
-  let level: DetailLevel = 1;
-  for (const [i, min] of EMS_FOR_LEVEL[rowHeight].entries()) {
-    if (ems >= min) level = (i + 1) as DetailLevel;
-  }
-  return level;
-}
-
-/** Font bounds for the grid: readable at the bottom, not shouting at the top. */
-const MIN_FONT_PX = 7;
-const MAX_FONT_PX = 13;
-
-/** The grid's font size for a measured cell height (spec.md C-13). Rows
- * shrink to fit the viewport, and text shrinks with them: one line fills
- * ~60% of a Compact cell, two lines ~70% of a Full one. */
-export function fitFontSize(
-  cellHeight: number,
-  rowHeight: 'compact' | 'full',
-): number {
-  const px = cellHeight * (rowHeight === 'full' ? 0.33 : 0.6);
-  return Math.min(MAX_FONT_PX, Math.max(MIN_FONT_PX, px));
-}
+/** Empty states at rung 0 (icons only): a short symbol; the label is in
+ * the tooltip, the accessible name and the detail sheet. */
+export const EMPTY_SYMBOL: Record<EmptyCellState, string> = {
+  'no-branch': '–',
+  'no-recent-runs': '○',
+  'needs-credential': '?',
+  error: '!',
+};
 
 /** Badge text: a count when behind, `behind/ahead` when diverged. */
+/** Counts above this show as "99+"; the tooltip has the exact numbers. */
+const BADGE_CAP = 99;
+const capCount = (n: number) =>
+  n > BADGE_CAP ? `${String(BADGE_CAP)}+` : String(n);
+
 export function badgeText(badge: NonNullable<StalenessBadge>): string {
   return badge.kind === 'behind'
-    ? String(badge.count)
-    : `${String(badge.behind)}/${String(badge.ahead)}`;
+    ? capCount(badge.count)
+    : `${capCount(badge.behind)}/${capCount(badge.ahead)}`;
 }
 
 /** Badge description for tooltips and screen readers. */

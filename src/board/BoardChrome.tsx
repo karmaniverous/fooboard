@@ -10,42 +10,70 @@ import { cn } from '@/lib/utils';
 
 import { type CellFilter, FILTERS, summarize } from './summary';
 
+/** Status chips get a filled dot; behind and diverged, whose colours may
+ * repeat status colours, get a white circle ringed in their colour. */
 const DOT: Record<CellFilter, string> = {
-  failing: 'bg-status-failure',
-  running: 'bg-status-started',
-  behind: 'bg-badge-behind',
+  failing: 'size-2 bg-status-failure',
+  running: 'size-2 bg-status-started',
+  behind: 'size-2.5 border-2 border-badge-behind bg-white',
+  diverged: 'size-2.5 border-2 border-badge-diverged bg-white',
 };
 
 export function BoardSummary({
   model,
   filter,
   onFilter,
+  words = true,
 }: {
   model: BoardModel;
   filter: CellFilter | null;
   onFilter: (filter: CellFilter | null) => void;
+  /** Show each chip's word; dropped before the chips would wrap (C-13). */
+  words?: boolean;
 }): React.JSX.Element {
   const counts = summarize(model);
   return (
-    <div role="group" aria-label="Filter cells" className="flex gap-1.5">
+    <div
+      role="group"
+      aria-label="Filter cells"
+      className="flex flex-wrap gap-1.5"
+    >
       {FILTERS.map((f) => (
         <ToggleButton
           key={f}
           pressed={filter === f}
+          aria-label={`${String(counts[f])} ${f}`}
+          title={words ? undefined : `${String(counts[f])} ${f}`}
           className="inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5"
           onClick={() => {
             onFilter(filter === f ? null : f);
           }}
         >
-          <span aria-hidden className={cn('size-2 rounded-full', DOT[f])} />
-          {counts[f]} {f}
+          <span aria-hidden className={cn('rounded-full', DOT[f])} />
+          {counts[f]}
+          {words && <span>{f}</span>}
         </ToggleButton>
       ))}
     </div>
   );
 }
 
-export function BudgetDisplay({
+/** Battery segments, and the colour for each number of lit segments. */
+const SEGMENTS = 4;
+const SEGMENT_COLOR = [
+  'text-red-600',
+  'text-red-600',
+  'text-orange-500',
+  'text-yellow-500',
+  'text-green-600',
+] as const;
+
+/** Each credential's remaining GitHub request budget (C-16) as an upright
+ * battery of four segments: the fill is what is left, so empty is bad.
+ * Outline and fill share one colour: green (4 lit), yellow (3), orange
+ * (2), red (1 or empty). Exact numbers and the reset time are in the
+ * tooltip and the accessible name. */
+export function BudgetMeter({
   model,
 }: {
   model: BoardModel;
@@ -55,19 +83,45 @@ export function BudgetDisplay({
   );
   if (budgets.length === 0) return null;
   return (
-    <div className="flex gap-3 text-xs text-muted-foreground">
-      {budgets.map((b) => (
-        <span
-          key={b.id}
-          title={`Resets ${new Date(b.reset * 1000).toLocaleTimeString()}`}
-          className={cn(
-            b.status === 'low' && 'font-semibold text-status-failure',
-          )}
-        >
-          GitHub {b.id}: {b.remaining.toLocaleString()} of{' '}
-          {b.limit.toLocaleString()} left
-        </span>
-      ))}
+    <div className="flex items-center gap-2">
+      {budgets.map((b) => {
+        const share =
+          b.limit > 0 ? Math.max(0, Math.min(1, b.remaining / b.limit)) : 0;
+        const lit = Math.ceil(share * SEGMENTS - 1e-9);
+        const label = `GitHub ${b.id}: ${b.remaining.toLocaleString()} of ${b.limit.toLocaleString()} requests left, resets ${new Date(b.reset * 1000).toLocaleTimeString()}`;
+        return (
+          <span
+            key={b.id}
+            role="meter"
+            aria-label={label}
+            aria-valuemin={0}
+            aria-valuemax={b.limit}
+            aria-valuenow={b.remaining}
+            title={label}
+            className={cn(
+              'flex flex-col items-center',
+              SEGMENT_COLOR[lit] ?? SEGMENT_COLOR[0],
+            )}
+          >
+            {/* Upright battery: nub on top, segments filled from the bottom. */}
+            <span aria-hidden className="h-0.5 w-1.5 rounded-t-sm bg-current" />
+            <span
+              aria-hidden
+              className="flex h-5 w-3.5 flex-col-reverse gap-px rounded-[3px] border-[1.5px] border-current p-px"
+            >
+              {Array.from({ length: SEGMENTS }, (_, i) => (
+                <span
+                  key={i}
+                  className={cn(
+                    'flex-1 rounded-[1px]',
+                    i < lit && 'bg-current',
+                  )}
+                />
+              ))}
+            </span>
+          </span>
+        );
+      })}
     </div>
   );
 }

@@ -9,34 +9,29 @@
 import { z } from 'zod';
 
 /** Row height choice, independent of zoom (spec.md v0.18). */
-export const RowHeightSchema = z.enum(['compact', 'full']);
-export type RowHeight = z.infer<typeof RowHeightSchema>;
+/** Board density (spec.md C-13): padding and gaps only. */
+export const DensitySchema = z.enum(['default', 'comfortable', 'compact']);
+export type Density = z.infer<typeof DensitySchema>;
+export const DEFAULT_DENSITY: Density = 'default';
 
-/** Default row height (spec.md C-13: default Compact). */
-export const DEFAULT_ROW_HEIGHT: RowHeight = 'compact';
-
-/** Default zoom level: Fit. */
+/** 100%: the fitted layout at readable text (spec.md C-13). */
 export const DEFAULT_ZOOM = 1;
 
-/** One dashboard's view preferences on this device. */
+/** One dashboard's view settings on this device. */
 export const DashboardViewPreferencesSchema = z.object({
+  /** Position on the C-13 zoom scale (see `board/layout`). */
   zoom: z.number().positive().default(DEFAULT_ZOOM),
-  rowHeight: RowHeightSchema.default(DEFAULT_ROW_HEIGHT),
-  /** `rows x stages` when `zoom` was saved; zoom resets to Fit when the
-   * board's size changes (spec.md C-13). */
+  density: DensitySchema.default(DEFAULT_DENSITY),
+  /** The board size the zoom was saved for; zoom resets when it changes. */
   boardSize: z.string().optional(),
 });
 export type DashboardViewPreferences = z.infer<
   typeof DashboardViewPreferencesSchema
 >;
 
-/** Current device-preferences schema version. */
-export const CURRENT_DEVICE_PREFERENCES_VERSION = 1;
+export const CURRENT_DEVICE_PREFERENCES_VERSION = 2;
 
-/**
- * Device preferences root: view settings keyed by dashboard id. Never
- * exported or shared; local-storage only, per device.
- */
+/** All view settings on this device. Never exported or shared. */
 export const DevicePreferencesSchema = z.object({
   schemaVersion: z.literal(CURRENT_DEVICE_PREFERENCES_VERSION),
   dashboards: z
@@ -44,3 +39,39 @@ export const DevicePreferencesSchema = z.object({
     .default(() => ({})),
 });
 export type DevicePreferences = z.infer<typeof DevicePreferencesSchema>;
+
+/** Version 1 stored a row height (Compact/Full) and a grid magnification. */
+const V1Schema = z.object({
+  schemaVersion: z.literal(1),
+  dashboards: z.record(
+    z.string(),
+    z.object({ rowHeight: z.enum(['compact', 'full']).optional() }).loose(),
+  ),
+});
+
+/**
+ * Bring stored preferences to the current version (spec.md step 11a):
+ * Full becomes Default, Compact stays Compact, and every saved zoom resets
+ * to 100% (the old value meant grid magnification). Anything unreadable
+ * gives undefined, so the caller starts afresh.
+ */
+export function migrateDevicePreferences(
+  raw: unknown,
+): DevicePreferences | undefined {
+  const current = DevicePreferencesSchema.safeParse(raw);
+  if (current.success) return current.data;
+  const v1 = V1Schema.safeParse(raw);
+  if (!v1.success) return undefined;
+  return {
+    schemaVersion: CURRENT_DEVICE_PREFERENCES_VERSION,
+    dashboards: Object.fromEntries(
+      Object.entries(v1.data.dashboards).map(([id, view]) => [
+        id,
+        {
+          zoom: DEFAULT_ZOOM,
+          density: view.rowHeight === 'compact' ? 'compact' : 'default',
+        },
+      ]),
+    ),
+  };
+}

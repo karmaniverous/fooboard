@@ -61,6 +61,8 @@ export interface AmplifyCellResult {
   phase: 'deploy';
   branch: string;
   commit: string | undefined;
+  /** The job's commit message, if known (C-13 rung 5). */
+  message?: string;
   time: string | undefined;
   /** The winning job's source app and id, and its console link (C-13a). */
   region: string;
@@ -99,6 +101,7 @@ export function deriveAmplifyCell(input: {
     phase: 'deploy',
     branch,
     commit: job.commitId,
+    message: job.commitMessage,
     time: job.endTime?.toISOString() ?? job.startTime?.toISOString(),
     region: source.region,
     appId: source.appId,
