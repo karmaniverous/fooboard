@@ -55,8 +55,13 @@ export function BoardScreen({
         {subtitle && (
           <span className="text-xs text-muted-foreground">{subtitle}</span>
         )}
-        {/* On one line, the summary's auto margin pushes the counter right. */}
-        <div className={headerWrapped ? undefined : 'mr-auto'}>
+        {/* On one line, the chips fill the space between the title and the
+            counter, centred in it; wrapped, the whole header is centred. */}
+        <div
+          className={
+            headerWrapped ? undefined : 'flex flex-auto justify-center'
+          }
+        >
           <BoardSummary model={model} filter={filter} onFilter={setFilter} />
         </div>
         <div className="flex items-center gap-3">
