@@ -36,7 +36,12 @@ describe('App', () => {
   ])('renders %s inside the shell', (path, heading) => {
     renderAt(path);
     expect(screen.getByText(site.name)).toBeInTheDocument();
-    expect(screen.getByText(heading)).toBeInTheDocument();
+    // Hidden measuring copies (aria-hidden) are not part of the page.
+    expect(
+      screen.getByText(heading, {
+        ignore: '[aria-hidden="true"] *, script, style',
+      }),
+    ).toBeInTheDocument();
     expect(screen.getByText('Report an issue')).toHaveAttribute(
       'rel',
       'noopener noreferrer',

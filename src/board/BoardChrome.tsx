@@ -23,10 +23,13 @@ export function BoardSummary({
   model,
   filter,
   onFilter,
+  words = true,
 }: {
   model: BoardModel;
   filter: CellFilter | null;
   onFilter: (filter: CellFilter | null) => void;
+  /** Show each chip's word; dropped before the chips would wrap (C-13). */
+  words?: boolean;
 }): React.JSX.Element {
   const counts = summarize(model);
   return (
@@ -40,6 +43,7 @@ export function BoardSummary({
           key={f}
           pressed={filter === f}
           aria-label={`${String(counts[f])} ${f}`}
+          title={words ? undefined : `${String(counts[f])} ${f}`}
           className="inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5"
           onClick={() => {
             onFilter(filter === f ? null : f);
@@ -47,8 +51,7 @@ export function BoardSummary({
         >
           <span aria-hidden className={cn('rounded-full', DOT[f])} />
           {counts[f]}
-          {/* The word goes before the chips would wrap (C-13). */}
-          <span className="hidden @min-[24rem]:inline">{f}</span>
+          {words && <span>{f}</span>}
         </ToggleButton>
       ))}
     </div>

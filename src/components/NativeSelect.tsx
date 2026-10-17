@@ -15,7 +15,10 @@ export function NativeSelect({
 }: SelectHTMLAttributes<HTMLSelectElement>): React.JSX.Element {
   return (
     <select
-      className={cn('rounded-md border bg-background', className)}
+      className={cn(
+        'min-w-0 max-w-full rounded-md border bg-background',
+        className,
+      )}
       {...props}
     />
   );

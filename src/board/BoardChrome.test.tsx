@@ -37,6 +37,23 @@ describe('BoardSummary', () => {
   });
 });
 
+describe('BoardSummary without words', () => {
+  it('names each chip in a hover title', () => {
+    render(
+      <BoardSummary
+        model={model}
+        filter={null}
+        onFilter={vi.fn()}
+        words={false}
+      />,
+    );
+    expect(screen.getByRole('button', { name: '0 failing' })).toHaveAttribute(
+      'title',
+      '0 failing',
+    );
+  });
+});
+
 describe('BudgetMeter', () => {
   it('shows one battery per credential with a budget, by segments left', () => {
     const at = (remaining: number) => ({

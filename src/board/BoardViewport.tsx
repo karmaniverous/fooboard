@@ -22,6 +22,7 @@ import { Button } from '@/components/ui/button';
 import type { Dashboard } from '@/domain/config/dashboard';
 import type { Density } from '@/domain/config/devicePreferences';
 import type { BoardModel } from '@/engine';
+import { measuredWidth, useMeasured } from '@/lib/useMeasured';
 import { cn, PINNED_X } from '@/lib/utils';
 
 import { BoardGrid } from './BoardGrid';
@@ -49,6 +50,8 @@ const INTERACTION_MS = 5_000;
 /** Accumulated wheel delta that makes one 10% zoom step. */
 const WHEEL_STEP_DELTA = 50;
 const DENSITIES: Density[] = ['compact', 'default', 'comfortable'];
+/** `gap-x-2` in px. */
+const TOOLBAR_GAP_PX = 8;
 const DENSITY_ICON = {
   compact: Minimize2,
   default: Minus,
@@ -146,9 +149,23 @@ export function BoardViewport({
   view: BoardView;
   filter?: CellFilter | null;
   /** Start of the toolbar: the summary chips (C-14a). */
-  lead?: React.ReactNode;
+  lead?: (options: { words: boolean }) => React.ReactNode;
 }): React.JSX.Element {
   const { zoom, setZoom, density, setDensity } = view;
+  // Wide when the summary and zoom each fit half of what is left beside
+  // the centred density control; else narrow, dropping the chip words
+  // ("tight") when the worded chips would not fit one line (C-13).
+  const [toolbar, mode] = useMeasured<
+    HTMLDivElement,
+    'wide' | 'narrow' | 'tight'
+  >((el) => {
+    const lead = measuredWidth(el, 'lead');
+    const side = Math.max(lead, measuredWidth(el, 'zoom'));
+    const width = el.clientWidth;
+    if (2 * side + measuredWidth(el, 'density') + 2 * TOOLBAR_GAP_PX <= width)
+      return 'wide';
+    return lead <= width ? 'narrow' : 'tight';
+  }, 'wide');
   const scroller = useRef<HTMLDivElement>(null);
   const area = useAreaSize(scroller);
   const [measure] = useState(createTextMeasure);
@@ -244,16 +261,42 @@ export function BoardViewport({
   return (
     <div className="flex flex-col gap-2">
       {/* Wide: summary, density centred, zoom right. Narrow: summary on its
-          own line, then density left and zoom right (C-13). */}
-      <div className={cn('@container', PINNED_X)}>
-        <div className="grid grid-cols-[1fr_auto] items-center gap-x-2 gap-y-1 text-xs @min-[60rem]:grid-cols-[1fr_auto_1fr]">
-          <div className="col-span-2 justify-self-start @min-[60rem]:col-span-1">
-            {lead}
+          own line (words dropped before the chips would wrap), then density
+          left and zoom right. Chosen by measuring the content (C-13). */}
+      <div ref={toolbar} className={cn('relative text-xs', PINNED_X)}>
+        {lead && (
+          <div
+            aria-hidden
+            inert
+            className="invisible absolute left-0 top-0 w-max"
+          >
+            <div data-measure="lead">{lead({ words: true })}</div>
+          </div>
+        )}
+        <div
+          className={cn(
+            'grid items-center gap-x-2 gap-y-1',
+            mode === 'wide'
+              ? 'grid-cols-[1fr_auto_1fr]'
+              : 'grid-cols-[1fr_auto]',
+          )}
+        >
+          <div
+            className={cn(
+              'justify-self-start',
+              mode !== 'wide' && 'col-span-2',
+            )}
+          >
+            {lead?.({ words: mode !== 'tight' })}
           </div>
           <div
             role="group"
             aria-label="Density"
-            className="inline-flex justify-self-start overflow-hidden rounded-md border @min-[60rem]:justify-self-center"
+            data-measure="density"
+            className={cn(
+              'inline-flex overflow-hidden rounded-md border',
+              mode === 'wide' ? 'justify-self-center' : 'justify-self-start',
+            )}
           >
             {DENSITIES.map((d) => {
               const Icon = DENSITY_ICON[d];
@@ -273,7 +316,10 @@ export function BoardViewport({
               );
             })}
           </div>
-          <div className="flex items-center gap-0.5 justify-self-end">
+          <div
+            data-measure="zoom"
+            className="flex items-center gap-0.5 justify-self-end"
+          >
             <Button
               size="icon"
               variant="outline"
