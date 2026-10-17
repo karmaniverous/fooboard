@@ -56,13 +56,13 @@ beforeAll(async () => {
 });
 
 // The detail sheet links to the credential guide, so render inside a router.
-const renderBoard = () =>
+const renderBoard = (layout: Layout = testLayout) =>
   render(
     <MemoryRouter>
       <BoardGrid
         dashboard={demoDashboard}
         model={model}
-        layout={testLayout}
+        layout={layout}
         now={0}
       />
     </MemoryRouter>,
@@ -89,6 +89,29 @@ describe('BoardGrid', () => {
     const job = within(row).getAllByRole('link')[0];
     expect(job).toHaveAttribute('target', '_blank');
     expect(job.getAttribute('href')).toMatch(/actions\/runs\/\d+\/job\//);
+  });
+
+  it('puts the badge after the commit from rung 3, and in the lead below', () => {
+    const badgeIn = (rung: Layout['rung']) => {
+      const { unmount } = renderBoard({
+        ...testLayout,
+        rung,
+        format: 'wrapped',
+      });
+      const row = screen.getByRole('rowheader', {
+        name: 'billing',
+      }).parentElement;
+      if (!row) throw new Error('row not found');
+      const badge = within(row).getByRole('link', {
+        name: /^3 commits behind/,
+      });
+      // The commit hash is the badge's previous sibling only after the commit.
+      const before = badge.previousElementSibling?.textContent ?? '';
+      unmount();
+      return /^[0-9a-f]{7}$/.test(before);
+    };
+    expect(badgeIn(1)).toBe(false);
+    expect(badgeIn(3)).toBe(true);
   });
 
   it('opens the detail sheet on a touch tap', () => {

@@ -64,12 +64,15 @@ export function boardContents(
       const rest: string[] = [];
       const free: string[] = [];
       if (rung >= 2) rest.push(LONGEST.time);
-      if (rung >= 3) rest.push(LONGEST.commit, LONGEST.phase);
+      // From rung 3 the commit leads the rest, so the badge sits after it.
+      if (rung >= 3) rest.unshift(LONGEST.commit);
+      if (rung >= 3) rest.push(LONGEST.phase);
       if (rung >= 4 && d.branch) free.push(capText(d.branch));
       if (rung >= 5 && d.message) free.push(capText(firstLine(d.message)));
       out.push({
         lead,
         badge: anyBadge ? LONGEST.badge : undefined,
+        badgeAfterFirst: rung >= 3,
         rest,
         free,
       });

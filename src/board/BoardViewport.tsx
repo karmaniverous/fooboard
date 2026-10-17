@@ -26,14 +26,13 @@ import { cn } from '@/lib/utils';
 
 import { BoardGrid } from './BoardGrid';
 import {
-  BASE_FONT_PX,
   clampZoom,
-  fitLayout,
   layoutAtZoom,
   type LayoutInput,
   stepZoom,
   wheelZoom,
   zoomLabel,
+  zoomRange,
 } from './layout';
 import { boardContents } from './layoutContents';
 import type { CellFilter } from './summary';
@@ -111,14 +110,17 @@ export function BoardViewport({
     }),
     [area.width, area.height, dashboard, sizingModel, measure, density],
   );
-  const fitted = useMemo(() => fitLayout(input, BASE_FONT_PX).rung, [input]);
-  const layout = useMemo(() => layoutAtZoom(input, zoom), [input, zoom]);
+  const range = useMemo(() => zoomRange(input), [input]);
+  const layout = useMemo(
+    () => layoutAtZoom(input, zoom, range),
+    [input, zoom, range],
+  );
   const scrolls = layout.overflowX || layout.overflowY;
 
   // The native wheel listener reads the latest values through refs.
-  const latest = useRef({ zoom, setZoom, fitted });
+  const latest = useRef({ zoom, setZoom, range });
   useEffect(() => {
-    latest.current = { zoom, setZoom, fitted };
+    latest.current = { zoom, setZoom, range };
   });
 
   // Ctrl/Cmd + wheel (and trackpad pinch, which arrives as ctrl + wheel)
@@ -131,7 +133,7 @@ export function BoardViewport({
       if (!e.ctrlKey && !e.metaKey) return;
       e.preventDefault();
       const l = latest.current;
-      l.setZoom(wheelZoom(l.zoom, e.deltaY, l.fitted));
+      l.setZoom(wheelZoom(l.zoom, e.deltaY, l.range));
     };
     el.addEventListener('wheel', onWheel, { passive: false });
     return () => {
@@ -140,7 +142,7 @@ export function BoardViewport({
   }, []);
 
   const step = (direction: 1 | -1) => {
-    setZoom(stepZoom(zoom, direction, fitted));
+    setZoom(stepZoom(zoom, direction, range));
   };
 
   // Pointer state: pinch (two pointers), pan (one), double-tap.
@@ -199,7 +201,7 @@ export function BoardViewport({
             size="icon"
             variant="outline"
             aria-label="Zoom out"
-            disabled={zoom <= clampZoom(0, fitted)}
+            disabled={zoom <= range.min}
             onClick={() => {
               step(-1);
             }}
@@ -216,13 +218,13 @@ export function BoardViewport({
               setZoom(1);
             }}
           >
-            {zoomLabel(zoom, fitted)}
+            {zoomLabel(zoom, range)}
           </Button>
           <Button
             size="icon"
             variant="outline"
             aria-label="Zoom in"
-            disabled={zoom >= clampZoom(Infinity, fitted)}
+            disabled={zoom >= range.max}
             onClick={() => {
               step(1);
             }}
@@ -277,7 +279,7 @@ export function BoardViewport({
             if (start) {
               if (start.distance > 0) {
                 setZoom(
-                  clampZoom((start.zoom * distance()) / start.distance, fitted),
+                  clampZoom((start.zoom * distance()) / start.distance, range),
                 );
               }
               return;

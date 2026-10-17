@@ -16,10 +16,10 @@ import {
   fitLayout,
   layoutAtZoom,
   type LayoutInput,
-  maxZoom,
   type Rung,
   stepZoom,
   zoomLabel,
+  zoomRange,
 } from './layout';
 
 /** Every character is 0.6 em wide. */
@@ -157,36 +157,47 @@ describe('fitLayout', () => {
 
 describe('zoom', () => {
   const tall = input({ rows: 21 });
-  const fitted = fitLayout(tall, 13).rung;
+  const range = zoomRange(tall);
+  const fitted = range.fitted;
 
-  it('below 100% shrinks text, then enriches', () => {
-    const phone = input({ width: 390, stages: 6, rows: 5 });
-    expect(layoutAtZoom(phone, 1).overflowX).toBe(true);
-    const out = layoutAtZoom(phone, 0.5);
-    expect(out.fontPx).toBe(6.5);
-    expect(out.overflowX).toBe(false);
+  it('goes down to 50% where columns already fit', () => {
+    expect(range.min).toBe(0.5);
+    expect(layoutAtZoom(tall, 0.1, range).fontPx).toBe(6.5);
+  });
+
+  it('goes below 50% only as far as columns need to fit, never below 25%', () => {
+    const phone = input({ width: 390, stages: 10, rows: 5 });
+    const r = zoomRange(phone);
+    expect(layoutAtZoom(phone, 0.5, r).overflowX).toBe(true);
+    expect(r.min).toBeGreaterThanOrEqual(0.25);
+    expect(r.min).toBeLessThan(0.5);
+    expect(layoutAtZoom(phone, r.min, r).overflowX).toBe(false);
+    const huge = input({ width: 390, stages: 40, rows: 5 });
+    expect(zoomRange(huge).min).toBe(0.25);
   });
 
   it('above 100% climbs rungs at 13 px, then magnifies to 300%', () => {
-    const one = layoutAtZoom(tall, stepZoom(1, 1, fitted));
+    const one = layoutAtZoom(tall, stepZoom(1, 1, range), range);
     expect(one).toMatchObject({ rung: fitted + 1, fontPx: 13 });
-    const top = layoutAtZoom(tall, maxZoom(fitted));
+    const top = layoutAtZoom(tall, range.max, range);
     expect(top).toMatchObject({ rung: 5, fontPx: 39 });
-    expect(layoutAtZoom(tall, 99).fontPx).toBe(39);
+    expect(layoutAtZoom(tall, 99, range).fontPx).toBe(39);
   });
 
-  it('snaps gestures to whole steps and labels the position', () => {
-    expect(layoutAtZoom(tall, 1.1).rung).toBe(fitted);
-    expect(zoomLabel(1.1, fitted)).toBe('100%');
-    expect(zoomLabel(1.25, fitted)).toBe('Detail +1');
-    expect(zoomLabel(0.75, fitted)).toBe('75%');
-    expect(zoomLabel(maxZoom(fitted), fitted)).toBe('300%');
+  it('labels the zoom position as a percentage, snapping gestures to steps', () => {
+    expect(layoutAtZoom(tall, 1.1, range).rung).toBe(fitted);
+    expect(zoomLabel(1.1, range)).toBe('100%');
+    expect(zoomLabel(1.25, range)).toBe('125%');
+    expect(zoomLabel(0.75, range)).toBe('75%');
+    expect(zoomLabel(range.max, range)).toBe(
+      `${String(Math.round(range.max * 100))}%`,
+    );
   });
 
   it('stops at 100% on the way in and out', () => {
-    expect(stepZoom(0.8, 1, fitted)).toBe(1);
-    expect(stepZoom(1.25, -1, fitted)).toBe(1);
-    expect(stepZoom(1, -1, fitted)).toBe(0.8);
+    expect(stepZoom(0.8, 1, range)).toBe(1);
+    expect(stepZoom(1.25, -1, range)).toBe(1);
+    expect(stepZoom(1, -1, range)).toBe(0.8);
   });
 });
 

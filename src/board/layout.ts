@@ -54,6 +54,9 @@ export const capText = (text: string): string =>
 export interface Content {
   lead: string;
   badge?: string;
+  /** The badge follows the first fixed item (the commit) instead of the
+   * lead (rung 3 and up, C-13). */
+  badgeAfterFirst?: boolean;
   rest: readonly string[];
   free?: readonly string[];
 }
@@ -68,12 +71,15 @@ export function contentBox(
   measure: Measure,
 ): { width: number; lines: number } {
   const gap = ITEM_GAP_EM * fontPx;
-  const lead =
-    measure(content.lead, fontPx) +
-    (content.badge
-      ? gap + measure(content.badge, fontPx) + BADGE_EXTRA_EM * fontPx
-      : 0);
-  const fixed = content.rest.map((t) => measure(t, fontPx));
+  const badge = content.badge
+    ? gap + measure(content.badge, fontPx) + BADGE_EXTRA_EM * fontPx
+    : 0;
+  const afterFirst =
+    content.badgeAfterFirst === true && content.rest.length > 0;
+  const lead = measure(content.lead, fontPx) + (afterFirst ? 0 : badge);
+  const fixed = content.rest.map(
+    (t, i) => measure(t, fontPx) + (afterFirst && i === 0 ? badge : 0),
+  );
   // Free text takes whatever width is left and is cut off with "…" in
   // every format, so it never forces wrapping or wider columns; it only
   // needs room for a few characters.
@@ -223,35 +229,69 @@ export function fitLayout(input: LayoutInput, fontPx: number): Layout {
 }
 
 // --- Zoom (C-13): one scale, saved as a single number. -------------------
-// [0.5, 1]: text scale (continuous). Above 1, each 0.25 is one step: first
-// richer rungs at 13 px, then magnification in 25% steps to 300% text.
+// Below 1: text scale (continuous), down to 50%, or to the zoom at which
+// columns fit across the grid area if that is lower (floor 25%). Above 1,
+// each 0.25 is one step: first richer rungs at 13 px, then magnification in
+// 25% steps to 300% text. The value is a zoom position, not a text size.
 
-const MIN_ZOOM = 0.5;
 const ZOOM_STEP = 0.25;
 const MAX_MAGNIFY = 3;
 const MAGNIFY_STEPS = Math.round((MAX_MAGNIFY - 1) / ZOOM_STEP);
+const USUAL_MIN = 0.5;
+const FLOOR = 0.25;
+
+/** Where zoom can go for one board in one grid area. */
+export interface ZoomRange {
+  /** The rung chosen at 100%. */
+  fitted: Rung;
+  min: number;
+  max: number;
+}
 
 /** Steps above 100% for a zoom value (gestures snap to whole steps). */
 const zoomSteps = (zoom: number): number =>
   zoom <= 1 ? 0 : Math.round((zoom - 1) / ZOOM_STEP);
 
-/** The highest zoom value for a board whose fitted rung is `fitted`. */
-export const maxZoom = (fitted: Rung): number =>
-  1 + ZOOM_STEP * (TOP_RUNG - fitted + MAGNIFY_STEPS);
-
-export const clampZoom = (zoom: number, fitted: Rung): number =>
-  Math.min(maxZoom(fitted), Math.max(MIN_ZOOM, zoom));
-
-/** The layout at a zoom value. */
-export function layoutAtZoom(input: LayoutInput, zoom: number): Layout {
-  if (zoom <= 1) {
-    return fitLayout(input, BASE_FONT_PX * Math.max(MIN_ZOOM, zoom));
+/** The lowest zoom: 50%, or lower (to 25%) only as far as columns need to
+ * fit across the grid area. */
+function minZoom(input: LayoutInput): number {
+  const fitsAt = (z: number) => !fitLayout(input, BASE_FONT_PX * z).overflowX;
+  if (fitsAt(USUAL_MIN)) return USUAL_MIN;
+  if (!fitsAt(FLOOR)) return FLOOR;
+  let lo = FLOOR;
+  let hi = USUAL_MIN;
+  for (let i = 0; i < 12; i++) {
+    const mid = (lo + hi) / 2;
+    if (fitsAt(mid)) lo = mid;
+    else hi = mid;
   }
-  const fitted = fitLayout(input, BASE_FONT_PX);
-  const steps = zoomSteps(clampZoom(zoom, fitted.rung));
-  const climb = TOP_RUNG - fitted.rung;
+  return Math.floor(lo * 100) / 100;
+}
+
+export function zoomRange(input: LayoutInput): ZoomRange {
+  const fitted = fitLayout(input, BASE_FONT_PX).rung;
+  return {
+    fitted,
+    min: minZoom(input),
+    max: 1 + ZOOM_STEP * (TOP_RUNG - fitted + MAGNIFY_STEPS),
+  };
+}
+
+export const clampZoom = (zoom: number, range: ZoomRange): number =>
+  Math.min(range.max, Math.max(range.min, zoom));
+
+/** The layout at a zoom value (clamped to the board's range). */
+export function layoutAtZoom(
+  input: LayoutInput,
+  zoom: number,
+  range: ZoomRange = zoomRange(input),
+): Layout {
+  const z = clampZoom(zoom, range);
+  if (z <= 1) return fitLayout(input, BASE_FONT_PX * z);
+  const steps = zoomSteps(z);
+  const climb = TOP_RUNG - range.fitted;
   if (steps <= climb) {
-    return layoutAtRung(input, (fitted.rung + steps) as Rung, BASE_FONT_PX);
+    return layoutAtRung(input, (range.fitted + steps) as Rung, BASE_FONT_PX);
   }
   const magnify = Math.min(MAX_MAGNIFY, 1 + ZOOM_STEP * (steps - climb));
   return layoutAtRung(input, TOP_RUNG, BASE_FONT_PX * magnify);
@@ -262,27 +302,25 @@ export function layoutAtZoom(input: LayoutInput, zoom: number): Layout {
 export function stepZoom(
   zoom: number,
   direction: 1 | -1,
-  fitted: Rung,
+  range: ZoomRange,
 ): number {
   if (zoom < 1 || (zoom === 1 && direction < 0)) {
     const next = direction > 0 ? zoom * 1.25 : zoom / 1.25;
-    return next > 0.97 ? 1 : clampZoom(next, fitted);
+    return next > 0.97 ? 1 : clampZoom(next, range);
   }
-  return clampZoom(1 + ZOOM_STEP * (zoomSteps(zoom) + direction), fitted);
+  return clampZoom(1 + ZOOM_STEP * (zoomSteps(zoom) + direction), range);
 }
 
 /** Continuous wheel or pinch zoom; values above 1 snap when laid out. */
-export const wheelZoom = (zoom: number, deltaY: number, fitted: Rung): number =>
-  clampZoom(zoom * Math.exp(-deltaY / 300), fitted);
+export const wheelZoom = (
+  zoom: number,
+  deltaY: number,
+  range: ZoomRange,
+): number => clampZoom(zoom * Math.exp(-deltaY / 300), range);
 
-/** What the zoom control shows. */
-export function zoomLabel(zoom: number, fitted: Rung): string {
-  if (zoom <= 1)
-    return `${String(Math.round(Math.max(MIN_ZOOM, zoom) * 100))}%`;
-  const steps = zoomSteps(clampZoom(zoom, fitted));
-  if (steps === 0) return '100%';
-  const climb = TOP_RUNG - fitted;
-  return steps <= climb
-    ? `Detail +${String(steps)}`
-    : `${String(Math.round((1 + ZOOM_STEP * (steps - climb)) * 100))}%`;
+/** What the zoom control shows: a percentage, the zoom position (C-13). */
+export function zoomLabel(zoom: number, range: ZoomRange): string {
+  const z = clampZoom(zoom, range);
+  const position = z <= 1 ? z : 1 + ZOOM_STEP * zoomSteps(z);
+  return `${String(Math.round(position * 100))}%`;
 }

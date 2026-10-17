@@ -155,7 +155,30 @@ export function Cell({
   const { time, commit, branch, message } = derivation;
   const relative = time ? relativeTime(time, now) : undefined;
 
+  const badgeLink = badge && (
+    <ExternalLink
+      unstyled
+      href={compare?.htmlUrl}
+      title={badgeDescription(badge)}
+      aria-label={badgeDescription(badge)}
+      className={cn(
+        'pointer-events-auto flex-none rounded-full px-1.5 text-[0.8em] font-bold leading-[1.6] no-underline ring-2 ring-white',
+        badge.kind === 'behind'
+          ? 'bg-badge-behind text-badge-behind-text'
+          : 'bg-badge-diverged text-badge-diverged-text',
+      )}
+    >
+      {badgeText(badge)}
+    </ExternalLink>
+  );
+  // From rung 3 the badge follows the commit it describes (C-13).
+  const badgeAfterCommit = rung >= 3 && Boolean(commit);
+
+  // Rest items are hidden from assistive tech (the cover link's name says
+  // it all), except the badge link, which stays reachable.
   const rest: React.ReactNode[] = [];
+  /** The rest item holding the badge link, if any. */
+  let badgeItem = -1;
   if (rung >= 2 && time) {
     rest.push(
       <time key="t" dateTime={time}>
@@ -165,9 +188,13 @@ export function Cell({
   }
   if (rung >= 3) {
     if (commit) {
+      if (badgeAfterCommit) badgeItem = rest.length;
       rest.push(
-        <span key="c" className="font-mono text-[0.95em] opacity-90">
-          {shortSha(commit)}
+        <span key="c" className="flex items-center" style={gapStyle}>
+          <span aria-hidden className="font-mono text-[0.95em] opacity-90">
+            {shortSha(commit)}
+          </span>
+          {badgeLink}
         </span>,
       );
     }
@@ -241,26 +268,15 @@ export function Cell({
               <span aria-hidden className="font-semibold">
                 {meta.label}
               </span>
-              {badge && (
-                <ExternalLink
-                  unstyled
-                  href={compare?.htmlUrl}
-                  title={badgeDescription(badge)}
-                  aria-label={badgeDescription(badge)}
-                  className={cn(
-                    'pointer-events-auto flex-none rounded-full px-1.5 text-[0.8em] font-bold leading-[1.6] no-underline ring-2 ring-white',
-                    badge.kind === 'behind'
-                      ? 'bg-badge-behind text-badge-behind-text'
-                      : 'bg-badge-diverged text-badge-diverged-text',
-                  )}
-                >
-                  {badgeText(badge)}
-                </ExternalLink>
-              )}
+              {!badgeAfterCommit && badgeLink}
             </>
           }
           rest={rest.map((item, i) => (
-            <span key={i} aria-hidden className="flex min-w-0">
+            <span
+              key={i}
+              aria-hidden={i === badgeItem ? undefined : true}
+              className="flex min-w-0"
+            >
               {item}
             </span>
           ))}
