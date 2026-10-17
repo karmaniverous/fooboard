@@ -13,6 +13,7 @@ import { DashboardSchema } from '@/domain/config/dashboard';
 import { duplicateDashboard } from './edit';
 import {
   deleteRowGroup,
+  dropRow,
   regroup,
   renameRowGroup,
   reorderRows,
@@ -21,6 +22,7 @@ import {
   setRowGroupCredential,
   setRowGroupOverride,
   setRowOverride,
+  stepRow,
 } from './groupEdit';
 
 const row = (id: string) => ({
@@ -120,5 +122,39 @@ describe('overrides and group credentials', () => {
     d = setRowGroupOverride(d, 'group-a', 'prod', 'release/*');
     const copy = duplicateDashboard(d, 'copy', 'Copy', (id) => id);
     expect(copy.rowGroups).toEqual(d.rowGroups);
+  });
+});
+
+describe('dragging and moving across group edges (C-14b)', () => {
+  // a | [b c] | d
+  const grouped = setRowGroup(setRowGroup(base, 'b', 'new'), 'c', 'group-b');
+  const members = (d: typeof base) => d.rowGroups[0]?.memberIds ?? [];
+
+  it("a drop takes the target's place and group", () => {
+    const into = dropRow(grouped, 'd', 'b');
+    expect(ids(into)).toEqual(['a', 'd', 'b', 'c']);
+    expect(members(into)).toEqual(['d', 'b', 'c']);
+    const out = dropRow(grouped, 'c', 'd');
+    expect(ids(out)).toEqual(['a', 'b', 'd', 'c']);
+    expect(members(out)).toEqual(['b']);
+    let between = setRowGroup(grouped, 'd', 'new');
+    between = dropRow(between, 'c', 'd');
+    expect(between.rowGroups.map((g) => g.memberIds)).toEqual([
+      ['b'],
+      ['d', 'c'],
+    ]);
+  });
+
+  it('a step leaves the group at its edge, joins a neighbouring group, else swaps', () => {
+    const left = stepRow(grouped, 'c', 1);
+    expect(left && ids(left)).toEqual(['a', 'b', 'c', 'd']);
+    expect(left && members(left)).toEqual(['b']);
+    const joined = stepRow(grouped, 'a', 1);
+    expect(joined && members(joined)).toEqual(['a', 'b', 'c']);
+    const swapped = stepRow(grouped, 'b', 1);
+    expect(swapped && ids(swapped)).toEqual(['a', 'c', 'b', 'd']);
+    expect(stepRow(grouped, 'a', -1)).toBeUndefined();
+    const top = setRowGroup(base, 'a', 'new');
+    expect(stepRow(top, 'a', -1)?.rowGroups).toEqual([]);
   });
 });

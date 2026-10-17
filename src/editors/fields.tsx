@@ -3,11 +3,15 @@
  *
  * @module
  */
-import { Fragment, useState } from 'react';
+import { Fragment, useId, useState } from 'react';
 
 import { ConfirmButton } from '@/components/ConfirmButton';
 import { NativeSelect } from '@/components/NativeSelect';
+import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+
+import { branchCounts } from './edit';
+import { useLoad } from './useLoad';
 
 /**
  * A text field that commits on blur or Enter, and only a non-empty value
@@ -58,11 +62,14 @@ function BlurInput({
   label,
   value,
   placeholder,
+  list,
   onCommit,
 }: {
   label: string;
   value: string;
   placeholder?: string;
+  /** A datalist id offering suggestions. */
+  list?: string;
   onCommit: (value: string | undefined) => void;
 }): React.JSX.Element {
   const [text, setText] = useState(value);
@@ -70,6 +77,7 @@ function BlurInput({
     <Input
       aria-label={label}
       placeholder={placeholder}
+      list={list}
       className="h-7 text-xs"
       value={text}
       onChange={(e) => {
@@ -158,20 +166,71 @@ export function OverrideFields({
   stages,
   own,
   inherited,
+  loadBranches,
   onChange,
 }: {
   name: string;
   stages: readonly { id: string; name: string; branchPattern: string }[];
   own: Readonly<Record<string, string>>;
   inherited: (stageId: string) => string;
+  /** The branches of the repos these overrides apply to (C-21). */
+  loadBranches?: () => Promise<Map<string, string[]>>;
   onChange: (stageId: string, pattern: string | undefined) => void;
 }): React.JSX.Element {
   const count = Object.keys(own).length;
+  const [found, load] = useLoad<Map<string, string[]>>();
+  const listId = useId();
+  const byRepo = found.kind === 'done' ? found.value : undefined;
+  const branches = byRepo ? branchCounts(byRepo) : [];
   return (
     <details className="text-xs">
       <summary className="cursor-pointer">
         Branch overrides{count > 0 ? ` (${String(count)})` : ''}
       </summary>
+      {loadBranches && found.kind !== 'done' && (
+        <Button
+          size="sm"
+          variant="outline"
+          className="mt-1 h-6 text-xs"
+          disabled={found.kind === 'loading'}
+          onClick={() => {
+            load(loadBranches);
+          }}
+        >
+          {found.kind === 'loading' ? 'Finding branches…' : 'Find branches'}
+        </Button>
+      )}
+      {found.kind === 'error' && (
+        <p className="text-status-failure">{found.message}</p>
+      )}
+      {byRepo && (
+        <>
+          {/* Suggestions for every field, and the same list visible with
+              counts: repos with the branch / repos read. */}
+          <datalist id={listId}>
+            {branches.map((b) => (
+              <option
+                key={b.name}
+                value={b.name}
+                label={`${String(b.count)}/${String(byRepo.size)}`}
+              />
+            ))}
+          </datalist>
+          <p
+            aria-label={`Branches for ${name}`}
+            className="mt-1 text-muted-foreground"
+          >
+            {branches.length === 0
+              ? 'No branches found.'
+              : branches
+                  .map(
+                    (b) =>
+                      `${b.name} ${String(b.count)}/${String(byRepo.size)}`,
+                  )
+                  .join(' · ')}
+          </p>
+        </>
+      )}
       <div className="mt-1 grid grid-cols-[auto_1fr] items-center gap-1">
         {stages.map((s) => (
           <Fragment key={s.id}>
@@ -181,6 +240,7 @@ export function OverrideFields({
               label={`${s.name} branch override for ${name}`}
               placeholder={`${inherited(s.id)} (inherited)`}
               value={own[s.id] ?? ''}
+              list={byRepo ? listId : undefined}
               onCommit={(pattern) => {
                 onChange(s.id, pattern);
               }}

@@ -261,3 +261,101 @@ export const setRowGroupCredential = (
 export const hasOverrides = (g: RowGroup): boolean =>
   Object.keys(g.branchPatternOverrides).length > 0 ||
   Boolean(g.defaultCredentials.github ?? g.defaultCredentials.aws);
+
+/** Put `id` into an existing group, or into none. */
+function assign<G extends Group>(
+  groups: readonly G[],
+  id: string,
+  target: string | undefined,
+): G[] {
+  return groups.map((g) => {
+    const memberIds = g.memberIds.filter((m) => m !== id);
+    return g.id === target
+      ? { ...g, memberIds: [...memberIds, id] }
+      : { ...g, memberIds };
+  });
+}
+
+const groupIdOf = (groups: readonly Group[], id: string) =>
+  groups.find((g) => g.memberIds.includes(id))?.id;
+
+/** Drag `fromId` onto `toId` (C-14b): it takes the target's place and
+ * the target's group (or none), so dragging across a group edge moves it
+ * into, out of or between groups. */
+function dropOnto<T extends { id: string }, G extends Group>(
+  items: readonly T[],
+  groups: readonly G[],
+  fromId: string,
+  toId: string,
+): { items: T[]; groups: G[] } {
+  const from = items.findIndex((i) => i.id === fromId);
+  const to = items.findIndex((i) => i.id === toId);
+  if (from < 0 || to < 0 || from === to)
+    return { items: [...items], groups: [...groups] };
+  const moved = [...items];
+  moved.splice(to, 0, ...moved.splice(from, 1));
+  return regroup(moved, assign(groups, fromId, groupIdOf(groups, toId)));
+}
+
+/** *Move up* / *Move down* one step (C-14b): an item at its group's edge
+ * first leaves the group; an ungrouped item next to a group first joins
+ * it; otherwise it swaps with its neighbour. Undefined when it can't move. */
+function stepItem<T extends { id: string }, G extends Group>(
+  items: readonly T[],
+  groups: readonly G[],
+  id: string,
+  delta: -1 | 1,
+): { items: T[]; groups: G[] } | undefined {
+  const i = items.findIndex((x) => x.id === id);
+  if (i < 0) return undefined;
+  const own = groupIdOf(groups, id);
+  const at = i + delta;
+  const neighbour: T | undefined =
+    at >= 0 && at < items.length ? items[at] : undefined;
+  const theirs = neighbour ? groupIdOf(groups, neighbour.id) : undefined;
+  if (own !== undefined && theirs !== own) {
+    return regroup(items, assign(groups, id, undefined));
+  }
+  if (!neighbour) return undefined;
+  if (own === undefined && theirs !== undefined) {
+    return regroup(items, assign(groups, id, theirs));
+  }
+  const next = [...items];
+  next[i] = neighbour;
+  next[i + delta] = items[i];
+  return regroup(next, groups);
+}
+
+/** Row and stage versions of the above, on a dashboard. */
+export const dropRow = (
+  d: Dashboard,
+  fromId: string,
+  toId: string,
+): Dashboard => {
+  const r = dropOnto(d.rows, d.rowGroups, fromId, toId);
+  return { ...d, rows: r.items, rowGroups: r.groups };
+};
+export const dropStage = (
+  d: Dashboard,
+  fromId: string,
+  toId: string,
+): Dashboard => {
+  const r = dropOnto(d.stages, d.columnGroups, fromId, toId);
+  return { ...d, stages: r.items, columnGroups: r.groups };
+};
+export const stepRow = (
+  d: Dashboard,
+  id: string,
+  delta: -1 | 1,
+): Dashboard | undefined => {
+  const r = stepItem(d.rows, d.rowGroups, id, delta);
+  return r && { ...d, rows: r.items, rowGroups: r.groups };
+};
+export const stepStage = (
+  d: Dashboard,
+  id: string,
+  delta: -1 | 1,
+): Dashboard | undefined => {
+  const r = stepItem(d.stages, d.columnGroups, id, delta);
+  return r && { ...d, stages: r.items, columnGroups: r.groups };
+};

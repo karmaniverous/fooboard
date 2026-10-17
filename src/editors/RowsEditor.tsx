@@ -20,10 +20,12 @@ import type { MatchTest } from '@/domain/config/matchTest';
 import type { Row } from '@/domain/config/row';
 import type { EngineProviders } from '@/engine';
 
+import { discoverBranches } from './branches';
 import { removeRow, rowFromRepo } from './edit';
 import { CommitInput, GroupControl, OverrideFields } from './fields';
 import {
   deleteRowGroup,
+  dropRow,
   hasOverrides,
   renameRowGroup,
   reorderRows,
@@ -31,6 +33,7 @@ import {
   setRowGroupCredential,
   setRowGroupOverride,
   setRowOverride,
+  stepRow,
 } from './groupEdit';
 import { MatchTestsEditor } from './MatchTestsEditor';
 import { ReorderList } from './ReorderList';
@@ -72,6 +75,17 @@ export function RowsEditor({
         }}
         onRemove={(r) => {
           onChange(removeRow(dashboard, r.id));
+        }}
+        onDrop={(from, to) => {
+          onChange(dropRow(dashboard, from.id, to.id));
+        }}
+        onStep={(r, delta) => {
+          const next = stepRow(dashboard, r.id, delta);
+          return next
+            ? () => {
+                onChange(next);
+              }
+            : undefined;
         }}
       >
         {(row) => (
@@ -184,6 +198,7 @@ export function RowsEditor({
                   {group && (
                     <RowGroupSettings
                       dashboard={dashboard}
+                      providers={providers}
                       groupId={group.id}
                       onChange={onChange}
                     />
@@ -205,6 +220,9 @@ export function RowsEditor({
                       dashboard.stages.find((s) => s.id === stageId)
                         ?.branchPattern ??
                       ''
+                    }
+                    loadBranches={() =>
+                      discoverBranches(dashboard, providers, [row])
                     }
                     onChange={(stageId, pattern) => {
                       onChange(
@@ -247,10 +265,12 @@ export function RowsEditor({
  * overrides and default credentials. Shown on each member row. */
 function RowGroupSettings({
   dashboard,
+  providers,
   groupId,
   onChange,
 }: {
   dashboard: Dashboard;
+  providers: EngineProviders;
   groupId: string;
   onChange: (dashboard: Dashboard) => void;
 }): React.JSX.Element | null {
@@ -286,6 +306,13 @@ function RowGroupSettings({
         own={group.branchPatternOverrides}
         inherited={(stageId) =>
           dashboard.stages.find((s) => s.id === stageId)?.branchPattern ?? ''
+        }
+        loadBranches={() =>
+          discoverBranches(
+            dashboard,
+            providers,
+            dashboard.rows.filter((r) => group.memberIds.includes(r.id)),
+          )
         }
         onChange={(stageId, pattern) => {
           onChange(setRowGroupOverride(dashboard, groupId, stageId, pattern));

@@ -13,50 +13,25 @@ import { useState } from 'react';
 import { NativeSelect } from '@/components/NativeSelect';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { resolveCredentialId } from '@/domain/config/credentialRefs';
 import { wouldCreateCycle } from '@/domain/config/cycle';
 import type { Dashboard } from '@/domain/config/dashboard';
 import type { Stage } from '@/domain/config/stage';
 import type { EngineProviders } from '@/engine';
 
+import { discoverBranches } from './branches';
 import { branchCounts, patternPreview, removeStage, uniqueId } from './edit';
 import { CommitInput, GroupControl } from './fields';
 import {
   deleteColumnGroup,
+  dropStage,
   renameColumnGroup,
   reorderStages,
   setColumnGroup,
+  stepStage,
 } from './groupEdit';
 import { LoadStatus } from './LoadStatus';
 import { ReorderList } from './ReorderList';
 import { useLoad } from './useLoad';
-
-/** Branch names per repo, read with each row's own GitHub token. */
-async function discoverBranches(
-  dashboard: Dashboard,
-  providers: EngineProviders,
-): Promise<Map<string, string[]>> {
-  const byRepo = new Map<string, string[]>();
-  for (const row of dashboard.rows) {
-    if (byRepo.has(row.repo)) continue;
-    const override =
-      row.type === 'github' ? row.credentialId : row.githubCredentialId;
-    const id = resolveCredentialId(
-      dashboard.defaultCredentials,
-      'github',
-      override,
-    );
-    const reader = id ? providers.github(id) : undefined;
-    if (!reader) continue;
-    const [owner = '', repo = ''] = row.repo.split('/');
-    const branches = await reader.listBranches({ owner, repo });
-    byRepo.set(
-      row.repo,
-      branches.map((b) => b.name),
-    );
-  }
-  return byRepo;
-}
 
 function AddStage({
   dashboard,
@@ -202,6 +177,17 @@ export function StagesEditor({
         }}
         onRemove={(s) => {
           onChange(removeStage(dashboard, s.id));
+        }}
+        onDrop={(from, to) => {
+          onChange(dropStage(dashboard, from.id, to.id));
+        }}
+        onStep={(s, delta) => {
+          const next = stepStage(dashboard, s.id, delta);
+          return next
+            ? () => {
+                onChange(next);
+              }
+            : undefined;
         }}
       >
         {(stage) => (
