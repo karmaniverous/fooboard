@@ -18,7 +18,7 @@ export function DemoPage(): React.JSX.Element {
     <BoardScreen
       dashboard={demoDashboard}
       providers={providers}
-      subtitle={`${site.tagline} Sample data: fictional repos, no account needed.`}
+      subtitle={site.tagline}
     />
   );
 }

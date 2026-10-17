@@ -38,25 +38,22 @@ export function BoardScreen({
     dashboard.stages.length,
   );
   const [filter, setFilter] = useState<CellFilter | null>(null);
-  // Space-between with wrap (C-13): title and tagline at the left edge,
-  // summary chips at the right; on narrow screens the chips wrap below.
+  // Wide: title, tagline ... requests. Narrow: title ... requests, then
+  // the tagline on its own line (C-13).
   return (
     <div className="flex flex-col gap-2 px-4 py-2">
-      <div
-        className={cn(
-          'flex flex-wrap items-center justify-between gap-x-3 gap-y-1',
-          PINNED_X,
-        )}
-      >
-        <div className="flex flex-wrap items-baseline gap-x-3">
-          <h1 className="text-base font-semibold">{dashboard.name}</h1>
+      <div className={cn('@container', PINNED_X)}>
+        <div className="grid grid-cols-[1fr_auto] items-baseline gap-x-3 gap-y-0.5 @min-[60rem]:grid-cols-[auto_1fr_auto]">
+          <h1 className="order-1 text-base font-semibold">{dashboard.name}</h1>
+          <div className="order-2 flex items-center gap-3 self-center justify-self-end @min-[60rem]:order-3">
+            <BudgetMeter model={model} />
+            {typeof actions === 'function' ? actions(model) : actions}
+          </div>
           {subtitle && (
-            <span className="text-xs text-muted-foreground">{subtitle}</span>
+            <span className="order-3 col-span-2 text-xs text-muted-foreground @min-[60rem]:order-2 @min-[60rem]:col-span-1">
+              {subtitle}
+            </span>
           )}
-        </div>
-        <div className="flex flex-wrap items-center gap-3">
-          <BoardSummary model={model} filter={filter} onFilter={setFilter} />
-          {typeof actions === 'function' ? actions(model) : actions}
         </div>
       </div>
       <div>
@@ -66,7 +63,9 @@ export function BoardScreen({
           now={now}
           view={view}
           filter={filter}
-          meter={<BudgetMeter model={model} />}
+          lead={
+            <BoardSummary model={model} filter={filter} onFilter={setFilter} />
+          }
         />
       </div>
     </div>

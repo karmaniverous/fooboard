@@ -161,13 +161,17 @@ export function BoardGrid({
               {divider?.label && (
                 <div
                   className={cn(
-                    'sticky left-0 col-span-full flex items-end px-[var(--cell-pad-x)] text-[0.85em] font-semibold uppercase tracking-wide text-muted-foreground',
+                    'col-span-full flex items-end text-[0.85em] font-semibold uppercase tracking-wide text-muted-foreground',
                     DIVIDER[divider.style].top,
                   )}
                   style={lineRow}
                   role="presentation"
                 >
-                  {divider.label}
+                  {/* The label, not the full-width row, is pinned, so it stays
+                      on screen when the board scrolls right (C-13). */}
+                  <span className="sticky left-0 px-[var(--cell-pad-x)]">
+                    {divider.label}
+                  </span>
                 </div>
               )}
               <div role="row" className="contents">

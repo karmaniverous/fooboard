@@ -14,7 +14,7 @@
  *
  * @module
  */
-import { Minus, Plus, RotateCcw } from 'lucide-react';
+import { Maximize2, Minimize2, Minus, Plus, RotateCcw } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 
 import { ToggleButton } from '@/components/ToggleButton';
@@ -49,6 +49,11 @@ const INTERACTION_MS = 5_000;
 /** Accumulated wheel delta that makes one 10% zoom step. */
 const WHEEL_STEP_DELTA = 50;
 const DENSITIES: Density[] = ['compact', 'default', 'comfortable'];
+const DENSITY_ICON = {
+  compact: Minimize2,
+  default: Minus,
+  comfortable: Maximize2,
+} as const;
 
 /** The grid area (C-13): the window's width less the page's side margins,
  * and the window height below the grid's top when the page is scrolled to
@@ -133,15 +138,15 @@ export function BoardViewport({
   now,
   view,
   filter = null,
-  meter,
+  lead,
 }: {
   dashboard: Dashboard;
   model: BoardModel;
   now: number;
   view: BoardView;
   filter?: CellFilter | null;
-  /** Right end of the toolbar: the request budget meter (C-16). */
-  meter?: React.ReactNode;
+  /** Start of the toolbar: the summary chips (C-14a). */
+  lead?: React.ReactNode;
 }): React.JSX.Element {
   const { zoom, setZoom, density, setDensity } = view;
   const scroller = useRef<HTMLDivElement>(null);
@@ -238,75 +243,77 @@ export function BoardViewport({
 
   return (
     <div className="flex flex-col gap-2">
-      {/* Compact, space-between with wrap: density, zoom, meter (C-13). */}
-      <div
-        className={cn(
-          'flex flex-wrap items-center justify-between gap-x-2 gap-y-1 text-xs',
-          PINNED_X,
-        )}
-      >
-        {/* Equal-growing ends keep zoom at the true centre. */}
-        <div className="flex flex-1 basis-0 justify-start">
+      {/* Wide: summary, density centred, zoom right. Narrow: summary on its
+          own line, then density left and zoom right (C-13). */}
+      <div className={cn('@container', PINNED_X)}>
+        <div className="grid grid-cols-[1fr_auto] items-center gap-x-2 gap-y-1 text-xs @min-[60rem]:grid-cols-[1fr_auto_1fr]">
+          <div className="col-span-2 justify-self-start @min-[60rem]:col-span-1">
+            {lead}
+          </div>
           <div
             role="group"
             aria-label="Density"
-            className="inline-flex overflow-hidden rounded-md border"
+            className="inline-flex justify-self-start overflow-hidden rounded-md border @min-[60rem]:justify-self-center"
           >
-            {DENSITIES.map((d) => (
-              <ToggleButton
-                key={d}
-                pressed={density === d}
-                className="h-6 px-1.5 capitalize"
-                onClick={() => {
-                  setDensity(d);
-                }}
-              >
-                {d}
-              </ToggleButton>
-            ))}
+            {DENSITIES.map((d) => {
+              const Icon = DENSITY_ICON[d];
+              return (
+                <ToggleButton
+                  key={d}
+                  pressed={density === d}
+                  aria-label={d}
+                  title={d.charAt(0).toUpperCase() + d.slice(1)}
+                  className="flex h-6 w-7 items-center justify-center"
+                  onClick={() => {
+                    setDensity(d);
+                  }}
+                >
+                  <Icon aria-hidden className="size-3.5" />
+                </ToggleButton>
+              );
+            })}
+          </div>
+          <div className="flex items-center gap-0.5 justify-self-end">
+            <Button
+              size="icon"
+              variant="outline"
+              className="size-6"
+              aria-label="Zoom out"
+              disabled={zoom <= range.min}
+              onClick={() => {
+                step(-1);
+              }}
+            >
+              <Minus className="size-3.5" />
+            </Button>
+            <ZoomField zoom={zoom} range={range} onZoom={setZoom} />
+            <Button
+              size="icon"
+              variant="outline"
+              className="size-6"
+              aria-label="Zoom in"
+              disabled={zoom >= range.max}
+              onClick={() => {
+                step(1);
+              }}
+            >
+              <Plus className="size-3.5" />
+            </Button>
+            <Button
+              size="icon"
+              variant="outline"
+              className="size-6"
+              title="Zoom to 100%"
+              aria-label="Zoom to 100%"
+              disabled={zoom === 1}
+              onClick={() => {
+                setZoom(1);
+              }}
+            >
+              <RotateCcw className="size-3.5" />
+            </Button>
           </div>
         </div>
-        <div className="flex items-center gap-0.5">
-          <Button
-            size="icon"
-            variant="outline"
-            className="size-6"
-            aria-label="Zoom out"
-            disabled={zoom <= range.min}
-            onClick={() => {
-              step(-1);
-            }}
-          >
-            <Minus className="size-3.5" />
-          </Button>
-          <ZoomField zoom={zoom} range={range} onZoom={setZoom} />
-          <Button
-            size="icon"
-            variant="outline"
-            className="size-6"
-            aria-label="Zoom in"
-            disabled={zoom >= range.max}
-            onClick={() => {
-              step(1);
-            }}
-          >
-            <Plus className="size-3.5" />
-          </Button>
-          <Button
-            size="icon"
-            variant="outline"
-            className="size-6"
-            title="Zoom to 100%"
-            aria-label="Zoom to 100%"
-            disabled={zoom === 1}
-            onClick={() => {
-              setZoom(1);
-            }}
-          >
-            <RotateCcw className="size-3.5" />
-          </Button>
-        </div>
-        <div className="flex flex-1 basis-0 justify-end">{meter}</div>
       </div>
 
       <div className="relative">

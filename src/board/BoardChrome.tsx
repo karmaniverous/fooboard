@@ -39,13 +39,16 @@ export function BoardSummary({
         <ToggleButton
           key={f}
           pressed={filter === f}
+          aria-label={`${String(counts[f])} ${f}`}
           className="inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5"
           onClick={() => {
             onFilter(filter === f ? null : f);
           }}
         >
           <span aria-hidden className={cn('rounded-full', DOT[f])} />
-          {counts[f]} {f}
+          {counts[f]}
+          {/* The word goes before the chips would wrap (C-13). */}
+          <span className="hidden @min-[24rem]:inline">{f}</span>
         </ToggleButton>
       ))}
     </div>
