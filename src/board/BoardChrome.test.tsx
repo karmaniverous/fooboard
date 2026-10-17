@@ -9,7 +9,7 @@ import { describe, expect, it, vi } from 'vitest';
 
 import type { BoardModel } from '@/engine';
 
-import { BoardSummary, BudgetDisplay } from './BoardChrome';
+import { BoardSummary, BudgetMeter } from './BoardChrome';
 
 const model: BoardModel = {
   cells: {},
@@ -37,11 +37,35 @@ describe('BoardSummary', () => {
   });
 });
 
-describe('BudgetDisplay', () => {
-  it('shows only credentials with a budget, flagging a low one', () => {
-    render(<BudgetDisplay model={model} />);
-    const budget = screen.getByText(/GitHub gh: 300 of 5,000 left/);
-    expect(budget.className).toContain('text-status-failure');
-    expect(screen.queryByText(/GitHub off/)).toBeNull();
+describe('BudgetMeter', () => {
+  it('shows one battery per credential with a budget, by segments left', () => {
+    const at = (remaining: number) => ({
+      ...model,
+      budgets: {
+        gh: {
+          limit: 5000,
+          remaining,
+          reset: 0,
+          used: 0,
+          status: 'ok' as const,
+        },
+      },
+    });
+    const { rerender } = render(<BudgetMeter model={model} />);
+    const meter = screen.getByRole('meter', {
+      name: /GitHub gh: 300 of 5,000 requests left/,
+    });
+    expect(meter).toHaveAttribute('aria-valuenow', '300');
+    expect(meter.className).toContain('text-red-600');
+    expect(screen.getAllByRole('meter')).toHaveLength(1);
+    for (const [remaining, colour] of [
+      [5000, 'text-green-600'],
+      [3000, 'text-yellow-500'],
+      [2000, 'text-orange-500'],
+      [0, 'text-red-600'],
+    ] as const) {
+      rerender(<BudgetMeter model={at(remaining)} />);
+      expect(screen.getByRole('meter').className).toContain(colour);
+    }
   });
 });

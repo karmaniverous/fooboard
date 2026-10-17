@@ -9,10 +9,9 @@ import { useState } from 'react';
 
 import type { Dashboard } from '@/domain/config/dashboard';
 import type { BoardModel, EngineProviders } from '@/engine';
-import { useWrapped } from '@/lib/useWrapped';
 import { cn, PINNED_X } from '@/lib/utils';
 
-import { BoardSummary, BudgetDisplay } from './BoardChrome';
+import { BoardSummary, BudgetMeter } from './BoardChrome';
 import { BoardViewport } from './BoardViewport';
 import type { CellFilter } from './summary';
 import { useBoardEngine } from './useBoardEngine';
@@ -39,33 +38,24 @@ export function BoardScreen({
     dashboard.stages.length,
   );
   const [filter, setFilter] = useState<CellFilter | null>(null);
-  // Once the header wraps, it and the toolbar below are centred (C-13).
-  const [header, headerWrapped] = useWrapped<HTMLDivElement>();
+  // Space-between with wrap (C-13): title and tagline at the left edge,
+  // summary chips at the right; on narrow screens the chips wrap below.
   return (
     <div className="flex flex-col gap-2 px-4 py-2">
       <div
-        ref={header}
         className={cn(
-          'flex flex-wrap items-center gap-3',
-          headerWrapped && 'justify-center text-center',
+          'flex flex-wrap items-center justify-between gap-x-3 gap-y-1',
           PINNED_X,
         )}
       >
-        <h1 className="text-base font-semibold">{dashboard.name}</h1>
-        {subtitle && (
-          <span className="text-xs text-muted-foreground">{subtitle}</span>
-        )}
-        {/* On one line, the chips fill the space between the title and the
-            counter, centred in it; wrapped, the whole header is centred. */}
-        <div
-          className={
-            headerWrapped ? undefined : 'flex flex-auto justify-center'
-          }
-        >
-          <BoardSummary model={model} filter={filter} onFilter={setFilter} />
+        <div className="flex flex-wrap items-baseline gap-x-3">
+          <h1 className="text-base font-semibold">{dashboard.name}</h1>
+          {subtitle && (
+            <span className="text-xs text-muted-foreground">{subtitle}</span>
+          )}
         </div>
-        <div className="flex items-center gap-3">
-          <BudgetDisplay model={model} />
+        <div className="flex flex-wrap items-center gap-3">
+          <BoardSummary model={model} filter={filter} onFilter={setFilter} />
           {typeof actions === 'function' ? actions(model) : actions}
         </div>
       </div>
@@ -76,7 +66,7 @@ export function BoardScreen({
           now={now}
           view={view}
           filter={filter}
-          centered={headerWrapped}
+          meter={<BudgetMeter model={model} />}
         />
       </div>
     </div>

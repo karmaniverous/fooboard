@@ -36,7 +36,9 @@ export function Header(): React.JSX.Element {
         />
         <span>{site.name}</span>
       </Link>
-      <DropdownMenu>
+      {/* Non-modal: no scroll lock, so the page scrollbar stays and the
+          layout does not shift when the menu opens. */}
+      <DropdownMenu modal={false}>
         <DropdownMenuTrigger
           aria-label="Menu"
           className="ml-auto rounded-md p-1 hover:bg-white/10"

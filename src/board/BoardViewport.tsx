@@ -22,7 +22,6 @@ import { Button } from '@/components/ui/button';
 import type { Dashboard } from '@/domain/config/dashboard';
 import type { Density } from '@/domain/config/devicePreferences';
 import type { BoardModel } from '@/engine';
-import { useWrapped } from '@/lib/useWrapped';
 import { cn, PINNED_X } from '@/lib/utils';
 
 import { BoardGrid } from './BoardGrid';
@@ -134,21 +133,17 @@ export function BoardViewport({
   now,
   view,
   filter = null,
-  centered = false,
+  meter,
 }: {
   dashboard: Dashboard;
   model: BoardModel;
   now: number;
   view: BoardView;
   filter?: CellFilter | null;
-  /** Centre the toolbar (the header above has wrapped). */
-  centered?: boolean;
+  /** Right end of the toolbar: the request budget meter (C-16). */
+  meter?: React.ReactNode;
 }): React.JSX.Element {
   const { zoom, setZoom, density, setDensity } = view;
-  // Compact, so it stays on one line except on very narrow screens;
-  // centred once it or the header above wraps (C-13).
-  const [toolbar, toolbarWrapped] = useWrapped<HTMLDivElement>();
-  const center = centered || toolbarWrapped;
   const scroller = useRef<HTMLDivElement>(null);
   const area = useAreaSize(scroller);
   const [measure] = useState(createTextMeasure);
@@ -243,33 +238,35 @@ export function BoardViewport({
 
   return (
     <div className="flex flex-col gap-2">
+      {/* Compact, space-between with wrap: density, zoom, meter (C-13). */}
       <div
-        ref={toolbar}
         className={cn(
-          'flex flex-wrap items-center gap-x-2 gap-y-1 text-xs',
-          center && 'justify-center',
+          'flex flex-wrap items-center justify-between gap-x-2 gap-y-1 text-xs',
           PINNED_X,
         )}
       >
-        <div
-          role="group"
-          aria-label="Density"
-          className="inline-flex overflow-hidden rounded-md border"
-        >
-          {DENSITIES.map((d) => (
-            <ToggleButton
-              key={d}
-              pressed={density === d}
-              className="h-6 px-1.5 capitalize"
-              onClick={() => {
-                setDensity(d);
-              }}
-            >
-              {d}
-            </ToggleButton>
-          ))}
+        {/* Equal-growing ends keep zoom at the true centre. */}
+        <div className="flex flex-1 basis-0 justify-start">
+          <div
+            role="group"
+            aria-label="Density"
+            className="inline-flex overflow-hidden rounded-md border"
+          >
+            {DENSITIES.map((d) => (
+              <ToggleButton
+                key={d}
+                pressed={density === d}
+                className="h-6 px-1.5 capitalize"
+                onClick={() => {
+                  setDensity(d);
+                }}
+              >
+                {d}
+              </ToggleButton>
+            ))}
+          </div>
         </div>
-        <div className={cn('flex items-center gap-0.5', !center && 'ml-auto')}>
+        <div className="flex items-center gap-0.5">
           <Button
             size="icon"
             variant="outline"
@@ -309,6 +306,7 @@ export function BoardViewport({
             <RotateCcw className="size-3.5" />
           </Button>
         </div>
+        <div className="flex flex-1 basis-0 justify-end">{meter}</div>
       </div>
 
       <div className="relative">
