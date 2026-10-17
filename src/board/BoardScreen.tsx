@@ -38,7 +38,7 @@ export function BoardScreen({
   );
   const [filter, setFilter] = useState<CellFilter | null>(null);
   return (
-    <div className="flex h-[calc(100vh-7rem)] flex-col gap-2 px-4 py-2">
+    <div className="flex flex-col gap-2 px-4 py-2">
       <div className="flex flex-wrap items-center gap-3">
         <h1 className="text-base font-semibold">{dashboard.name}</h1>
         {subtitle && (
@@ -50,7 +50,7 @@ export function BoardScreen({
           {typeof actions === 'function' ? actions(model) : actions}
         </div>
       </div>
-      <div className="min-h-0 flex-1">
+      <div>
         <BoardViewport
           dashboard={dashboard}
           model={model}

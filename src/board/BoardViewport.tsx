@@ -1,7 +1,7 @@
 /**
  * The board's grid area (spec.md C-13): measures the space the board gets,
  * chooses the layout for the current zoom and density, and scrolls the
- * grid when it is larger than that space (headers pinned, mini-map).
+ * page when the grid is larger than that space (headers pinned).
  *
  * Zoom is one scale (see `layout.ts`):
  * - desktop: Ctrl/Cmd + wheel or trackpad pinch, the -/100%/+ buttons, and
@@ -9,7 +9,7 @@
  * - touch: pinch, or double-tap to zoom in a step.
  *
  * The grid sets `touch-action: none` (so pinch is ours) and therefore pans
- * itself: a one-finger or mouse drag scrolls an overflowing grid, and a
+ * the page itself: a one-finger or mouse drag scrolls an overflowing grid, and a
  * drag never activates the cell it started on.
  *
  * @module
@@ -48,18 +48,27 @@ const DRAG_THRESHOLD = 8;
 const INTERACTION_MS = 5_000;
 const DENSITIES: Density[] = ['compact', 'default', 'comfortable'];
 
-/** The grid area's size, tracked as it changes. */
+/** The grid area (C-13): the grid's width, and the window height below
+ * the grid's top when the page is scrolled to the top. The grid scrolls
+ * with the page, never in a region of its own. */
 function useAreaSize(ref: React.RefObject<HTMLElement | null>) {
   const [size, setSize] = useState({ width: 0, height: 0 });
   useEffect(() => {
     const el = ref.current;
     if (!el) return;
-    const observer = new ResizeObserver(() => {
-      setSize({ width: el.clientWidth, height: el.clientHeight });
-    });
+    const update = () => {
+      const top = el.getBoundingClientRect().top + window.scrollY;
+      setSize({
+        width: el.clientWidth,
+        height: Math.max(0, window.innerHeight - top - 8),
+      });
+    };
+    const observer = new ResizeObserver(update);
     observer.observe(el);
+    window.addEventListener('resize', update);
     return () => {
       observer.disconnect();
+      window.removeEventListener('resize', update);
     };
   }, [ref]);
   return size;
@@ -161,22 +170,8 @@ export function BoardViewport({
     if (pointers.current.size < 2) pinch.current = null;
   };
 
-  // Mini-map: the visible fraction of the grid.
-  const [visible, setVisible] = useState({ x: 0, y: 0, w: 1, h: 1 });
-  const measureVisible = () => {
-    const el = scroller.current;
-    if (!el || el.scrollWidth === 0) return;
-    setVisible({
-      x: el.scrollLeft / el.scrollWidth,
-      y: el.scrollTop / el.scrollHeight,
-      w: el.clientWidth / el.scrollWidth,
-      h: el.clientHeight / el.scrollHeight,
-    });
-  };
-  useEffect(measureVisible, [layout]);
-
   return (
-    <div className="flex h-full flex-col gap-2">
+    <div className="flex flex-col gap-2">
       <div className="flex flex-wrap items-center gap-2">
         <div
           role="group"
@@ -234,16 +229,15 @@ export function BoardViewport({
         </div>
       </div>
 
-      <div className="relative min-h-0 flex-1">
+      <div className="relative">
         <div
           ref={scroller}
           tabIndex={0}
           aria-label="Board: plus and minus zoom, 0 returns to 100%"
           className={cn(
-            'h-full touch-none overflow-auto rounded-md outline-none [scrollbar-gutter:stable] focus-visible:ring-2 focus-visible:ring-ring',
+            'touch-none rounded-md outline-none focus-visible:ring-2 focus-visible:ring-ring',
             scrolls && 'select-none',
           )}
-          onScroll={measureVisible}
           onMouseMove={touch}
           onKeyDown={(e) => {
             if (e.ctrlKey || e.metaKey) return; // browser zoom stays browser zoom
@@ -300,8 +294,8 @@ export function BoardViewport({
               }
             }
             if (p.dragged) {
-              el.scrollLeft -= e.clientX - last.x;
-              el.scrollTop -= e.clientY - last.y;
+              // The page scrolls, not the grid (C-13).
+              window.scrollBy(last.x - e.clientX, last.y - e.clientY);
             }
           }}
           onPointerUp={(e) => {
@@ -329,23 +323,6 @@ export function BoardViewport({
             filter={filter}
           />
         </div>
-
-        {scrolls && (
-          <div
-            aria-hidden
-            className="pointer-events-none absolute bottom-2 right-4 z-30 h-16 w-24 rounded border bg-background/80 shadow"
-          >
-            <div
-              className="absolute rounded-sm border-2 border-status-started"
-              style={{
-                left: `${String(visible.x * 100)}%`,
-                top: `${String(visible.y * 100)}%`,
-                width: `${String(visible.w * 100)}%`,
-                height: `${String(visible.h * 100)}%`,
-              }}
-            />
-          </div>
-        )}
       </div>
     </div>
   );

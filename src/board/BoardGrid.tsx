@@ -95,7 +95,7 @@ export function BoardGrid({
         data-format={layout.format}
         aria-rowcount={rows.length + 1}
         aria-colcount={stages.length + 1}
-        className="grid w-full"
+        className="grid w-max min-w-full"
         style={
           {
             gridTemplateColumns: columns,
