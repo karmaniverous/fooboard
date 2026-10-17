@@ -3,12 +3,17 @@
  * token can see (display name defaults to the repo without its owner), or
  * an Amplify row by choosing credential, region and app (listed via
  * `ListApps`); rename, reorder, remove; per-row token override, row key
- * tests, extra Amplify sources and the divider before each row.
+ * tests, extra Amplify sources, the row's group, its branch-pattern
+ * overrides, and its group's overrides and default credentials.
  *
  * @module
  */
 
+import { useState } from 'react';
+
 import { ConfirmButton } from '@/components/ConfirmButton';
+import { NativeSelect } from '@/components/NativeSelect';
+import { Button } from '@/components/ui/button';
 import type { Dashboard } from '@/domain/config/dashboard';
 import { rowGroupOf } from '@/domain/config/groups';
 import type { MatchTest } from '@/domain/config/matchTest';
@@ -46,7 +51,9 @@ export function RowsEditor({
   providers: EngineProviders;
   onChange: (dashboard: Dashboard) => void;
   /** A row key test to pre-fill on one row. */
-  draft?: { rowId: string; test: MatchTest };
+  draft?:
+    | { rowId: string; test: MatchTest }
+    | { rowId: string; overrideBranch: string };
 }): React.JSX.Element {
   const replaceRow = (row: Row) => {
     onChange({
@@ -105,7 +112,11 @@ export function RowsEditor({
                 title={`Row key tests for ${row.displayName}`}
                 fields={['jobName', 'workflowName']}
                 tests={row.rowKeyTests}
-                draft={draft?.rowId === row.id ? draft.test : undefined}
+                draft={
+                  draft?.rowId === row.id && 'test' in draft
+                    ? draft.test
+                    : undefined
+                }
                 onChange={(rowKeyTests) => {
                   replaceRow({ ...row, rowKeyTests });
                 }}
@@ -174,6 +185,14 @@ export function RowsEditor({
                     <RowGroupSettings
                       dashboard={dashboard}
                       groupId={group.id}
+                      onChange={onChange}
+                    />
+                  )}
+                  {draft?.rowId === row.id && 'overrideBranch' in draft && (
+                    <OverrideFix
+                      dashboard={dashboard}
+                      rowId={row.id}
+                      branch={draft.overrideBranch}
                       onChange={onChange}
                     />
                   )}
@@ -272,6 +291,74 @@ function RowGroupSettings({
           onChange(setRowGroupOverride(dashboard, groupId, stageId, pattern));
         }}
       />
+    </div>
+  );
+}
+
+/** *Add override* from an unmapped run (C-15): use the run's branch as a
+ * stage's pattern for this row or its row group. */
+function OverrideFix({
+  dashboard,
+  rowId,
+  branch,
+  onChange,
+}: {
+  dashboard: Dashboard;
+  rowId: string;
+  branch: string;
+  onChange: (dashboard: Dashboard) => void;
+}): React.JSX.Element {
+  const group = rowGroupOf(dashboard.rowGroups, rowId);
+  const [stageId, setStageId] = useState(dashboard.stages[0]?.id ?? '');
+  const [scope, setScope] = useState<'row' | 'group'>('row');
+  return (
+    <div
+      role="group"
+      aria-label={`Override for ${branch}`}
+      className="flex flex-wrap items-center gap-1 rounded border border-status-started p-1 text-xs"
+    >
+      <span>
+        Use <code>{branch}</code> for
+      </span>
+      <NativeSelect
+        aria-label="Stage to override"
+        className="h-7 px-1"
+        value={stageId}
+        onChange={(e) => {
+          setStageId(e.target.value);
+        }}
+      >
+        {dashboard.stages.map((s) => (
+          <option key={s.id} value={s.id}>
+            {s.name}
+          </option>
+        ))}
+      </NativeSelect>
+      <span>on</span>
+      <NativeSelect
+        aria-label="Override scope"
+        className="h-7 px-1"
+        value={scope}
+        onChange={(e) => {
+          setScope(e.target.value === 'group' ? 'group' : 'row');
+        }}
+      >
+        <option value="row">this row</option>
+        {group && <option value="group">its group {group.label ?? ''}</option>}
+      </NativeSelect>
+      <Button
+        size="sm"
+        disabled={!stageId}
+        onClick={() => {
+          onChange(
+            scope === 'group' && group
+              ? setRowGroupOverride(dashboard, group.id, stageId, branch)
+              : setRowOverride(dashboard, rowId, stageId, branch),
+          );
+        }}
+      >
+        Apply
+      </Button>
     </div>
   );
 }
