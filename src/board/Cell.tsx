@@ -61,7 +61,7 @@ function Arranged({
   lead: React.ReactNode;
   rest: React.ReactNode[];
 }): React.JSX.Element {
-  const line = 'flex min-w-0 items-center whitespace-nowrap';
+  const line = 'flex min-w-0 items-center overflow-hidden whitespace-nowrap';
   if (format === 'line' || rest.length === 0) {
     return (
       <span className={line} style={gapStyle}>

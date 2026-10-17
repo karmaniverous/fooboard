@@ -31,6 +31,8 @@ export const ITEM_GAP_EM = 0.45;
 const BADGE_EXTRA_EM = 1.1;
 /** Free text (names, branches, messages) is cut off at this length. */
 const FREE_TEXT_CAP = 40;
+/** Free text needs room for at least this many characters. */
+const FREE_TEXT_MIN_CHARS = 8;
 /** The row-name column takes at most this share of the grid area. */
 const ROW_NAME_SHARE = 0.3;
 
@@ -72,7 +74,13 @@ export function contentBox(
       ? gap + measure(content.badge, fontPx) + BADGE_EXTRA_EM * fontPx
       : 0);
   const fixed = content.rest.map((t) => measure(t, fontPx));
-  const free = (content.free ?? []).map((t) => measure(t, fontPx));
+  // Free text takes whatever width is left and is cut off with "…" in
+  // every format, so it never forces wrapping or wider columns; it only
+  // needs room for a few characters.
+  const freeMin = measure('x'.repeat(FREE_TEXT_MIN_CHARS), fontPx);
+  const free = (content.free ?? []).map((t) =>
+    Math.min(measure(t, fontPx), freeMin),
+  );
   const all = [...fixed, ...free];
   const restLine =
     all.reduce((sum, w) => sum + w, 0) + gap * Math.max(0, all.length - 1);
@@ -83,7 +91,10 @@ export function contentBox(
     case 'wrapped':
       return { width: Math.max(lead, restLine), lines: 2 };
     case 'stacked':
-      return { width: Math.max(lead, ...fixed), lines: 1 + all.length };
+      return {
+        width: Math.max(lead, ...fixed, ...free),
+        lines: 1 + all.length,
+      };
   }
 }
 

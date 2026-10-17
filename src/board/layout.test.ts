@@ -65,11 +65,21 @@ describe('contentBox', () => {
 });
 
 describe('free text', () => {
-  it('never widens a stacked cell: it is cut off at the column width', () => {
-    const narrow = contentBox(cell(3), 'stacked', 10, measure);
-    const withText = contentBox(cell(5), 'stacked', 10, measure);
-    expect(withText.width).toBe(narrow.width);
-    expect(withText.lines).toBe(narrow.lines + 2);
+  it('is cut off rather than forcing wider columns or more wrapping', () => {
+    const long = (rung: Rung): Content => ({
+      ...cell(rung),
+      free: ['release/2024-q4-very-long-branch', 'A very long commit subject'],
+    });
+    const stacked = contentBox(cell(3), 'stacked', 10, measure);
+    expect(contentBox(long(5), 'stacked', 10, measure).width).toBe(
+      stacked.width,
+    );
+    const wrapped = contentBox(long(5), 'wrapped', 10, measure);
+    // two free items count at 8 characters each, plus gaps
+    expect(wrapped.width).toBeCloseTo(
+      contentBox(cell(3), 'wrapped', 10, measure).width + 2 * (8 * 6 + 4.5),
+    );
+    expect(wrapped.lines).toBe(2);
   });
 });
 
