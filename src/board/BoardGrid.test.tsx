@@ -13,6 +13,7 @@ import {
   waitFor,
   within,
 } from '@testing-library/react';
+import { MemoryRouter } from 'react-router-dom';
 import { beforeAll, describe, expect, it } from 'vitest';
 
 import { demoDashboard } from '@/demo/board';
@@ -37,14 +38,17 @@ beforeAll(async () => {
   model = engine.getModel();
 });
 
+// The detail sheet links to the credential guide, so render inside a router.
 const renderBoard = () =>
   render(
-    <BoardGrid
-      dashboard={demoDashboard}
-      model={model}
-      rowHeight="compact"
-      now={0}
-    />,
+    <MemoryRouter>
+      <BoardGrid
+        dashboard={demoDashboard}
+        model={model}
+        rowHeight="compact"
+        now={0}
+      />
+    </MemoryRouter>,
   );
 
 describe('BoardGrid', () => {

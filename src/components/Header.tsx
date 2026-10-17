@@ -44,6 +44,9 @@ export function Header(): React.JSX.Element {
           <DropdownMenuItem asChild>
             <Link to="/demo">Try the demo</Link>
           </DropdownMenuItem>
+          <DropdownMenuItem asChild>
+            <Link to="/guide/credentials">Credential guide</Link>
+          </DropdownMenuItem>
           <DropdownMenuSeparator />
           <DropdownMenuItem asChild>
             <ExternalLink unstyled href={site.xUrl}>

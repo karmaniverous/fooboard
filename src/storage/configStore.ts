@@ -40,6 +40,10 @@ const emptyRoot = (): ConfigRoot => ({
   dashboards: [],
 });
 
+/** The saved dashboards, or none when the stored data is unreadable. */
+export const dashboardsOf = (loaded: ConfigLoad): Dashboard[] =>
+  loaded.kind === 'ok' ? loaded.root.dashboards : [];
+
 export function createConfigStore(store: KeyValueStore): ConfigStore {
   const load = (): ConfigLoad => {
     let text: string | null;

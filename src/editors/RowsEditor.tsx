@@ -1,0 +1,177 @@
+/**
+ * Rows (spec.md C-21): add a GitHub row by picking a repo the dashboard's
+ * token can see (display name defaults to the repo without its owner), or
+ * an Amplify row by choosing credential, region and app (listed via
+ * `ListApps`); rename, reorder, remove; per-row token override, row key
+ * tests, extra Amplify sources and the divider before each row.
+ *
+ * @module
+ */
+
+import { ConfirmButton } from '@/components/ConfirmButton';
+import type { Dashboard } from '@/domain/config/dashboard';
+import type { MatchTest } from '@/domain/config/matchTest';
+import type { Row } from '@/domain/config/row';
+import type { EngineProviders } from '@/engine';
+
+import { removeRow, rowFromRepo, setDivider } from './edit';
+import { CommitInput, DividerControl } from './fields';
+import { MatchTestsEditor } from './MatchTestsEditor';
+import { ReorderList } from './ReorderList';
+import {
+  AddSource,
+  AmplifyPicker,
+  CredentialSelect,
+  RepoPicker,
+} from './rowPickers';
+
+export function RowsEditor({
+  dashboard,
+  providers,
+  onChange,
+  draft,
+}: {
+  dashboard: Dashboard;
+  providers: EngineProviders;
+  onChange: (dashboard: Dashboard) => void;
+  /** A row key test to pre-fill on one row. */
+  draft?: { rowId: string; test: MatchTest };
+}): React.JSX.Element {
+  const replaceRow = (row: Row) => {
+    onChange({
+      ...dashboard,
+      rows: dashboard.rows.map((r) => (r.id === row.id ? row : r)),
+    });
+  };
+  return (
+    <div className="flex flex-col gap-3 text-sm">
+      <ReorderList
+        items={dashboard.rows}
+        keyOf={(r) => r.id}
+        nameOf={(r) => r.displayName}
+        onReorder={(rows) => {
+          onChange({ ...dashboard, rows });
+        }}
+        onRemove={(r) => {
+          onChange(removeRow(dashboard, r.id));
+        }}
+      >
+        {(row) => (
+          <div className="flex flex-col gap-2 text-xs">
+            <div className="flex items-center gap-1">
+              <CommitInput
+                label={`Display name for ${row.repo}`}
+                className="h-8 text-xs"
+                value={row.displayName}
+                onCommit={(displayName) => {
+                  replaceRow({ ...row, displayName });
+                }}
+              />
+              <span className="shrink-0 text-muted-foreground">
+                {row.type === 'amplify' ? 'Amplify · ' : ''}
+                {row.repo}
+              </span>
+            </div>
+            <CredentialSelect
+              dashboard={dashboard}
+              kind="github"
+              value={
+                row.type === 'github'
+                  ? row.credentialId
+                  : row.githubCredentialId
+              }
+              label={`GitHub token for ${row.displayName}`}
+              onChange={(id) => {
+                replaceRow(
+                  row.type === 'github'
+                    ? { ...row, credentialId: id }
+                    : { ...row, githubCredentialId: id },
+                );
+              }}
+            />
+            {row.type === 'github' ? (
+              <MatchTestsEditor
+                title={`Row key tests for ${row.displayName}`}
+                fields={['jobName', 'workflowName']}
+                tests={row.rowKeyTests}
+                draft={draft?.rowId === row.id ? draft.test : undefined}
+                onChange={(rowKeyTests) => {
+                  replaceRow({ ...row, rowKeyTests });
+                }}
+              />
+            ) : (
+              <div className="flex flex-col gap-1">
+                <span className="font-semibold">Sources</span>
+                {row.sources.map((s, i) => (
+                  <div
+                    key={`${s.region}-${s.appId}`}
+                    className="flex items-center gap-2"
+                  >
+                    <span>
+                      {s.appId} in {s.region}
+                    </span>
+                    {row.sources.length > 1 && (
+                      <ConfirmButton
+                        confirmLabel={`Delete source ${s.appId}`}
+                        onConfirm={() => {
+                          replaceRow({
+                            ...row,
+                            sources: row.sources.filter((_, j) => j !== i),
+                          });
+                        }}
+                      >
+                        Delete source
+                      </ConfirmButton>
+                    )}
+                  </div>
+                ))}
+                <AddSource
+                  dashboard={dashboard}
+                  name={row.displayName}
+                  onAdd={(source) => {
+                    replaceRow({ ...row, sources: [...row.sources, source] });
+                  }}
+                />
+              </div>
+            )}
+            <DividerControl
+              name={row.displayName}
+              divider={dashboard.rowDividers.find((d) => d.beforeId === row.id)}
+              onChange={(divider) => {
+                onChange({
+                  ...dashboard,
+                  rowDividers: setDivider(
+                    dashboard.rowDividers,
+                    row.id,
+                    divider,
+                  ),
+                });
+              }}
+            />
+          </div>
+        )}
+      </ReorderList>
+
+      <section className="flex flex-col gap-2 rounded-md border p-2">
+        <h3 className="font-semibold">Add a row</h3>
+        <RepoPicker
+          dashboard={dashboard}
+          providers={providers}
+          onPick={(repo) => {
+            onChange({
+              ...dashboard,
+              rows: [...dashboard.rows, rowFromRepo(repo, dashboard)],
+            });
+          }}
+        />
+        <AmplifyPicker
+          dashboard={dashboard}
+          providers={providers}
+          onAdd={(row) => {
+            onChange({ ...dashboard, rows: [...dashboard.rows, row] });
+          }}
+        />
+      </section>
+    </div>
+  );
+}

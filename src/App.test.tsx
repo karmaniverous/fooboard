@@ -29,6 +29,8 @@ describe('App', () => {
   it.each([
     ['/', 'No dashboards yet'],
     ['/demo', 'Acme platform (demo)'],
+    ['/d/missing', 'Dashboard not found'],
+    ['/guide/credentials', 'Credential guide'],
     ['/spike/amplify', 'Amplify browser spike'],
     ['/spike/github', 'GitHub browser spike'],
   ])('renders %s inside the shell', (path, heading) => {

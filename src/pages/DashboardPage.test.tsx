@@ -1,0 +1,122 @@
+/**
+ * Tests for a saved dashboard's page: it renders the saved board, asks
+ * for a credential when it has none, and saves what the credentials panel
+ * changes.
+ *
+ * @module
+ */
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { MemoryRouter, Route, Routes } from 'react-router-dom';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+
+import { DashboardSchema } from '@/domain/config/dashboard';
+import { createAppStores } from '@/storage';
+import { memoryStorage } from '@/storage/keyValue';
+import { StoresContext } from '@/storage/storesContext';
+
+import { DashboardPage } from './DashboardPage';
+
+describe('DashboardPage', () => {
+  it('shows the saved board and saves a credential added from it', () => {
+    const stores = createAppStores(memoryStorage());
+    stores.config.saveDashboard(
+      DashboardSchema.parse({ id: 'mine', name: 'My board' }),
+    );
+    render(
+      <StoresContext value={stores}>
+        <MemoryRouter initialEntries={['/d/mine']}>
+          <Routes>
+            <Route path="/d/:id" element={<DashboardPage />} />
+          </Routes>
+        </MemoryRouter>
+      </StoresContext>,
+    );
+    expect(
+      screen.getByRole('heading', { name: 'My board' }),
+    ).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Add a credential' }));
+    expect(
+      screen.getByRole('dialog', { name: 'Credentials' }),
+    ).toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText('Token'), {
+      target: { value: 'github_pat_1' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Add' }));
+
+    const loaded = stores.config.load();
+    expect(
+      loaded.kind === 'ok' && loaded.root.dashboards[0]?.credentials,
+    ).toEqual([
+      expect.objectContaining({ kind: 'github', label: 'GitHub token' }),
+    ]);
+  });
+});
+
+describe('DashboardPage credential lifecycle', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it('re-reads the board as soon as a token is entered or forgotten', async () => {
+    // GitHub answers with no runs, branches or jobs.
+    vi.stubGlobal(
+      'fetch',
+      vi.fn((url: string) =>
+        Promise.resolve(
+          new Response(
+            JSON.stringify(
+              url.includes('/runs')
+                ? { total_count: 0, workflow_runs: [] }
+                : [],
+            ),
+            { status: 200, headers: { 'Content-Type': 'application/json' } },
+          ),
+        ),
+      ),
+    );
+    const stores = createAppStores(memoryStorage());
+    stores.config.saveDashboard(
+      DashboardSchema.parse({
+        id: 'mine',
+        name: 'My board',
+        rows: [
+          { type: 'github', id: 'api', repo: 'acme/api', displayName: 'api' },
+        ],
+        stages: [{ id: 'prod', name: 'prod', branchPattern: 'main' }],
+      }),
+    );
+    render(
+      <StoresContext value={stores}>
+        <MemoryRouter initialEntries={['/d/mine']}>
+          <Routes>
+            <Route path="/d/:id" element={<DashboardPage />} />
+          </Routes>
+        </MemoryRouter>
+      </StoresContext>,
+    );
+    await screen.findByRole('button', { name: /needs credential/ });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Add a credential' }));
+    fireEvent.change(screen.getByLabelText('Token'), {
+      target: { value: 'github_pat_1' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Add' }));
+    // The modal panel hides the board from queries; close it to look.
+    const close = () => {
+      fireEvent.keyDown(screen.getByRole('dialog'), { key: 'Escape' });
+    };
+    close();
+    await waitFor(() => {
+      expect(
+        screen.queryByRole('button', { name: /needs credential/ }),
+      ).toBeNull();
+    });
+    expect(screen.getAllByRole('gridcell')).toHaveLength(1);
+    expect(fetch).toHaveBeenCalled();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Credentials' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Forget' }));
+    close();
+    await screen.findByRole('button', { name: /needs credential/ });
+  });
+});

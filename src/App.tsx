@@ -8,6 +8,8 @@ import { Route, Routes } from 'react-router-dom';
 
 import { Footer } from '@/components/Footer';
 import { Header } from '@/components/Header';
+import { CredentialGuidePage } from '@/pages/CredentialGuidePage';
+import { DashboardPage } from '@/pages/DashboardPage';
 import { DemoPage } from '@/pages/DemoPage';
 import { Home } from '@/pages/Home';
 import { AmplifySpikePage } from '@/pages/spike/AmplifySpikePage';
@@ -31,6 +33,8 @@ export default function App(): React.JSX.Element {
         <Routes>
           <Route path="/" element={<Home />} />
           <Route path="/demo" element={<DemoPage />} />
+          <Route path="/d/:id" element={<DashboardPage />} />
+          <Route path="/guide/credentials" element={<CredentialGuidePage />} />
           <Route path="/spike/amplify" element={<AmplifySpikePage />} />
           <Route path="/spike/github" element={<GithubSpikePage />} />
         </Routes>

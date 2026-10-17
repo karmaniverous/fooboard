@@ -8,6 +8,7 @@
  */
 import * as Dialog from '@radix-ui/react-dialog';
 import { useLayoutEffect, useRef, useState } from 'react';
+import { Link } from 'react-router-dom';
 
 import { ExternalLink } from '@/components/ExternalLink';
 import type { BoardCell } from '@/engine';
@@ -44,6 +45,11 @@ export function CellDetail({
           {derivation.branch && ` (${derivation.branch})`}
           {derivation.reason && (
             <div className="text-muted-foreground">{derivation.reason}</div>
+          )}
+          {interactive && derivation.state === 'needs-credential' && (
+            <Link to="/guide/credentials" className="block text-sky-400">
+              How to set up a credential
+            </Link>
           )}
         </div>
       ) : (
