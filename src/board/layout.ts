@@ -45,6 +45,10 @@ const FREE_TEXT_CAP = 40;
 const FREE_TEXT_MIN_CHARS = 8;
 /** The row-name column takes at most this share of the grid area. */
 const ROW_NAME_SHARE = 0.3;
+/** On phones (grid area narrower than this) the row-name column takes at
+ * most a smaller share; names are cut off, full name in the title. */
+const PHONE_WIDTH = 640;
+const PHONE_ROW_NAME_SHARE = 0.18;
 
 /** Density changes only padding and gaps (C-13). Padding in ems; gap in px. */
 const DENSITY: Record<Density, { padX: number; padY: number; gap: number }> = {
@@ -244,7 +248,8 @@ function frame(input: LayoutInput, fontPx: number) {
     ...input.rowNames.map((n) => input.measure(capText(n), fontPx)),
   );
   const rowNameWidth = Math.min(
-    ROW_NAME_SHARE * input.width,
+    (input.width < PHONE_WIDTH ? PHONE_ROW_NAME_SHARE : ROW_NAME_SHARE) *
+      input.width,
     longestName + 2 * padX,
   );
   const stages = Math.max(1, input.stages);
@@ -362,11 +367,23 @@ const boardWidth = (input: LayoutInput, l: Layout) =>
 const widthBound = (input: LayoutInput) =>
   layoutAtRung(input, 1, BASE_FONT_PX).overflowX;
 
+/** The budget's base: the board at 100%, never smaller than the grid area.
+ * Zooming in multiplies it, so each step buys room relative to what the
+ * board already needs (C-13). */
+function budgetBase(input: LayoutInput) {
+  const at100 = fitLayout(input, BASE_FONT_PX);
+  return {
+    height: Math.max(input.height, at100.boardHeight),
+    width: Math.max(input.width, boardWidth(input, at100)),
+  };
+}
+
 export function zoomRange(input: LayoutInput): ZoomRange {
   const full = layoutAtRung(input, TOP_RUNG, BASE_FONT_PX);
+  const base = budgetBase(input);
   const ratio = Math.max(
-    full.boardHeight / Math.max(1, input.height),
-    widthBound(input) ? boardWidth(input, full) / Math.max(1, input.width) : 1,
+    full.boardHeight / Math.max(1, base.height),
+    widthBound(input) ? boardWidth(input, full) / Math.max(1, base.width) : 1,
   );
   const top = Math.max(1, Math.ceil(ratio * 10 - 1e-9) / 10);
   return { min: minZoom(input), top, max: round(top * MAX_MAGNIFY) };
@@ -384,13 +401,14 @@ export function layoutAtZoom(
   const z = clampZoom(zoom, range);
   if (z <= 1) return fitLayout(input, BASE_FONT_PX * z);
   if (z <= range.top) {
-    // The budget: z times the grid area's height, and its width too when
-    // width is what limits detail (C-13).
+    // The budget: z times the board's height at 100% (at least the grid
+    // area), and its width too when width is what limits detail (C-13).
+    const base = budgetBase(input);
     return fitLayout(
       {
         ...input,
-        height: input.height * z,
-        width: widthBound(input) ? input.width * z : input.width,
+        height: base.height * z,
+        width: widthBound(input) ? base.width * z : input.width,
       },
       BASE_FONT_PX,
     );

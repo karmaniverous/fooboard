@@ -185,8 +185,8 @@ describe('fitLayout', () => {
   });
 
   it('caps the row-name column at 30% of the grid area', () => {
-    const l = fitLayout(input({ width: 600, rowNames: ['x'.repeat(300)] }), 13);
-    expect(l.rowNameWidth).toBeCloseTo(0.3 * 600);
+    const l = fitLayout(input({ width: 800, rowNames: ['x'.repeat(300)] }), 13);
+    expect(l.rowNameWidth).toBeCloseTo(0.3 * 800);
   });
 });
 
@@ -229,6 +229,24 @@ describe('zoom', () => {
     const r = zoomRange(phone);
     const base = layoutAtZoom(phone, 1, r).rung;
     expect(layoutAtZoom(phone, 2, r).rung).toBeGreaterThan(base);
+  });
+
+  it('measures the zoom-in budget against the board at 100%', () => {
+    // A board already two screens tall at 100%: 150% must allow 1.5x that.
+    const tallBoard = input({ rows: 60, height: 500 });
+    const r = zoomRange(tallBoard);
+    const at100 = layoutAtZoom(tallBoard, 1, r);
+    expect(at100.boardHeight).toBeGreaterThan(500);
+    const richer = [1.1, 1.2, 1.3, 1.4, 1.5, 1.6, 1.7, 1.8, 1.9, 2].find(
+      (z) => layoutAtZoom(tallBoard, z, r).rung > at100.rung,
+    );
+    expect(richer).toBeDefined();
+  });
+
+  it('narrows the row-name column on phones', () => {
+    const names = ['a-very-long-repository-name'];
+    const phone = fitLayout(input({ width: 390, rowNames: names }), 13);
+    expect(phone.rowNameWidth).toBeLessThanOrEqual(0.18 * 390);
   });
 
   it('magnifies past the top rung, up to 300% text', () => {
