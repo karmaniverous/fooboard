@@ -61,17 +61,30 @@ const setup = (model?: BoardModel) => {
 describe('BoardViewport', () => {
   it('zooms in with the button and saves the zoom with the board size', () => {
     const stores = setup();
-    expect(
-      screen.getByRole('button', { name: 'Zoom to 100%' }),
-    ).toHaveTextContent('100%');
+    const field = screen.getByLabelText('Zoom');
+    expect(field).toHaveValue('100%');
+    expect(screen.getByTitle('Zoom to 100%')).toBeDisabled();
     fireEvent.click(screen.getByRole('button', { name: 'Zoom in' }));
     expect(stores.preferences.getView('demo')).toMatchObject({
-      zoom: 1.25,
+      zoom: 1.1,
       boardSize: '19x6',
     });
-    expect(
-      screen.getByRole('button', { name: 'Zoom to 100%' }),
-    ).not.toHaveTextContent(/^100%$/);
+    expect(field).toHaveValue('110%');
+    fireEvent.click(screen.getByTitle('Zoom to 100%'));
+    expect(field).toHaveValue('100%');
+  });
+
+  it('applies a typed zoom, snapped and clamped', () => {
+    const stores = setup();
+    const field = screen.getByLabelText('Zoom');
+    fireEvent.focus(field);
+    fireEvent.change(field, { target: { value: '137' } });
+    fireEvent.keyDown(field, { key: 'Enter' });
+    expect(stores.preferences.getView('demo').zoom).toBe(1.4);
+    fireEvent.focus(field);
+    fireEvent.change(field, { target: { value: '5' } });
+    fireEvent.blur(field);
+    expect(stores.preferences.getView('demo').zoom).toBe(0.5);
   });
 
   it('zooms with + and returns to 100% with 0, leaving Ctrl+ to the browser', () => {
@@ -79,7 +92,7 @@ describe('BoardViewport', () => {
     const board = screen.getByLabelText(/Board: plus and minus zoom/);
     fireEvent.keyDown(board, { key: '+' });
     fireEvent.keyDown(board, { key: '+', ctrlKey: true });
-    expect(stores.preferences.getView('demo').zoom).toBe(1.25);
+    expect(stores.preferences.getView('demo').zoom).toBe(1.1);
     fireEvent.keyDown(board, { key: '0' });
     expect(stores.preferences.getView('demo').zoom).toBe(1);
   });
@@ -96,7 +109,9 @@ describe('BoardViewport', () => {
 
   it('pans on a zoomed drag without opening the cell it started on', () => {
     setup(demoModel);
-    fireEvent.click(screen.getByRole('button', { name: 'Zoom in' }));
+    for (let i = 0; i < 5; i++) {
+      fireEvent.click(screen.getByRole('button', { name: 'Zoom in' }));
+    }
     const cell = screen.getAllByRole('link', { name: /Success, dev/ })[0];
     const drag = { pointerId: 1, pointerType: 'touch' };
     fireEvent.pointerDown(cell, { ...drag, clientX: 200, clientY: 200 });

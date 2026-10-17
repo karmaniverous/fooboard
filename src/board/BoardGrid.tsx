@@ -82,7 +82,8 @@ export function BoardGrid({
     ) : null;
   };
 
-  const columns = `${String(layout.rowNameWidth)}px repeat(${String(stages.length)}, minmax(${String(layout.colWidth)}px, 1fr))`;
+  // Exact widths: columns never stretch to their content (C-13).
+  const columns = `${String(layout.rowNameWidth)}px repeat(${String(stages.length)}, ${String(layout.colWidth)}px)`;
   const lineRow = { height: layout.lineRowHeight };
   const cellRow = { height: layout.rowHeight };
 
@@ -95,7 +96,7 @@ export function BoardGrid({
         data-format={layout.format}
         aria-rowcount={rows.length + 1}
         aria-colcount={stages.length + 1}
-        className="grid w-max min-w-full"
+        className="grid w-max"
         style={
           {
             gridTemplateColumns: columns,

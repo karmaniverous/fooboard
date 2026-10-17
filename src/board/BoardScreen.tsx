@@ -9,6 +9,7 @@ import { useState } from 'react';
 
 import type { Dashboard } from '@/domain/config/dashboard';
 import type { BoardModel, EngineProviders } from '@/engine';
+import { cn, PINNED_X } from '@/lib/utils';
 
 import { BoardSummary, BudgetDisplay } from './BoardChrome';
 import { BoardViewport } from './BoardViewport';
@@ -39,7 +40,7 @@ export function BoardScreen({
   const [filter, setFilter] = useState<CellFilter | null>(null);
   return (
     <div className="flex flex-col gap-2 px-4 py-2">
-      <div className="flex flex-wrap items-center gap-3">
+      <div className={cn('flex flex-wrap items-center gap-3', PINNED_X)}>
         <h1 className="text-base font-semibold">{dashboard.name}</h1>
         {subtitle && (
           <span className="text-xs text-muted-foreground">{subtitle}</span>

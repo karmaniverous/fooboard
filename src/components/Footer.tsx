@@ -5,10 +5,13 @@
  */
 import { ExternalLink } from '@/components/ExternalLink';
 import { site } from '@/lib/site';
+import { PINNED_FULL } from '@/lib/utils';
 
 export function Footer(): React.JSX.Element {
   return (
-    <footer className="border-t border-border px-5 py-5 text-center text-xs text-muted-foreground">
+    <footer
+      className={`${PINNED_FULL} border-t border-border px-5 py-5 text-center text-xs text-muted-foreground`}
+    >
       <p>
         {site.name} &middot; static, browser-only, no servers &middot;{' '}
         {site.license}

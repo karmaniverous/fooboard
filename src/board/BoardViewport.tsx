@@ -22,16 +22,16 @@ import { Button } from '@/components/ui/button';
 import type { Dashboard } from '@/domain/config/dashboard';
 import type { Density } from '@/domain/config/devicePreferences';
 import type { BoardModel } from '@/engine';
-import { cn } from '@/lib/utils';
+import { cn, PINNED_X } from '@/lib/utils';
 
 import { BoardGrid } from './BoardGrid';
 import {
-  clampZoom,
   layoutAtZoom,
   type LayoutInput,
+  snapZoom,
   stepZoom,
-  wheelZoom,
   zoomLabel,
+  type ZoomRange,
   zoomRange,
 } from './layout';
 import { boardContents } from './layoutContents';
@@ -46,6 +46,8 @@ const DRAG_THRESHOLD = 8;
 /** How long after the last pointer, wheel or hover activity the user
  * counts as interacting (layout data updates wait). */
 const INTERACTION_MS = 5_000;
+/** Accumulated wheel delta that makes one 10% zoom step. */
+const WHEEL_STEP_DELTA = 50;
 const DENSITIES: Density[] = ['compact', 'default', 'comfortable'];
 
 /** The grid area (C-13): the grid's width, and the window height below
@@ -74,6 +76,52 @@ function useAreaSize(ref: React.RefObject<HTMLElement | null>) {
   return size;
 }
 
+/** The editable zoom percentage: Enter or leaving the field applies it,
+ * snapped to 10% and clamped to the board's range (C-13). */
+function ZoomField({
+  zoom,
+  range,
+  onZoom,
+}: {
+  zoom: number;
+  range: ZoomRange;
+  onZoom: (zoom: number) => void;
+}): React.JSX.Element {
+  const label = zoomLabel(zoom, range);
+  const [draft, setDraft] = useState<string | null>(null);
+  const apply = () => {
+    if (draft === null) return;
+    const value = Number.parseFloat(draft);
+    if (Number.isFinite(value)) onZoom(snapZoom(value / 100, range));
+    setDraft(null);
+  };
+  return (
+    <input
+      aria-label="Zoom"
+      inputMode="numeric"
+      className="h-8 w-20 rounded-md border border-input bg-background px-2 text-center text-sm tabular-nums"
+      value={draft ?? label}
+      onFocus={(e) => {
+        setDraft(label.replace('%', ''));
+        e.currentTarget.select();
+      }}
+      onChange={(e) => {
+        setDraft(e.currentTarget.value);
+      }}
+      onBlur={apply}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter') {
+          apply();
+          e.currentTarget.blur();
+        } else if (e.key === 'Escape') {
+          setDraft(null);
+          e.currentTarget.blur();
+        }
+      }}
+    />
+  );
+}
+
 export function BoardViewport({
   dashboard,
   model,
@@ -96,10 +144,15 @@ export function BoardViewport({
   const touch = () => {
     lastActivity.current = Date.now();
   };
+  // Pointer state: pinch (two pointers), pan (one), double-tap. A pointer
+  // held down always counts as interacting, however long the gesture.
+  const pointers = useRef(new Map<number, { x: number; y: number }>());
   const sizingModel = useStableModel(
     model,
     `${dashboard.id}:${String(dashboard.rows.length)}x${String(dashboard.stages.length)}`,
-    () => Date.now() - lastActivity.current < INTERACTION_MS,
+    () =>
+      pointers.current.size > 0 ||
+      Date.now() - lastActivity.current < INTERACTION_MS,
   );
 
   const input: LayoutInput = useMemo(
@@ -124,7 +177,8 @@ export function BoardViewport({
     () => layoutAtZoom(input, zoom, range),
     [input, zoom, range],
   );
-  const scrolls = layout.overflowX || layout.overflowY;
+  // The board is larger than the grid area (the page will scroll).
+  const scrolls = layout.overflowX || layout.boardHeight > input.height + 0.5;
 
   // The native wheel listener reads the latest values through refs.
   const latest = useRef({ zoom, setZoom, range });
@@ -137,12 +191,18 @@ export function BoardViewport({
   useEffect(() => {
     const el = scroller.current;
     if (!el) return;
+    // A mouse notch (deltaY ~100) is one 10% step; trackpad pinches
+    // arrive as many small deltas and add up to steps.
+    let accumulated = 0;
     const onWheel = (e: WheelEvent) => {
       lastActivity.current = Date.now();
       if (!e.ctrlKey && !e.metaKey) return;
       e.preventDefault();
+      accumulated += e.deltaY;
+      if (Math.abs(accumulated) < WHEEL_STEP_DELTA) return;
       const l = latest.current;
-      l.setZoom(wheelZoom(l.zoom, e.deltaY, l.range));
+      l.setZoom(stepZoom(l.zoom, accumulated < 0 ? 1 : -1, l.range));
+      accumulated = 0;
     };
     el.addEventListener('wheel', onWheel, { passive: false });
     return () => {
@@ -154,8 +214,6 @@ export function BoardViewport({
     setZoom(stepZoom(zoom, direction, range));
   };
 
-  // Pointer state: pinch (two pointers), pan (one), double-tap.
-  const pointers = useRef(new Map<number, { x: number; y: number }>());
   const pinch = useRef<{ distance: number; zoom: number } | null>(null);
   const press = useRef<{ x: number; y: number; dragged: boolean } | null>(null);
   const lastTap = useRef(0);
@@ -172,7 +230,7 @@ export function BoardViewport({
 
   return (
     <div className="flex flex-col gap-2">
-      <div className="flex flex-wrap items-center gap-2">
+      <div className={cn('flex flex-wrap items-center gap-2', PINNED_X)}>
         <div
           role="group"
           aria-label="Density"
@@ -203,18 +261,7 @@ export function BoardViewport({
           >
             <Minus className="size-4" />
           </Button>
-          <Button
-            size="sm"
-            variant="outline"
-            aria-label="Zoom to 100%"
-            title="Zoom to 100%"
-            className="min-w-[6.5rem] tabular-nums"
-            onClick={() => {
-              setZoom(1);
-            }}
-          >
-            {zoomLabel(zoom, range)}
-          </Button>
+          <ZoomField zoom={zoom} range={range} onZoom={setZoom} />
           <Button
             size="icon"
             variant="outline"
@@ -225,6 +272,17 @@ export function BoardViewport({
             }}
           >
             <Plus className="size-4" />
+          </Button>
+          <Button
+            size="sm"
+            variant="outline"
+            title="Zoom to 100%"
+            disabled={zoom === 1}
+            onClick={() => {
+              setZoom(1);
+            }}
+          >
+            100%
           </Button>
         </div>
       </div>
@@ -273,7 +331,7 @@ export function BoardViewport({
             if (start) {
               if (start.distance > 0) {
                 setZoom(
-                  clampZoom((start.zoom * distance()) / start.distance, range),
+                  snapZoom((start.zoom * distance()) / start.distance, range),
                 );
               }
               return;

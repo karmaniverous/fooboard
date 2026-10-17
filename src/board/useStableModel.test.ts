@@ -52,6 +52,10 @@ describe('useStableModel', () => {
     });
     expect(result.current).toBe(polled);
 
+    const more = model(4);
+    rerender({ m: more, shape: 'a' });
+    expect(result.current).toBe(more);
+
     const reshaped = model(3);
     rerender({ m: reshaped, shape: 'b' });
     expect(result.current).toBe(reshaped);

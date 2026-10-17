@@ -15,6 +15,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { site } from '@/lib/site';
+import { PINNED_FULL } from '@/lib/utils';
 
 import { ExternalLink } from './ExternalLink';
 
@@ -22,7 +23,9 @@ const logoUrl = `${import.meta.env.BASE_URL}favicon.svg`;
 
 export function Header(): React.JSX.Element {
   return (
-    <header className="flex items-center gap-3 border-b border-border bg-primary px-5 py-3 text-primary-foreground">
+    <header
+      className={`${PINNED_FULL} z-40 flex items-center gap-3 border-b border-border bg-primary px-5 py-3 text-primary-foreground`}
+    >
       <Link to="/" className="flex items-center gap-2.5 font-bold">
         <img
           src={logoUrl}

@@ -9,6 +9,13 @@ import { describe, expect, it } from 'vitest';
 import { badgeText, relativeTime } from './cellView';
 
 describe('badgeText', () => {
+  it('caps large counts at 99+', () => {
+    expect(badgeText({ kind: 'behind', count: 100 })).toBe('99+');
+    expect(badgeText({ kind: 'diverged', behind: 10000, ahead: 3 })).toBe(
+      '99+/3',
+    );
+  });
+
   it('shows a count when behind and behind/ahead when diverged', () => {
     expect(badgeText({ kind: 'behind', count: 3 })).toBe('3');
     expect(badgeText({ kind: 'diverged', behind: 3, ahead: 2 })).toBe('3/2');

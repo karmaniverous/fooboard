@@ -3,7 +3,8 @@
  * changes reach the layout at most once per idle polling interval, never
  * while the user is interacting, so the board doesn't change shape under
  * the pointer. A new board shape, or the first data after loading, applies
- * at once. Cells themselves always render the live model.
+ * at once, as does any increase in filled cells (rows load one by one).
+ * Cells themselves always render the live model.
  *
  * @module
  */
@@ -23,10 +24,9 @@ export function useStableModel(
 ): BoardModel {
   const [snap, setSnap] = useState({ model, shapeKey });
   let current = snap;
-  if (
-    snap.shapeKey !== shapeKey ||
-    (filled(snap.model) === 0 && filled(model) > 0)
-  ) {
+  // Rows load one by one: newly filled cells apply at once; updates to
+  // cells already shown wait for the interval.
+  if (snap.shapeKey !== shapeKey || filled(model) > filled(snap.model)) {
     current = { model, shapeKey };
     setSnap(current);
   }

@@ -162,7 +162,7 @@ export function Cell({
       title={badgeDescription(badge)}
       aria-label={badgeDescription(badge)}
       className={cn(
-        'pointer-events-auto flex-none rounded-full px-1.5 text-[0.8em] font-bold leading-[1.6] no-underline ring-2 ring-white',
+        'pointer-events-auto flex-none rounded-full px-[0.45em] text-[0.8em] font-bold leading-[1.6] no-underline ring-2 ring-white',
         badge.kind === 'behind'
           ? 'bg-badge-behind text-badge-behind-text'
           : 'bg-badge-diverged text-badge-diverged-text',
@@ -207,6 +207,8 @@ export function Cell({
       </span>,
     );
   }
+  // Fixed items keep their width; free text below takes the rest (C-13).
+  const fixedCount = rest.length;
   if (rung >= 4 && branch) rest.push(<Free key="b">{branch}</Free>);
   if (rung >= 5 && message)
     rest.push(<Free key="m">{firstLine(message)}</Free>);
@@ -235,7 +237,7 @@ export function Cell({
         unstyled
         href={derivation.linkUrl}
         aria-label={name}
-        className="absolute inset-0 rounded-md focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-ring"
+        className="absolute inset-0 rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-white"
         onPointerDown={(e) => {
           touched.current = e.pointerType === 'touch';
         }}
@@ -275,7 +277,9 @@ export function Cell({
             <span
               key={i}
               aria-hidden={i === badgeItem ? undefined : true}
-              className="flex min-w-0"
+              className={
+                i < fixedCount ? 'flex flex-none' : 'flex min-w-0 flex-1'
+              }
             >
               {item}
             </span>

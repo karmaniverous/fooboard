@@ -17,6 +17,7 @@ import {
   layoutAtZoom,
   type LayoutInput,
   type Rung,
+  snapZoom,
   stepZoom,
   zoomLabel,
   zoomRange,
@@ -158,7 +159,6 @@ describe('fitLayout', () => {
 describe('zoom', () => {
   const tall = input({ rows: 21 });
   const range = zoomRange(tall);
-  const fitted = range.fitted;
 
   it('goes down to 50% where columns already fit', () => {
     expect(range.min).toBe(0.5);
@@ -172,32 +172,50 @@ describe('zoom', () => {
     expect(r.min).toBeGreaterThanOrEqual(0.25);
     expect(r.min).toBeLessThan(0.5);
     expect(layoutAtZoom(phone, r.min, r).overflowX).toBe(false);
-    const huge = input({ width: 390, stages: 40, rows: 5 });
-    expect(zoomRange(huge).min).toBe(0.25);
-  });
-
-  it('above 100% climbs rungs at 13 px, then magnifies to 300%', () => {
-    const one = layoutAtZoom(tall, stepZoom(1, 1, range), range);
-    expect(one).toMatchObject({ rung: fitted + 1, fontPx: 13 });
-    const top = layoutAtZoom(tall, range.max, range);
-    expect(top).toMatchObject({ rung: 5, fontPx: 39 });
-    expect(layoutAtZoom(tall, 99, range).fontPx).toBe(39);
-  });
-
-  it('labels the zoom position as a percentage, snapping gestures to steps', () => {
-    expect(layoutAtZoom(tall, 1.1, range).rung).toBe(fitted);
-    expect(zoomLabel(1.1, range)).toBe('100%');
-    expect(zoomLabel(1.25, range)).toBe('125%');
-    expect(zoomLabel(0.75, range)).toBe('75%');
-    expect(zoomLabel(range.max, range)).toBe(
-      `${String(Math.round(range.max * 100))}%`,
+    expect(zoomRange(input({ width: 390, stages: 40, rows: 5 })).min).toBe(
+      0.25,
     );
   });
 
-  it('stops at 100% on the way in and out', () => {
-    expect(stepZoom(0.8, 1, range)).toBe(1);
-    expect(stepZoom(1.25, -1, range)).toBe(1);
-    expect(stepZoom(1, -1, range)).toBe(0.8);
+  it('above 100% treats zoom as a height budget at 13 px', () => {
+    const at100 = layoutAtZoom(tall, 1, range);
+    const at = (z: number) => layoutAtZoom(tall, z, range);
+    expect(range.top).toBeGreaterThan(1);
+    for (let z = 1.1; z <= range.top; z += 0.1) {
+      const l = at(z);
+      expect(l.fontPx).toBe(13);
+      expect(l.overflowX).toBe(false);
+      expect(l.rung).toBeGreaterThanOrEqual(at100.rung);
+    }
+    expect(at(range.top).rung).toBe(5);
+  });
+
+  it('magnifies past the top rung, up to 300% text', () => {
+    const l = layoutAtZoom(tall, range.top * 2, range);
+    expect(l).toMatchObject({ rung: 5, fontPx: 26 });
+    expect(layoutAtZoom(tall, 99, range).fontPx).toBe(39);
+  });
+
+  it('steps by 10% on the 10% grid, snaps and labels', () => {
+    expect(stepZoom(1, 1, range)).toBe(1.1);
+    expect(stepZoom(1.14, 1, range)).toBe(1.2);
+    expect(stepZoom(1.14, -1, range)).toBe(1.1);
+    expect(stepZoom(1, -1, range)).toBe(0.9);
+    expect(stepZoom(0.5, -1, range)).toBe(0.5);
+    expect(snapZoom(1.26, range)).toBe(1.3);
+    expect(zoomLabel(1.5, range)).toBe('150%');
+    expect(zoomLabel(0.1, range)).toBe('50%');
+  });
+
+  it('measures group labels across the columns they span', () => {
+    const label = { lead: 'x'.repeat(24), rest: [] };
+    const alone = fitLayout(input({ width: 600, contents: () => [label] }), 13);
+    expect(alone.overflowX).toBe(true);
+    const spanned = fitLayout(
+      input({ width: 600, contents: () => [{ ...label, span: 3 }] }),
+      13,
+    );
+    expect(spanned.overflowX).toBe(false);
   });
 });
 

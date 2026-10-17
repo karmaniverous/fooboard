@@ -28,10 +28,15 @@ export const EMPTY_LABEL: Record<EmptyCellState, string> = {
 };
 
 /** Badge text: a count when behind, `behind/ahead` when diverged. */
+/** Counts above this show as "99+"; the tooltip has the exact numbers. */
+const BADGE_CAP = 99;
+const capCount = (n: number) =>
+  n > BADGE_CAP ? `${String(BADGE_CAP)}+` : String(n);
+
 export function badgeText(badge: NonNullable<StalenessBadge>): string {
   return badge.kind === 'behind'
-    ? String(badge.count)
-    : `${String(badge.behind)}/${String(badge.ahead)}`;
+    ? capCount(badge.count)
+    : `${capCount(badge.behind)}/${capCount(badge.ahead)}`;
 }
 
 /** Badge description for tooltips and screen readers. */

@@ -41,6 +41,7 @@ const testLayout: Layout = {
   padY: 4,
   overflowX: false,
   overflowY: false,
+  boardHeight: 600,
 };
 
 let model: BoardModel;

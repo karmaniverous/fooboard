@@ -23,7 +23,7 @@ const LONGEST = {
   time: '59m',
   commit: '0000000',
   phase: 'deploy',
-  badge: '99/99',
+  badge: '99+/99+',
 } as const;
 
 /** The first line of a commit message. */
@@ -44,7 +44,7 @@ export function boardContents(
     ...dashboard.stages.map((s) => ({ lead: capText(s.name), rest: [] })),
     ...groups
       .filter((g) => g.label)
-      .map((g) => ({ lead: capText(g.label), rest: [] })),
+      .map((g) => ({ span: g.span, lead: capText(g.label), rest: [] })),
   ];
   const lead = `\u2298 ${LONGEST.status}`;
   return (rung) => {
