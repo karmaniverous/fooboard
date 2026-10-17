@@ -19,6 +19,7 @@ import type { Dashboard } from '@/domain/config/dashboard';
 import { DashboardEditor } from '@/editors/DashboardEditor';
 import { draftFor, type EditorDraft } from '@/editors/draft';
 import { credentialProviders } from '@/engine/credentialProviders';
+import { dashboardsOf } from '@/storage/configStore';
 import { useStores } from '@/storage/storesContext';
 
 function SavedDashboard({
@@ -123,7 +124,7 @@ function SavedDashboard({
 export function DashboardPage(): React.JSX.Element {
   const { id } = useParams();
   const loaded = useStores().config.load();
-  const dashboards = loaded.kind === 'ok' ? loaded.root.dashboards : [];
+  const dashboards = dashboardsOf(loaded);
   const dashboard = dashboards.find((d) => d.id === id);
   if (!dashboard) {
     return (

@@ -10,6 +10,7 @@
  */
 import { useState } from 'react';
 
+import { NativeSelect } from '@/components/NativeSelect';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { resolveCredentialId } from '@/domain/config/credentialRefs';
@@ -26,6 +27,7 @@ import {
   uniqueId,
 } from './edit';
 import { CommitInput, DividerControl } from './fields';
+import { LoadStatus } from './LoadStatus';
 import { ReorderList } from './ReorderList';
 import { useLoad } from './useLoad';
 
@@ -104,11 +106,7 @@ function AddStage({
             : 'Find branches in your repos'}
         </Button>
       )}
-      {found.kind === 'error' && (
-        <p role="alert" className="text-status-failure">
-          {found.message}
-        </p>
-      )}
+      <LoadStatus state={found} loading="" />
       {byRepo && (
         <ul className="flex max-h-40 flex-wrap gap-1 overflow-y-auto">
           {branchCounts(byRepo).map((b) => (
@@ -226,9 +224,9 @@ export function StagesEditor({
                 }}
               />
             </div>
-            <select
+            <NativeSelect
               aria-label={`Source stage of ${stage.name}`}
-              className="h-8 rounded-md border bg-background px-1"
+              className="h-8 px-1"
               value={stage.sourceStageId ?? ''}
               onChange={(e) => {
                 replace({
@@ -245,7 +243,7 @@ export function StagesEditor({
                     Source: {s.name}
                   </option>
                 ))}
-            </select>
+            </NativeSelect>
             <DividerControl
               name={stage.name}
               divider={dashboard.columnDividers.find(

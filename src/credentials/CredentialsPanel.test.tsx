@@ -7,7 +7,7 @@
  *
  * @module
  */
-import { fireEvent, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import { useState } from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { describe, expect, it } from 'vitest';
@@ -116,7 +116,9 @@ describe('CredentialsPanel', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Copy' }));
     const copy = latest.current.credentials[0];
     expect(copy.id).not.toBe('src');
-    stores.credentials.forget('src');
+    act(() => {
+      stores.credentials.forget('src');
+    });
     expect(stores.credentials.get(copy.id)).toEqual({
       kind: 'github',
       token: 't',

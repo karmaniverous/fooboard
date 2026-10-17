@@ -36,7 +36,16 @@ separately) for the full product spec.
   - _Reset_, which clears only fooboard's data.
 - **Browser spikes**: two removable dev pages (below).
 
-Creating and editing your own dashboards comes next.
+- **Your own dashboards**: _Create a dashboard_ on the home page (a name and starting stages), then open it at `/d/<id>`:
+  - **Credentials**: add a GitHub token or AWS key, kept for the tab unless _Remember on this device_ is ticked. You can also _Forget_ one, choose the dashboard's default, copy one from another dashboard (an independent copy), and remove one. Tokens close to expiry are flagged, and each credential states the worst case if it leaks.
+  - **Edit**:
+    - rename, duplicate or delete the dashboard;
+    - add rows from a searchable list of your repos, or Amplify apps listed from AWS;
+    - add stages from the branches found in your repos, with a preview of what a pattern matches;
+    - edit the mapping rules, colours and dividers;
+    - reorder by dragging or with _Move up_ / _Move down_; every removal asks first.
+  - **Unmapped (N)**: recent runs with no cell, each with its reason. _Add test_ opens the editor with the fix pre-filled.
+- **Credential guide**: `/guide/credentials` covers creating read-only tokens and keys, what a leak exposes, and how to revoke.
 
 ## Dev commands
 

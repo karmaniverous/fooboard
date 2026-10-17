@@ -7,6 +7,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
+import { NativeSelect } from '@/components/NativeSelect';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { type BranchPresetId, createDashboard } from '@/domain/config/presets';
@@ -49,9 +50,9 @@ export function CreateDashboard(): React.JSX.Element {
           setName(e.target.value);
         }}
       />
-      <select
+      <NativeSelect
         aria-label="Starting stages"
-        className="h-9 rounded-md border bg-background px-2 text-sm"
+        className="h-9 px-2 text-sm"
         value={preset}
         onChange={(e) => {
           setPreset(e.target.value as BranchPresetId);
@@ -62,7 +63,7 @@ export function CreateDashboard(): React.JSX.Element {
             {p.label}
           </option>
         ))}
-      </select>
+      </NativeSelect>
       <Button type="submit" disabled={!name.trim()} className="self-start">
         Create a dashboard
       </Button>

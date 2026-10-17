@@ -6,6 +6,7 @@
  */
 import { useState } from 'react';
 
+import { NativeSelect } from '@/components/NativeSelect';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import type {
@@ -56,9 +57,9 @@ export function MatchTestsEditor<F extends MatchField>({
   };
   const fieldSelect = (current: F, onPick: (f: F) => void, label: string) =>
     fields.length > 1 ? (
-      <select
+      <NativeSelect
         aria-label={label}
-        className="h-8 rounded-md border bg-background px-1"
+        className="h-8 px-1"
         value={current}
         onChange={(e) => {
           onPick(e.target.value as F);
@@ -69,7 +70,7 @@ export function MatchTestsEditor<F extends MatchField>({
             {FIELD_LABEL[f]}
           </option>
         ))}
-      </select>
+      </NativeSelect>
     ) : (
       <span className="text-muted-foreground">{FIELD_LABEL[current]}</span>
     );
@@ -78,9 +79,9 @@ export function MatchTestsEditor<F extends MatchField>({
     onPick: (o: MatchOperator) => void,
     label: string,
   ) => (
-    <select
+    <NativeSelect
       aria-label={label}
-      className="h-8 rounded-md border bg-background px-1"
+      className="h-8 px-1"
       value={current}
       onChange={(e) => {
         onPick(e.target.value as MatchOperator);
@@ -91,7 +92,7 @@ export function MatchTestsEditor<F extends MatchField>({
           {o}
         </option>
       ))}
-    </select>
+    </NativeSelect>
   );
 
   return (

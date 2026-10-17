@@ -41,24 +41,38 @@ export function setDefaultCredential(
   };
 }
 
-export function removeCredential(dashboard: Dashboard, id: string): Dashboard {
-  const keep = (ref: string | undefined) => (ref === id ? undefined : ref);
+/** Rewrite every credential reference (defaults, row and source
+ * overrides) through `map`; `undefined` clears a reference. */
+export function mapCredentialRefs(
+  dashboard: Dashboard,
+  map: (ref: string) => string | undefined,
+): Dashboard {
+  const re = (ref: string | undefined) => (ref ? map(ref) : undefined);
   const { github, aws } = dashboard.defaultCredentials;
   return {
     ...dashboard,
-    credentials: dashboard.credentials.filter((c) => c.id !== id),
-    defaultCredentials: { github: keep(github), aws: keep(aws) },
+    defaultCredentials: { github: re(github), aws: re(aws) },
     rows: dashboard.rows.map((row) =>
       row.type === 'github'
-        ? { ...row, credentialId: keep(row.credentialId) }
+        ? { ...row, credentialId: re(row.credentialId) }
         : {
             ...row,
-            githubCredentialId: keep(row.githubCredentialId),
+            githubCredentialId: re(row.githubCredentialId),
             sources: row.sources.map((s) => ({
               ...s,
-              credentialId: keep(s.credentialId),
+              credentialId: re(s.credentialId),
             })),
           },
     ),
+  };
+}
+
+export function removeCredential(dashboard: Dashboard, id: string): Dashboard {
+  const cleared = mapCredentialRefs(dashboard, (ref) =>
+    ref === id ? undefined : ref,
+  );
+  return {
+    ...cleared,
+    credentials: dashboard.credentials.filter((c) => c.id !== id),
   };
 }

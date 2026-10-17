@@ -7,6 +7,7 @@
  */
 import { unique } from 'radash';
 
+import { mapCredentialRefs } from '@/credentials/dashboardCredentials';
 import type { Dashboard } from '@/domain/config/dashboard';
 import type { Divider } from '@/domain/config/dividers';
 import type { GithubRow } from '@/domain/config/row';
@@ -69,34 +70,17 @@ export function duplicateDashboard(
   name: string,
   newCredentialId: (oldId: string) => string,
 ): Dashboard {
-  const map = new Map(
+  const ids = new Map(
     dashboard.credentials.map((c) => [c.id, newCredentialId(c.id)]),
   );
-  const re = (ref: string | undefined) => (ref ? map.get(ref) : undefined);
   return {
-    ...structuredClone(dashboard),
+    ...mapCredentialRefs(structuredClone(dashboard), (ref) => ids.get(ref)),
     id,
     name,
     credentials: dashboard.credentials.map((c) => ({
       ...c,
-      id: re(c.id) ?? c.id,
+      id: ids.get(c.id) ?? c.id,
     })),
-    defaultCredentials: {
-      github: re(dashboard.defaultCredentials.github),
-      aws: re(dashboard.defaultCredentials.aws),
-    },
-    rows: dashboard.rows.map((row) =>
-      row.type === 'github'
-        ? { ...row, credentialId: re(row.credentialId) }
-        : {
-            ...row,
-            githubCredentialId: re(row.githubCredentialId),
-            sources: row.sources.map((s) => ({
-              ...s,
-              credentialId: re(s.credentialId),
-            })),
-          },
-    ),
   };
 }
 

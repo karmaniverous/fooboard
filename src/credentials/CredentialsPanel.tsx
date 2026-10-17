@@ -11,6 +11,8 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 
+import { ConfirmButton } from '@/components/ConfirmButton';
+import { NativeSelect } from '@/components/NativeSelect';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import type {
@@ -147,7 +149,6 @@ function CredentialItem({
   tokenExpiry?: (id: string) => string | undefined;
 }): React.JSX.Element {
   const { credentials } = useStores();
-  const [confirmRemove, setConfirmRemove] = useState(false);
   // Expiry is counted in days; the time the panel opened is precise enough.
   const [openedAt] = useState(() => Date.now());
   const { id, kind, label } = credential;
@@ -197,39 +198,15 @@ function CredentialItem({
               Forget
             </Button>
           )}
-          {confirmRemove ? (
-            <>
-              <Button
-                size="sm"
-                variant="destructive"
-                onClick={() => {
-                  credentials.forget(id);
-                  onChange(removeCredential(dashboard, id));
-                }}
-              >
-                Remove {label}
-              </Button>
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => {
-                  setConfirmRemove(false);
-                }}
-              >
-                Keep
-              </Button>
-            </>
-          ) : (
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => {
-                setConfirmRemove(true);
-              }}
-            >
-              Remove
-            </Button>
-          )}
+          <ConfirmButton
+            confirmLabel={`Remove ${label}`}
+            onConfirm={() => {
+              credentials.forget(id);
+              onChange(removeCredential(dashboard, id));
+            }}
+          >
+            Remove
+          </ConfirmButton>
         </div>
       </div>
       {!entered && (
@@ -293,9 +270,9 @@ export function CredentialsPanel({
       <section className="flex flex-col gap-2 rounded-md border p-3">
         <h3 className="font-semibold">Add a credential</h3>
         <div className="flex gap-2">
-          <select
+          <NativeSelect
             aria-label="Kind"
-            className="rounded-md border bg-background px-2 text-sm"
+            className="px-2 text-sm"
             value={kind}
             onChange={(e) => {
               setKind(e.target.value as CredentialKind);
@@ -303,7 +280,7 @@ export function CredentialsPanel({
           >
             <option value="github">{KIND_LABEL.github}</option>
             <option value="aws">{KIND_LABEL.aws}</option>
-          </select>
+          </NativeSelect>
           <Input
             aria-label="Name"
             placeholder="Name, e.g. acme-board"

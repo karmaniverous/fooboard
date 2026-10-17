@@ -11,11 +11,12 @@ import { Link } from 'react-router-dom';
 import { buttonVariants } from '@/components/ui/buttonVariants';
 import { CreateDashboard } from '@/editors/CreateDashboard';
 import { site } from '@/lib/site';
+import { dashboardsOf } from '@/storage/configStore';
 import { useStores } from '@/storage/storesContext';
 
 export function Home(): React.JSX.Element {
   const loaded = useStores().config.load();
-  const dashboards = loaded.kind === 'ok' ? loaded.root.dashboards : [];
+  const dashboards = dashboardsOf(loaded);
   return (
     <div className="mx-auto flex max-w-xl flex-col items-center gap-4 px-6 py-24 text-center">
       <LayoutGrid className="size-10 text-muted-foreground" aria-hidden />

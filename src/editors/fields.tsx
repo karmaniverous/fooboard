@@ -5,6 +5,7 @@
  */
 import { useState } from 'react';
 
+import { NativeSelect } from '@/components/NativeSelect';
 import { Input } from '@/components/ui/input';
 import type { Divider, DividerStyle } from '@/domain/config/dividers';
 
@@ -74,9 +75,9 @@ export function DividerControl({
   };
   return (
     <div className="flex items-center gap-1 text-xs">
-      <select
+      <NativeSelect
         aria-label={`Divider before ${name}`}
-        className="h-7 rounded-md border bg-background px-1"
+        className="h-7 px-1"
         value={divider?.style ?? ''}
         onChange={(e) => {
           emit(e.target.value as DividerStyle | '', label);
@@ -88,7 +89,7 @@ export function DividerControl({
             {s} divider before
           </option>
         ))}
-      </select>
+      </NativeSelect>
       {divider && (
         <Input
           aria-label={`Group label before ${name}`}
