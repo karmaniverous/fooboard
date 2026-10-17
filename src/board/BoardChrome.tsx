@@ -14,6 +14,7 @@ const DOT: Record<CellFilter, string> = {
   failing: 'bg-status-failure',
   running: 'bg-status-started',
   behind: 'bg-badge-behind',
+  diverged: 'bg-badge-diverged',
 };
 
 export function BoardSummary({
@@ -27,7 +28,11 @@ export function BoardSummary({
 }): React.JSX.Element {
   const counts = summarize(model);
   return (
-    <div role="group" aria-label="Filter cells" className="flex gap-1.5">
+    <div
+      role="group"
+      aria-label="Filter cells"
+      className="flex flex-wrap gap-1.5"
+    >
       {FILTERS.map((f) => (
         <ToggleButton
           key={f}
