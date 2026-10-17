@@ -50,18 +50,23 @@ const INTERACTION_MS = 5_000;
 const WHEEL_STEP_DELTA = 50;
 const DENSITIES: Density[] = ['compact', 'default', 'comfortable'];
 
-/** The grid area (C-13): the grid's width, and the window height below
- * the grid's top when the page is scrolled to the top. The grid scrolls
- * with the page, never in a region of its own. */
+/** The grid area (C-13): the window's width less the page's side margins,
+ * and the window height below the grid's top when the page is scrolled to
+ * the top. Both come from the window, never from the grid's own size:
+ * the page grows with a wide grid, so measuring the grid would feed each
+ * layout back into the next and never settle. */
 function useAreaSize(ref: React.RefObject<HTMLElement | null>) {
   const [size, setSize] = useState({ width: 0, height: 0 });
   useEffect(() => {
     const el = ref.current;
     if (!el) return;
     const update = () => {
-      const top = el.getBoundingClientRect().top + window.scrollY;
+      const rect = el.getBoundingClientRect();
+      const top = rect.top + window.scrollY;
+      const left = rect.left + window.scrollX;
+      const windowWidth = document.documentElement.clientWidth;
       setSize({
-        width: el.clientWidth,
+        width: Math.max(0, windowWidth - 2 * left),
         height: Math.max(0, window.innerHeight - top - 8),
       });
     };

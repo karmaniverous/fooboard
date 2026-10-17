@@ -1,8 +1,9 @@
 /**
  * What every box on the board shows at each detail rung (spec.md C-13),
  * for worst-case sizing. Fixed-form fields are given at their longest form
- * (status label, relative time, short commit, phase, badge), so polling
- * cannot change the layout through them; free text (branches, commit
+ * (status label, relative time, short commit, phase), so polling cannot
+ * change the layout through them. Badges are taken as shown (capped at
+ * 99+), so the badge slot fits the badges actually on the board; free text (branches, commit
  * messages, stage names, group labels) is taken as it is, capped. Pure.
  *
  * @module
@@ -10,7 +11,7 @@
 import type { Dashboard } from '@/domain/config/dashboard';
 import type { BoardModel } from '@/engine';
 
-import { EMPTY_LABEL, STATUS_META } from './cellView';
+import { badgeText, EMPTY_LABEL, STATUS_META } from './cellView';
 import { columnGroups } from './columnGroups';
 import { capText, type Content, type Rung } from './layout';
 
@@ -23,7 +24,6 @@ const LONGEST = {
   time: '59m',
   commit: '0000000',
   phase: 'deploy',
-  badge: '99+/99+',
 } as const;
 
 /** The first line of a commit message. */
@@ -35,7 +35,6 @@ export function boardContents(
   dashboard: Pick<Dashboard, 'stages' | 'columnDividers'>,
   model: Pick<BoardModel, 'cells'>,
 ): (rung: Rung) => Content[] {
-  const anyBadge = Object.values(model.cells).some((c) => c?.badge);
   const groups = columnGroups(
     dashboard.stages,
     new Map(dashboard.columnDividers.map((d) => [d.beforeId, d])),
@@ -71,7 +70,7 @@ export function boardContents(
       if (rung >= 5 && d.message) free.push(capText(firstLine(d.message)));
       out.push({
         lead,
-        badge: anyBadge ? LONGEST.badge : undefined,
+        badge: cell.badge ? badgeText(cell.badge) : undefined,
         badgeAfterFirst: rung >= 3,
         rest,
         free,
