@@ -1,8 +1,9 @@
 /**
- * Tests for the C-13 layout rules with a fixed-width text measure: formats
- * unwrap as columns widen, the richest fitting rung wins, tall boards fall
- * back to rung 1 and scroll down, columns overflow right only below rung 1
- * stacked, density changes only padding, and zoom moves along one scale.
+ * Tests for the C-13 layout rules with a fixed-width text measure: items
+ * pack into lines as columns narrow, the richest fitting rung wins, tall
+ * boards scroll down as little as possible, columns overflow right only
+ * when icons (rung 0) cannot fit, density changes only padding, and zoom
+ * moves along one scale.
  *
  * @module
  */
@@ -12,10 +13,11 @@ import {
   BASE_FONT_PX,
   capText,
   type Content,
-  contentBox,
   fitLayout,
   layoutAtZoom,
   type LayoutInput,
+  minWidth,
+  packContent,
   type Rung,
   snapZoom,
   stepZoom,
@@ -27,14 +29,27 @@ import {
 const measure = (text: string, px: number) => text.length * px * 0.6;
 
 const cell = (rung: Rung): Content => ({
-  lead: '✓ Cancelled',
-  rest: [
-    ...(rung >= 2 ? ['59m'] : []),
-    ...(rung >= 3 ? ['0000000', 'deploy'] : []),
-  ],
-  free: [
-    ...(rung >= 4 ? ['release/24.3'] : []),
-    ...(rung >= 5 ? ['Fix flaky checkout test'] : []),
+  lead: rung === 0 ? 'x' : 'x Cancelled',
+  items: [
+    ...(rung >= 2 ? [{ key: 'time' as const, text: '59m' }] : []),
+    ...(rung >= 3
+      ? [
+          { key: 'commit' as const, text: '0000000' },
+          { key: 'phase' as const, text: 'deploy' },
+        ]
+      : []),
+    ...(rung >= 4
+      ? [{ key: 'branch' as const, text: 'release/24.3', free: true }]
+      : []),
+    ...(rung >= 5
+      ? [
+          {
+            key: 'message' as const,
+            text: 'Fix flaky checkout test',
+            free: true,
+          },
+        ]
+      : []),
   ],
 });
 
@@ -51,36 +66,37 @@ const input = (over: Partial<LayoutInput> = {}): LayoutInput => ({
   ...over,
 });
 
-describe('contentBox', () => {
-  it('trades width for lines from line to wrapped to stacked', () => {
-    const c = cell(3);
-    const line = contentBox(c, 'line', 10, measure);
-    const wrapped = contentBox(c, 'wrapped', 10, measure);
-    const stacked = contentBox(c, 'stacked', 10, measure);
-    expect(line.lines).toBe(1);
-    expect(wrapped.lines).toBe(2);
-    expect(stacked.lines).toBe(4);
-    expect(line.width).toBeGreaterThan(wrapped.width);
-    expect(wrapped.width).toBeGreaterThanOrEqual(stacked.width);
-  });
-});
-
-describe('free text', () => {
-  it('is cut off rather than forcing wider columns or more wrapping', () => {
-    const long = (rung: Rung): Content => ({
-      ...cell(rung),
-      free: ['release/2024-q4-very-long-branch', 'A very long commit subject'],
+describe('packContent', () => {
+  it('puts everything on one line when it fits, else packs lines after the lead', () => {
+    const c = cell(3); // lead 66, items 18 + 42 + 36 at 10 px, gaps 4.5
+    const one = packContent(c, 500, 10, measure);
+    expect(one).toMatchObject({ oneLine: true, lines: 1 });
+    const two = packContent(c, 110, 10, measure);
+    expect(two).toMatchObject({
+      oneLine: false,
+      lines: 2,
+      lineOf: { time: 1, commit: 1, phase: 1 },
     });
-    const stacked = contentBox(cell(3), 'stacked', 10, measure);
-    expect(contentBox(long(5), 'stacked', 10, measure).width).toBe(
-      stacked.width,
-    );
-    const wrapped = contentBox(long(5), 'wrapped', 10, measure);
-    // two free items count at 8 characters each, plus gaps
-    expect(wrapped.width).toBeCloseTo(
-      contentBox(cell(3), 'wrapped', 10, measure).width + 2 * (8 * 6 + 4.5),
-    );
-    expect(wrapped.lines).toBe(2);
+    const three = packContent(c, 70, 10, measure);
+    expect(three?.lineOf).toEqual({ time: 1, commit: 1, phase: 2 });
+    expect(packContent(c, 40, 10, measure)).toBeNull();
+  });
+
+  it('cuts free text off rather than wrapping or widening for it', () => {
+    const long: Content = {
+      ...cell(5),
+      items: [
+        { key: 'branch', text: 'release/2024-q4-very-long-branch', free: true },
+      ],
+    };
+    // 8 characters at 6 px each
+    expect(minWidth(long, 10, measure)).toBe(Math.max(66, 48));
+    expect(packContent(long, 66, 10, measure)?.lines).toBe(2);
+  });
+
+  it('shares a spanning label across its columns', () => {
+    const label: Content = { lead: 'x'.repeat(20), items: [], span: 3 };
+    expect(minWidth(label, 10, measure)).toBe(40);
   });
 });
 
@@ -127,13 +143,31 @@ describe('fitLayout', () => {
         BASE_FONT_PX,
       ).rowHeight,
     );
-    expect(l.rung).toBeGreaterThan(1);
+    expect(l.rung).toBeGreaterThanOrEqual(1);
   });
 
-  it('overflows right only when rung 1 stacked cannot fit, at that width', () => {
-    const l = fitLayout(input({ width: 390, stages: 6 }), BASE_FONT_PX);
-    expect(l).toMatchObject({ rung: 1, overflowX: true, format: 'stacked' });
-    expect(l.colWidth).toBeCloseTo(measure('✓ Cancelled', 13) + 2 * 0.6 * 13);
+  it('drops to icons before overflowing right, and overflows only when icons cannot fit', () => {
+    const narrow = fitLayout(input({ width: 390, stages: 6 }), BASE_FONT_PX);
+    expect(narrow).toMatchObject({ rung: 0, overflowX: false });
+    const l = fitLayout(input({ width: 200, stages: 12 }), BASE_FONT_PX);
+    expect(l).toMatchObject({ rung: 0, overflowX: true });
+    expect(l.colWidth).toBe(
+      Math.ceil(measure('x', 13)) + Math.ceil(2 * 0.6 * 13),
+    );
+  });
+
+  it('packs every cell alike: if one wraps, all wrap', () => {
+    const contents = (rung: Rung) => [
+      cell(rung),
+      { lead: 'x no branch', items: [] },
+    ];
+    const l = fitLayout(input({ width: 900, rows: 3, contents }), 13);
+    const lines = Object.values(l.lineOf);
+    expect(
+      l.format === 'packed'
+        ? lines.every((n) => n >= 1)
+        : lines.every((n) => n === 0),
+    ).toBe(true);
   });
 
   it('keeps text at 13 px at 100% however large the board', () => {
@@ -166,7 +200,7 @@ describe('zoom', () => {
   });
 
   it('goes below 50% only as far as columns need to fit, never below 25%', () => {
-    const phone = input({ width: 390, stages: 10, rows: 5 });
+    const phone = input({ width: 390, stages: 30, rows: 5 });
     const r = zoomRange(phone);
     expect(layoutAtZoom(phone, 0.5, r).overflowX).toBe(true);
     expect(r.min).toBeGreaterThanOrEqual(0.25);
@@ -190,6 +224,13 @@ describe('zoom', () => {
     expect(at(range.top).rung).toBe(5);
   });
 
+  it('adds detail on zoom-in even when width, not height, is the limit', () => {
+    const phone = input({ width: 390, stages: 6, rows: 5 });
+    const r = zoomRange(phone);
+    const base = layoutAtZoom(phone, 1, r).rung;
+    expect(layoutAtZoom(phone, 2, r).rung).toBeGreaterThan(base);
+  });
+
   it('magnifies past the top rung, up to 300% text', () => {
     const l = layoutAtZoom(tall, range.top * 2, range);
     expect(l).toMatchObject({ rung: 5, fontPx: 26 });
@@ -208,7 +249,7 @@ describe('zoom', () => {
   });
 
   it('measures group labels across the columns they span', () => {
-    const label = { lead: 'x'.repeat(24), rest: [] };
+    const label: Content = { lead: 'x'.repeat(24), items: [] };
     const alone = fitLayout(input({ width: 600, contents: () => [label] }), 13);
     expect(alone.overflowX).toBe(true);
     const spanned = fitLayout(

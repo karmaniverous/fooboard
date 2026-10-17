@@ -31,16 +31,22 @@ describe('boardContents', () => {
     const leads = contents(1).map((c) => c.lead);
     for (const stage of demoDashboard.stages)
       expect(leads).toContain(stage.name);
-    const ok = (rung: 1 | 2 | 3 | 4 | 5) =>
-      contents(rung).find((c) => c.badge !== undefined);
-    expect(ok(1)).toMatchObject({ rest: [], badgeAfterFirst: false });
-    expect(ok(2)?.rest).toEqual(['59m']);
-    expect(ok(3)).toMatchObject({
-      rest: ['0000000', '59m', 'deploy'],
-      badgeAfterFirst: true,
-    });
-    expect(contents(3).some((c) => (c.free ?? []).length > 0)).toBe(false);
-    expect(contents(4).some((c) => (c.free ?? []).length > 0)).toBe(true);
+    const status = (rung: 0 | 1 | 2 | 3 | 4 | 5) =>
+      contents(rung).find((c) => c.lead.startsWith('\u2298'));
+    const keys = (rung: 0 | 1 | 2 | 3 | 4 | 5) =>
+      status(rung)?.items.map((i) => i.key);
+    expect(status(0)?.lead).toBe('\u2298');
+    expect(keys(1)).toEqual([]);
+    expect(keys(2)).toEqual(['time']);
+    expect(keys(3)).toEqual(['time', 'commit', 'phase']);
+    // The badge moves from the lead to the commit at rung 3.
+    expect(status(2)?.badge).toBeDefined();
+    expect(status(3)?.badge).toBeUndefined();
+    expect(status(3)?.items[1]?.badge).toBeDefined();
+    const free = (rung: 3 | 4) =>
+      contents(rung).some((c) => c.items.some((i) => i.free));
+    expect(free(3)).toBe(false);
+    expect(free(4)).toBe(true);
   });
 
   it('takes the first line of a commit message', () => {

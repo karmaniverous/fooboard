@@ -27,6 +27,15 @@ export const EMPTY_LABEL: Record<EmptyCellState, string> = {
   error: 'error',
 };
 
+/** Empty states at rung 0 (icons only): a short symbol; the label is in
+ * the tooltip, the accessible name and the detail sheet. */
+export const EMPTY_SYMBOL: Record<EmptyCellState, string> = {
+  'no-branch': '–',
+  'no-recent-runs': '○',
+  'needs-credential': '?',
+  error: '!',
+};
+
 /** Badge text: a count when behind, `behind/ahead` when diverged. */
 /** Counts above this show as "99+"; the tooltip has the exact numbers. */
 const BADGE_CAP = 99;

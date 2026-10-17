@@ -59,6 +59,35 @@ const setup = (model?: BoardModel) => {
 };
 
 describe('BoardViewport', () => {
+  it('sizes the grid area from the window, never from the grid itself', () => {
+    // A wide grid grows the page; if the area followed the grid, each
+    // layout would feed the next and narrow screens would never settle.
+    const root = document.documentElement;
+    const width = Object.getOwnPropertyDescriptor(root, 'clientWidth');
+    Object.defineProperty(root, 'clientWidth', {
+      configurable: true,
+      value: 390,
+    });
+    try {
+      setup(demoModel);
+      fireEvent(window, new Event('resize'));
+      const grid = screen.getByRole('grid');
+      const rung = grid.dataset.rung;
+      expect(rung).toBe('0');
+      const area = grid.parentElement?.parentElement;
+      if (!area) throw new Error('grid area not found');
+      Object.defineProperty(area, 'clientWidth', {
+        configurable: true,
+        value: 3000,
+      });
+      fireEvent(window, new Event('resize'));
+      expect(screen.getByRole('grid').dataset.rung).toBe(rung);
+    } finally {
+      if (width) Object.defineProperty(root, 'clientWidth', width);
+      else Reflect.deleteProperty(root, 'clientWidth');
+    }
+  });
+
   it('zooms in with the button and saves the zoom with the board size', () => {
     const stores = setup();
     const field = screen.getByLabelText('Zoom');

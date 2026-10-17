@@ -203,7 +203,7 @@ export function BoardGrid({
                       <Cell
                         cell={model.cells[key]}
                         rung={layout.rung}
-                        format={layout.format}
+                        lineOf={layout.lineOf}
                         colors={statusColors}
                         now={now}
                         onInspect={(el) => {

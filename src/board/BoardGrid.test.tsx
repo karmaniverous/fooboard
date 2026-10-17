@@ -31,6 +31,7 @@ import type { Layout } from './layout';
 const testLayout: Layout = {
   rung: 1,
   format: 'line',
+  lineOf: {},
   fontPx: 13,
   rowNameWidth: 120,
   colWidth: 100,
@@ -97,7 +98,8 @@ describe('BoardGrid', () => {
       const { unmount } = renderBoard({
         ...testLayout,
         rung,
-        format: 'wrapped',
+        format: 'packed',
+        lineOf: { time: 1, commit: 1, phase: 1 },
       });
       const row = screen.getByRole('rowheader', {
         name: 'billing',

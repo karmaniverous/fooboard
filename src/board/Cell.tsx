@@ -1,7 +1,8 @@
 /**
  * One board cell (spec.md §3, §4.3.5, C-13, C-13a): a solid block of its
- * status colour showing the board's detail rung in the board's format, or
- * an empty state. Every cell on the board gets the same rung and format.
+ * status colour showing the board's detail rung packed by the board's line
+ * map, or an empty state. Every cell on the board gets the same rung and
+ * arrangement; rung 0 shows only the icon and badge.
  *
  * The whole cell is a link to the job (or Amplify console) laid under its
  * text; the behind/diverged badge is a separate link to the compare page,
@@ -21,17 +22,19 @@ import {
   badgeDescription,
   badgeText,
   EMPTY_LABEL,
+  EMPTY_SYMBOL,
   relativeTime,
   shortSha,
   STATUS_META,
 } from './cellView';
-import { type CellFormat, ITEM_GAP_EM, type Rung } from './layout';
+import { ITEM_GAP_EM, type ItemKey, type LineMap, type Rung } from './layout';
 import { firstLine } from './layoutContents';
 
 export interface CellProps {
   cell: BoardCell | undefined;
   rung: Rung;
-  format: CellFormat;
+  /** The board's line map: which line each item sits on (C-13). */
+  lineOf: LineMap;
   colors: StatusColors;
   now: number;
   /** Hover or focus: show the tooltip for this cell. */
@@ -50,42 +53,43 @@ const EMPTY_CLASS = {
 
 const gapStyle = { gap: `${String(ITEM_GAP_EM)}em` };
 
-/** Arrange the lead and the rest per the board's format (C-13): one line;
- * lead then the rest on a second line; or one item per line. */
-function Arranged({
-  format,
+type Keyed = { key: ItemKey; node: React.ReactNode; free?: boolean };
+
+/** Arrange the lead and items by the board's line map (C-13): the lead on
+ * line 0, each item on its line. Fixed items keep their width; free text
+ * takes what is left and is cut off. */
+function Lines({
+  lineOf,
   lead,
-  rest,
+  items,
 }: {
-  format: CellFormat;
+  lineOf: LineMap;
   lead: React.ReactNode;
-  rest: React.ReactNode[];
+  items: Keyed[];
 }): React.JSX.Element {
   const line = 'flex min-w-0 items-center overflow-hidden whitespace-nowrap';
-  if (format === 'line' || rest.length === 0) {
-    return (
-      <span className={line} style={gapStyle}>
-        {lead}
-        {rest}
-      </span>
+  const lines: React.ReactNode[][] = [[lead]];
+  for (const item of items) {
+    const n = lineOf[item.key] ?? 0;
+    while (lines.length <= n) lines.push([]);
+    lines[n]?.push(
+      <span
+        key={item.key}
+        className={item.free ? 'flex min-w-0 flex-1' : 'flex flex-none'}
+      >
+        {item.node}
+      </span>,
     );
   }
   return (
-    <span className="flex min-w-0 flex-col justify-center">
-      <span className={line} style={gapStyle}>
-        {lead}
-      </span>
-      {format === 'wrapped' ? (
-        <span className={line} style={gapStyle}>
-          {rest}
-        </span>
-      ) : (
-        rest.map((item, i) => (
-          // Items are positional and never reorder.
-          <span key={i} className={line}>
-            {item}
+    <span className="flex min-w-0 flex-1 flex-col justify-center">
+      {lines.map((content, i) =>
+        content.length === 0 ? null : (
+          // Lines are positional and never reorder.
+          <span key={i} className={line} style={gapStyle}>
+            {content}
           </span>
-        ))
+        ),
       )}
     </span>
   );
@@ -101,7 +105,7 @@ const Free = ({ children }: { children: string }) => (
 export function Cell({
   cell,
   rung,
-  format,
+  lineOf,
   colors,
   now,
   onInspect,
@@ -140,10 +144,18 @@ export function Cell({
         onClick={onOpenSheet}
         {...inspect}
       >
-        <Arranged
-          format={format}
-          lead={<span>{label}</span>}
-          rest={rung >= 4 && extra ? [<Free key="x">{extra}</Free>] : []}
+        <Lines
+          lineOf={lineOf}
+          lead={
+            <span title={rung === 0 ? label : undefined}>
+              {rung === 0 ? EMPTY_SYMBOL[derivation.state] : label}
+            </span>
+          }
+          items={
+            rung >= 4 && extra
+              ? [{ key: 'extra', node: <Free>{extra}</Free>, free: true }]
+              : []
+          }
         />
       </button>
     );
@@ -162,10 +174,9 @@ export function Cell({
       title={badgeDescription(badge)}
       aria-label={badgeDescription(badge)}
       className={cn(
-        'pointer-events-auto flex-none rounded-full px-[0.45em] text-[0.8em] font-bold leading-[1.6] no-underline ring-2 ring-white',
-        badge.kind === 'behind'
-          ? 'bg-badge-behind text-badge-behind-text'
-          : 'bg-badge-diverged text-badge-diverged-text',
+        // Transparent, outlined in the cell's text colour; diverged dashed.
+        'pointer-events-auto flex-none rounded-full border-[1.5px] border-current bg-transparent px-[0.45em] text-[0.8em] font-bold leading-[1.45] text-current no-underline',
+        badge.kind === 'diverged' && 'border-dashed',
       )}
     >
       {badgeText(badge)}
@@ -174,44 +185,59 @@ export function Cell({
   // From rung 3 the badge follows the commit it describes (C-13).
   const badgeAfterCommit = rung >= 3 && Boolean(commit);
 
-  // Rest items are hidden from assistive tech (the cover link's name says
-  // it all), except the badge link, which stays reachable.
-  const rest: React.ReactNode[] = [];
-  /** The rest item holding the badge link, if any. */
-  let badgeItem = -1;
+  // Items are hidden from assistive tech (the cover link's name says it
+  // all), except the badge link, which stays reachable.
+  const items: Keyed[] = [];
   if (rung >= 2 && time) {
-    rest.push(
-      <time key="t" dateTime={time}>
-        {relative}
-      </time>,
-    );
+    items.push({
+      key: 'time',
+      node: (
+        <time aria-hidden dateTime={time}>
+          {relative}
+        </time>
+      ),
+    });
   }
   if (rung >= 3) {
     if (commit) {
-      if (badgeAfterCommit) badgeItem = rest.length;
-      rest.push(
-        <span key="c" className="flex items-center" style={gapStyle}>
-          <span aria-hidden className="font-mono text-[0.95em] opacity-90">
-            {shortSha(commit)}
+      items.push({
+        key: 'commit',
+        node: (
+          <span className="flex items-center" style={gapStyle}>
+            <span aria-hidden className="font-mono text-[0.95em] opacity-90">
+              {shortSha(commit)}
+            </span>
+            {badgeLink}
           </span>
-          {badgeLink}
-        </span>,
-      );
+        ),
+      });
     }
-    rest.push(
-      <span
-        key="p"
-        className="rounded border border-current px-1 text-[0.85em]"
-      >
-        {derivation.phase}
-      </span>,
-    );
+    items.push({
+      key: 'phase',
+      node: (
+        <span
+          aria-hidden
+          className="rounded border border-current px-1 text-[0.85em]"
+        >
+          {derivation.phase}
+        </span>
+      ),
+    });
   }
-  // Fixed items keep their width; free text below takes the rest (C-13).
-  const fixedCount = rest.length;
-  if (rung >= 4 && branch) rest.push(<Free key="b">{branch}</Free>);
-  if (rung >= 5 && message)
-    rest.push(<Free key="m">{firstLine(message)}</Free>);
+  if (rung >= 4 && branch) {
+    items.push({
+      key: 'branch',
+      node: <Free>{branch}</Free>,
+      free: true,
+    });
+  }
+  if (rung >= 5 && message) {
+    items.push({
+      key: 'message',
+      node: <Free>{firstLine(message)}</Free>,
+      free: true,
+    });
+  }
 
   const name = [
     meta.label,
@@ -254,8 +280,8 @@ export function Cell({
           link inside it takes its own clicks. Text is hidden from assistive
           tech because the cover link's name already says it all. */}
       <span className="pointer-events-none relative flex min-w-0 items-center">
-        <Arranged
-          format={format}
+        <Lines
+          lineOf={lineOf}
           lead={
             <>
               <span
@@ -267,23 +293,15 @@ export function Cell({
               >
                 {meta.icon}
               </span>
-              <span aria-hidden className="font-semibold">
-                {meta.label}
-              </span>
+              {rung >= 1 && (
+                <span aria-hidden className="font-semibold">
+                  {meta.label}
+                </span>
+              )}
               {!badgeAfterCommit && badgeLink}
             </>
           }
-          rest={rest.map((item, i) => (
-            <span
-              key={i}
-              aria-hidden={i === badgeItem ? undefined : true}
-              className={
-                i < fixedCount ? 'flex flex-none' : 'flex min-w-0 flex-1'
-              }
-            >
-              {item}
-            </span>
-          ))}
+          items={items}
         />
       </span>
     </div>
