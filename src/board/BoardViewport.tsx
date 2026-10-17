@@ -22,6 +22,7 @@ import { Button } from '@/components/ui/button';
 import type { Dashboard } from '@/domain/config/dashboard';
 import type { Density } from '@/domain/config/devicePreferences';
 import type { BoardModel } from '@/engine';
+import { useWrapped } from '@/lib/useWrapped';
 import { cn, PINNED_X } from '@/lib/utils';
 
 import { BoardGrid } from './BoardGrid';
@@ -104,7 +105,7 @@ function ZoomField({
     <input
       aria-label="Zoom"
       inputMode="numeric"
-      className="h-8 w-20 rounded-md border border-input bg-background px-2 text-center text-sm tabular-nums"
+      className="h-6 w-14 rounded-md border border-input bg-background px-1 text-center text-xs tabular-nums"
       value={draft ?? label}
       onFocus={(e) => {
         setDraft(label.replace('%', ''));
@@ -133,14 +134,21 @@ export function BoardViewport({
   now,
   view,
   filter = null,
+  centered = false,
 }: {
   dashboard: Dashboard;
   model: BoardModel;
   now: number;
   view: BoardView;
   filter?: CellFilter | null;
+  /** Centre the toolbar (the header above has wrapped). */
+  centered?: boolean;
 }): React.JSX.Element {
   const { zoom, setZoom, density, setDensity } = view;
+  // Compact, so it stays on one line except on very narrow screens;
+  // centred once it or the header above wraps (C-13).
+  const [toolbar, toolbarWrapped] = useWrapped<HTMLDivElement>();
+  const center = centered || toolbarWrapped;
   const scroller = useRef<HTMLDivElement>(null);
   const area = useAreaSize(scroller);
   const [measure] = useState(createTextMeasure);
@@ -235,7 +243,14 @@ export function BoardViewport({
 
   return (
     <div className="flex flex-col gap-2">
-      <div className={cn('flex flex-wrap items-center gap-2', PINNED_X)}>
+      <div
+        ref={toolbar}
+        className={cn(
+          'flex flex-wrap items-center gap-x-2 gap-y-1 text-xs',
+          center && 'justify-center',
+          PINNED_X,
+        )}
+      >
         <div
           role="group"
           aria-label="Density"
@@ -245,7 +260,7 @@ export function BoardViewport({
             <ToggleButton
               key={d}
               pressed={density === d}
-              className="px-2 py-0.5 capitalize"
+              className="h-6 px-1.5 capitalize"
               onClick={() => {
                 setDensity(d);
               }}
@@ -254,33 +269,36 @@ export function BoardViewport({
             </ToggleButton>
           ))}
         </div>
-        <div className="ml-auto flex items-center gap-1">
+        <div className={cn('flex items-center gap-0.5', !center && 'ml-auto')}>
           <Button
             size="icon"
             variant="outline"
+            className="size-6"
             aria-label="Zoom out"
             disabled={zoom <= range.min}
             onClick={() => {
               step(-1);
             }}
           >
-            <Minus className="size-4" />
+            <Minus className="size-3.5" />
           </Button>
           <ZoomField zoom={zoom} range={range} onZoom={setZoom} />
           <Button
             size="icon"
             variant="outline"
+            className="size-6"
             aria-label="Zoom in"
             disabled={zoom >= range.max}
             onClick={() => {
               step(1);
             }}
           >
-            <Plus className="size-4" />
+            <Plus className="size-3.5" />
           </Button>
           <Button
-            size="sm"
+            size="icon"
             variant="outline"
+            className="size-6"
             title="Zoom to 100%"
             aria-label="Zoom to 100%"
             disabled={zoom === 1}
@@ -288,7 +306,7 @@ export function BoardViewport({
               setZoom(1);
             }}
           >
-            <RotateCcw className="size-4" />
+            <RotateCcw className="size-3.5" />
           </Button>
         </div>
       </div>

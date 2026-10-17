@@ -9,6 +9,7 @@ import { useState } from 'react';
 
 import type { Dashboard } from '@/domain/config/dashboard';
 import type { BoardModel, EngineProviders } from '@/engine';
+import { useWrapped } from '@/lib/useWrapped';
 import { cn, PINNED_X } from '@/lib/utils';
 
 import { BoardSummary, BudgetDisplay } from './BoardChrome';
@@ -38,16 +39,24 @@ export function BoardScreen({
     dashboard.stages.length,
   );
   const [filter, setFilter] = useState<CellFilter | null>(null);
+  // Once the header wraps, it and the toolbar below are centred (C-13).
+  const [header, headerWrapped] = useWrapped<HTMLDivElement>();
   return (
     <div className="flex flex-col gap-2 px-4 py-2">
-      <div className={cn('flex flex-wrap items-center gap-3', PINNED_X)}>
+      <div
+        ref={header}
+        className={cn(
+          'flex flex-wrap items-center gap-3',
+          headerWrapped && 'justify-center text-center',
+          PINNED_X,
+        )}
+      >
         <h1 className="text-base font-semibold">{dashboard.name}</h1>
         {subtitle && (
           <span className="text-xs text-muted-foreground">{subtitle}</span>
         )}
-        {/* The summary's auto right margin pushes the counter right on a
-            shared line; when the counter wraps, it starts its line at the left. */}
-        <div className="mr-auto">
+        {/* On one line, the summary's auto margin pushes the counter right. */}
+        <div className={headerWrapped ? undefined : 'mr-auto'}>
           <BoardSummary model={model} filter={filter} onFilter={setFilter} />
         </div>
         <div className="flex items-center gap-3">
@@ -62,6 +71,7 @@ export function BoardScreen({
           now={now}
           view={view}
           filter={filter}
+          centered={headerWrapped}
         />
       </div>
     </div>

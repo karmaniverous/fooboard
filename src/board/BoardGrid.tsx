@@ -138,7 +138,7 @@ export function BoardGrid({
                 key={stage.id}
                 role="columnheader"
                 className={cn(
-                  'flex items-center truncate px-[var(--cell-pad-x)] font-semibold',
+                  'flex items-center justify-center truncate px-[var(--cell-pad-x)] text-center font-semibold',
                   pinTop,
                   divider && DIVIDER[divider.style].left,
                 )}
