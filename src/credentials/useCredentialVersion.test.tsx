@@ -17,8 +17,9 @@ describe('useCredentialVersion', () => {
   it('changes on each secret change and stops listening on unmount', () => {
     const stores = createAppStores(memoryStorage());
     const unsubscribed = vi.fn();
-    const subscribe = stores.credentials.subscribe;
-    stores.credentials.subscribe = (listener) => {
+    const { credentials } = stores;
+    const subscribe = credentials.subscribe.bind(credentials);
+    credentials.subscribe = (listener) => {
       const off = subscribe(listener);
       return () => {
         unsubscribed();

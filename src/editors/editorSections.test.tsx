@@ -237,11 +237,10 @@ describe('editor review fixes', () => {
       name: 'Row key tests for api',
     });
     fireEvent.click(within(groups[0]).getByRole('button', { name: 'Add' }));
-    const [first, second] = latest.current.rows.filter(
-      (r) => r.repo === 'acme/api',
-    );
-    expect(first?.type === 'github' && first.rowKeyTests).toHaveLength(1);
-    expect(second?.type === 'github' && second.rowKeyTests).toEqual([]);
+    const tests = latest.current.rows
+      .filter((r) => r.repo === 'acme/api')
+      .map((r) => (r.type === 'github' ? r.rowKeyTests.length : -1));
+    expect(tests).toEqual([1, 0]);
   });
 
   it('hides listed apps when the region changes, before or after the response', async () => {
