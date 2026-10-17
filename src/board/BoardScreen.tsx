@@ -45,8 +45,12 @@ export function BoardScreen({
         {subtitle && (
           <span className="text-xs text-muted-foreground">{subtitle}</span>
         )}
-        <BoardSummary model={model} filter={filter} onFilter={setFilter} />
-        <div className="ml-auto flex items-center gap-3">
+        {/* The summary's auto right margin pushes the counter right on a
+            shared line; when the counter wraps, it starts its line at the left. */}
+        <div className="mr-auto">
+          <BoardSummary model={model} filter={filter} onFilter={setFilter} />
+        </div>
+        <div className="flex items-center gap-3">
           <BudgetDisplay model={model} />
           {typeof actions === 'function' ? actions(model) : actions}
         </div>

@@ -62,7 +62,10 @@ function Lines({
   lineOf,
   lead,
   items,
+  center = false,
 }: {
+  /** Centre the content horizontally (rung 0, icons only). */
+  center?: boolean;
   lineOf: LineMap;
   lead: React.ReactNode;
   items: Keyed[];
@@ -86,7 +89,11 @@ function Lines({
       {lines.map((content, i) =>
         content.length === 0 ? null : (
           // Lines are positional and never reorder.
-          <span key={i} className={line} style={gapStyle}>
+          <span
+            key={i}
+            className={cn(line, center && 'justify-center')}
+            style={gapStyle}
+          >
             {content}
           </span>
         ),
@@ -146,6 +153,7 @@ export function Cell({
       >
         <Lines
           lineOf={lineOf}
+          center={rung === 0}
           lead={
             <span title={rung === 0 ? label : undefined}>
               {rung === 0 ? EMPTY_SYMBOL[derivation.state] : label}
@@ -174,9 +182,12 @@ export function Cell({
       title={badgeDescription(badge)}
       aria-label={badgeDescription(badge)}
       className={cn(
-        // Transparent, outlined in the cell's text colour; diverged dashed.
-        'pointer-events-auto flex-none rounded-full border-[1.5px] border-current bg-transparent px-[0.45em] text-[0.8em] font-bold leading-[1.45] text-current no-underline',
-        badge.kind === 'diverged' && 'border-dashed',
+        // Coloured fill and solid border in the badge colour; nothing drawn
+        // outside the border (C-13).
+        'pointer-events-auto flex-none rounded-full border-[1.5px] px-[0.45em] text-[0.8em] font-bold leading-[1.45] no-underline',
+        badge.kind === 'behind'
+          ? 'border-badge-behind bg-badge-behind text-badge-behind-text'
+          : 'border-badge-diverged bg-badge-diverged text-badge-diverged-text',
       )}
     >
       {badgeText(badge)}
@@ -279,9 +290,10 @@ export function Cell({
       {/* Text sits above the cover link but lets clicks through; the badge
           link inside it takes its own clicks. Text is hidden from assistive
           tech because the cover link's name already says it all. */}
-      <span className="pointer-events-none relative flex min-w-0 items-center">
+      <span className="pointer-events-none relative flex min-w-0 flex-1 items-center">
         <Lines
           lineOf={lineOf}
+          center={rung === 0}
           lead={
             <>
               <span

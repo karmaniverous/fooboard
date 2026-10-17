@@ -14,7 +14,7 @@
  *
  * @module
  */
-import { Minus, Plus } from 'lucide-react';
+import { Minus, Plus, RotateCcw } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 
 import { ToggleButton } from '@/components/ToggleButton';
@@ -282,12 +282,13 @@ export function BoardViewport({
             size="sm"
             variant="outline"
             title="Zoom to 100%"
+            aria-label="Zoom to 100%"
             disabled={zoom === 1}
             onClick={() => {
               setZoom(1);
             }}
           >
-            100%
+            <RotateCcw className="size-4" />
           </Button>
         </div>
       </div>
