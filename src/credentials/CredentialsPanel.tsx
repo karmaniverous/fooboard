@@ -11,10 +11,12 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 
+import { ActionError } from '@/components/ActionError';
 import { ConfirmButton } from '@/components/ConfirmButton';
 import { NativeSelect } from '@/components/NativeSelect';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { useActionError } from '@/components/useActionError';
 import type {
   CredentialKind,
   CredentialRef,
@@ -24,11 +26,11 @@ import type { CredentialSecret } from '@/storage/credentialStore';
 import { useStores } from '@/storage/storesContext';
 
 import {
-  addCredential,
-  newCredentialId,
-  removeCredential,
-  setDefaultCredential,
-} from './dashboardCredentials';
+  addWithSecret,
+  copyCredential,
+  removeWithSecret,
+} from './credentialOps';
+import { setDefaultCredential } from './dashboardCredentials';
 import { expiryWarning } from './expiry';
 import { useCredentialVersion } from './useCredentialVersion';
 
@@ -41,7 +43,7 @@ const KIND_LABEL: Record<CredentialKind, string> = {
 const WORST_CASE: Record<CredentialKind, string> = {
   github:
     'If this token leaks, someone can read the repos you selected, including their code. With the permissions in the guide, they can’t change anything.',
-  aws: 'If this key leaks, someone can read app, branch and job details for the Amplify apps in its policy, and nothing else in your AWS account.',
+  aws: 'If this key leaks, someone can list the names of every Amplify app in the account (AWS allows no narrower listing) and read branch and job details for the apps in its policy, and nothing else in your AWS account.',
 };
 
 const GUIDE = '/guide/credentials';
@@ -53,7 +55,8 @@ function SecretFields({
   submitLabel,
 }: {
   kind: CredentialKind;
-  onSubmit: (secret: CredentialSecret, remember: boolean) => void;
+  /** Returns whether it was stored; the fields clear only then. */
+  onSubmit: (secret: CredentialSecret, remember: boolean) => boolean;
   submitLabel: string;
 }): React.JSX.Element {
   const [token, setToken] = useState('');
@@ -77,7 +80,11 @@ function SecretFields({
       className="flex flex-col gap-2"
       onSubmit={(e) => {
         e.preventDefault();
-        if (secret) onSubmit(secret, remember);
+        if (secret && onSubmit(secret, remember)) {
+          setToken('');
+          setKeyId('');
+          setSecretKey('');
+        }
       }}
     >
       {kind === 'github' ? (
@@ -142,11 +149,13 @@ function CredentialItem({
   credential,
   onChange,
   tokenExpiry,
+  run,
 }: {
   dashboard: Dashboard;
   credential: CredentialRef;
   onChange: (dashboard: Dashboard) => void;
   tokenExpiry?: (id: string) => string | undefined;
+  run: (action: () => void) => boolean;
 }): React.JSX.Element {
   const { credentials } = useStores();
   // Expiry is counted in days; the time the panel opened is precise enough.
@@ -181,7 +190,9 @@ function CredentialItem({
               size="sm"
               variant="outline"
               onClick={() => {
-                onChange(setDefaultCredential(dashboard, kind, id));
+                run(() => {
+                  onChange(setDefaultCredential(dashboard, kind, id));
+                });
               }}
             >
               Make default
@@ -192,7 +203,9 @@ function CredentialItem({
               size="sm"
               variant="outline"
               onClick={() => {
-                credentials.forget(id);
+                run(() => {
+                  credentials.forget(id);
+                });
               }}
             >
               Forget
@@ -201,8 +214,9 @@ function CredentialItem({
           <ConfirmButton
             confirmLabel={`Remove ${label}`}
             onConfirm={() => {
-              credentials.forget(id);
-              onChange(removeCredential(dashboard, id));
+              run(() => {
+                removeWithSecret(credentials, onChange, dashboard, id);
+              });
             }}
           >
             Remove
@@ -213,9 +227,11 @@ function CredentialItem({
         <SecretFields
           kind={kind}
           submitLabel="Save"
-          onSubmit={(secret, remember) => {
-            credentials.set(id, secret, remember);
-          }}
+          onSubmit={(secret, remember) =>
+            run(() => {
+              credentials.set(id, secret, remember);
+            })
+          }
         />
       )}
     </li>
@@ -236,6 +252,7 @@ export function CredentialsPanel({
 }): React.JSX.Element {
   useCredentialVersion();
   const { credentials } = useStores();
+  const [error, run] = useActionError();
   const [kind, setKind] = useState<CredentialKind>('github');
   const [label, setLabel] = useState('');
   const copyable = otherDashboards.flatMap((d) =>
@@ -252,6 +269,7 @@ export function CredentialsPanel({
           How to create a read-only token or key
         </Link>
       </p>
+      <ActionError error={error} />
 
       {dashboard.credentials.length > 0 && (
         <ul className="flex flex-col gap-2">
@@ -262,6 +280,7 @@ export function CredentialsPanel({
               credential={c}
               onChange={onChange}
               tokenExpiry={tokenExpiry}
+              run={run}
             />
           ))}
         </ul>
@@ -294,18 +313,19 @@ export function CredentialsPanel({
           key={kind}
           kind={kind}
           submitLabel="Add"
-          onSubmit={(secret, remember) => {
-            const id = newCredentialId();
-            credentials.set(id, secret, remember);
-            onChange(
-              addCredential(dashboard, {
-                id,
-                kind,
-                label: label.trim() || KIND_LABEL[kind],
-              }),
-            );
-            setLabel('');
-          }}
+          onSubmit={(secret, remember) =>
+            run(() => {
+              addWithSecret(
+                credentials,
+                onChange,
+                dashboard,
+                { kind, label: label.trim() || KIND_LABEL[kind] },
+                secret,
+                remember,
+              );
+              setLabel('');
+            })
+          }
         />
       </section>
 
@@ -329,9 +349,14 @@ export function CredentialsPanel({
                   variant="outline"
                   className="ml-auto"
                   onClick={() => {
-                    const id = newCredentialId();
-                    credentials.copy(credential.id, id);
-                    onChange(addCredential(dashboard, { ...credential, id }));
+                    run(() => {
+                      copyCredential(
+                        credentials,
+                        onChange,
+                        dashboard,
+                        credential,
+                      );
+                    });
                   }}
                 >
                   Copy

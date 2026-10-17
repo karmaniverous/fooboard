@@ -13,8 +13,11 @@ export function ConfirmButton({
   children,
   confirmLabel,
   onConfirm,
+  label,
 }: {
   children: React.ReactNode;
+  /** Accessible name for the first button, when its text is ambiguous. */
+  label?: string;
   /** Names what goes, e.g. "Remove acme". */
   confirmLabel: string;
   onConfirm: () => void;
@@ -25,6 +28,7 @@ export function ConfirmButton({
       <Button
         size="sm"
         variant="outline"
+        aria-label={label}
         onClick={() => {
           setAsking(true);
         }}

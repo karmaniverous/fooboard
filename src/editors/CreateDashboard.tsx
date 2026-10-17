@@ -7,9 +7,11 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
+import { ActionError } from '@/components/ActionError';
 import { NativeSelect } from '@/components/NativeSelect';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { useActionError } from '@/components/useActionError';
 import { type BranchPresetId, createDashboard } from '@/domain/config/presets';
 import { useStores } from '@/storage/storesContext';
 
@@ -32,14 +34,17 @@ export function CreateDashboard(): React.JSX.Element {
   const navigate = useNavigate();
   const [name, setName] = useState('');
   const [preset, setPreset] = useState<BranchPresetId>('env-branches');
+  const [error, run] = useActionError();
   return (
     <form
       className="flex w-full flex-col gap-2 text-left"
       onSubmit={(e) => {
         e.preventDefault();
-        const dashboard = createDashboard(name.trim(), preset);
-        config.saveDashboard(dashboard);
-        void navigate(`/d/${dashboard.id}`);
+        run(() => {
+          const dashboard = createDashboard(name.trim(), preset);
+          config.saveDashboard(dashboard);
+          void navigate(`/d/${dashboard.id}`);
+        });
       }}
     >
       <Input
@@ -64,6 +69,7 @@ export function CreateDashboard(): React.JSX.Element {
           </option>
         ))}
       </NativeSelect>
+      <ActionError error={error} />
       <Button type="submit" disabled={!name.trim()} className="self-start">
         Create a dashboard
       </Button>

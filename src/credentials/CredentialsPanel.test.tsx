@@ -131,3 +131,34 @@ describe('CredentialsPanel', () => {
     expect(screen.getByText(/Expires in 3 days/)).toBeInTheDocument();
   });
 });
+
+describe('CredentialsPanel failures and form hygiene', () => {
+  it('clears the secret field after adding, so Forget leaves no secret in the form', () => {
+    setup();
+    addToken('acme', 'github_pat_1');
+    for (const field of screen.getAllByLabelText('Token')) {
+      expect(field).toHaveValue('');
+    }
+    fireEvent.click(screen.getByRole('button', { name: 'Forget' }));
+    for (const field of screen.getAllByLabelText('Token')) {
+      expect(field).toHaveValue('');
+    }
+  });
+
+  it('reports a refused write, keeps the input for retry, and stores nothing', () => {
+    const { stores, latest } = setup({
+      seed: (st) => {
+        st.credentials.set = () => {
+          throw new Error('storage refused the write');
+        };
+      },
+    });
+    addToken('acme', 'github_pat_1');
+    expect(screen.getByRole('alert')).toHaveTextContent(
+      'storage refused the write',
+    );
+    expect(screen.getByLabelText('Token')).toHaveValue('github_pat_1');
+    expect(latest.current.credentials).toEqual([]);
+    expect(stores.config.load()).toMatchObject({ kind: 'ok' });
+  });
+});

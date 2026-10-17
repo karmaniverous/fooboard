@@ -6,6 +6,7 @@
  */
 import { useState } from 'react';
 
+import { ConfirmButton } from '@/components/ConfirmButton';
 import { NativeSelect } from '@/components/NativeSelect';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -126,16 +127,15 @@ export function MatchTestsEditor<F extends MatchField>({
               replace(i, { ...t, value: v });
             }}
           />
-          <Button
-            size="sm"
-            variant="ghost"
-            aria-label={`Delete ${title} ${String(i + 1)}`}
-            onClick={() => {
+          <ConfirmButton
+            label={`Delete ${title} ${String(i + 1)}`}
+            confirmLabel={`Delete ${t.value}`}
+            onConfirm={() => {
               onChange(tests.filter((_, j) => j !== i));
             }}
           >
             Delete
-          </Button>
+          </ConfirmButton>
         </div>
       ))}
       <form

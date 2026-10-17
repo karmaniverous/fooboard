@@ -53,7 +53,7 @@ export function Home(): React.JSX.Element {
         workflow changes required. Create a dashboard or import one to get
         started.
       </p>
-      <CreateDashboard />
+      {loaded.kind === 'ok' && <CreateDashboard />}
       <Link to="/demo" className={buttonVariants({ variant: 'outline' })}>
         Try the demo
       </Link>

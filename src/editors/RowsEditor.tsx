@@ -8,7 +8,7 @@
  * @module
  */
 
-import { Button } from '@/components/ui/button';
+import { ConfirmButton } from '@/components/ConfirmButton';
 import type { Dashboard } from '@/domain/config/dashboard';
 import type { MatchTest } from '@/domain/config/matchTest';
 import type { Row } from '@/domain/config/row';
@@ -111,10 +111,9 @@ export function RowsEditor({
                       {s.appId} in {s.region}
                     </span>
                     {row.sources.length > 1 && (
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        onClick={() => {
+                      <ConfirmButton
+                        confirmLabel={`Delete source ${s.appId}`}
+                        onConfirm={() => {
                           replaceRow({
                             ...row,
                             sources: row.sources.filter((_, j) => j !== i),
@@ -122,7 +121,7 @@ export function RowsEditor({
                         }}
                       >
                         Delete source
-                      </Button>
+                      </ConfirmButton>
                     )}
                   </div>
                 ))}

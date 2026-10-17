@@ -75,10 +75,9 @@ export function RepoPicker({
       </p>
     );
   }
-  const taken = new Set(dashboard.rows.map((r) => r.repo));
   return (
     <div className="flex flex-col gap-1">
-      {repos.kind === 'idle' && (
+      {(repos.kind === 'idle' || repos.kind === 'error') && (
         <Button
           size="sm"
           variant="outline"
@@ -89,7 +88,7 @@ export function RepoPicker({
             );
           }}
         >
-          Add a GitHub row
+          {repos.kind === 'error' ? 'Try again' : 'Add a GitHub row'}
         </Button>
       )}
       <LoadStatus state={repos} loading="Loading repos…" />
@@ -105,11 +104,7 @@ export function RepoPicker({
           />
           <ul className="max-h-48 overflow-y-auto text-xs">
             {repos.value
-              .filter(
-                (r) =>
-                  !taken.has(r) &&
-                  r.toLowerCase().includes(query.toLowerCase()),
-              )
+              .filter((r) => r.toLowerCase().includes(query.toLowerCase()))
               .map((r) => (
                 <li key={r}>
                   <button
@@ -141,8 +136,24 @@ export function AmplifyPicker({
 }): React.JSX.Element {
   const [credentialId, setCredentialId] = useState<string | undefined>();
   const [region, setRegion] = useState('us-east-1');
-  const [apps, load] =
-    useLoad<{ appId: string; name: string; repo?: string }[]>();
+  const [listing, load] = useLoad<{
+    credentialId: string | undefined;
+    region: string;
+    apps: { appId: string; name: string; repo?: string }[];
+  }>();
+  // Results and the add action use the key and region they were listed
+  // with; changing either hides them until the list is fetched again.
+  const current =
+    listing.kind === 'done' &&
+    listing.value.credentialId === credentialId &&
+    listing.value.region === region.trim()
+      ? listing.value
+      : undefined;
+  const apps = current
+    ? ({ kind: 'done', value: current.apps } as const)
+    : listing.kind === 'done'
+      ? ({ kind: 'idle' } as const)
+      : listing;
   const resolved = resolveCredentialId(
     dashboard.defaultCredentials,
     'aws',
@@ -180,12 +191,14 @@ export function AmplifyPicker({
           disabled={!readers || !resolved || !region.trim()}
           onClick={() => {
             if (!readers || !resolved) return;
+            const context = { credentialId, region: region.trim() };
             const reader = readers({
               credentialId: resolved,
-              region: region.trim(),
+              region: context.region,
             });
-            load(async () =>
-              (await reader.listApps()).flatMap((a) =>
+            load(async () => ({
+              ...context,
+              apps: (await reader.listApps()).flatMap((a) =>
                 a.appId
                   ? [
                       {
@@ -196,16 +209,16 @@ export function AmplifyPicker({
                     ]
                   : [],
               ),
-            );
+            }));
           }}
         >
           List Amplify apps
         </Button>
       </div>
       <LoadStatus state={apps} loading="Loading apps…" />
-      {apps.kind === 'done' && (
+      {current && apps.kind === 'done' && (
         <ul className="max-h-48 overflow-y-auto">
-          {apps.value.length === 0 && <li>No apps in {region}.</li>}
+          {apps.value.length === 0 && <li>No apps in {current.region}.</li>}
           {apps.value.map((a) => (
             <li key={a.appId}>
               <button
@@ -224,7 +237,11 @@ export function AmplifyPicker({
                     repo: a.repo,
                     displayName: a.name,
                     sources: [
-                      { credentialId, region: region.trim(), appId: a.appId },
+                      {
+                        credentialId: current.credentialId,
+                        region: current.region,
+                        appId: a.appId,
+                      },
                     ],
                   });
                 }}

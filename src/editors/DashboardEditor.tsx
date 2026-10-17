@@ -9,11 +9,15 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
+import { ActionError } from '@/components/ActionError';
 import { ConfirmButton } from '@/components/ConfirmButton';
 import { ToggleButton } from '@/components/ToggleButton';
 import { Button } from '@/components/ui/button';
+import { useActionError } from '@/components/useActionError';
+import { deleteWithSecrets, saveDuplicate } from '@/credentials/credentialOps';
 import { type Dashboard, DashboardSchema } from '@/domain/config/dashboard';
 import type { EngineProviders } from '@/engine';
+import { describeError } from '@/lib/errors';
 import { useStores } from '@/storage/storesContext';
 
 import type { EditorDraft } from './draft';
@@ -35,6 +39,7 @@ function GeneralEditor({
 }): React.JSX.Element {
   const { config, credentials } = useStores();
   const navigate = useNavigate();
+  const [error, run] = useActionError();
   return (
     <div className="flex flex-col gap-3 text-sm">
       <label className="flex flex-col gap-1">
@@ -47,23 +52,28 @@ function GeneralEditor({
           }}
         />
       </label>
+      <ActionError error={error} />
       <div className="flex flex-wrap gap-2">
         <Button
           size="sm"
           variant="outline"
           onClick={() => {
-            const copy = duplicateDashboard(
-              dashboard,
-              crypto.randomUUID(),
-              `${dashboard.name} (copy)`,
-              (oldId) => {
-                const id = crypto.randomUUID();
-                credentials.copy(oldId, id);
-                return id;
-              },
-            );
-            config.saveDashboard(copy);
-            void navigate(`/d/${copy.id}`);
+            run(() => {
+              const copy = saveDuplicate(
+                credentials,
+                (d) => {
+                  config.saveDashboard(d);
+                },
+                (rekey) =>
+                  duplicateDashboard(
+                    dashboard,
+                    crypto.randomUUID(),
+                    `${dashboard.name} (copy)`,
+                    rekey,
+                  ),
+              );
+              void navigate(`/d/${copy.id}`);
+            });
           }}
         >
           Duplicate
@@ -71,11 +81,16 @@ function GeneralEditor({
         <ConfirmButton
           confirmLabel={`Delete ${dashboard.name}`}
           onConfirm={() => {
-            dashboard.credentials.forEach((c) => {
-              credentials.forget(c.id);
+            run(() => {
+              deleteWithSecrets(
+                credentials,
+                (id) => {
+                  config.removeDashboard(id);
+                },
+                dashboard,
+              );
+              void navigate('/');
             });
-            config.removeDashboard(dashboard.id);
-            void navigate('/');
           }}
         >
           Delete dashboard
@@ -102,8 +117,12 @@ export function DashboardEditor({
   const update = (next: Dashboard) => {
     const parsed = DashboardSchema.safeParse(next);
     if (parsed.success) {
-      setError(null);
-      onChange(parsed.data);
+      try {
+        onChange(parsed.data);
+        setError(null);
+      } catch (err) {
+        setError(describeError(err));
+      }
     } else {
       setError(parsed.error.issues.map((i) => i.message).join('; '));
     }

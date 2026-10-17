@@ -6,7 +6,7 @@
  *
  * @module
  */
-import { fireEvent, render, screen, within } from '@testing-library/react';
+import { act, fireEvent, render, screen, within } from '@testing-library/react';
 import { useState } from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { describe, expect, it } from 'vitest';
@@ -152,5 +152,149 @@ describe('editor sections', () => {
     expect(latest.current.statusColors.failure).toBe('#123456');
     fireEvent.click(screen.getByRole('button', { name: 'Reset colours' }));
     expect(latest.current.statusColors).toEqual(DEFAULT_STATUS_COLORS);
+  });
+});
+
+describe('editor review fixes', () => {
+  it('asks before deleting a match test, and Keep preserves it', () => {
+    const latest = setup();
+    tab('Mapping');
+    fireEvent.change(screen.getByLabelText('New Deploy phase tests value'), {
+      target: { value: 'deploy' },
+    });
+    const deploy = screen.getByRole('group', { name: 'Deploy phase tests' });
+    fireEvent.click(within(deploy).getByRole('button', { name: 'Add' }));
+    const count = latest.current.mapping.phases.deploy.length;
+    const del = within(deploy).getByRole('button', {
+      name: `Delete Deploy phase tests ${String(count)}`,
+    });
+    fireEvent.click(del);
+    expect(latest.current.mapping.phases.deploy).toHaveLength(count);
+    fireEvent.click(within(deploy).getByRole('button', { name: 'Keep' }));
+    expect(latest.current.mapping.phases.deploy).toHaveLength(count);
+    fireEvent.click(
+      within(deploy).getByRole('button', {
+        name: `Delete Deploy phase tests ${String(count)}`,
+      }),
+    );
+    fireEvent.click(
+      within(deploy).getByRole('button', { name: 'Delete deploy' }),
+    );
+    expect(latest.current.mapping.phases.deploy).toHaveLength(count - 1);
+  });
+
+  it('retries a failed repo list', async () => {
+    let calls = 0;
+    setup({
+      listRepos: () =>
+        ++calls === 1
+          ? Promise.reject(new Error('Bad gateway'))
+          : Promise.resolve([
+              {
+                full_name: 'acme/api',
+                name: 'api',
+                private: false,
+                html_url: '',
+                owner: { login: 'acme' },
+              },
+            ]),
+    });
+    tab('Rows');
+    fireEvent.click(screen.getByRole('button', { name: 'Add a GitHub row' }));
+    expect(await screen.findByRole('alert')).toHaveTextContent('Bad gateway');
+    fireEvent.click(screen.getByRole('button', { name: 'Try again' }));
+    expect(
+      await screen.findByRole('button', { name: 'acme/api' }),
+    ).toBeInTheDocument();
+  });
+
+  it('adds the same repo twice as independent rows', async () => {
+    const latest = setup({
+      listRepos: () =>
+        Promise.resolve([
+          {
+            full_name: 'acme/api',
+            name: 'api',
+            private: false,
+            html_url: '',
+            owner: { login: 'acme' },
+          },
+        ]),
+    });
+    tab('Rows');
+    fireEvent.click(screen.getByRole('button', { name: 'Add a GitHub row' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'acme/api' }));
+    const rows = latest.current.rows.filter((r) => r.repo === 'acme/api');
+    expect(rows.map((r) => r.id)).toEqual(['api', 'api-2']);
+
+    fireEvent.change(
+      screen.getAllByLabelText('New Row key tests for api value')[0],
+      {
+        target: { value: 'deploy-a' },
+      },
+    );
+    const groups = screen.getAllByRole('group', {
+      name: 'Row key tests for api',
+    });
+    fireEvent.click(within(groups[0]).getByRole('button', { name: 'Add' }));
+    const [first, second] = latest.current.rows.filter(
+      (r) => r.repo === 'acme/api',
+    );
+    expect(first?.type === 'github' && first.rowKeyTests).toHaveLength(1);
+    expect(second?.type === 'github' && second.rowKeyTests).toEqual([]);
+  });
+
+  it('hides listed apps when the region changes, before or after the response', async () => {
+    const latest = setup();
+    tab('Rows');
+    const region = screen.getByLabelText('Region');
+    // Changed while the request is pending.
+    fireEvent.click(screen.getByRole('button', { name: 'List Amplify apps' }));
+    fireEvent.change(region, { target: { value: 'eu-west-1' } });
+    await act(async () => {
+      await Promise.resolve();
+    });
+    expect(screen.queryByRole('button', { name: /site/ })).toBeNull();
+
+    // Listed for eu-west-1, then changed after the response.
+    fireEvent.click(screen.getByRole('button', { name: 'List Amplify apps' }));
+    expect(
+      await screen.findByRole('button', { name: /site/ }),
+    ).toBeInTheDocument();
+    fireEvent.change(region, { target: { value: 'us-west-2' } });
+    expect(screen.queryByRole('button', { name: /site/ })).toBeNull();
+
+    fireEvent.change(region, { target: { value: 'eu-west-1' } });
+    fireEvent.click(screen.getByRole('button', { name: /site/ }));
+    expect(latest.current.rows.at(-1)).toMatchObject({
+      sources: [{ region: 'eu-west-1', appId: 'a1' }],
+    });
+  });
+
+  it('asks before deleting an Amplify source', async () => {
+    const latest = setup();
+    tab('Rows');
+    fireEvent.click(screen.getByRole('button', { name: 'List Amplify apps' }));
+    fireEvent.click(await screen.findByRole('button', { name: /site/ }));
+    fireEvent.change(screen.getByLabelText('Region for a new site source'), {
+      target: { value: 'eu-west-1' },
+    });
+    fireEvent.change(screen.getByLabelText('App ID for a new site source'), {
+      target: { value: 'a9' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Add source' }));
+    const sources = () => {
+      const row = latest.current.rows.at(-1);
+      return row?.type === 'amplify' ? row.sources.length : 0;
+    };
+    expect(sources()).toBe(2);
+    fireEvent.click(
+      screen.getAllByRole('button', {
+        name: 'Delete source',
+      })[0],
+    );
+    expect(sources()).toBe(2);
+    fireEvent.click(screen.getByRole('button', { name: 'Delete source a1' }));
+    expect(sources()).toBe(1);
   });
 });

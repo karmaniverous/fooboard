@@ -6,26 +6,9 @@
  * @module
  */
 import { ExternalLink } from '@/components/ExternalLink';
+import { IAM_POLICY } from '@/credentials/iamPolicy';
 
-const IAM_POLICY = `{
-  "Version": "2012-10-17",
-  "Statement": [
-    {
-      "Sid": "FooboardAmplifyReadOnly",
-      "Effect": "Allow",
-      "Action": [
-        "amplify:ListApps",
-        "amplify:ListBranches",
-        "amplify:ListJobs",
-        "amplify:GetJob"
-      ],
-      "Resource": [
-        "arn:aws:amplify:us-east-1:123456789012:apps/d2x8k1",
-        "arn:aws:amplify:us-west-2:123456789012:apps/d7q4p0"
-      ]
-    }
-  ]
-}`;
+const POLICY_JSON = JSON.stringify(IAM_POLICY, null, 2);
 
 const SECTIONS = [
   ['github', 'GitHub fine-grained personal access token'],
@@ -158,13 +141,16 @@ export function CredentialGuidePage(): React.JSX.Element {
 
       <Section id="aws">
         <p>
-          Create an IAM user with this policy, restricted to the Amplify apps
-          you actually use, then create an access key for it. Use one credential
-          per AWS account; a row whose apps span accounts gets one source per
-          account.
+          Create an IAM user with this policy, replacing the region, account and
+          app IDs with yours (add an app ARN to each of the last three
+          statements per app), then create an access key for it. AWS can't
+          restrict listing apps to particular apps, so the key can see the names
+          of every Amplify app in the account; it can read branches and jobs
+          only for the apps you list. Use one credential per AWS account; a row
+          whose apps span accounts gets one source per account.
         </p>
         <pre className="overflow-x-auto rounded-md bg-muted p-3 text-xs">
-          {IAM_POLICY}
+          {POLICY_JSON}
         </pre>
       </Section>
 
@@ -181,9 +167,9 @@ export function CredentialGuidePage(): React.JSX.Element {
             compromise of those repos.
           </li>
           <li>
-            <strong>AWS access key</strong> (policy above): read access to app,
-            branch and job details for the listed Amplify apps only, not to the
-            rest of your AWS account.
+            <strong>AWS access key</strong> (policy above): the names of every
+            Amplify app in the account, and branch and job details for the
+            listed apps only; nothing else in your AWS account.
           </li>
         </ul>
       </Section>
