@@ -64,6 +64,8 @@ export async function refreshAmplifyRow(
   stages: readonly Stage[],
   defaults: DefaultCredentials,
   readersFor: (credentialId: string) => AmplifyReaderFor | undefined,
+  /** The row group's default credentials (C-1a), if it is in one. */
+  groupDefaults?: DefaultCredentials,
 ): Promise<AmplifyRowRefresh> {
   const sources: ResolvedAmplifySource[] = [];
   for (const source of row.sources) {
@@ -71,6 +73,7 @@ export async function refreshAmplifyRow(
       defaults,
       'aws',
       source.credentialId,
+      groupDefaults,
     );
     if (!credentialId) return emptyRow(stages, 'missing');
     sources.push({ ...source, credentialId });

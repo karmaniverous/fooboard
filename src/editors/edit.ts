@@ -9,9 +9,10 @@ import { unique } from 'radash';
 
 import { mapCredentialRefs } from '@/credentials/dashboardCredentials';
 import type { Dashboard } from '@/domain/config/dashboard';
-import type { Divider } from '@/domain/config/dividers';
 import type { GithubRow } from '@/domain/config/row';
 import { matchesBranchPattern } from '@/domain/matching';
+
+import { reorderRows, reorderStages } from './groupEdit';
 
 /** Move the item at `index` by `delta` places (keyboard reordering). */
 export function moveItem<T>(
@@ -59,6 +60,7 @@ export function rowFromRepo(
     repo: fullName,
     displayName: name,
     rowKeyTests: [],
+    branchPatternOverrides: {},
   };
 }
 
@@ -126,34 +128,35 @@ export function repoFromUrl(url: string | undefined): string | undefined {
   return match ? `${match[1]}/${match[2]}` : undefined;
 }
 
-/** Remove a row, and the divider attached to it. */
+/** Remove a row; its group loses it (and disappears if empty). */
 export function removeRow(dashboard: Dashboard, id: string): Dashboard {
-  return {
-    ...dashboard,
-    rows: dashboard.rows.filter((r) => r.id !== id),
-    rowDividers: dashboard.rowDividers.filter((d) => d.beforeId !== id),
-  };
+  return reorderRows(
+    dashboard,
+    dashboard.rows.filter((r) => r.id !== id),
+  );
 }
 
-/** Remove a stage, its divider, and any stage's use of it as a source. */
+/** Remove a stage: any stage's use of it as a source, its overrides on
+ * rows and row groups (C-14c), and its column-group membership. */
 export function removeStage(dashboard: Dashboard, id: string): Dashboard {
-  return {
-    ...dashboard,
-    stages: dashboard.stages
+  const drop = (o: Readonly<Record<string, string>>) =>
+    Object.fromEntries(Object.entries(o).filter(([k]) => k !== id));
+  return reorderStages(
+    {
+      ...dashboard,
+      rows: dashboard.rows.map((r) => ({
+        ...r,
+        branchPatternOverrides: drop(r.branchPatternOverrides),
+      })),
+      rowGroups: dashboard.rowGroups.map((g) => ({
+        ...g,
+        branchPatternOverrides: drop(g.branchPatternOverrides),
+      })),
+    },
+    dashboard.stages
       .filter((s) => s.id !== id)
       .map((s) =>
         s.sourceStageId === id ? { ...s, sourceStageId: undefined } : s,
       ),
-    columnDividers: dashboard.columnDividers.filter((d) => d.beforeId !== id),
-  };
-}
-
-/** Set (or, with `undefined`, clear) the divider before `beforeId`. */
-export function setDivider(
-  dividers: readonly Divider[],
-  beforeId: string,
-  divider: Omit<Divider, 'beforeId'> | undefined,
-): Divider[] {
-  const rest = dividers.filter((d) => d.beforeId !== beforeId);
-  return divider ? [...rest, { ...divider, beforeId }] : rest;
+  );
 }

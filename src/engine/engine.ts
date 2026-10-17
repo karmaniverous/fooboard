@@ -13,9 +13,12 @@
  */
 import { group, unique } from 'radash';
 
+import { effectiveStages } from '@/domain/config/branchOverrides';
 import { resolveCredentialId } from '@/domain/config/credentialRefs';
 import type { Dashboard } from '@/domain/config/dashboard';
-import type { AmplifyRow, GithubRow } from '@/domain/config/row';
+import { rowGroupOf } from '@/domain/config/groups';
+import type { AmplifyRow, GithubRow, Row } from '@/domain/config/row';
+import type { Stage } from '@/domain/config/stage';
 import type { CompareResult, GitHubReader } from '@/lib/github';
 import { isOverPollingShare } from '@/lib/github';
 
@@ -81,12 +84,27 @@ export function createBoardEngine({
 }): BoardEngine {
   const { stages, mapping, defaultCredentials } = dashboard;
 
-  /** A row's override, else the dashboard default (spec.md C-1a). */
-  const githubAccess = (override?: string): GithubAccess | undefined => {
+  /** The stages as `row` sees them: effective branch patterns (C-14c). */
+  const stagesByRow = new Map<string, readonly Stage[]>(
+    dashboard.rows.map((r) => [r.id, effectiveStages(dashboard, r)]),
+  );
+  const stagesFor = (row: Row): readonly Stage[] =>
+    stagesByRow.get(row.id) ?? stages;
+  /** The row group's default credentials, if the row is in one (C-1a). */
+  const groupDefaultsOf = (row: Row) =>
+    rowGroupOf(dashboard.rowGroups, row.id)?.defaultCredentials;
+
+  /** A row's override, else its group's default, else the dashboard
+   * default (spec.md C-1a). */
+  const githubAccess = (
+    row: Row,
+    override?: string,
+  ): GithubAccess | undefined => {
     const credentialId = resolveCredentialId(
       defaultCredentials,
       'github',
       override,
+      groupDefaultsOf(row),
     );
     return credentialId
       ? { credentialId, reader: providers.github(credentialId) }
@@ -154,6 +172,7 @@ export function createBoardEngine({
   /** Staleness for one row. Compares are shared across the rows of one
    * refresh through `compare`; badges are best-effort. */
   const stalenessFor = async (
+    rowStages: readonly Stage[],
     reader: GitHubReader | undefined,
     repo: string,
     cells: Record<string, CellView>,
@@ -171,7 +190,7 @@ export function createBoardEngine({
       const derivations = Object.fromEntries(
         Object.entries(cells).map(([id, c]) => [id, c.derivation]),
       );
-      return await rowStaleness(stages, derivations, dated, compare);
+      return await rowStaleness(rowStages, derivations, dated, compare);
     } catch {
       return {};
     }
@@ -202,13 +221,14 @@ export function createBoardEngine({
   ): Promise<void> => {
     const first = rows.at(0);
     if (!first) return;
-    const access = githubAccess(first.credentialId);
+    const access = githubAccess(first, first.credentialId);
     const result = await refreshGithubRepo(
       rows,
       rowsByRepo[first.repo] ?? rows,
       stages,
       mapping,
       access?.reader,
+      stagesFor,
     );
     if (result.kind === 'rate-limited') {
       applyBudgetOnly(access);
@@ -224,6 +244,7 @@ export function createBoardEngine({
         staleness:
           compare && result.branches.length > 0
             ? await stalenessFor(
+                stagesFor(row),
                 reader,
                 row.repo,
                 cells,
@@ -239,11 +260,12 @@ export function createBoardEngine({
   const refreshAmplify = async (row: AmplifyRow): Promise<void> => {
     const result = await refreshAmplifyRow(
       row,
-      stages,
+      stagesFor(row),
       defaultCredentials,
       (id) => providers.amplify(id),
+      groupDefaultsOf(row),
     );
-    const access = githubAccess(row.githubCredentialId);
+    const access = githubAccess(row, row.githubCredentialId);
     if (result.kind === 'rate-limited') {
       applyBudgetOnly(access);
       return;
@@ -260,6 +282,7 @@ export function createBoardEngine({
     const reader = access?.reader;
     const staleness = reader
       ? await stalenessFor(
+          stagesFor(row),
           reader,
           row.repo,
           cells,
@@ -273,7 +296,7 @@ export function createBoardEngine({
   // GitHub targets: the rows reading one repo with one token.
   const githubGroups = group(githubRows, (r) =>
     JSON.stringify([
-      githubAccess(r.credentialId)?.credentialId ?? null,
+      githubAccess(r, r.credentialId)?.credentialId ?? null,
       r.repo,
     ]),
   );

@@ -52,6 +52,13 @@ export function mapCredentialRefs(
   return {
     ...dashboard,
     defaultCredentials: { github: re(github), aws: re(aws) },
+    rowGroups: dashboard.rowGroups.map((g) => ({
+      ...g,
+      defaultCredentials: {
+        github: re(g.defaultCredentials.github),
+        aws: re(g.defaultCredentials.aws),
+      },
+    })),
     rows: dashboard.rows.map((row) =>
       row.type === 'github'
         ? { ...row, credentialId: re(row.credentialId) }

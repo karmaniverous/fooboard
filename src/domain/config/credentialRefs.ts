@@ -10,6 +10,7 @@
 import { z } from 'zod';
 
 import type { CredentialKind, CredentialRef } from './credentials';
+import type { RowGroup } from './groups';
 import type { Row } from './row';
 
 /** The dashboard's default credential per kind; either may be unset. */
@@ -19,15 +20,16 @@ export const DefaultCredentialsSchema = z.object({
 });
 export type DefaultCredentials = z.infer<typeof DefaultCredentialsSchema>;
 
-/** The credential id to use: the override if set, else the dashboard
- * default for that kind, else `undefined` (the cell shows *needs
- * credential*). */
+/** The credential id to use: the override if set, else the row group's
+ * default (spec.md C-1a), else the dashboard default for that kind, else
+ * `undefined` (the cell shows *needs credential*). */
 export function resolveCredentialId(
   defaults: DefaultCredentials,
   kind: CredentialKind,
   override?: string,
+  rowGroupDefaults?: DefaultCredentials,
 ): string | undefined {
-  return override ?? defaults[kind];
+  return override ?? rowGroupDefaults?.[kind] ?? defaults[kind];
 }
 
 /** One credential reference somewhere in a dashboard. */
@@ -67,11 +69,20 @@ function rowUses(row: Row, index: number): CredentialUse[] {
     : sources;
 }
 
+function rowGroupUses(group: RowGroup, index: number): CredentialUse[] {
+  const at = (kind: string) => ['rowGroups', index, 'defaultCredentials', kind];
+  return (['github', 'aws'] as const).flatMap((kind) => {
+    const id = group.defaultCredentials[kind];
+    return id ? [{ id, kind, path: at(kind) }] : [];
+  });
+}
+
 /** Every reference that names no credential, or one of the wrong kind. */
 export function credentialReferenceIssues(dashboard: {
   credentials: readonly CredentialRef[];
   defaultCredentials: DefaultCredentials;
   rows: readonly Row[];
+  rowGroups?: readonly RowGroup[];
 }): { message: string; path: (string | number)[] }[] {
   const kindOf = new Map(dashboard.credentials.map((c) => [c.id, c.kind]));
   const defaults = (['github', 'aws'] as const).flatMap((kind) => {
@@ -81,6 +92,7 @@ export function credentialReferenceIssues(dashboard: {
   const uses: CredentialUse[] = [
     ...defaults,
     ...dashboard.rows.flatMap(rowUses),
+    ...(dashboard.rowGroups ?? []).flatMap(rowGroupUses),
   ];
 
   return uses.flatMap(({ id, kind, path }) => {

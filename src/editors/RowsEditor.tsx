@@ -10,12 +10,23 @@
 
 import { ConfirmButton } from '@/components/ConfirmButton';
 import type { Dashboard } from '@/domain/config/dashboard';
+import { rowGroupOf } from '@/domain/config/groups';
 import type { MatchTest } from '@/domain/config/matchTest';
 import type { Row } from '@/domain/config/row';
 import type { EngineProviders } from '@/engine';
 
-import { removeRow, rowFromRepo, setDivider } from './edit';
-import { CommitInput, DividerControl } from './fields';
+import { removeRow, rowFromRepo } from './edit';
+import { CommitInput, GroupControl, OverrideFields } from './fields';
+import {
+  deleteRowGroup,
+  hasOverrides,
+  renameRowGroup,
+  reorderRows,
+  setRowGroup,
+  setRowGroupCredential,
+  setRowGroupOverride,
+  setRowOverride,
+} from './groupEdit';
 import { MatchTestsEditor } from './MatchTestsEditor';
 import { ReorderList } from './ReorderList';
 import {
@@ -50,7 +61,7 @@ export function RowsEditor({
         keyOf={(r) => r.id}
         nameOf={(r) => r.displayName}
         onReorder={(rows) => {
-          onChange({ ...dashboard, rows });
+          onChange(reorderRows(dashboard, rows));
         }}
         onRemove={(r) => {
           onChange(removeRow(dashboard, r.id));
@@ -134,20 +145,57 @@ export function RowsEditor({
                 />
               </div>
             )}
-            <DividerControl
-              name={row.displayName}
-              divider={dashboard.rowDividers.find((d) => d.beforeId === row.id)}
-              onChange={(divider) => {
-                onChange({
-                  ...dashboard,
-                  rowDividers: setDivider(
-                    dashboard.rowDividers,
-                    row.id,
-                    divider,
-                  ),
-                });
-              }}
-            />
+            {(() => {
+              const group = rowGroupOf(dashboard.rowGroups, row.id);
+              return (
+                <>
+                  <GroupControl
+                    name={row.displayName}
+                    groups={dashboard.rowGroups}
+                    groupId={group?.id}
+                    warning={
+                      group &&
+                      group.memberIds.length === 1 &&
+                      hasOverrides(group)
+                        ? "Moving this row out deletes its group and the group's overrides and credentials."
+                        : undefined
+                    }
+                    onChange={(target) => {
+                      onChange(setRowGroup(dashboard, row.id, target));
+                    }}
+                    onRename={(id, label) => {
+                      onChange(renameRowGroup(dashboard, id, label));
+                    }}
+                    onDelete={(id) => {
+                      onChange(deleteRowGroup(dashboard, id));
+                    }}
+                  />
+                  {group && (
+                    <RowGroupSettings
+                      dashboard={dashboard}
+                      groupId={group.id}
+                      onChange={onChange}
+                    />
+                  )}
+                  <OverrideFields
+                    name={row.displayName}
+                    stages={dashboard.stages}
+                    own={row.branchPatternOverrides}
+                    inherited={(stageId) =>
+                      group?.branchPatternOverrides[stageId] ??
+                      dashboard.stages.find((s) => s.id === stageId)
+                        ?.branchPattern ??
+                      ''
+                    }
+                    onChange={(stageId, pattern) => {
+                      onChange(
+                        setRowOverride(dashboard, row.id, stageId, pattern),
+                      );
+                    }}
+                  />
+                </>
+              );
+            })()}
           </div>
         )}
       </ReorderList>
@@ -172,6 +220,58 @@ export function RowsEditor({
           }}
         />
       </section>
+    </div>
+  );
+}
+
+/** A row group's own settings (C-14c, C-1a): its branch-pattern
+ * overrides and default credentials. Shown on each member row. */
+function RowGroupSettings({
+  dashboard,
+  groupId,
+  onChange,
+}: {
+  dashboard: Dashboard;
+  groupId: string;
+  onChange: (dashboard: Dashboard) => void;
+}): React.JSX.Element | null {
+  const group = dashboard.rowGroups.find((g) => g.id === groupId);
+  if (!group) return null;
+  const name = group.label ?? 'this group';
+  return (
+    <div className="flex flex-col gap-1 rounded border border-dashed p-1 text-xs">
+      <span className="font-semibold">Group settings: {name}</span>
+      <div className="flex flex-wrap items-center gap-1">
+        <CredentialSelect
+          dashboard={dashboard}
+          kind="github"
+          label={`GitHub token for ${name}`}
+          value={group.defaultCredentials.github}
+          onChange={(id) => {
+            onChange(setRowGroupCredential(dashboard, groupId, 'github', id));
+          }}
+        />
+        <CredentialSelect
+          dashboard={dashboard}
+          kind="aws"
+          label={`AWS key for ${name}`}
+          value={group.defaultCredentials.aws}
+          onChange={(id) => {
+            onChange(setRowGroupCredential(dashboard, groupId, 'aws', id));
+          }}
+        />
+      </div>
+      <OverrideFields
+        name={name}
+        stages={dashboard.stages}
+        own={group.branchPatternOverrides}
+        inherited={(stageId) =>
+          dashboard.stages.find((s) => s.id === stageId)?.branchPattern ?? ''
+        }
+        onChange={(stageId, pattern) => {
+          onChange(setRowGroupOverride(dashboard, groupId, stageId, pattern));
+        }}
+      />
     </div>
   );
 }

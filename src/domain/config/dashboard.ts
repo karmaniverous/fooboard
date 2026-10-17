@@ -15,7 +15,7 @@ import {
 } from './credentialRefs';
 import { CredentialRefSchema } from './credentials';
 import { findAnyCycle } from './cycle';
-import { DividerSchema } from './dividers';
+import { ColumnGroupSchema, RowGroupSchema } from './groups';
 import { MappingSettingsSchema } from './mappingSettings';
 import { RowSchema } from './row';
 import { StageSchema } from './stage';
@@ -33,8 +33,10 @@ export const DashboardSchema = z
     statusColors: StatusColorsSchema.default(() =>
       StatusColorsSchema.parse({}),
     ),
-    rowDividers: z.array(DividerSchema).default(() => []),
-    columnDividers: z.array(DividerSchema).default(() => []),
+    /** Row groups replacing dividers (spec.md C-14b). */
+    rowGroups: z.array(RowGroupSchema).default(() => []),
+    /** Column groups replacing dividers (spec.md C-14b). */
+    columnGroups: z.array(ColumnGroupSchema).default(() => []),
     credentials: z.array(CredentialRefSchema).default(() => []),
     /** Default GitHub token and AWS key; rows and sources may override. */
     defaultCredentials: DefaultCredentialsSchema.default(() => ({})),
@@ -43,6 +45,33 @@ export const DashboardSchema = z
     for (const issue of credentialReferenceIssues(dashboard)) {
       ctx.addIssue({ code: 'custom', ...issue });
     }
+
+    // Group member ids must name rows/stages that actually exist, so
+    // overrides and labels never orphan themselves silently.
+    const rowIds = new Set(dashboard.rows.map((r) => r.id));
+    dashboard.rowGroups.forEach((g, gi) => {
+      g.memberIds.forEach((id, mi) => {
+        if (!rowIds.has(id)) {
+          ctx.addIssue({
+            code: 'custom',
+            message: `row group ${g.id} names unknown row: ${id}`,
+            path: ['rowGroups', gi, 'memberIds', mi],
+          });
+        }
+      });
+    });
+    const stageIds = new Set(dashboard.stages.map((s) => s.id));
+    dashboard.columnGroups.forEach((g, gi) => {
+      g.memberIds.forEach((id, mi) => {
+        if (!stageIds.has(id)) {
+          ctx.addIssue({
+            code: 'custom',
+            message: `column group ${g.id} names unknown stage: ${id}`,
+            path: ['columnGroups', gi, 'memberIds', mi],
+          });
+        }
+      });
+    });
 
     // Duplicate ids make source references ambiguous and would let a cycle
     // hide behind a later stage with the same id, so reject them first.

@@ -17,7 +17,6 @@ import {
   removeStage,
   repoFromUrl,
   rowFromRepo,
-  setDivider,
   uniqueId,
 } from './edit';
 
@@ -39,22 +38,18 @@ describe('removing rows and stages', () => {
       { id: 'a', name: 'a', branchPattern: 'main' },
       { id: 'b', name: 'b', branchPattern: 'dev', sourceStageId: 'a' },
     ],
-    rowDividers: [{ beforeId: 'r', style: 'thin' }],
-    columnDividers: [{ beforeId: 'a', style: 'thin', label: 'Prod' }],
+    rowGroups: [
+      { id: 'g', memberIds: ['r'], branchPatternOverrides: { a: 'x/*' } },
+    ],
+    columnGroups: [{ id: 'cg', label: 'Prod', memberIds: ['a'] }],
   });
 
-  it('takes the attached divider and any source use with it', () => {
-    expect(removeRow(d, 'r')).toMatchObject({ rows: [], rowDividers: [] });
+  it('takes the emptied group, the overrides and any source use with it', () => {
+    expect(removeRow(d, 'r')).toMatchObject({ rows: [], rowGroups: [] });
     const s = DashboardSchema.parse(removeStage(d, 'a'));
     expect(s.stages).toEqual([{ id: 'b', name: 'b', branchPattern: 'dev' }]);
-    expect(s.columnDividers).toEqual([]);
-  });
-
-  it('sets, replaces and clears a divider', () => {
-    const one = setDivider([], 'x', { style: 'thin' });
-    const two = setDivider(one, 'x', { style: 'dashed', label: 'L' });
-    expect(two).toEqual([{ beforeId: 'x', style: 'dashed', label: 'L' }]);
-    expect(setDivider(two, 'x', undefined)).toEqual([]);
+    expect(s.columnGroups).toEqual([]);
+    expect(s.rowGroups[0]?.branchPatternOverrides).toEqual({});
   });
 });
 

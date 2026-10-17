@@ -74,8 +74,13 @@ describe('BoardGrid', () => {
   it('renders every cell with row and column group labels', () => {
     renderBoard();
     expect(screen.getAllByRole('gridcell')).toHaveLength(19 * 6);
-    expect(screen.getByText('Commerce')).toBeInTheDocument();
-    expect(screen.getByText('Amplify sites')).toBeInTheDocument();
+    expect(screen.getByText('Preview')).toBeInTheDocument();
+    expect(
+      screen.getByRole('rowgroup', { name: 'Backend' }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('rowgroup', { name: 'Frontend' }),
+    ).toBeInTheDocument();
   });
 
   it('links cells to jobs and badges to the compare page', () => {
@@ -189,8 +194,8 @@ describe('BoardGrid', () => {
     const big = {
       ...demoDashboard,
       stages,
-      rowDividers: [],
-      columnDividers: [],
+      rowGroups: [],
+      columnGroups: [],
       rows: Array.from({ length: 40 }, (_, i) => ({
         ...template,
         id: `r${String(i)}`,

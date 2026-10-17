@@ -19,14 +19,14 @@ import type { Dashboard } from '@/domain/config/dashboard';
 import type { Stage } from '@/domain/config/stage';
 import type { EngineProviders } from '@/engine';
 
+import { branchCounts, patternPreview, removeStage, uniqueId } from './edit';
+import { CommitInput, GroupControl } from './fields';
 import {
-  branchCounts,
-  patternPreview,
-  removeStage,
-  setDivider,
-  uniqueId,
-} from './edit';
-import { CommitInput, DividerControl } from './fields';
+  deleteColumnGroup,
+  renameColumnGroup,
+  reorderStages,
+  setColumnGroup,
+} from './groupEdit';
 import { LoadStatus } from './LoadStatus';
 import { ReorderList } from './ReorderList';
 import { useLoad } from './useLoad';
@@ -198,7 +198,7 @@ export function StagesEditor({
         keyOf={(s) => s.id}
         nameOf={(s) => s.name}
         onReorder={(next) => {
-          onChange({ ...dashboard, stages: next });
+          onChange(reorderStages(dashboard, next));
         }}
         onRemove={(s) => {
           onChange(removeStage(dashboard, s.id));
@@ -244,20 +244,22 @@ export function StagesEditor({
                   </option>
                 ))}
             </NativeSelect>
-            <DividerControl
+            <GroupControl
               name={stage.name}
-              divider={dashboard.columnDividers.find(
-                (d) => d.beforeId === stage.id,
-              )}
-              onChange={(divider) => {
-                onChange({
-                  ...dashboard,
-                  columnDividers: setDivider(
-                    dashboard.columnDividers,
-                    stage.id,
-                    divider,
-                  ),
-                });
+              groups={dashboard.columnGroups}
+              groupId={
+                dashboard.columnGroups.find((g) =>
+                  g.memberIds.includes(stage.id),
+                )?.id
+              }
+              onChange={(target) => {
+                onChange(setColumnGroup(dashboard, stage.id, target));
+              }}
+              onRename={(id, label) => {
+                onChange(renameColumnGroup(dashboard, id, label));
+              }}
+              onDelete={(id) => {
+                onChange(deleteColumnGroup(dashboard, id));
               }}
             />
           </div>
