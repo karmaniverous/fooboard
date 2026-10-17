@@ -60,11 +60,11 @@ describe('config store', () => {
 describe('preferences store', () => {
   it('fills defaults, merges changes and forgets', () => {
     const store = createPreferencesStore(memoryStorage());
-    expect(store.getView('d')).toEqual({ zoom: 1, rowHeight: 'compact' });
-    store.setView('d', { rowHeight: 'full' });
+    expect(store.getView('d')).toEqual({ zoom: 1, density: 'default' });
+    store.setView('d', { density: 'comfortable' });
     expect(store.setView('d', { zoom: 2 })).toEqual({
       zoom: 2,
-      rowHeight: 'full',
+      density: 'comfortable',
     });
     store.forget('d');
     expect(store.getView('d').zoom).toBe(1);
@@ -73,7 +73,24 @@ describe('preferences store', () => {
   it('falls back to defaults when stored data is unreadable', () => {
     const kv = memoryStorage();
     kv.setItem('fooboard:device', '{"schemaVersion":1,"dashboards":7}');
-    expect(createPreferencesStore(kv).getView('d').rowHeight).toBe('compact');
+    expect(createPreferencesStore(kv).getView('d').density).toBe('default');
+  });
+
+  it('migrates row height to density and resets zoom (version 1)', () => {
+    const kv = memoryStorage();
+    kv.setItem(
+      'fooboard:device',
+      JSON.stringify({
+        schemaVersion: 1,
+        dashboards: {
+          a: { zoom: 4, rowHeight: 'full', boardSize: '2x2' },
+          b: { zoom: 2, rowHeight: 'compact' },
+        },
+      }),
+    );
+    const store = createPreferencesStore(kv);
+    expect(store.getView('a')).toEqual({ zoom: 1, density: 'default' });
+    expect(store.getView('b')).toEqual({ zoom: 1, density: 'compact' });
   });
 });
 

@@ -13,7 +13,7 @@ import {
   type DashboardViewPreferences,
   DashboardViewPreferencesSchema,
   type DevicePreferences,
-  DevicePreferencesSchema,
+  migrateDevicePreferences,
 } from '@/domain/config/devicePreferences';
 
 import { KEY_PREFIX, type KeyValueStore, readJson } from './keyValue';
@@ -40,10 +40,12 @@ export function createPreferencesStore(store: KeyValueStore): PreferencesStore {
     } catch {
       raw = undefined;
     }
-    const parsed = DevicePreferencesSchema.safeParse(raw);
-    return parsed.success
-      ? parsed.data
-      : { schemaVersion: CURRENT_DEVICE_PREFERENCES_VERSION, dashboards: {} };
+    return (
+      migrateDevicePreferences(raw) ?? {
+        schemaVersion: CURRENT_DEVICE_PREFERENCES_VERSION,
+        dashboards: {},
+      }
+    );
   };
   // View settings are disposable: if storage refuses the write (quota,
   // revoked access), keep working with the in-memory value.

@@ -64,6 +64,7 @@ export function mapWorkflowRun(run: WorkflowRun): GithubWorkflowRun {
     workflowName: run.name ?? '',
     headBranch: run.head_branch,
     headSha: run.head_sha,
+    headCommitMessage: run.head_commit?.message,
     createdAt: run.created_at,
     event: run.event,
     htmlUrl: run.html_url,

@@ -18,7 +18,7 @@ const setup = () => {
   const stores = createAppStores(memoryStorage());
   stores.preferences.setView('b', {
     zoom: 3,
-    rowHeight: 'compact',
+    density: 'compact',
     boardSize: '2x2',
   });
   const hook = renderHook(
@@ -34,15 +34,15 @@ const setup = () => {
 };
 
 describe('useBoardView', () => {
-  it('resets zoom to Fit when the board size changes, keeping row height', () => {
+  it('resets zoom to 100% when the board size changes, keeping density', () => {
     const { hook } = setup();
     act(() => {
       hook.result.current.setZoom(2);
-      hook.result.current.setRowHeight('full');
+      hook.result.current.setDensity('comfortable');
     });
     hook.rerender({ id: 'a', rows: 3 });
     expect(hook.result.current.zoom).toBe(1);
-    expect(hook.result.current.rowHeight).toBe('full');
+    expect(hook.result.current.density).toBe('comfortable');
   });
 
   it("loads the new dashboard's settings without touching the old one's", () => {

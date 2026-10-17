@@ -1,6 +1,6 @@
 /**
  * Tests for the board viewport: zoom buttons and keys change and save the
- * zoom, Fit and `0` return to the whole board, and row height is saved.
+ * zoom, 100% and `0` return to the fitted layout, and density is saved.
  *
  * @module
  */
@@ -62,19 +62,19 @@ describe('BoardViewport', () => {
   it('zooms in with the button and saves the zoom with the board size', () => {
     const stores = setup();
     expect(
-      screen.getByRole('button', { name: 'Fit board to screen' }),
-    ).toBeDisabled();
+      screen.getByRole('button', { name: 'Zoom to 100%' }),
+    ).toHaveTextContent('100%');
     fireEvent.click(screen.getByRole('button', { name: 'Zoom in' }));
     expect(stores.preferences.getView('demo')).toMatchObject({
       zoom: 1.25,
       boardSize: '19x6',
     });
     expect(
-      screen.getByRole('button', { name: 'Fit board to screen' }),
-    ).toBeEnabled();
+      screen.getByRole('button', { name: 'Zoom to 100%' }),
+    ).not.toHaveTextContent(/^100%$/);
   });
 
-  it('zooms with + and returns to Fit with 0, leaving Ctrl+ to the browser', () => {
+  it('zooms with + and returns to 100% with 0, leaving Ctrl+ to the browser', () => {
     const stores = setup();
     const board = screen.getByLabelText(/Board: plus and minus zoom/);
     fireEvent.keyDown(board, { key: '+' });
@@ -84,11 +84,11 @@ describe('BoardViewport', () => {
     expect(stores.preferences.getView('demo').zoom).toBe(1);
   });
 
-  it('saves the row height', () => {
+  it('saves the density', () => {
     const stores = setup();
-    fireEvent.click(screen.getByRole('button', { name: 'full' }));
-    expect(stores.preferences.getView('demo').rowHeight).toBe('full');
-    expect(screen.getByRole('button', { name: 'full' })).toHaveAttribute(
+    fireEvent.click(screen.getByRole('button', { name: 'comfortable' }));
+    expect(stores.preferences.getView('demo').density).toBe('comfortable');
+    expect(screen.getByRole('button', { name: 'comfortable' })).toHaveAttribute(
       'aria-pressed',
       'true',
     );

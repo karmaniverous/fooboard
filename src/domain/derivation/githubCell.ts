@@ -30,6 +30,8 @@ export interface GithubCellResult {
   /** The cell's run's branch (spec.md §4.3.5 staleness input). */
   branch: string;
   commit: string;
+  /** The run's commit message, if known (C-13 rung 5). */
+  message?: string;
   /** The determining job's completion time, or start time while queued or
    * running (spec.md §4.3.5). */
   time: string | undefined;
@@ -98,6 +100,7 @@ export function deriveGithubCell(input: {
     phase: derived.phase,
     branch: matched.entry.run.headBranch ?? '',
     commit: matched.entry.run.headSha,
+    message: matched.entry.run.headCommitMessage,
     time: determiningJobTime(derived.determiningJob),
     linkUrl: derived.determiningJob.htmlUrl,
   };

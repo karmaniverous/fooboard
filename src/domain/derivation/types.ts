@@ -21,6 +21,8 @@ export interface GithubWorkflowRun {
   workflowName: string;
   headBranch: string | null;
   headSha: string;
+  /** The head commit's message (first line shown), when GitHub sends it. */
+  headCommitMessage?: string;
   createdAt: string;
   event: GithubRunEvent;
   htmlUrl: string;
