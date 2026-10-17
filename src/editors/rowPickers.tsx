@@ -243,6 +243,7 @@ export function AmplifyPicker({
                         appId: a.appId,
                       },
                     ],
+                    branchPatternOverrides: {},
                   });
                 }}
               >

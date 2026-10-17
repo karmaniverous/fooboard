@@ -15,7 +15,7 @@ import {
 } from './mappingSettings';
 
 describe('DashboardSchema', () => {
-  it('applies mapping, color, divider and credential defaults', () => {
+  it('applies mapping, color, group and credential defaults', () => {
     const dashboard = DashboardSchema.parse({ id: 'd1', name: 'Dashboard 1' });
     expect(dashboard.mapping.phases.deploy).toEqual(DEFAULT_DEPLOY_PHASE_TESTS);
     expect(dashboard.mapping.phases.test).toEqual(DEFAULT_TEST_PHASE_TESTS);
@@ -24,8 +24,8 @@ describe('DashboardSchema', () => {
       exclude: [],
     });
     expect(dashboard.statusColors).toEqual(DEFAULT_STATUS_COLORS);
-    expect(dashboard.rowDividers).toEqual([]);
-    expect(dashboard.columnDividers).toEqual([]);
+    expect(dashboard.rowGroups).toEqual([]);
+    expect(dashboard.columnGroups).toEqual([]);
     expect(dashboard.credentials).toEqual([]);
     expect(dashboard.rows).toEqual([]);
   });

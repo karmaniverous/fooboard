@@ -9,7 +9,7 @@ import { describe, expect, it } from 'vitest';
 import { DashboardSchema } from '@/domain/config/dashboard';
 import type { UnmappedRun } from '@/engine';
 
-import { draftFor } from './draft';
+import { draftFor, overrideDraftFor } from './draft';
 
 const dashboard = DashboardSchema.parse({
   id: 'd',
@@ -44,6 +44,18 @@ describe('draftFor', () => {
     expect(draftFor(run({ kind: 'no-phase-matches-job' }), dashboard)).toEqual({
       tab: 'Mapping',
     });
+  });
+
+  it("offers an override on the repo's row for an unmatched branch only", () => {
+    const branch = run({ kind: 'no-stage-matches-branch', branch: 'hotfix/1' });
+    expect(overrideDraftFor(branch, dashboard)).toEqual({
+      tab: 'Rows',
+      rowId: 'api',
+      overrideBranch: 'hotfix/1',
+    });
+    expect(
+      overrideDraftFor(run({ kind: 'no-phase-matches-job' }), dashboard),
+    ).toBeUndefined();
   });
 
   it('offers nothing when no GitHub row reads the repo', () => {

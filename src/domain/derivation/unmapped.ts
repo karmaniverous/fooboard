@@ -38,6 +38,9 @@ export function describeUnmappedReason(reason: UnmappedReason): string {
  * run's repo). */
 export interface RowKeyInput {
   rowKeyTests: readonly MatchTest[];
+  /** The row's effective branch patterns (C-14c); when omitted, the row
+   * is taken to use the stages' patterns. */
+  branchPatterns?: readonly string[];
 }
 
 /**
@@ -54,18 +57,21 @@ export function classifyUnmappedRun(
 ): UnmappedReason | undefined {
   if (isExcludedEvent(entry.run.event)) return undefined;
 
-  const matchedStages = stages.filter((stage) =>
-    isCandidateRun(entry, mapping, stage.branchPattern),
+  const matches = (pattern: string) => isCandidateRun(entry, mapping, pattern);
+  const stagesMatch = stages.some((stage) => matches(stage.branchPattern));
+  // Only rows whose own (effective) patterns take the branch can place it.
+  const branchRows = rows.filter((row) =>
+    row.branchPatterns ? row.branchPatterns.some(matches) : stagesMatch,
   );
-  if (matchedStages.length === 0) {
+  if (branchRows.length === 0 && (rows.length > 0 || !stagesMatch)) {
     return {
       kind: 'no-stage-matches-branch',
       branch: entry.run.headBranch ?? '',
     };
   }
 
-  const keylessRows = rows.filter((row) => row.rowKeyTests.length === 0);
-  const keyedRows = rows.filter((row) => row.rowKeyTests.length > 0);
+  const keylessRows = branchRows.filter((row) => row.rowKeyTests.length === 0);
+  const keyedRows = branchRows.filter((row) => row.rowKeyTests.length > 0);
 
   const phaseOnly = relevantJobs(
     entry.jobs,

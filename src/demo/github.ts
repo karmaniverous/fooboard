@@ -132,7 +132,7 @@ function demoRuns(repo: string, startMs: number): DemoRun[] {
 function demoBranches(repo: string): string[] {
   return DEMO_STAGE_IDS.filter(
     (id) => scenarioFor(repo, id) !== 'noBranch',
-  ).map(stageBranch);
+  ).map((id) => stageBranch(id));
 }
 
 /** Create the demo GitHub reader; `clock` drives scenario progress. */

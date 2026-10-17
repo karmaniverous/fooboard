@@ -17,7 +17,7 @@ import { CredentialsPanel } from '@/credentials/CredentialsPanel';
 import { useCredentialVersion } from '@/credentials/useCredentialVersion';
 import type { Dashboard } from '@/domain/config/dashboard';
 import { DashboardEditor } from '@/editors/DashboardEditor';
-import { draftFor, type EditorDraft } from '@/editors/draft';
+import { draftFor, type EditorDraft, overrideDraftFor } from '@/editors/draft';
 import { credentialProviders } from '@/engine/credentialProviders';
 import { dashboardsOf } from '@/storage/configStore';
 import { useStores } from '@/storage/storesContext';
@@ -70,6 +70,14 @@ function SavedDashboard({
                 runs={model.unmapped}
                 onAddTest={(run) => {
                   const next = draftFor(run, dashboard);
+                  return next
+                    ? () => {
+                        openEditor(next);
+                      }
+                    : undefined;
+                }}
+                onAddOverride={(run) => {
+                  const next = overrideDraftFor(run, dashboard);
                   return next
                     ? () => {
                         openEditor(next);

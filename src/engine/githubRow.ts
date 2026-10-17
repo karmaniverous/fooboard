@@ -77,14 +77,14 @@ export const repoRef = (repo: string): { owner: string; repo: string } => {
 /** Every cell of every row shows the same empty state. */
 function emptyRows(
   rows: readonly GithubRow[],
-  stages: readonly Stage[],
+  stagesFor: (row: GithubRow) => readonly Stage[],
   mapping: MappingSettings,
   credentialStatus: CredentialStatus,
   providerFailure?: ProviderFailure,
 ): GithubRepoRefresh {
   const cellsOf = (row: GithubRow) =>
     objectify(
-      stages,
+      stagesFor(row),
       (s) => s.id,
       (s): CellView => ({
         active: false,
@@ -116,10 +116,12 @@ export async function refreshGithubRepo(
   stages: readonly Stage[],
   mapping: MappingSettings,
   reader: GitHubReader | undefined,
+  /** The stages as each row sees them (effective patterns, C-14c). */
+  stagesFor: (row: GithubRow) => readonly Stage[] = () => stages,
 ): Promise<GithubRepoRefresh | GithubRepoRateLimited> {
-  if (!reader) return emptyRows(rows, stages, mapping, 'missing');
+  if (!reader) return emptyRows(rows, stagesFor, mapping, 'missing');
   try {
-    return await refreshWith(rows, repoRows, stages, mapping, reader);
+    return await refreshWith(rows, repoRows, stagesFor, mapping, reader);
   } catch (err) {
     const outcome = failureOutcome(err, {
       isRateLimit: (e) => e instanceof RateLimitedError,
@@ -129,7 +131,7 @@ export async function refreshGithubRepo(
       ? outcome
       : emptyRows(
           rows,
-          stages,
+          stagesFor,
           mapping,
           outcome.credentialStatus,
           outcome.providerFailure,
@@ -140,7 +142,7 @@ export async function refreshGithubRepo(
 async function refreshWith(
   rows: readonly GithubRow[],
   repoRows: readonly GithubRow[],
-  stages: readonly Stage[],
+  stagesFor: (row: GithubRow) => readonly Stage[],
   mapping: MappingSettings,
   reader: GitHubReader,
 ): Promise<GithubRepoRefresh> {
@@ -203,7 +205,8 @@ async function refreshWith(
   const result: Record<string, Record<string, CellView>> = {};
   for (const row of rows) {
     const cells: Record<string, CellView> = {};
-    for (const stage of stages) cells[stage.id] = await cellFor(row, stage);
+    for (const stage of stagesFor(row))
+      cells[stage.id] = await cellFor(row, stage);
     result[row.id] = cells;
   }
 
@@ -212,7 +215,7 @@ async function refreshWith(
   return {
     kind: 'refreshed',
     rows: result,
-    unmapped: unmappedRuns(repo, repoRows, stages, mapping, runs, settled),
+    unmapped: unmappedRuns(repo, repoRows, stagesFor, mapping, runs, settled),
     branches: datedBranches(branchNames, runs),
   };
 }
@@ -223,17 +226,24 @@ async function refreshWith(
 function unmappedRuns(
   repo: string,
   repoRows: readonly GithubRow[],
-  stages: readonly Stage[],
+  stagesFor: (row: GithubRow) => readonly Stage[],
   mapping: MappingSettings,
   runs: readonly GithubRunWithJobs[],
   fetched: ReadonlyMap<number, GithubRunWithJobs>,
 ): UnmappedRun[] {
+  const rowInputs = repoRows.map((row) => ({
+    rowKeyTests: row.rowKeyTests,
+    branchPatterns: stagesFor(row).map((s) => s.branchPattern),
+  }));
+  const allPatterns = rowInputs.flatMap((r) =>
+    r.branchPatterns.map((branchPattern) => ({ branchPattern })),
+  );
   return runs.flatMap((entry) => {
     const full = fetched.get(entry.run.id);
     const reason = classifyUnmappedRun(
       full ?? entry,
-      stages,
-      repoRows,
+      allPatterns,
+      rowInputs,
       mapping,
     );
     if (!reason) return [];

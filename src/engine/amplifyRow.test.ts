@@ -19,6 +19,7 @@ const row: AmplifyRow = {
   repo: 'acme/site',
   displayName: 'site',
   sources: [{ credentialId: 'aws', region: 'us-east-1', appId: 'a1' }],
+  branchPatternOverrides: {},
 };
 const stages = [{ id: 'prod', name: 'Prod', branchPattern: 'main' }];
 const defaults = {};

@@ -193,8 +193,8 @@ export function BoardViewport({
       rows: dashboard.rows.length,
       stages: dashboard.stages.length,
       labelRows:
-        dashboard.rowDividers.filter((d) => d.label).length +
-        (dashboard.columnDividers.some((d) => d.label) ? 1 : 0),
+        dashboard.rowGroups.filter((g) => g.label).length +
+        (dashboard.columnGroups.some((g) => g.label) ? 1 : 0),
       rowNames: dashboard.rows.map((r) => r.displayName),
       contents: boardContents(dashboard, sizingModel),
       measure,

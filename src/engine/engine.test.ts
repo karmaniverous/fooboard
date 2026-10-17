@@ -58,15 +58,15 @@ describe('board engine over the demo', () => {
         'error',
       ].sort(),
     );
-    expect(cell(model, 'billing', 'test')?.badge).toEqual({
+    expect(cell(model, 'billing', 'bali')?.badge).toEqual({
       kind: 'behind',
       count: 3,
     });
-    expect(cell(model, 'orders', 'staging')?.badge).toMatchObject({
+    expect(cell(model, 'orders', 'spokane')?.badge).toMatchObject({
       kind: 'diverged',
     });
     expect(
-      cell(model, 'billing', 'test')?.compare?.behindSubjects,
+      cell(model, 'billing', 'bali')?.compare?.behindSubjects,
     ).toHaveLength(3);
   });
 
@@ -206,6 +206,7 @@ describe('board engine review regressions', () => {
             value: 'deploy',
           },
         ],
+        branchPatternOverrides: {},
       },
     ],
   };
@@ -244,7 +245,7 @@ describe('board engine review regressions', () => {
   it('marks a cell active while a job is queued, whatever it displays', async () => {
     const model = await demoModel();
     // Partial success: deploy done, test still queued.
-    expect(cell(model, 'web-app', 'test')?.active).toBe(true);
+    expect(cell(model, 'web-app', 'bali')?.active).toBe(true);
     expect(cell(model, 'mobile-bff', 'prod')?.active).toBe(false);
   });
 

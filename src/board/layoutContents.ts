@@ -13,7 +13,7 @@ import type { Dashboard } from '@/domain/config/dashboard';
 import type { BoardModel } from '@/engine';
 
 import { badgeText, EMPTY_LABEL, EMPTY_SYMBOL, STATUS_META } from './cellView';
-import { columnGroups } from './columnGroups';
+import { groupSegments } from './groupLayout';
 import { capText, type Content, type Item, type Rung } from './layout';
 
 /** Longest forms of the fixed fields. */
@@ -40,7 +40,7 @@ export const firstLine = (message: string): string =>
 
 /** Build the per-rung contents for a board. */
 export function boardContents(
-  dashboard: Pick<Dashboard, 'stages' | 'columnDividers'>,
+  dashboard: Pick<Dashboard, 'stages' | 'columnGroups'>,
   model: Pick<BoardModel, 'cells'>,
 ): (rung: Rung) => Content[] {
   const badges = Object.values(model.cells).flatMap((c) =>
@@ -50,18 +50,22 @@ export function boardContents(
     (a, b) => (a === undefined || b.length > a.length ? b : a),
     undefined,
   );
-  const groups = columnGroups(
-    dashboard.stages,
-    new Map(dashboard.columnDividers.map((d) => [d.beforeId, d])),
+  const groups = groupSegments(
+    dashboard.stages.map((s) => s.id),
+    dashboard.columnGroups,
+  ).flatMap((g) =>
+    g.group?.label ? [{ label: g.group.label, span: g.span }] : [],
   );
   const headers = (rung: Rung): Content[] => [
     ...dashboard.stages.map((s) => ({
       lead: rung === 0 ? shortHeader(s.name) : capText(s.name),
       items: [],
     })),
-    ...groups
-      .filter((g) => g.label)
-      .map((g) => ({ span: g.span, lead: capText(g.label), items: [] })),
+    ...groups.map((g) => ({
+      span: g.span,
+      lead: capText(g.label),
+      items: [],
+    })),
   ];
   return (rung) => {
     const out = headers(rung);

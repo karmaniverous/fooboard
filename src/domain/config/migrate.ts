@@ -15,10 +15,86 @@ import { ConfigRootSchema, CURRENT_SCHEMA_VERSION } from './root';
 /** A migration step from one schema version to the next. */
 type Migration = (input: Record<string, unknown>) => Record<string, unknown>;
 
+interface V1Divider {
+  beforeId: string;
+  style?: string;
+  label?: string;
+}
+
+/** One group per divider (spec.md C-14b migration): a labelled divider
+ * becomes a labelled group, an unlabelled one an unlabelled group; the
+ * group runs from the divider's row/stage up to the next divider. Items
+ * before the first divider stay ungrouped. Divider styles are dropped. */
+function groupsFromDividers(
+  itemIds: readonly string[],
+  dividers: readonly V1Divider[],
+): { id: string; label?: string; memberIds: string[] }[] {
+  const positioned = dividers
+    .map((d) => ({ ...d, index: itemIds.indexOf(d.beforeId) }))
+    .filter((d) => d.index >= 0)
+    .sort((a, b) => a.index - b.index);
+  return positioned.map((d, i) => {
+    const end = positioned[i + 1]?.index ?? itemIds.length;
+    return {
+      id: `group-${d.beforeId}`,
+      ...(d.label ? { label: d.label } : {}),
+      memberIds: itemIds.slice(d.index, end),
+    };
+  });
+}
+
+/** Migrate one v1 dashboard's `rowDividers`/`columnDividers` to v2's
+ * `rowGroups`/`columnGroups` (spec.md C-14b). */
+function migrateDashboardDividersToGroups(
+  dashboard: Record<string, unknown>,
+): Record<string, unknown> {
+  const rows = Array.isArray(dashboard.rows)
+    ? (dashboard.rows as { id: string }[])
+    : [];
+  const stages = Array.isArray(dashboard.stages)
+    ? (dashboard.stages as { id: string }[])
+    : [];
+  const rowDividers = Array.isArray(dashboard.rowDividers)
+    ? (dashboard.rowDividers as V1Divider[])
+    : [];
+  const columnDividers = Array.isArray(dashboard.columnDividers)
+    ? (dashboard.columnDividers as V1Divider[])
+    : [];
+  const rest = Object.fromEntries(
+    Object.entries(dashboard).filter(
+      ([key]) => key !== 'rowDividers' && key !== 'columnDividers',
+    ),
+  );
+  return {
+    ...rest,
+    rowGroups: groupsFromDividers(
+      rows.map((r) => r.id),
+      rowDividers,
+    ),
+    columnGroups: groupsFromDividers(
+      stages.map((s) => s.id),
+      columnDividers,
+    ),
+  };
+}
+
 /** Migrations keyed by the version they migrate *from*. `Partial` so a
  * missing step types as `undefined` (there is no `noUncheckedIndexedAccess`
  * project-wide), matching the runtime behavior of an empty registry. */
-const migrations: Partial<Record<number, Migration>> = {};
+const migrations: Partial<Record<number, Migration>> = {
+  // v1 -> v2: row/column groups replace dividers (spec.md C-14b).
+  1: (data) => {
+    const dashboards = Array.isArray(data.dashboards) ? data.dashboards : [];
+    return {
+      ...data,
+      dashboards: dashboards.map((d: unknown) =>
+        typeof d === 'object' && d !== null
+          ? migrateDashboardDividersToGroups(d as Record<string, unknown>)
+          : d,
+      ),
+    };
+  },
+};
 
 function readVersion(input: unknown): number {
   if (
@@ -57,8 +133,8 @@ export function migrate(input: unknown): ConfigRoot {
         `no migration from schema version ${String(version)} to ${String(CURRENT_SCHEMA_VERSION)}`,
       );
     }
-    data = step(data);
     version += 1;
+    data = { ...step(data), schemaVersion: version };
   }
 
   return ConfigRootSchema.parse(data);

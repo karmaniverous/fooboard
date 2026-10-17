@@ -53,9 +53,9 @@ describe('demo GitHub provider', () => {
 
   it.each([
     ['api-core', 'dev', 'success'],
-    ['api-core', 'staging', 'started'],
-    ['web-app', 'test', 'partialSuccess'],
-    ['web-app', 'preview', 'queued'],
+    ['api-core', 'spokane', 'started'],
+    ['web-app', 'bali', 'partialSuccess'],
+    ['web-app', 'texas', 'queued'],
     ['mobile-bff', 'prod', 'failure'],
     ['payments', 'dev', 'cancelled'],
   ])('%s/%s derives %s', async (repo, stageId, status) => {
@@ -74,7 +74,7 @@ describe('demo GitHub provider', () => {
 
   it.each([
     ['auth-service', 'release', 'no-branch'],
-    ['inventory', 'preview', 'no-recent-runs'],
+    ['inventory', 'texas', 'no-recent-runs'],
   ])('%s/%s is empty: %s', async (repo, stageId, state) => {
     expect(await githubCell(reader, repo, stageId)).toMatchObject({
       kind: 'empty',
@@ -83,9 +83,9 @@ describe('demo GitHub provider', () => {
   });
 
   it.each([
-    ['billing', 'test', 'dev', { kind: 'behind', count: 3 }],
-    ['orders', 'staging', 'test', { kind: 'diverged', behind: 4, ahead: 2 }],
-    ['api-core', 'test', 'dev', undefined],
+    ['billing', 'bali', 'dev', { kind: 'behind', count: 3 }],
+    ['orders', 'spokane', 'dev', { kind: 'diverged', behind: 4, ahead: 2 }],
+    ['api-core', 'bali', 'dev', undefined],
   ])('%s/%s vs its source stage: %o', async (repo, cell, source, badge) => {
     const counts = await reader.compare(
       { owner: 'acme', repo },
@@ -108,7 +108,7 @@ describe('demo GitHub provider', () => {
     let now = 0;
     const live = createDemoGitHubReader(() => now);
     now = 2 * 60_000;
-    expect(await githubCell(live, 'api-core', 'staging')).toMatchObject({
+    expect(await githubCell(live, 'api-core', 'spokane')).toMatchObject({
       status: 'success',
     });
   });
@@ -120,7 +120,7 @@ describe('demo Amplify provider', () => {
     DEMO_AMPLIFY_APPS[row].map((s) => ({ credentialId: 'demo-aws', ...s }));
 
   it.each([
-    ['marketing-site', 'staging', 'started'],
+    ['marketing-site', 'spokane', 'started'],
     ['marketing-site', 'prod', 'failure'],
   ] as const)('%s/%s derives %s', async (row, stageId, status) => {
     const jobs = await collectRowJobs(
