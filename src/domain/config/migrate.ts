@@ -91,7 +91,7 @@ function readVersion(input: unknown): number {
     'schemaVersion' in input &&
     typeof input.schemaVersion === 'number'
   ) {
-    return (input as { schemaVersion: number }).schemaVersion;
+    return input.schemaVersion;
   }
   return 0;
 }
@@ -103,10 +103,10 @@ function readVersion(input: unknown): number {
  */
 export function migrate(input: unknown): ConfigRoot {
   let version = readVersion(input);
-  let data: Record<string, unknown> =
-    typeof input === 'object' && input !== null
-      ? (input as Record<string, unknown>)
-      : {};
+  let data: Record<string, unknown> = z
+    .record(z.string(), z.unknown())
+    .catch({})
+    .parse(input);
 
   if (version > CURRENT_SCHEMA_VERSION) {
     throw new Error(

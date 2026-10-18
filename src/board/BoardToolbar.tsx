@@ -18,7 +18,7 @@ import type { Density } from '@/domain/config/devicePreferences';
 import { measuredWidth, useMeasured } from '@/lib/useMeasured';
 import { cn, PINNED_X } from '@/lib/utils';
 
-import { snapZoom, zoomLabel, type ZoomRange } from './layout';
+import { snapZoom, zoomLabel, type ZoomRange } from './zoom';
 
 const DENSITIES: Density[] = ['compact', 'default', 'comfortable'];
 const DENSITY_ICON = {

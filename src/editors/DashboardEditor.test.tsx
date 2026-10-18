@@ -13,12 +13,12 @@ import { describe, expect, it } from 'vitest';
 
 import { type Dashboard, DashboardSchema } from '@/domain/config/dashboard';
 import type { EngineProviders } from '@/engine';
-import type { GitHubReader } from '@/lib/github/reader';
 import { Home } from '@/pages/Home';
 import { createAppStores } from '@/storage';
 import { memoryStorage } from '@/storage/keyValue';
 import { StoresContext } from '@/storage/storesContext';
 import { optionsOf } from '@/test/choose';
+import { fakeGitHubReader, ghBranch, ghRepo } from '@/test/fakeReaders';
 
 import { DashboardEditor } from './DashboardEditor';
 
@@ -26,22 +26,14 @@ const branches: Record<string, string[]> = {
   api: ['main', 'release/24.3', 'release/24.2'],
   web: ['main', 'release/24.3'],
 };
-const reader = {
+const reader = fakeGitHubReader({
   listRepos: () =>
     Promise.resolve(
-      ['acme/api', 'acme/web', 'acme/docs'].map((full_name) => ({
-        full_name,
-        name: full_name.split('/')[1] ?? '',
-        private: false,
-        html_url: '',
-        owner: { login: 'acme' },
-      })),
+      ['acme/api', 'acme/web', 'acme/docs'].map((fullName) => ghRepo(fullName)),
     ),
-  listBranches: ({ repo }: { repo: string }) =>
-    Promise.resolve(
-      (branches[repo] ?? []).map((name) => ({ name, commit: { sha: 'x' } })),
-    ),
-} as unknown as GitHubReader;
+  listBranches: ({ repo }) =>
+    Promise.resolve((branches[repo] ?? []).map((name) => ghBranch(name, 'x'))),
+});
 const providers: EngineProviders = {
   github: () => reader,
   amplify: () => undefined,

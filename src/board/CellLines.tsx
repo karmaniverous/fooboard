@@ -8,7 +8,7 @@
 import { cn } from '@/lib/utils';
 
 import { gapStyle } from './cellStyles';
-import { type ItemKey, type LineMap } from './layout';
+import { type ItemKey, type LineMap } from './packing';
 
 /** One item of a cell's content, keyed for the line map. */
 export interface Keyed {

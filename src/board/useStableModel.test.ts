@@ -12,12 +12,17 @@ import type { BoardModel } from '@/engine';
 
 import { useStableModel } from './useStableModel';
 
-const model = (n: number) =>
-  ({
-    cells: Object.fromEntries(
-      Array.from({ length: n }, (_, i) => [`c${String(i)}`, undefined]),
-    ),
-  }) as unknown as BoardModel;
+const model = (n: number): BoardModel => ({
+  cells: Object.fromEntries(
+    Array.from({ length: n }, (_, i): [string, undefined] => [
+      `c${String(i)}`,
+      undefined,
+    ]),
+  ),
+  unmapped: [],
+  budgets: {},
+  refreshedAt: {},
+});
 
 describe('useStableModel', () => {
   beforeEach(() => {

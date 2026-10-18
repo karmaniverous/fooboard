@@ -6,7 +6,7 @@
  *
  * @module
  */
-import type { Measure } from './layout';
+import { type Measure } from './packing';
 
 const ESTIMATE_EM_PER_CHAR = 0.6;
 

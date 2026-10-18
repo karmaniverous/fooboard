@@ -14,11 +14,11 @@ import { describe, expect, it } from 'vitest';
 
 import { type Dashboard, DashboardSchema } from '@/domain/config/dashboard';
 import type { EngineProviders } from '@/engine';
-import type { GitHubReader } from '@/lib/github/reader';
 import { createAppStores } from '@/storage';
 import { memoryStorage } from '@/storage/keyValue';
 import { StoresContext } from '@/storage/storesContext';
 import { choose, optionsOf } from '@/test/choose';
+import { fakeGitHubReader, ghBranch } from '@/test/fakeReaders';
 
 import { DashboardEditor } from './DashboardEditor';
 import type { EditorDraft } from './draft';
@@ -41,9 +41,9 @@ const start = DashboardSchema.parse({
   ],
 });
 
-const reader = {
-  listBranches: () => Promise.resolve([{ name: 'main' }, { name: 'rc/1' }]),
-} as unknown as GitHubReader;
+const reader = fakeGitHubReader({
+  listBranches: () => Promise.resolve([ghBranch('main'), ghBranch('rc/1')]),
+});
 const providers: EngineProviders = {
   github: () => reader,
   amplify: () => undefined,

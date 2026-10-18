@@ -3,7 +3,7 @@
  *
  * @module
  */
-import { ITEM_GAP_EM } from './layout';
+import { ITEM_GAP_EM } from './packing';
 
 /** The gap between items on a line (C-13). */
 export const gapStyle = { gap: `${String(ITEM_GAP_EM)}em` };

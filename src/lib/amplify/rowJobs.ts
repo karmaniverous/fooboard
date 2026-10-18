@@ -8,7 +8,7 @@
  *
  * @module
  */
-import type { App } from '@aws-sdk/client-amplify';
+import type { App, Branch, JobSummary } from '@aws-sdk/client-amplify';
 
 import type { AmplifySource } from '@/domain/config/row';
 import type { AmplifyJobWithBranch } from '@/domain/derivation/types';
@@ -33,9 +33,15 @@ export type AmplifyReaderFor = (source: {
 export function memoizeReaderFor(
   readerFor: AmplifyReaderFor,
 ): AmplifyReaderFor {
-  const calls = new Map<string, Promise<unknown>>();
-  const once = <T>(key: string, call: () => Promise<T>): Promise<T> => {
-    let pending = calls.get(key) as Promise<T> | undefined;
+  // One cache per result type, so no cached promise needs narrowing.
+  const branchCalls = new Map<string, Promise<Branch[]>>();
+  const jobCalls = new Map<string, Promise<JobSummary[]>>();
+  const once = <T>(
+    calls: Map<string, Promise<T>>,
+    key: string,
+    call: () => Promise<T>,
+  ): Promise<T> => {
+    let pending = calls.get(key);
     if (!pending) {
       pending = call();
       calls.set(key, pending);
@@ -48,9 +54,11 @@ export function memoizeReaderFor(
     return {
       ...reader,
       listBranches: (appId) =>
-        once(`${scope}|branches|${appId}`, () => reader.listBranches(appId)),
+        once(branchCalls, `${scope}|branches|${appId}`, () =>
+          reader.listBranches(appId),
+        ),
       listJobs: (appId, branch, max) =>
-        once(`${scope}|jobs|${appId}|${branch}|${String(max)}`, () =>
+        once(jobCalls, `${scope}|jobs|${appId}|${branch}|${String(max)}`, () =>
           reader.listJobs(appId, branch, max),
         ),
     };

@@ -26,7 +26,10 @@ export interface SpikeField<V> {
   placeholder?: string;
 }
 
-interface SpikePageProps<S extends z.ZodType<Record<string, unknown>>, R> {
+interface SpikePageProps<
+  S extends z.ZodType<Record<string, unknown>, Record<string, unknown>>,
+  R,
+> {
   title: string;
   /** Service name for the banner and button, e.g. `GitHub`. */
   service: string;
@@ -38,7 +41,10 @@ interface SpikePageProps<S extends z.ZodType<Record<string, unknown>>, R> {
   renderResult?: (result: R) => ReactNode;
 }
 
-export function SpikePage<S extends z.ZodType<Record<string, unknown>>, R>({
+export function SpikePage<
+  S extends z.ZodType<Record<string, unknown>, Record<string, unknown>>,
+  R,
+>({
   title,
   service,
   fields,
@@ -48,7 +54,7 @@ export function SpikePage<S extends z.ZodType<Record<string, unknown>>, R>({
   renderResult,
 }: SpikePageProps<S, R>): React.JSX.Element {
   const [values, setValues] = useState<Record<string, unknown>>(() => ({
-    ...(defaults as Record<string, unknown>),
+    ...defaults,
   }));
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<{ value: R } | null>(null);

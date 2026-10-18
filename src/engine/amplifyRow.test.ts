@@ -10,6 +10,8 @@ import { vi } from 'vitest';
 import type { AmplifyRow } from '@/domain/config/row';
 import { AmplifyAuthError, AmplifyThrottledError } from '@/lib/amplify/errors';
 import type { AmplifyReader } from '@/lib/amplify/reader';
+import { amplifyBranch } from '@/lib/amplify/sdkShapes';
+import { fakeAmplifyReader } from '@/test/fakeReaders';
 
 import { refreshAmplifyRow } from './amplifyRow';
 
@@ -88,15 +90,13 @@ describe('refreshAmplifyRow', () => {
 describe('refreshAmplifyRow request count', () => {
   it('lists each source once, however many stages it has', async () => {
     const listBranches = vi.fn(() =>
-      Promise.resolve([{ branchName: 'main' }, { branchName: 'dev' }]),
+      Promise.resolve([
+        amplifyBranch({ branchName: 'main' }),
+        amplifyBranch({ branchName: 'dev' }),
+      ]),
     );
     const listJobs = vi.fn(() => Promise.resolve([]));
-    const reader = {
-      listApps: vi.fn(() => Promise.resolve([])),
-      listBranches,
-      listJobs,
-      getJob: vi.fn(),
-    } as unknown as AmplifyReader;
+    const reader = fakeAmplifyReader({ listBranches, listJobs });
     const twoSources: AmplifyRow = {
       ...row,
       sources: [

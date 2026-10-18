@@ -4,16 +4,21 @@
  *
  * @module
  */
-import type { Branch, Job, JobSummary } from '@aws-sdk/client-amplify';
+import type { Branch, JobSummary } from '@aws-sdk/client-amplify';
 import { describe, expect, it, vi } from 'vitest';
 
 import type { AmplifyReader } from '@/lib/amplify/reader';
+import {
+  amplifyBranch,
+  amplifyJob,
+  amplifyJobSummary,
+} from '@/lib/amplify/sdkShapes';
 
 import { runAmplifySpike } from './runAmplifySpike';
 
-const branch = (branchName: string): Branch => ({ branchName }) as Branch;
+const branch = (branchName: string): Branch => amplifyBranch({ branchName });
 const summary = (jobId: string, startTime: string): JobSummary =>
-  ({ jobId, startTime: new Date(startTime) }) as JobSummary;
+  amplifyJobSummary({ jobId, startTime: new Date(startTime) });
 
 /** A fake reader plus a handle on its `getJob` spy for assertions. */
 function fakeReader(
@@ -21,7 +26,7 @@ function fakeReader(
   jobs: JobSummary[],
 ): { reader: AmplifyReader; getJob: ReturnType<typeof vi.fn> } {
   const getJob = vi.fn((_app: string, _branch: string, jobId: string) =>
-    Promise.resolve({ summary: { jobId } } as Job),
+    Promise.resolve(amplifyJob({ summary: amplifyJobSummary({ jobId }) })),
   );
   return {
     reader: {

@@ -12,18 +12,12 @@ import { describe, expect, it } from 'vitest';
 import {
   BASE_FONT_PX,
   capText,
-  type Content,
   fitLayout,
-  layoutAtZoom,
   type LayoutInput,
-  minWidth,
-  packContent,
   type Rung,
-  snapZoom,
-  stepZoom,
-  zoomLabel,
-  zoomRange,
 } from './layout';
+import { type Content, minWidth, packContent } from './packing';
+import { layoutAtZoom, snapZoom, stepZoom, zoomLabel, zoomRange } from './zoom';
 
 /** Every character is 0.6 em wide. */
 const measure = (text: string, px: number) => text.length * px * 0.6;

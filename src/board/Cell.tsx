@@ -29,8 +29,9 @@ import {
   shortSha,
   STATUS_META,
 } from './cellView';
-import { type LineMap, type Rung } from './layout';
+import { type Rung } from './layout';
 import { firstLine } from './layoutContents';
+import { type LineMap } from './packing';
 
 export interface CellProps {
   cell: BoardCell | undefined;

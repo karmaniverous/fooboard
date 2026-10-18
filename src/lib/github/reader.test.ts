@@ -279,6 +279,8 @@ describe('createGitHubReader', () => {
       fetchImpl,
     });
     const err = await reader.listWorkflowRuns(repo).catch((e: unknown) => e);
-    expect((err as Error).message).not.toContain('super-secret-token');
+    expect(err instanceof Error ? err.message : String(err)).not.toContain(
+      'super-secret-token',
+    );
   });
 });

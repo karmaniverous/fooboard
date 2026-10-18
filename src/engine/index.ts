@@ -13,6 +13,7 @@ export {
   type BoardCell,
   type BoardModel,
   cellKey,
+  CellKeySchema,
   type EngineProviders,
   type UnmappedRun,
 } from './types';

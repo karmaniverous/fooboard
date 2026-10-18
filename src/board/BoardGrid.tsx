@@ -12,7 +12,7 @@ import { Fragment, useState } from 'react';
 import { WithTooltip } from '@/components/ui/tooltip';
 import type { Dashboard } from '@/domain/config/dashboard';
 import { groupSegments } from '@/domain/groups/segments';
-import { type BoardModel, cellKey } from '@/engine';
+import { type BoardModel, cellKey, CellKeySchema } from '@/engine';
 import { cn } from '@/lib/utils';
 
 import { Cell } from './Cell';
@@ -70,7 +70,7 @@ export function BoardGrid({
   const [tip, setTip] = useState<{ key: string; rect: DOMRect } | null>(null);
   const [sheet, setSheet] = useState<string | null>(null);
   const names = (key: string) => {
-    const [rowId, stageId] = JSON.parse(key) as [string, string];
+    const [rowId, stageId] = CellKeySchema.parse(JSON.parse(key));
     return {
       rowName: rows.find((r) => r.id === rowId)?.displayName ?? rowId,
       stageName: stages.find((s) => s.id === stageId)?.name ?? stageId,
