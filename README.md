@@ -66,7 +66,7 @@ A cell can carry a **badge**: _behind_ (amber, with a count) when its branch is 
 An **empty cell** says why: _no branch_, _no recent runs_, _needs credential_ (with a link to [Credentials](#credentials)) or _error_.
 
 - **Details**: hover a cell (or focus it from the keyboard) for its run, commit, phase and time; on a touch screen, tap for a detail sheet. Clicking a cell opens the job on GitHub (or the Amplify console).
-- **Groups**: rows and stages can be grouped; group names stay in view as the board scrolls.
+- **Groups**: rows and stages can be grouped, with a line at each group's edges. A column group is framed, its name at its left; group names stay in view as the board scrolls.
 - **Fitting the screen**: columns share the window's width, and each cell shows as much detail as fits. Zoom with Ctrl/⌘ + wheel, a pinch, the toolbar buttons or `+` `-` `0`; zooming out fits more, zooming in shows more. _Default_, _Comfortable_ and _Compact_ density change the padding.
 - **Summary**: counts of failing, running, behind and diverged cells; click one to show only those cells, again to clear.
 - **Request budget**: a battery for each GitHub token the board uses shows the requests left this hour (grey until first read); its tooltip names the token and says when the budget resets. Reading it costs nothing. fooboard slows its polling as a token's budget runs down, and pauses while the tab is hidden.
