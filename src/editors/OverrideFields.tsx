@@ -1,9 +1,9 @@
 /**
  * Branch-pattern overrides per stage (spec.md C-14c, C-21) for a row or a
  * row group: one field per stage, empty meaning the inherited pattern
- * (shown as the placeholder). *Find branches* lists the branches of the
- * repos the overrides apply to, with counts, and offers them in every
- * field.
+ * (shown as the placeholder). *Find branches* reads the branches of the
+ * repos the overrides apply to and offers them as suggestions in every
+ * field (with how many repos have each, for a group).
  *
  * @module
  */
@@ -34,6 +34,7 @@ export function OverrideFields({
   const [found, load] = useLoad<Map<string, string[]>>();
   const listId = useId();
   const byRepo = found.kind === 'done' ? found.value : undefined;
+  const branches = byRepo ? branchCounts(byRepo) : [];
   const count = Object.keys(own).length;
   return (
     <details className="flex flex-col gap-1 text-xs">
@@ -43,16 +44,34 @@ export function OverrideFields({
       <BranchFinder
         found={found}
         label="Find branches"
+        showList={false}
         onFind={() => {
           load(loadBranches);
         }}
       />
       {byRepo && (
-        <datalist id={listId}>
-          {branchCounts(byRepo).map((b) => (
-            <option key={b.name} value={b.name} />
-          ))}
-        </datalist>
+        <>
+          <p role="status" className="text-muted-foreground">
+            {branches.length === 0
+              ? 'No branches found.'
+              : `${String(branches.length)} branches found: type in a field to pick one.`}
+          </p>
+          {/* Suggestions as you type; with several repos, each says how
+              many of them have it. */}
+          <datalist id={listId}>
+            {branches.map((b) => (
+              <option
+                key={b.name}
+                value={b.name}
+                label={
+                  byRepo.size > 1
+                    ? `in ${String(b.count)} of ${String(byRepo.size)} repos`
+                    : undefined
+                }
+              />
+            ))}
+          </datalist>
+        </>
       )}
       <div className="mt-1 grid grid-cols-[auto_1fr] items-center gap-1">
         {stages.map((s) => (

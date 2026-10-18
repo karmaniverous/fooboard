@@ -117,10 +117,14 @@ export function CredentialGuidePage(): React.JSX.Element {
 
       <Section id="classic">
         <p>
-          A classic token works, but only with the <code>repo</code> scope,
-          which grants read <em>and write</em> access to everything its owner
-          can reach, not just the repos on this board. Use a fine-grained token
-          unless your organization disallows them.
+          A classic token works, but GitHub&apos;s classic scopes have no
+          read-only option for private repos: reading their Actions runs needs
+          the <code>repo</code> scope, which also grants write access to every
+          repo you can reach, not just the ones on this board. fooboard only
+          reads; the write access comes with the scope, and it is what a leak
+          would expose. For a board of public repos only, a classic token with
+          no scopes at all is enough, and it can only read. Otherwise use a
+          fine-grained token unless your organization disallows them.
         </p>
       </Section>
 
@@ -164,7 +168,8 @@ export function CredentialGuidePage(): React.JSX.Element {
           <li>
             <strong>Classic token</strong> (<code>repo</code> scope): read and
             write access to every repo its owner can reach. Treat a leak as a
-            compromise of those repos.
+            compromise of those repos. With no scopes (public repos only):
+            public data only, read-only.
           </li>
           <li>
             <strong>AWS access key</strong> (policy above): the names of every

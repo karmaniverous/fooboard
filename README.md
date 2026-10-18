@@ -40,14 +40,14 @@ separately) for the full product spec.
 - **Browser spikes**: two removable dev pages (below).
 
 - **Your own dashboards**: _Create a dashboard_ on the home page (a name and starting stages), then open it at `/d/<id>`:
-  - **Credentials**: add a GitHub token or AWS key, kept for the tab unless _Remember on this device_ is ticked. You can also _Forget_ one, choose the dashboard's default (and a row group's own default, which its rows use unless they choose their own), copy one from another dashboard (an independent copy), and remove one. Tokens close to expiry are flagged, and each credential states the worst case if it leaks.
+  - **Credentials**: add a GitHub token or AWS key (an eye button shows what you pasted), kept for the tab unless _Remember on this device_ is ticked. You can also _Forget_ one, choose the dashboard's default (and a row group's own default, which its rows use unless they choose their own), copy one from another dashboard (an independent copy), and remove one. Tokens close to expiry are flagged, and each credential states the worst case if it leaks.
   - **Edit**:
     - rename, duplicate or delete the dashboard;
     - add rows from a searchable list of your repos, or Amplify apps listed from AWS;
     - add stages from the branches found in your repos, with a preview of what a pattern matches;
     - edit the mapping rules and colours;
     - group rows and stages: start a group from any row or stage, add others to it, label it, or delete it (its members stay); a group disappears with its last member;
-    - give a row group its own default credentials and branch overrides, and any row its own overrides (a row's beats its group's, which beats the stage's pattern); _Find branches_ lists the branches in the repos concerned, with counts, and offers them in each field;
+    - give a row group its own default credentials and branch overrides, and any row its own overrides (a row's beats its group's, which beats the stage's pattern); _Find branches_ reads the branches in the repos concerned and suggests them as you type in each field (for a group, with how many of its repos have each); a row's credential choices name the credential it inherits and whether it comes from its group or the dashboard;
     - reorder by dragging or with _Move up_ / _Move down_: dropping onto an item puts it in that item's group (or none), and a step at a group's edge first leaves the group, or joins the group next to it; every removal asks first.
   - **Unmapped (N)**: recent runs with no cell, each with its reason. _Add test_ opens the editor with the fix pre-filled. For a branch no stage matches, _Add override_ opens the run's row, ready to use that branch for a stage on the row or its group.
 - **Credential guide**: `/guide/credentials` covers creating read-only tokens and keys, what a leak exposes, and how to revoke.

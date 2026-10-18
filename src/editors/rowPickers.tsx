@@ -13,7 +13,7 @@ import type { Dashboard } from '@/domain/config/dashboard';
 import type { AmplifyRow } from '@/domain/config/row';
 import type { EngineProviders } from '@/engine';
 
-import { CredentialSelect } from './CredentialSelect';
+import { CredentialSelect, type Inherited } from './CredentialSelect';
 import { repoFromUrl, uniqueId } from './edit';
 import { LoadStatus } from './LoadStatus';
 import { useLoad } from './useLoad';
@@ -132,7 +132,7 @@ export function AmplifyPicker({
   }
   return (
     <div className="flex flex-col gap-1 text-xs">
-      <div className="flex items-center gap-1">
+      <div className="flex flex-wrap items-center gap-1">
         <CredentialSelect
           dashboard={dashboard}
           kind="aws"
@@ -227,12 +227,12 @@ export function AddSource({
   dashboard,
   onAdd,
   name,
-  inheritFrom,
+  inherited,
 }: {
   dashboard: Dashboard;
   name: string;
-  /** Where an unset key inherits from: the row's group or the dashboard. */
-  inheritFrom: 'group' | 'dashboard';
+  /** What an unset key inherits: the row's group's or the dashboard's. */
+  inherited: Inherited;
   onAdd: (source: AmplifyRow['sources'][number]) => void;
 }): React.JSX.Element {
   const [credentialId, setCredentialId] = useState<string | undefined>();
@@ -240,7 +240,7 @@ export function AddSource({
   const [appId, setAppId] = useState('');
   return (
     <form
-      className="flex items-center gap-1"
+      className="flex flex-wrap items-center gap-1"
       onSubmit={(e) => {
         e.preventDefault();
         onAdd({ credentialId, region: region.trim(), appId: appId.trim() });
@@ -253,7 +253,7 @@ export function AddSource({
         kind="aws"
         value={credentialId}
         onChange={setCredentialId}
-        inheritFrom={inheritFrom}
+        inherited={inherited}
         label={`AWS key for a new ${name} source`}
       />
       <Input

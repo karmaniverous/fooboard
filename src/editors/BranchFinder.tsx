@@ -1,7 +1,8 @@
 /**
  * *Find branches* (spec.md C-21): reads the branches of some repos on
  * request and lists them with how many repos have each. Used to seed new
- * stages and to fill in branch-pattern overrides.
+ * stages and to fill in branch-pattern overrides (which offer them as
+ * suggestions instead of a list).
  *
  * @module
  */
@@ -17,6 +18,7 @@ export function BranchFinder({
   label,
   disabled = false,
   onPick,
+  showList = true,
 }: {
   found: LoadState<ReadonlyMap<string, readonly string[]>>;
   onFind: () => void;
@@ -25,6 +27,8 @@ export function BranchFinder({
   disabled?: boolean;
   /** When given, each branch is a button that picks it. */
   onPick?: (branch: string) => void;
+  /** List the branches; off where they are offered another way. */
+  showList?: boolean;
 }): React.JSX.Element {
   const byRepo = found.kind === 'done' ? found.value : undefined;
   const counts = byRepo ? branchCounts(byRepo) : [];
@@ -42,7 +46,7 @@ export function BranchFinder({
         </Button>
       )}
       <LoadStatus state={found} loading="" />
-      {byRepo && (
+      {byRepo && showList && (
         <ul
           aria-label="Branches found"
           className="flex max-h-40 flex-wrap gap-1 overflow-y-auto text-xs"

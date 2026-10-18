@@ -11,7 +11,7 @@
 
 import { ConfirmButton } from '@/components/ConfirmButton';
 import type { Dashboard } from '@/domain/config/dashboard';
-import { inheritedFrom } from '@/domain/config/inheritance';
+import { inheritedCredential } from '@/domain/config/inheritance';
 import type { MatchTest } from '@/domain/config/matchTest';
 import type { Row } from '@/domain/config/row';
 import type { EngineProviders } from '@/engine';
@@ -79,7 +79,7 @@ export function RowsEditor({
                   ? row.credentialId
                   : row.githubCredentialId
               }
-              inheritFrom={inheritedFrom(dashboard, row.id, 'github')}
+              inherited={inheritedCredential(dashboard, row.id, 'github')}
               label={`GitHub token for ${row.displayName}`}
               onChange={(id) => {
                 replaceRow(
@@ -132,7 +132,7 @@ export function RowsEditor({
                 <AddSource
                   dashboard={dashboard}
                   name={row.displayName}
-                  inheritFrom={inheritedFrom(dashboard, row.id, 'aws')}
+                  inherited={inheritedCredential(dashboard, row.id, 'aws')}
                   onAdd={(source) => {
                     replaceRow({ ...row, sources: [...row.sources, source] });
                   }}

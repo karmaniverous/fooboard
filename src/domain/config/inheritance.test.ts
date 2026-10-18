@@ -11,8 +11,8 @@ import { DashboardSchema } from './dashboard';
 import {
   effectiveBranchPattern,
   effectiveStages,
+  inheritedCredential,
   inheritedCredentials,
-  inheritedFrom,
   rowGithubCredentialId,
 } from './inheritance';
 
@@ -83,8 +83,14 @@ describe('credentials', () => {
       github: 'org',
       aws: 'aws',
     });
-    expect(inheritedFrom(d, 'web', 'github')).toBe('group');
-    expect(inheritedFrom(d, 'web', 'aws')).toBe('dashboard');
+    expect(inheritedCredential(d, 'web', 'github')).toEqual({
+      from: 'group',
+      id: 'team',
+    });
+    expect(inheritedCredential(d, 'web', 'aws')).toEqual({
+      from: 'dashboard',
+      id: 'aws',
+    });
   });
 
   it("pick a row's GitHub token: its own, else inherited", () => {

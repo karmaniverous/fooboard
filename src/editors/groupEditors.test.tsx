@@ -2,7 +2,7 @@
  * Tests for group and override editing in the editor (spec.md C-14b,
  * C-14c, C-1a, C-15, C-21): starting a group from a row, the group's
  * credentials and overrides, inherited patterns and credentials shown on
- * members, branches found with counts, dragging across a group edge, and
+ * members, branches found and suggested, dragging across a group edge, and
  * *Add override* from an unmapped run.
  *
  * @module
@@ -101,7 +101,7 @@ describe('row groups in the editor', () => {
     ]);
     const token = screen.getByLabelText('GitHub token for api');
     expect(within(token).getAllByRole('option')[0]).toHaveTextContent(
-      'Group default',
+      "team (the group's default)",
     );
     expect(
       screen.getByLabelText('prod branch override for api'),
@@ -123,16 +123,22 @@ describe('row groups in the editor', () => {
     expect(latest.current.rows.map((r) => r.id)).toEqual(['api', 'web']);
   });
 
-  it("finds a row's branches with counts and offers them in its fields", async () => {
+  it("finds a row's branches and offers them in its fields, not as a list", async () => {
     setup();
     fireEvent.click(
       screen.getAllByRole('button', {
         name: 'Find branches',
       })[0],
     );
-    const found = await screen.findByRole('list', { name: 'Branches found' });
-    expect(found).toHaveTextContent('main 1/1');
-    expect(found).toHaveTextContent('rc/1 1/1');
+    expect(await screen.findByRole('status')).toHaveTextContent(
+      '2 branches found',
+    );
+    expect(screen.queryByRole('list', { name: 'Branches found' })).toBeNull();
+    const options = [...document.querySelectorAll('datalist option')];
+    expect(options.map((o) => o.getAttribute('value'))).toEqual([
+      'main',
+      'rc/1',
+    ]);
     expect(
       screen.getByLabelText('dev branch override for api'),
     ).toHaveAttribute('list');

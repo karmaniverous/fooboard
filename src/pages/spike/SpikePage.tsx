@@ -13,6 +13,7 @@
 import { type ReactNode, type SubmitEvent, useState } from 'react';
 import type { z } from 'zod';
 
+import { SecretInput } from '@/components/SecretInput';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { describeError } from '@/lib/errors';
@@ -91,15 +92,21 @@ export function SpikePage<S extends z.ZodType<Record<string, unknown>>, R>({
         {fields.map(({ name, label, type, placeholder }) => (
           <label key={name} className="flex flex-col gap-1 text-sm">
             {label}
-            <Input
-              type={type}
-              autoComplete="off"
-              placeholder={placeholder}
-              value={typeof values[name] === 'string' ? values[name] : ''}
-              onChange={(e) => {
-                setValues((prev) => ({ ...prev, [name]: e.target.value }));
-              }}
-            />
+            {(() => {
+              const field = {
+                autoComplete: 'off',
+                placeholder,
+                value: typeof values[name] === 'string' ? values[name] : '',
+                onChange: (e: React.ChangeEvent<HTMLInputElement>) => {
+                  setValues((prev) => ({ ...prev, [name]: e.target.value }));
+                },
+              };
+              return type === 'password' ? (
+                <SecretInput {...field} />
+              ) : (
+                <Input {...field} />
+              );
+            })()}
           </label>
         ))}
 

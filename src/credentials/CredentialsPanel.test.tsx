@@ -77,6 +77,9 @@ describe('CredentialsPanel', () => {
     const [ref] = latest.current.credentials;
     expect(ref).toMatchObject({ kind: 'github', label: 'acme' });
     expect(latest.current.defaultCredentials.github).toBe(ref.id);
+    expect(
+      screen.getByText("Dashboard's default GitHub token"),
+    ).toBeInTheDocument();
     expect(JSON.stringify(latest.current)).not.toContain('github_pat_1');
     expect(stores.credentials.get(ref.id)).toEqual({
       kind: 'github',

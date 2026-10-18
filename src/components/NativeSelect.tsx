@@ -16,7 +16,9 @@ export function NativeSelect({
   return (
     <select
       className={cn(
-        'min-w-0 max-w-full rounded-md border bg-background',
+        // Sized to its widest option (never clipped), unless the row is
+        // narrower than that.
+        'w-fit max-w-full shrink-0 rounded-md border bg-background',
         className,
       )}
       {...props}

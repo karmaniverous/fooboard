@@ -14,6 +14,7 @@ import { Link } from 'react-router-dom';
 import { ActionError } from '@/components/ActionError';
 import { ConfirmButton } from '@/components/ConfirmButton';
 import { NativeSelect } from '@/components/NativeSelect';
+import { SecretInput } from '@/components/SecretInput';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useActionError } from '@/components/useActionError';
@@ -88,8 +89,7 @@ function SecretFields({
       }}
     >
       {kind === 'github' ? (
-        <Input
-          type="password"
+        <SecretInput
           aria-label="Token"
           placeholder="github_pat_…"
           autoComplete="off"
@@ -109,8 +109,7 @@ function SecretFields({
               setKeyId(e.target.value);
             }}
           />
-          <Input
-            type="password"
+          <SecretInput
             aria-label="Secret access key"
             placeholder="Secret access key"
             autoComplete="off"
@@ -184,7 +183,12 @@ function CredentialItem({
         )}
         <div className="ml-auto flex gap-1">
           {isDefault ? (
-            <span className="text-xs text-muted-foreground">Default</span>
+            <span
+              className="text-xs text-muted-foreground"
+              title={`Rows use this ${KIND_LABEL[kind]} unless they or their group choose another.`}
+            >
+              {`Dashboard's default ${KIND_LABEL[kind]}`}
+            </span>
           ) : (
             <Button
               size="sm"
@@ -195,7 +199,7 @@ function CredentialItem({
                 });
               }}
             >
-              Make default
+              Make dashboard default
             </Button>
           )}
           {entered && (
