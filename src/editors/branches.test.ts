@@ -9,7 +9,7 @@ import { describe, expect, it, vi } from 'vitest';
 
 import { DashboardSchema } from '@/domain/config/dashboard';
 import type { EngineProviders } from '@/engine';
-import type { GitHubReader } from '@/lib/github/reader';
+import { fakeGitHubReader, ghBranch } from '@/test/fakeReaders';
 
 import { branchCounts, discoverBranches, patternPreview } from './branches';
 
@@ -34,14 +34,14 @@ describe('discoverBranches', () => {
       ],
     });
     const listBranches = vi.fn(({ repo }: { repo: string }) =>
-      Promise.resolve([{ name: `${repo}-main` }]),
+      Promise.resolve([ghBranch(`${repo}-main`)]),
     );
     const read: string[] = [];
     const providers: EngineProviders = {
       github: (id) => {
         read.push(id);
         return id === 'org' || id === 'team'
-          ? ({ listBranches } as unknown as GitHubReader)
+          ? fakeGitHubReader({ listBranches })
           : undefined;
       },
       amplify: () => undefined,

@@ -14,7 +14,8 @@ import { groupSegments } from '@/domain/groups/segments';
 import type { BoardModel } from '@/engine';
 
 import { badgeText, EMPTY_LABEL, EMPTY_SYMBOL, STATUS_META } from './cellView';
-import { capText, type Content, type Item, type Rung } from './layout';
+import { capText, type Rung } from './layout';
+import { type Content, type Item } from './packing';
 
 /** Longest forms of the fixed fields. */
 const LONGEST = {

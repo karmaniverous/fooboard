@@ -10,15 +10,8 @@ import { useMemo } from 'react';
 import { BoardScreen } from '@/board/BoardScreen';
 import { demoDashboard } from '@/demo/board';
 import { demoProviders } from '@/engine';
-import { site } from '@/lib/site';
 
 export function DemoPage(): React.JSX.Element {
   const providers = useMemo(() => demoProviders(), []);
-  return (
-    <BoardScreen
-      dashboard={demoDashboard}
-      providers={providers}
-      subtitle={site.tagline}
-    />
-  );
+  return <BoardScreen dashboard={demoDashboard} providers={providers} />;
 }

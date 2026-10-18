@@ -29,10 +29,14 @@ const KNOWN_JOB_STATUSES: readonly GithubJobStatus[] = [
   'requested',
 ];
 
+/** Whether `value` is one of `known` (narrowing it, unchecked by no cast). */
+const isOneOf = <T extends string>(
+  known: readonly T[],
+  value: string,
+): value is T => known.some((k) => k === value);
+
 function mapJobStatus(status: string): GithubJobStatus {
-  return (KNOWN_JOB_STATUSES as readonly string[]).includes(status)
-    ? (status as GithubJobStatus)
-    : 'queued';
+  return isOneOf(KNOWN_JOB_STATUSES, status) ? status : 'queued';
 }
 
 const KNOWN_JOB_CONCLUSIONS: readonly Exclude<GithubJobConclusion, null>[] = [
@@ -49,9 +53,7 @@ const KNOWN_JOB_CONCLUSIONS: readonly Exclude<GithubJobConclusion, null>[] = [
 
 function mapJobConclusion(conclusion: string | null): GithubJobConclusion {
   if (conclusion === null) return null;
-  return (KNOWN_JOB_CONCLUSIONS as readonly string[]).includes(conclusion)
-    ? (conclusion as GithubJobConclusion)
-    : null;
+  return isOneOf(KNOWN_JOB_CONCLUSIONS, conclusion) ? conclusion : null;
 }
 
 /** Map one REST workflow run into the run fields derivation needs. The

@@ -8,7 +8,7 @@ import { STATUS_META } from '@/board/cellView';
 import { Button } from '@/components/ui/button';
 import {
   DEFAULT_STATUS_COLORS,
-  type StatusColors,
+  StatusColorsSchema,
 } from '@/domain/config/colors';
 import type { Dashboard } from '@/domain/config/dashboard';
 
@@ -82,7 +82,7 @@ export function ColorsEditor({
   onChange: (dashboard: Dashboard) => void;
 }): React.JSX.Element {
   const colors = dashboard.statusColors;
-  const keys = Object.keys(DEFAULT_STATUS_COLORS) as (keyof StatusColors)[];
+  const keys = StatusColorsSchema.keyof().options;
   return (
     <div className="flex flex-col gap-2 text-sm">
       {keys.map((k) => (

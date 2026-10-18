@@ -6,8 +6,8 @@
  */
 import { useState } from 'react';
 
+import { Choice } from '@/components/Choice';
 import { ConfirmButton } from '@/components/ConfirmButton';
-import { NativeSelect } from '@/components/NativeSelect';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import type {
@@ -58,20 +58,15 @@ export function MatchTestsEditor<F extends MatchField>({
   };
   const fieldSelect = (current: F, onPick: (f: F) => void, label: string) =>
     fields.length > 1 ? (
-      <NativeSelect
-        aria-label={label}
-        className="h-8 px-1"
+      <Choice
+        label={label}
+        className="h-8"
         value={current}
-        onChange={(e) => {
-          onPick(e.target.value as F);
+        options={fields.map((f) => ({ value: f, label: FIELD_LABEL[f] }))}
+        onValueChange={(v) => {
+          onPick(v);
         }}
-      >
-        {fields.map((f) => (
-          <option key={f} value={f}>
-            {FIELD_LABEL[f]}
-          </option>
-        ))}
-      </NativeSelect>
+      />
     ) : (
       <span className="text-muted-foreground">{FIELD_LABEL[current]}</span>
     );
@@ -80,20 +75,15 @@ export function MatchTestsEditor<F extends MatchField>({
     onPick: (o: MatchOperator) => void,
     label: string,
   ) => (
-    <NativeSelect
-      aria-label={label}
-      className="h-8 px-1"
+    <Choice
+      label={label}
+      className="h-8"
       value={current}
-      onChange={(e) => {
-        onPick(e.target.value as MatchOperator);
+      options={OPERATORS.map((o) => ({ value: o, label: o }))}
+      onValueChange={(v) => {
+        onPick(v);
       }}
-    >
-      {OPERATORS.map((o) => (
-        <option key={o} value={o}>
-          {o}
-        </option>
-      ))}
-    </NativeSelect>
+    />
   );
 
   return (

@@ -5,8 +5,13 @@
  *
  * @module
  */
-import type { App, Branch, JobSummary } from '@aws-sdk/client-amplify';
 import { describe, expect, it, vi } from 'vitest';
+
+import {
+  amplifyApp,
+  amplifyBranch,
+  amplifyJobSummary,
+} from '@/lib/amplify/sdkShapes';
 
 import { AmplifyAuthError, AmplifyNotFoundError } from './errors';
 import type { AmplifyReader } from './reader';
@@ -21,13 +26,15 @@ function reader({
     listApps: vi.fn(() =>
       appsError
         ? Promise.reject(appsError)
-        : Promise.resolve(apps.map((appId) => ({ appId }) as App)),
+        : Promise.resolve(apps.map((appId) => amplifyApp({ appId }))),
     ),
     listBranches: vi.fn(() =>
-      Promise.resolve(branches.map((branchName) => ({ branchName }) as Branch)),
+      Promise.resolve(
+        branches.map((branchName) => amplifyBranch({ branchName })),
+      ),
     ),
     listJobs: vi.fn((_app: string, branch: string) =>
-      Promise.resolve([{ jobId: `${branch}-1` } as JobSummary]),
+      Promise.resolve([amplifyJobSummary({ jobId: `${branch}-1` })]),
     ),
     getJob: vi.fn(),
   } satisfies AmplifyReader;

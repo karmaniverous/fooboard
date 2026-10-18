@@ -48,6 +48,9 @@ export default defineConfig(
       'simple-import-sort/exports': 'error',
       'tsdoc/syntax': 'warn',
       'prettier/prettier': 'error',
+      // CONTRIBUTING: no unchecked narrowing; files stay under 300 lines.
+      '@typescript-eslint/no-unsafe-type-assertion': 'error',
+      'max-lines': ['error', { max: 300 }],
     },
   },
   {

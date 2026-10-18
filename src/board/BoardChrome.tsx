@@ -4,7 +4,8 @@
  *
  * @module
  */
-import { ToggleButton } from '@/components/ToggleButton';
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
+import { WithTooltip } from '@/components/ui/tooltip';
 import type { BoardModel } from '@/engine';
 import { cn } from '@/lib/utils';
 
@@ -33,32 +34,45 @@ export function BoardSummary({
 }): React.JSX.Element {
   const counts = summarize(model);
   return (
-    <div
-      role="group"
+    <ToggleGroup
+      type="single"
       aria-label="Filter cells"
-      className="flex flex-wrap gap-1.5"
+      className="flex-wrap gap-1.5"
+      value={filter ?? ''}
+      onValueChange={(v) => {
+        onFilter(FILTERS.find((f) => f === v) ?? null);
+      }}
     >
-      {FILTERS.map((f) => (
-        <ToggleButton
-          key={f}
-          pressed={filter === f}
-          aria-label={`${String(counts[f])} ${f}`}
-          title={words ? undefined : `${String(counts[f])} ${f}`}
-          className="inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5"
-          onClick={() => {
-            onFilter(filter === f ? null : f);
-          }}
-        >
-          <span aria-hidden className={cn('rounded-full', DOT[f])} />
-          {counts[f]}
-          {words && <span>{f}</span>}
-        </ToggleButton>
-      ))}
-    </div>
+      {FILTERS.map((f) => {
+        const chip = (
+          <ToggleGroupItem
+            key={f}
+            value={f}
+            aria-label={`${String(counts[f])} ${f}`}
+            className="inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5"
+          >
+            <span aria-hidden className={cn('rounded-full', DOT[f])} />
+            {counts[f]}
+            {words && <span>{f}</span>}
+          </ToggleGroupItem>
+        );
+        // Without its word, a chip says what it counts on hover (C-14a).
+        return words ? (
+          chip
+        ) : (
+          <WithTooltip key={f} label={`${String(counts[f])} ${f}`}>
+            {chip}
+          </WithTooltip>
+        );
+      })}
+    </ToggleGroup>
   );
 }
 
-/** Battery segments, and the colour for each number of lit segments. */
+/** Battery segments, and the colour for each number of lit segments. The
+ * battery shows the share left in quarters, its own scale on purpose: the
+ * budget's `low` status (10% left) and polling back-off (50% used) are
+ * engine thresholds, not what a glance at the board should convey. */
 const SEGMENTS = 4;
 const SEGMENT_COLOR = [
   'text-red-600',
@@ -68,58 +82,77 @@ const SEGMENT_COLOR = [
   'text-green-600',
 ] as const;
 
-/** Each credential's remaining GitHub request budget (C-16) as an upright
+/** Each GitHub token's remaining request budget (C-16) as an upright
  * battery of four segments: the fill is what is left, so empty is bad.
  * Outline and fill share one colour: green (4 lit), yellow (3), orange
- * (2), red (1 or empty). Exact numbers and the reset time are in the
- * tooltip and the accessible name. */
+ * (2), red (1 or empty). Every token the board uses has a battery from the
+ * start; one not read yet is grey and empty. The credential's label, exact
+ * numbers and the reset time are in the tooltip and the accessible name. */
 export function BudgetMeter({
   model,
+  labels = {},
 }: {
   model: BoardModel;
+  /** Credential labels by id (the id is shown if a label is missing). */
+  labels?: Readonly<Record<string, string>>;
 }): React.JSX.Element | null {
-  const budgets = Object.entries(model.budgets).flatMap(([id, b]) =>
-    b ? [{ id, ...b }] : [],
-  );
+  const budgets = Object.entries(model.budgets);
   if (budgets.length === 0) return null;
   return (
     <div className="flex items-center gap-2">
-      {budgets.map((b) => {
+      {budgets.map(([id, b]) => {
+        const name = `GitHub ${labels[id] ?? id}`;
         const share =
-          b.limit > 0 ? Math.max(0, Math.min(1, b.remaining / b.limit)) : 0;
-        const lit = Math.ceil(share * SEGMENTS - 1e-9);
-        const label = `GitHub ${b.id}: ${b.remaining.toLocaleString()} of ${b.limit.toLocaleString()} requests left, resets ${new Date(b.reset * 1000).toLocaleTimeString()}`;
+          b && b.limit > 0
+            ? Math.max(0, Math.min(1, b.remaining / b.limit))
+            : 0;
+        const lit = b ? Math.ceil(share * SEGMENTS - 1e-9) : 0;
+        const label = b
+          ? `${name}: ${b.remaining.toLocaleString()} of ${b.limit.toLocaleString()} requests left, resets ${new Date(b.reset * 1000).toLocaleTimeString()}`
+          : `${name}: requests left not known yet`;
         return (
-          <span
-            key={b.id}
-            role="meter"
-            aria-label={label}
-            aria-valuemin={0}
-            aria-valuemax={b.limit}
-            aria-valuenow={b.remaining}
-            title={label}
-            className={cn(
-              'flex flex-col items-center',
-              SEGMENT_COLOR[lit] ?? SEGMENT_COLOR[0],
-            )}
-          >
-            {/* Upright battery: nub on top, segments filled from the bottom. */}
-            <span aria-hidden className="h-0.5 w-1.5 rounded-t-sm bg-current" />
+          <WithTooltip key={id} label={label}>
             <span
-              aria-hidden
-              className="flex h-5 w-3.5 flex-col-reverse gap-px rounded-[3px] border-[1.5px] border-current p-px"
+              tabIndex={0}
+              aria-label={label}
+              // A meter needs a value: until the budget is read, the
+              // battery is an image whose name says so.
+              {...(b
+                ? {
+                    role: 'meter',
+                    'aria-valuemin': 0,
+                    'aria-valuemax': b.limit,
+                    'aria-valuenow': b.remaining,
+                  }
+                : { role: 'img' })}
+              className={cn(
+                'flex flex-col items-center',
+                b
+                  ? (SEGMENT_COLOR[lit] ?? SEGMENT_COLOR[0])
+                  : 'text-muted-foreground',
+              )}
             >
-              {Array.from({ length: SEGMENTS }, (_, i) => (
-                <span
-                  key={i}
-                  className={cn(
-                    'flex-1 rounded-[1px]',
-                    i < lit && 'bg-current',
-                  )}
-                />
-              ))}
+              {/* Upright battery: nub on top, segments filled from the bottom. */}
+              <span
+                aria-hidden
+                className="h-0.5 w-1.5 rounded-t-sm bg-current"
+              />
+              <span
+                aria-hidden
+                className="flex h-5 w-3.5 flex-col-reverse gap-px rounded-[3px] border-[1.5px] border-current p-px"
+              >
+                {Array.from({ length: SEGMENTS }, (_, i) => (
+                  <span
+                    key={i}
+                    className={cn(
+                      'flex-1 rounded-[1px]',
+                      i < lit && 'bg-current',
+                    )}
+                  />
+                ))}
+              </span>
             </span>
-          </span>
+          </WithTooltip>
         );
       })}
     </div>

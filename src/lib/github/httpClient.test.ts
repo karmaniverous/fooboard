@@ -173,7 +173,9 @@ describe('GitHubHttpClient', () => {
     await expect(client.getJson('https://x/a')).rejects.toSatisfy(
       (err: unknown) => {
         expect(err).toBeInstanceOf(GitHubNetworkError);
-        expect((err as Error).message).not.toContain('secret-token-value');
+        expect(err instanceof Error ? err.message : String(err)).not.toContain(
+          'secret-token-value',
+        );
         return true;
       },
     );
@@ -200,7 +202,9 @@ describe('GitHubHttpClient', () => {
     });
     const err = await client.getJson('https://x/a').catch((e: unknown) => e);
     expect(seenHeaders[0].Authorization).toBe('Bearer secret-token-value');
-    expect((err as Error).message).not.toContain('secret-token-value');
+    expect(err instanceof Error ? err.message : String(err)).not.toContain(
+      'secret-token-value',
+    );
   });
 
   it('keeps the Link header when a 304 omits it', async () => {
@@ -234,9 +238,8 @@ describe('GitHubHttpClient', () => {
       .getJson('https://x/a')
       .catch((e: unknown) => e);
     expect(err).toBeInstanceOf(RateLimitedError);
-    expect((err as RateLimitedError).retryAt).toBeGreaterThanOrEqual(
-      before + 60_000,
-    );
+    if (!(err instanceof RateLimitedError)) throw err;
+    expect(err.retryAt).toBeGreaterThanOrEqual(before + 60_000);
   });
 
   it('makes a queued request wait after a headerless 429', async () => {

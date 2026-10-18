@@ -11,6 +11,7 @@ import { useState } from 'react';
 
 import { ConfirmButton } from '@/components/ConfirmButton';
 import { Button } from '@/components/ui/button';
+import { WithTooltip } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
 
 export function ReorderList<T>({
@@ -60,21 +61,22 @@ export function ReorderList<T>({
             }}
           >
             <div className="flex items-center gap-1">
-              <span
-                draggable
-                aria-hidden
-                title="Drag to reorder"
-                className="cursor-grab text-muted-foreground"
-                onDragStart={(e) => {
-                  e.dataTransfer.effectAllowed = 'move';
-                  setDragging(index);
-                }}
-                onDragEnd={() => {
-                  setDragging(null);
-                }}
-              >
-                <GripVertical className="size-4" />
-              </span>
+              <WithTooltip label="Drag to reorder">
+                <span
+                  draggable
+                  aria-hidden
+                  className="cursor-grab text-muted-foreground"
+                  onDragStart={(e) => {
+                    e.dataTransfer.effectAllowed = 'move';
+                    setDragging(index);
+                  }}
+                  onDragEnd={() => {
+                    setDragging(null);
+                  }}
+                >
+                  <GripVertical className="size-4" />
+                </span>
+              </WithTooltip>
               <span className="truncate font-medium">{name}</span>
               <div className="ml-auto flex items-center gap-1">
                 <Button

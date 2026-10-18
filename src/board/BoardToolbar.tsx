@@ -11,13 +11,14 @@
 import { Maximize2, Minimize2, Minus, Plus, RotateCcw } from 'lucide-react';
 import { useState } from 'react';
 
-import { ToggleButton } from '@/components/ToggleButton';
 import { Button } from '@/components/ui/button';
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
+import { WithTooltip } from '@/components/ui/tooltip';
 import type { Density } from '@/domain/config/devicePreferences';
 import { measuredWidth, useMeasured } from '@/lib/useMeasured';
 import { cn, PINNED_X } from '@/lib/utils';
 
-import { snapZoom, zoomLabel, type ZoomRange } from './layout';
+import { snapZoom, zoomLabel, type ZoomRange } from './zoom';
 
 const DENSITIES: Density[] = ['compact', 'default', 'comfortable'];
 const DENSITY_ICON = {
@@ -136,66 +137,81 @@ export function BoardToolbar({
             mode === 'wide' ? 'justify-self-center' : 'justify-self-start',
           )}
         >
-          {DENSITIES.map((d) => {
-            const Icon = DENSITY_ICON[d];
-            return (
-              <ToggleButton
-                key={d}
-                pressed={density === d}
-                aria-label={d}
-                title={d.charAt(0).toUpperCase() + d.slice(1)}
-                className="flex h-6 w-7 items-center justify-center"
-                onClick={() => {
-                  onDensity(d);
-                }}
-              >
-                <Icon aria-hidden className="size-3.5" />
-              </ToggleButton>
-            );
-          })}
+          <ToggleGroup
+            type="single"
+            value={density}
+            onValueChange={(v) => {
+              // Re-pressing the current density leaves it chosen.
+              const next = DENSITIES.find((d) => d === v);
+              if (next) onDensity(next);
+            }}
+          >
+            {DENSITIES.map((d) => {
+              const Icon = DENSITY_ICON[d];
+              return (
+                <WithTooltip
+                  key={d}
+                  label={d.charAt(0).toUpperCase() + d.slice(1)}
+                >
+                  <ToggleGroupItem
+                    value={d}
+                    aria-label={d}
+                    className="flex h-6 w-7 items-center justify-center"
+                  >
+                    <Icon aria-hidden className="size-3.5" />
+                  </ToggleGroupItem>
+                </WithTooltip>
+              );
+            })}
+          </ToggleGroup>
         </div>
         <div
           data-measure="zoom"
           className="flex items-center gap-0.5 justify-self-end"
         >
-          <Button
-            size="icon"
-            variant="outline"
-            className="size-6"
-            aria-label="Zoom out"
-            disabled={zoom <= range.min}
-            onClick={() => {
-              onStep(-1);
-            }}
-          >
-            <Minus className="size-3.5" />
-          </Button>
+          <WithTooltip label="Zoom out">
+            <Button
+              size="icon"
+              variant="outline"
+              className="size-6"
+              aria-label="Zoom out"
+              disabled={zoom <= range.min}
+              onClick={() => {
+                onStep(-1);
+              }}
+            >
+              <Minus className="size-3.5" />
+            </Button>
+          </WithTooltip>
           <ZoomField zoom={zoom} range={range} onZoom={onZoom} />
-          <Button
-            size="icon"
-            variant="outline"
-            className="size-6"
-            aria-label="Zoom in"
-            disabled={zoom >= range.max}
-            onClick={() => {
-              onStep(1);
-            }}
-          >
-            <Plus className="size-3.5" />
-          </Button>
-          <Button
-            size="icon"
-            variant="outline"
-            className="size-6"
-            title="Zoom to 100%"
-            aria-label="Zoom to 100%"
-            disabled={zoom === 1}
-            onClick={() => {
-              onZoom(1);
-            }}
-          >
-            <RotateCcw className="size-3.5" />
-          </Button>
+          <WithTooltip label="Zoom in">
+            <Button
+              size="icon"
+              variant="outline"
+              className="size-6"
+              aria-label="Zoom in"
+              disabled={zoom >= range.max}
+              onClick={() => {
+                onStep(1);
+              }}
+            >
+              <Plus className="size-3.5" />
+            </Button>
+          </WithTooltip>
+          <WithTooltip label="Zoom to 100%">
+            <Button
+              size="icon"
+              variant="outline"
+              className="size-6"
+              aria-label="Zoom to 100%"
+              disabled={zoom === 1}
+              onClick={() => {
+                onZoom(1);
+              }}
+            >
+              <RotateCcw className="size-3.5" />
+            </Button>
+          </WithTooltip>
         </div>
       </div>
     </div>

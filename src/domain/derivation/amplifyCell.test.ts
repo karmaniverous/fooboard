@@ -8,18 +8,20 @@
 import type { JobSummary } from '@aws-sdk/client-amplify';
 import { describe, expect, it } from 'vitest';
 
+import { amplifyJobSummary } from '@/lib/amplify/sdkShapes';
+
 import { deriveAmplifyCell, mapAmplifyStatus } from './amplifyCell';
 import type { AmplifyJobWithBranch } from './types';
 
 function job(overrides: Partial<JobSummary> = {}): JobSummary {
-  return {
+  return amplifyJobSummary({
     jobId: '1',
     status: 'SUCCEED',
     commitId: 'abc123',
     startTime: new Date('2026-10-01T00:00:00Z'),
     endTime: new Date('2026-10-01T00:05:00Z'),
     ...overrides,
-  } as JobSummary;
+  });
 }
 
 describe('mapAmplifyStatus', () => {

@@ -27,18 +27,18 @@ describe('BoardSummary', () => {
     const { rerender } = render(
       <BoardSummary model={model} filter={null} onFilter={onFilter} />,
     );
-    fireEvent.click(screen.getByRole('button', { name: /failing/ }));
+    fireEvent.click(screen.getByRole('radio', { name: /failing/ }));
     expect(onFilter).toHaveBeenLastCalledWith('failing');
     rerender(
       <BoardSummary model={model} filter="failing" onFilter={onFilter} />,
     );
-    fireEvent.click(screen.getByRole('button', { name: /failing/ }));
+    fireEvent.click(screen.getByRole('radio', { name: /failing/ }));
     expect(onFilter).toHaveBeenLastCalledWith(null);
   });
 });
 
 describe('BoardSummary without words', () => {
-  it('names each chip in a hover title', () => {
+  it('names each chip in a tooltip', async () => {
     render(
       <BoardSummary
         model={model}
@@ -47,15 +47,13 @@ describe('BoardSummary without words', () => {
         words={false}
       />,
     );
-    expect(screen.getByRole('button', { name: '0 failing' })).toHaveAttribute(
-      'title',
-      '0 failing',
-    );
+    fireEvent.focus(screen.getByRole('radio', { name: '0 failing' }));
+    expect(await screen.findByRole('tooltip')).toHaveTextContent('0 failing');
   });
 });
 
 describe('BudgetMeter', () => {
-  it('shows one battery per credential with a budget, by segments left', () => {
+  it('shows a battery per token, lit by the share left', () => {
     const at = (remaining: number) => ({
       ...model,
       budgets: {
@@ -68,13 +66,14 @@ describe('BudgetMeter', () => {
         },
       },
     });
-    const { rerender } = render(<BudgetMeter model={model} />);
+    const { rerender } = render(
+      <BudgetMeter model={model} labels={{ gh: 'acme token' }} />,
+    );
     const meter = screen.getByRole('meter', {
-      name: /GitHub gh: 300 of 5,000 requests left/,
+      name: /GitHub acme token: 300 of 5,000 requests left/,
     });
     expect(meter).toHaveAttribute('aria-valuenow', '300');
     expect(meter.className).toContain('text-red-600');
-    expect(screen.getAllByRole('meter')).toHaveLength(1);
     for (const [remaining, colour] of [
       [5000, 'text-green-600'],
       [3000, 'text-yellow-500'],
@@ -84,5 +83,18 @@ describe('BudgetMeter', () => {
       rerender(<BudgetMeter model={at(remaining)} />);
       expect(screen.getByRole('meter').className).toContain(colour);
     }
+  });
+
+  it('shows a grey, empty battery for a token not read yet, as an image not a meter', () => {
+    render(<BudgetMeter model={model} />);
+    const unread = screen.getByRole('img', {
+      name: 'GitHub off: requests left not known yet',
+    });
+    expect(unread).not.toHaveAttribute('aria-valuenow');
+    expect(unread.className).toContain('text-muted-foreground');
+    // Every meter on the board has a value.
+    for (const m of screen.getAllByRole('meter'))
+      expect(m).toHaveAttribute('aria-valuenow');
+    expect(screen.getAllByRole('meter')).toHaveLength(1);
   });
 });

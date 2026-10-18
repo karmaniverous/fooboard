@@ -4,7 +4,7 @@
  *
  * @module
  */
-import { NativeSelect } from '@/components/NativeSelect';
+import { Choice } from '@/components/Choice';
 import type { CredentialKind } from '@/domain/config/credentials';
 import type { Dashboard } from '@/domain/config/dashboard';
 
@@ -45,25 +45,23 @@ export function CredentialSelect({
   return (
     <label className="flex flex-wrap items-center gap-1 text-xs">
       <span className="text-muted-foreground">{NOUN[kind]}</span>
-      <NativeSelect
-        aria-label={label}
-        className="h-8 px-1 text-xs"
+      <Choice
+        label={label}
+        className="h-8 text-xs"
         value={value ?? ''}
-        onChange={(e) => {
-          onChange(e.target.value || undefined);
+        options={[
+          {
+            value: '',
+            label: named
+              ? `${named} (the ${source} default)`
+              : `None (the ${source} default is not set)`,
+          },
+          ...options.map((c) => ({ value: c.id, label: c.label })),
+        ]}
+        onValueChange={(v) => {
+          onChange(v || undefined);
         }}
-      >
-        <option value="">
-          {named
-            ? `${named} (the ${source} default)`
-            : `None (the ${source} default is not set)`}
-        </option>
-        {options.map((c) => (
-          <option key={c.id} value={c.id}>
-            {c.label}
-          </option>
-        ))}
-      </NativeSelect>
+      />
     </label>
   );
 }

@@ -7,6 +7,7 @@
  */
 import { describe, expect, it, vi } from 'vitest';
 
+import type { GithubCellResult } from '@/domain/derivation/githubCell';
 import { type CompareResult, RateLimitedError } from '@/lib/github';
 
 import { rowStaleness } from './staleness';
@@ -18,8 +19,19 @@ const stages = [
   { id: 'prod', name: 'Prod', branchPattern: 'main', sourceStageId: 'stg' },
 ];
 const cells = Object.fromEntries(
-  stages.map((s) => [s.id, { kind: 'ok', branch: s.branchPattern }]),
-) as unknown as Parameters<typeof rowStaleness>[1];
+  stages.map((s): [string, GithubCellResult] => [
+    s.id,
+    {
+      kind: 'ok',
+      status: 'success',
+      phase: 'deploy',
+      branch: s.branchPattern,
+      commit: 'abc',
+      time: undefined,
+      linkUrl: '',
+    },
+  ]),
+);
 const branches = stages.map((s) => ({
   name: s.branchPattern,
   updatedAt: '2026-10-16T00:00:00Z',

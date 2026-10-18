@@ -54,7 +54,9 @@ describe('buildPresetStages', () => {
   });
 
   it('rejects an unknown preset id', () => {
-    expect(() => buildPresetStages('nope' as never)).toThrow();
+    expect(() => {
+      Reflect.apply(buildPresetStages, undefined, ['nope']);
+    }).toThrow();
   });
 
   it('rejects a blank preview name', () => {

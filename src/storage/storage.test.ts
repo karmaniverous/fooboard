@@ -58,6 +58,13 @@ describe('config store', () => {
 });
 
 describe('preferences store', () => {
+  it('keeps the theme choice on this device, System by default', () => {
+    const device = memoryStorage();
+    expect(createPreferencesStore(device).getTheme()).toBe('system');
+    createPreferencesStore(device).setTheme('dark');
+    expect(createPreferencesStore(device).getTheme()).toBe('dark');
+  });
+
   it('fills defaults, merges changes and forgets', () => {
     const store = createPreferencesStore(memoryStorage());
     expect(store.getView('d')).toEqual({ zoom: 1, density: 'default' });

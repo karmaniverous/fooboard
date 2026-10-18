@@ -1,93 +1,227 @@
+<div align="center">
+
+<img src="public/favicon.svg" alt="fooboard logo" width="120" height="120" />
+
 # fooboard
 
 **Welcome to DevOps hell. Here's your map.**
 
-> `fooboard.dev` &middot; open source (BSD-3-Clause) &middot; X: [@fooboarding](https://x.com/fooboarding)
+[![CI](https://github.com/karmaniverous/fooboard/actions/workflows/ci.yml/badge.svg)](https://github.com/karmaniverous/fooboard/actions/workflows/ci.yml)
+[![license](https://img.shields.io/badge/license-BSD--3--Clause-blue.svg)](https://github.com/karmaniverous/fooboard/tree/main/LICENSE)
+[![changelog](https://img.shields.io/badge/changelog-latest-blue.svg)](https://github.com/karmaniverous/fooboard/tree/main/CHANGELOG.md)
+[![X: @fooboarding](https://img.shields.io/badge/follow-%40fooboarding-black?logo=x)](https://x.com/fooboarding)
 
-fooboard is a free, open-source, client-only browser app that shows the
-deployment state of every repo × stage at a glance. Setup takes minutes:
-paste a GitHub token, pick repos and a branch preset, and the board fills
-itself in from GitHub Actions runs (and, optionally, AWS Amplify jobs) —
-no workflow changes required. Nothing leaves the browser except the calls
-it makes directly to GitHub and AWS; the host serves static files only.
-See [spec.md](https://github.com/karmaniverous/fooboard) (tracked
-separately) for the full product spec.
+</div>
 
-**Status:** pre-release, built in the PRs listed in `spec.md` §8. Landed so far:
+> 📷 _Screenshot to come: the demo board, light and dark._
 
-- **App shell** (Vite + React + TypeScript + Tailwind v4), with a shadcn-style UI kit shared with [jeeves-server](https://github.com/karmaniverous/jeeves-server).
-- **Domain core** (`src/domain/`): the config schema, branch presets, matching rules and cell derivation. Pure TypeScript.
-- **Live data**:
-  - the GitHub and Amplify providers (`src/lib/github/`, `src/lib/amplify/`);
-  - a fictional `acme/*` demo board with demo providers (`src/demo/`), shaped like a real pipeline: three preview environments in a _Preview_ column group, then dev, release and prod; a _Backend_ group of GitHub repos (one keyed to its own jobs) and a _Frontend_ group of Amplify apps that release from `preview/release` with the group's own AWS key; one unmapped run for each reason;
-  - the board engine and poll scheduler (`src/engine/`), which turn provider data into the cell model.
-- **The board** (`src/board/`):
-  - cells in solid status colours, with as much detail as their size allows;
-  - behind/diverged badges linking to the GitHub compare page, and empty states;
-  - a hover tooltip, and a detail sheet on touch;
-  - row and column groups: a line at every group edge, group names above their rows (they stay in view when the board scrolls sideways) and over their columns;
-  - a layout that keeps text readable (13 px at 100%) and shows as much as fits: equal columns across the screen, and the most detail every cell can show at the same size; tall boards scroll down;
-  - zoom (Ctrl/Cmd + wheel, pinch, the buttons, or `+` `-` `0`): zooming out shrinks text to fit more, zooming in adds detail, then magnifies;
-  - Default, Comfortable and Compact density (padding only);
-  - light or dark, following the device's setting;
-  - summary counts that filter the board (just a dot or circle and the count when space is short, with the word on hover), and a battery meter of the GitHub requests left.
-- **Follow and Share**: _Follow @fooboarding_ in the page header, and a _Share_ button on every board. For now Share offers the demo link: the device's share menu where there is one, _Copy link_, and _Post on X_.
-- **Try the demo**: `/demo`, or _Try the demo_ on the home page, shows the demo board with no account.
-- **Local storage** (`src/storage/`), all in this browser:
-  - dashboards, saved under a versioned schema; older saves are upgraded when they load (dividers become groups); data that can't be read is reported and never overwritten;
-  - zoom and density, saved per dashboard on each device;
-  - tokens and AWS keys, kept only for the current tab unless _Remember on this device_ is ticked, with _Forget_ to remove them;
-  - _Reset_, which clears only fooboard's data.
-- **Browser spikes**: two removable dev pages (below).
+fooboard shows the deployment state of every repo × stage at a glance. Paste a GitHub token, pick your repos and a branch preset, and the board fills itself in from your GitHub Actions runs (and, if you use them, AWS Amplify builds). No workflow changes, no account, no server: it is a free, open-source, static web app, and nothing leaves your browser except the calls it makes directly to GitHub and AWS.
 
-- **Your own dashboards**: _Create a dashboard_ on the home page (a name and starting stages), then open it at `/d/<id>`:
-  - **Credentials**: add a GitHub token or AWS key (an eye button shows what you pasted), kept for the tab unless _Remember on this device_ is ticked. You can also _Forget_ one, choose the dashboard's default (and a row group's own default, which its rows use unless they choose their own), copy one from another dashboard (an independent copy), and remove one. Tokens close to expiry are flagged, and each credential states the worst case if it leaks.
-  - **Edit**:
-    - rename, duplicate or delete the dashboard;
-    - add rows from a searchable list of your repos, or Amplify apps listed from AWS;
-    - add stages from the branches found in your repos, with a preview of what a pattern matches;
-    - edit the mapping rules and colours;
-    - group rows and stages: start a group from any row or stage, add others to it, label it, or delete it (its members stay); a group disappears with its last member;
-    - give a row group its own default credentials and branch overrides, and any row its own overrides (a row's beats its group's, which beats the stage's pattern); _Find branches_ reads the branches in the repos concerned and suggests them as you type in each field (for a group, with how many of its repos have each); a row's credential choices name the credential it inherits and whether it comes from its group or the dashboard;
-    - reorder by dragging or with _Move up_ / _Move down_: dropping onto an item puts it in that item's group (or none), and a step at a group's edge first leaves the group, or joins the group next to it; every removal asks first.
-  - **Unmapped (N)**: recent runs with no cell, each with its reason. _Add test_ opens the editor with the fix pre-filled. For a branch no stage matches, _Add override_ opens the run's row, ready to use that branch for a stage on the row or its group.
-- **Credential guide**: `/guide/credentials` covers creating read-only tokens and keys, what a leak exposes, and how to revoke.
+**Status:** pre-release. Not hosted yet; run it locally (see [CONTRIBUTING](./CONTRIBUTING.md)).
 
-## Dev commands
+## Contents
 
-```bash
-npm install            # install dependencies
-npx lefthook install   # install Git hooks (once, after cloning)
+- [Try the demo](#try-the-demo)
+- [Your own dashboard](#your-own-dashboard)
+- [Reading the board](#reading-the-board)
+- [Editing a dashboard](#editing-a-dashboard)
+- [Unmapped runs](#unmapped-runs)
+- [Credentials](#credentials)
+- [Header, menu and footer](#header-menu-and-footer)
+- [Your data](#your-data)
+- [Contributing](#contributing)
+- [License](#license)
 
-npm run dev             # start the Vite dev server
-npm run build            # type-check (tsc -b) and build the static site to dist/
-npm run preview          # preview the production build locally
-npm run lint              # ESLint (+ Prettier)
-npm run lint:fix          # ESLint --fix
-npm run typecheck          # tsc -b --noEmit
-npm test                    # Vitest (jsdom, coverage reported)
-npm run knip                  # find unused files/deps/exports
+## Try the demo
+
+_Try the demo_ (on the home page, or the play button in the header) opens a sample board for a fictional company, `acme`, with no account or token. It is shaped like a real pipeline: a _Preview_ group of three preview environments, then _dev_, _release_ and _prod_; a _Backend_ group of GitHub service repos and a _Frontend_ group of Amplify apps. Its runs move along as you watch, and it shows every status, badge, empty state and unmapped run described below.
+
+> 📷 _Screenshot to come: the home page._
+
+## Your own dashboard
+
+1. On the home page, choose _Create a dashboard_: give it a name and pick starting stages: _Environment branches_ (dev, staging, prod), _Gitflow_, _Release train_, or _Blank_.
+2. Add a GitHub token under _Credentials_ (see [Credentials](#credentials)).
+3. In the editor, add rows from a searchable list of your repos (and, with an AWS key, your Amplify apps), and adjust the stages.
+
+A dashboard lives at `/d/<id>` in this browser.
+
+## Reading the board
+
+> 📷 _Screenshot to come: a board with every status, badge and empty state._
+
+Each **row** is a repo (or an Amplify app, or one deployable unit in a repo), and each **column** a stage: a branch, or a pattern such as `release/*`. Each **cell** shows the latest run on that stage's branch:
+
+| Cell | Means |
+| --- | --- |
+| ✓ green | Success |
+| ✕ red | Failure |
+| ◔ blue, pulsing | Started (still running) |
+| ○ pale, dashed, dark text | Queued |
+| ◑ teal | Partial (some jobs succeeded) |
+| ⊘ slate | Cancelled |
+
+A cell can carry a **badge**: _behind_ (amber, with a count) when its branch is missing commits from the stage it is promoted from, or _diverged_ (with `behind/ahead`) when it also has commits the source lacks. A badge links to GitHub's compare page.
+
+An **empty cell** says why: _no branch_, _no recent runs_, _needs credential_ (with a link to [Credentials](#credentials)) or _error_.
+
+- **Details**: hover a cell (or focus it from the keyboard) for its run, commit, phase and time; on a touch screen, tap for a detail sheet. Clicking a cell opens the job on GitHub (or the Amplify console).
+- **Groups**: rows and stages can be grouped, with a line at each group's edges. A column group is framed, its name at its left; group names stay in view as the board scrolls.
+- **Fitting the screen**: columns share the window's width, and each cell shows as much detail as fits. Zoom with Ctrl/⌘ + wheel, a pinch, the toolbar buttons or `+` `-` `0`; zooming out fits more, zooming in shows more. _Default_, _Comfortable_ and _Compact_ density change the padding.
+- **Summary**: counts of failing, running, behind and diverged cells; click one to show only those cells, again to clear.
+- **Request budget**: a battery for each GitHub token the board uses shows the requests left this hour (grey until first read); its tooltip names the token and says when the budget resets. Reading it costs nothing. fooboard slows its polling as a token's budget runs down, and pauses while the tab is hidden.
+
+## Editing a dashboard
+
+> 📷 _Screenshot to come: the editor._
+
+_Edit_ (on the board) opens the editor, with these tabs:
+
+- **General**: rename, duplicate or delete the dashboard.
+- **Rows**: add GitHub rows from your repos, or Amplify rows from the apps your AWS key lists. A row can use its own credentials, and its own branch for any stage (an **override**); _Find branches_ suggests the branches in its repo as you type.
+- **Stages**: add stages from the branches found in your repos, with a preview of what a pattern matches; set each stage's source (for the behind/diverged badges).
+- **Mapping**: the rules that pick which workflow job a cell shows.
+- **Colours**: the status colours.
+
+**Groups**: start a group from any row or stage, add others to it, label it, or delete it (its members stay). A row group can have its own default credentials and branch overrides; a row's own override beats its group's, which beats the stage's pattern, and each choice names what it inherits.
+
+**Reordering**: drag, or use _Move up_ / _Move down_. Dropping onto an item puts it in that item's group. Every removal asks first.
+
+## Unmapped runs
+
+_Unmapped (N)_ lists recent runs that have no cell, with the reason: no stage matches the branch, no rule matches the job, or no row key matches. _Add test_ opens the editor with the fix filled in; for an unmatched branch, _Add override_ uses that branch for a stage on the run's row or its group.
+
+## Credentials
+
+fooboard reads GitHub and AWS with credentials **you** create, kept only in this browser. Create the narrowest ones that work: read-only, for just the repos and apps on the board, with a short expiry. Every place in the app that needs a credential links here.
+
+> 📷 _Screenshot to come: the Credentials panel._
+
+### GitHub token
+
+Use a **fine-grained personal access token**:
+
+1. Go to [github.com/settings/personal-access-tokens/new](https://github.com/settings/personal-access-tokens/new).
+2. Set **Resource owner** to your account, or to the **organization** that owns the repos. An organization's repos can only be selected when the organization itself is the resource owner.
+   > An organization may require an admin to **approve** fine-grained tokens. Until one does, the token stays pending and the board shows _needs credential_.
+3. Under **Repository access**, choose _Only select repositories_ and pick only this dashboard's repos.
+4. Under **Permissions**, set these repository permissions to _Read-only_, and leave everything else at _No access_:
+
+   | Permission | Access |
+   | --- | --- |
+   | Metadata | Read-only |
+   | Contents | Read-only |
+   | Actions | Read-only |
+
+5. Set a short **expiration** (30 to 90 days). fooboard warns as it approaches.
+6. Generate the token and paste it into _Credentials_ → _Add a credential_. Tick _Remember on this device_ to keep it after the browser closes.
+
+### Classic tokens
+
+A classic token works, but GitHub's classic scopes have no read-only option for private repos: reading their Actions runs needs the `repo` scope, which also grants **write** access to every repo its owner can reach, not just the ones on this board. fooboard only reads, but a leak would expose that write access. For a board of public repos only, a classic token with **no scopes** is enough, and can only read. Otherwise, use a fine-grained token unless your organization disallows them.
+
+### Shared boards
+
+Everyone viewing a board with the same token shares that token's hourly GitHub budget (the battery shows what's left). For a shared board, create a token just for it, not your everyday one, so it can be revoked on its own, and name it clearly (e.g. `fooboard-acme-shared-2026Q4`).
+
+### AWS key
+
+Amplify rows need an AWS access key for an IAM user that can only read Amplify:
+
+1. In the IAM console, create a user for fooboard (one per AWS account).
+2. Attach this policy. On the AWS key form in fooboard, **Copy AWS policy** copies it with your dashboard's apps filled in; or replace `REGION`, `ACCOUNT_ID` and `APP_ID` below, adding a line to each of the last three statements for each app.
+3. Create an access key for the user, and paste its ID and secret into _Credentials_ → _Add a credential_ → _AWS key_.
+
+```json
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "FooboardListApps",
+      "Effect": "Allow",
+      "Action": [
+        "amplify:ListApps"
+      ],
+      "Resource": "*"
+    },
+    {
+      "Sid": "FooboardReadBranches",
+      "Effect": "Allow",
+      "Action": [
+        "amplify:ListBranches"
+      ],
+      "Resource": [
+        "arn:aws:amplify:REGION:ACCOUNT_ID:apps/APP_ID"
+      ]
+    },
+    {
+      "Sid": "FooboardReadJobs",
+      "Effect": "Allow",
+      "Action": [
+        "amplify:ListJobs"
+      ],
+      "Resource": [
+        "arn:aws:amplify:REGION:ACCOUNT_ID:apps/APP_ID/branches/*"
+      ]
+    },
+    {
+      "Sid": "FooboardReadJob",
+      "Effect": "Allow",
+      "Action": [
+        "amplify:GetJob"
+      ],
+      "Resource": [
+        "arn:aws:amplify:REGION:ACCOUNT_ID:apps/APP_ID/branches/*/jobs/*"
+      ]
+    }
+  ]
+}
 ```
 
-## Browser spikes
+AWS can't limit listing apps to particular apps, so the key can see the **names** of every Amplify app in the account (that is how the editor offers apps to pick); it reads branches and jobs only for the apps listed. The copied policy uses `*` for the account, because fooboard doesn't know it: that grants nothing more, since a user's policy only reaches its own account's apps. Before a dashboard has Amplify rows, the copied policy only lists apps; copy it again after adding them. A source whose region or app ID is not valid (an app ID of `*`, say, would widen the policy) is left out, and the button says so. A row whose apps span accounts uses one key per account.
 
-Two dev pages confirm that fooboard's providers work directly from a browser: `/spike/amplify` and `/spike/github`. Nothing in the product UI links to them, so open them directly in the dev server or a deployed build. Each is labelled as a dev aid on the page itself, and both are removed before release.
+### What a leaked credential exposes
 
-On both pages, credentials are held only in the page's React state. They are never saved to local storage or cookies, never logged, and sent only to the service being called. Errors (CORS, authentication, rate limits) are shown verbatim.
+- **Fine-grained GitHub token** (as above): read access to the selected repos only, including their code, workflow files and Actions logs. It cannot write, push or start anything.
+- **Classic token** with the `repo` scope: read **and write** access to every repo its owner can reach; treat a leak as a compromise of those repos. With no scopes: public data only.
+- **AWS key** (policy above): the names of the account's Amplify apps, and branch and job details for the listed apps; nothing else in your AWS account.
 
-### Amplify (`/spike/amplify`)
+### Revoking a credential
 
-1. Run `npm run dev` and open `http://localhost:5173/spike/amplify`.
-2. Enter an AWS access key ID and secret for an IAM user with read-only Amplify permissions (`ListApps`, `ListBranches`, `ListJobs`, `GetJob`). Then enter a region and an Amplify app ID. Branch is optional; leave it blank to use the first branch the app returns.
-3. Submit. The page calls `ListBranches`, then `ListJobs` (5 jobs), then `GetJob` on the newest job. It shows the raw responses and the AWS console link to that deployment.
+- **GitHub**: [github.com/settings/personal-access-tokens](https://github.com/settings/personal-access-tokens) (or your organization's token page): delete the token. It stops working at once.
+- **AWS**: IAM console → Users → the fooboard user → Security credentials: deactivate or delete the access key; delete the user if it exists only for fooboard.
+- **In fooboard**, _Forget_ removes a credential from this browser. It does not revoke it at GitHub or AWS: do that too.
 
-### GitHub (`/spike/github`)
+## Header, menu and footer
 
-1. Run `npm run dev` and open `http://localhost:5173/spike/github`.
-2. Enter a fine-grained personal access token with read-only access (Metadata, Contents, Actions) to the repo you want to test, plus the repo owner and name. Branch prefix is optional; it defaults to `main`.
-3. Submit. The page lists workflow runs (pull-request runs excluded), the newest run's jobs, branches matching the prefix, and a compare between `main` and the first matching branch.
-4. It then repeats the runs request and reports whether GitHub honoured the ETag. A `304 Not Modified` leaves the rate-limit budget unchanged, which is what keeps polling cheap.
+The header stays at the top of the window. Its buttons, each with a tooltip:
+
+- **News & support**: [@fooboarding](https://x.com/fooboarding) on X.
+- **README**: this page.
+- **Try the demo**.
+- **Theme**: _System_ (follows your device's light or dark setting), _Light_ or _Dark_. The button cycles through them and the menu offers all three; the choice is saved on this device.
+- **Share / Export**: for now, shares the demo (your device's share menu where there is one, _Copy link_, _Post on X_). Sharing and exporting boards come later.
+- **Import**: coming soon.
+- **GitHub**: this repo.
+- **Report an issue**: [GitHub Issues](https://github.com/karmaniverous/fooboard/issues).
+
+As the window narrows, buttons move into the menu from the right, then the tagline goes; _README_ and _News & support_ stay longest. [Privacy](./PRIVACY.md) and [Terms](./TERMS.md) are always in the menu. The footer repeats every item as a link, turning to icons and then dropping out from the left as space runs short; Privacy and Terms always stay.
+
+## Your data
+
+Everything stays in this browser:
+
+- **Dashboards** are saved under a versioned format; older saves are upgraded when they load, and data that can't be read is reported and never overwritten.
+- **Zoom, density and theme** are saved on each device.
+- **Tokens and keys** are kept only for the current tab unless you tick _Remember on this device_. _Forget_ removes one.
+- **Reset** clears fooboard's data, and only fooboard's.
+
+See [PRIVACY.md](./PRIVACY.md).
+
+## Contributing
+
+Development setup, commands and standards are in [CONTRIBUTING.md](./CONTRIBUTING.md).
 
 ## License
 
-BSD-3-Clause. See [LICENSE](./LICENSE).
+BSD-3-Clause. See [LICENSE](./LICENSE). By using fooboard you agree to the [Terms](./TERMS.md).

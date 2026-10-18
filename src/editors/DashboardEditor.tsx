@@ -11,8 +11,8 @@ import { useNavigate } from 'react-router-dom';
 
 import { ActionError } from '@/components/ActionError';
 import { ConfirmButton } from '@/components/ConfirmButton';
-import { ToggleButton } from '@/components/ToggleButton';
 import { Button } from '@/components/ui/button';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useActionError } from '@/components/useActionError';
 import { deleteWithSecrets, saveDuplicate } from '@/credentials/credentialOps';
 import { type Dashboard, DashboardSchema } from '@/domain/config/dashboard';
@@ -129,45 +129,48 @@ export function DashboardEditor({
   };
   const props = { dashboard, providers, onChange: update };
   return (
-    <div className="flex flex-col gap-3">
-      <div
-        role="group"
-        aria-label="Editor section"
-        className="flex flex-wrap gap-1"
-      >
+    <Tabs
+      className="flex flex-col gap-3"
+      value={tab}
+      onValueChange={(v) => {
+        const next = TABS.find((t) => t === v);
+        if (next) setTab(next);
+      }}
+    >
+      <TabsList aria-label="Editor section">
         {TABS.map((t) => (
-          <ToggleButton
-            key={t}
-            pressed={tab === t}
-            className="rounded-md border px-2 py-1"
-            onClick={() => {
-              setTab(t);
-            }}
-          >
+          <TabsTrigger key={t} value={t}>
             {t}
-          </ToggleButton>
+          </TabsTrigger>
         ))}
-      </div>
+      </TabsList>
       {error && (
         <p role="alert" className="text-xs text-status-failure">
           Not saved: {error}
         </p>
       )}
-      {tab === 'General' && <GeneralEditor {...props} />}
-      {tab === 'Rows' && (
+      {/* Only the open tab's panel is mounted (Radix's default). */}
+      <TabsContent value="General">
+        <GeneralEditor {...props} />
+      </TabsContent>
+      <TabsContent value="Rows">
         <RowsEditor
           {...props}
           draft={draft?.tab === 'Rows' ? draft : undefined}
         />
-      )}
-      {tab === 'Stages' && (
+      </TabsContent>
+      <TabsContent value="Stages">
         <StagesEditor
           {...props}
           draftPattern={draft?.tab === 'Stages' ? draft.pattern : undefined}
         />
-      )}
-      {tab === 'Mapping' && <MappingEditor {...props} />}
-      {tab === 'Colours' && <ColorsEditor {...props} />}
-    </div>
+      </TabsContent>
+      <TabsContent value="Mapping">
+        <MappingEditor {...props} />
+      </TabsContent>
+      <TabsContent value="Colours">
+        <ColorsEditor {...props} />
+      </TabsContent>
+    </Tabs>
   );
 }

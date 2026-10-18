@@ -9,25 +9,19 @@
  */
 import { Fragment, useState } from 'react';
 
+import { WithTooltip } from '@/components/ui/tooltip';
 import type { Dashboard } from '@/domain/config/dashboard';
 import { groupSegments } from '@/domain/groups/segments';
-import { type BoardModel, cellKey } from '@/engine';
+import { type BoardModel, cellKey, CellKeySchema } from '@/engine';
 import { cn } from '@/lib/utils';
 
 import { Cell } from './Cell';
 import { CellDetail, CellSheet, CellTooltip } from './CellDetail';
+import { columnLines } from './columnFrame';
+import { ColumnGroupLabels } from './ColumnGroupLabels';
+import { BOUNDARY, GROUP_LABEL } from './gridStyles';
 import { capText, type Layout, LINE_HEIGHT } from './layout';
 import { type CellFilter, matchesFilter } from './summary';
-
-/** Group label text, over columns and above rows (C-14b). */
-const GROUP_LABEL =
-  'text-[0.85em] font-semibold uppercase tracking-wide text-muted-foreground';
-
-/** The line drawn at every group boundary (C-14b). */
-const BOUNDARY = {
-  top: 'border-t-2 border-foreground/40',
-  left: 'border-l-2 border-foreground/40',
-} as const;
 
 export interface BoardGridProps {
   dashboard: Dashboard;
@@ -47,7 +41,8 @@ export function BoardGrid({
   filter = null,
 }: BoardGridProps): React.JSX.Element {
   // Headers stay pinned whenever the grid scrolls (C-13).
-  const pinTop = 'sticky top-0 z-20 bg-background';
+  // Below the pinned app header (its height, set by the header).
+  const pinTop = 'sticky top-[var(--app-header-h,0px)] z-20 bg-background';
   const pinLeft = 'sticky left-0 z-20 bg-background';
   const { rows, stages, statusColors } = dashboard;
   const rowSegments = groupSegments(
@@ -58,15 +53,24 @@ export function BoardGrid({
     stages.map((s) => s.id),
     dashboard.columnGroups,
   );
-  /** Stages that start a column segment after the first: boundary line. */
-  const colBoundary = new Set(
-    colSegments.slice(1).flatMap((g) => stages[g.start]?.id ?? []),
+  const lines = columnLines(
+    colSegments,
+    stages.map((s) => s.id),
+  );
+  /** Stages of unlabelled column groups: the frame's top is on their
+   * headers (a labelled group's is on its label). */
+  const frameTop = new Set(
+    colSegments.flatMap((g) =>
+      g.group && !g.group.label
+        ? stages.slice(g.start, g.start + g.span).map((st) => st.id)
+        : [],
+    ),
   );
 
   const [tip, setTip] = useState<{ key: string; rect: DOMRect } | null>(null);
   const [sheet, setSheet] = useState<string | null>(null);
   const names = (key: string) => {
-    const [rowId, stageId] = JSON.parse(key) as [string, string];
+    const [rowId, stageId] = CellKeySchema.parse(JSON.parse(key));
     return {
       rowName: rows.find((r) => r.id === rowId)?.displayName ?? rowId,
       stageName: stages.find((s) => s.id === stageId)?.name ?? stageId,
@@ -105,32 +109,12 @@ export function BoardGrid({
           } as React.CSSProperties
         }
       >
-        {colSegments.some((g) => g.group?.label) && (
-          <div role="row" className="contents">
-            <div className={pinLeft} style={lineRow} />
-            {/* Segments cover every column, so headers never auto-place
-                into the strip's gaps; labelled groups are column headers
-                spanning their stages (C-14b). */}
-            {colSegments.map((g, i) => (
-              <div
-                key={g.start}
-                role={g.group?.label ? 'columnheader' : 'presentation'}
-                aria-colspan={g.group?.label ? g.span : undefined}
-                className={cn(
-                  'flex items-end justify-center truncate px-[var(--cell-pad-x)]',
-                  GROUP_LABEL,
-                  i > 0 && BOUNDARY.left,
-                )}
-                style={{
-                  ...lineRow,
-                  gridColumn: `${String(g.start + 2)} / span ${String(g.span)}`,
-                }}
-              >
-                {g.group?.label}
-              </div>
-            ))}
-          </div>
-        )}
+        <ColumnGroupLabels
+          segments={colSegments}
+          rowHeight={layout.lineRowHeight}
+          pinLeft={pinLeft}
+          labelLeft={layout.rowNameWidth + layout.gap}
+        />
         <div role="row" className="contents">
           <div
             role="columnheader"
@@ -139,19 +123,26 @@ export function BoardGrid({
           />
           {stages.map((stage) => {
             return (
-              <div
+              <WithTooltip
                 key={stage.id}
-                role="columnheader"
-                className={cn(
-                  'flex items-center justify-center truncate px-[var(--cell-pad-x)] text-center font-semibold',
-                  pinTop,
-                  colBoundary.has(stage.id) && BOUNDARY.left,
-                )}
-                style={lineRow}
-                title={`${stage.name} (${stage.branchPattern})`}
+                label={`${stage.name} (${stage.branchPattern})`}
               >
-                <span className="truncate">{capText(stage.name)}</span>
-              </div>
+                <div
+                  role="columnheader"
+                  // Focusable, so the keyboard can show its tooltip.
+                  tabIndex={0}
+                  className={cn(
+                    'flex items-center justify-center truncate px-[var(--cell-pad-x)] text-center font-semibold',
+                    pinTop,
+                    lines.headerLeft.has(stage.id) && BOUNDARY.left,
+                    lines.headerRight.has(stage.id) && BOUNDARY.right,
+                    frameTop.has(stage.id) && BOUNDARY.top,
+                  )}
+                  style={lineRow}
+                >
+                  <span className="truncate">{capText(stage.name)}</span>
+                </div>
+              </WithTooltip>
             );
           })}
         </div>
@@ -188,18 +179,20 @@ export function BoardGrid({
                   lineOnRow && ri === 0 ? BOUNDARY.top : undefined;
                 return (
                   <div key={row.id} role="row" className="contents">
-                    <div
-                      role="rowheader"
-                      className={cn(
-                        'flex items-center px-[var(--cell-pad-x)] font-medium',
-                        pinLeft,
-                        rowLine,
-                      )}
-                      style={cellRow}
-                      title={`${row.displayName} (${row.repo})`}
-                    >
-                      <span className="truncate">{row.displayName}</span>
-                    </div>
+                    <WithTooltip label={`${row.displayName} (${row.repo})`}>
+                      <div
+                        role="rowheader"
+                        tabIndex={0}
+                        className={cn(
+                          'flex items-center px-[var(--cell-pad-x)] font-medium',
+                          pinLeft,
+                          rowLine,
+                        )}
+                        style={cellRow}
+                      >
+                        <span className="truncate">{row.displayName}</span>
+                      </div>
+                    </WithTooltip>
                     {stages.map((stage) => {
                       const key = cellKey(row.id, stage.id);
                       return (
@@ -212,7 +205,8 @@ export function BoardGrid({
                               !matchesFilter(model.cells[key], filter) &&
                               'opacity-25',
                             rowLine,
-                            colBoundary.has(stage.id) && BOUNDARY.left,
+                            lines.bodyLeft.has(stage.id) && BOUNDARY.left,
+                            lines.bodyRight.has(stage.id) && BOUNDARY.right,
                           )}
                           style={cellRow}
                         >

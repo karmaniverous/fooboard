@@ -13,11 +13,12 @@ import { describe, expect, it } from 'vitest';
 
 import { type Dashboard, DashboardSchema } from '@/domain/config/dashboard';
 import type { EngineProviders } from '@/engine';
-import type { GitHubReader } from '@/lib/github/reader';
 import { Home } from '@/pages/Home';
 import { createAppStores } from '@/storage';
 import { memoryStorage } from '@/storage/keyValue';
 import { StoresContext } from '@/storage/storesContext';
+import { optionsOf } from '@/test/choose';
+import { fakeGitHubReader, ghBranch, ghRepo } from '@/test/fakeReaders';
 
 import { DashboardEditor } from './DashboardEditor';
 
@@ -25,22 +26,14 @@ const branches: Record<string, string[]> = {
   api: ['main', 'release/24.3', 'release/24.2'],
   web: ['main', 'release/24.3'],
 };
-const reader = {
+const reader = fakeGitHubReader({
   listRepos: () =>
     Promise.resolve(
-      ['acme/api', 'acme/web', 'acme/docs'].map((full_name) => ({
-        full_name,
-        name: full_name.split('/')[1] ?? '',
-        private: false,
-        html_url: '',
-        owner: { login: 'acme' },
-      })),
+      ['acme/api', 'acme/web', 'acme/docs'].map((fullName) => ghRepo(fullName)),
     ),
-  listBranches: ({ repo }: { repo: string }) =>
-    Promise.resolve(
-      (branches[repo] ?? []).map((name) => ({ name, commit: { sha: 'x' } })),
-    ),
-} as unknown as GitHubReader;
+  listBranches: ({ repo }) =>
+    Promise.resolve((branches[repo] ?? []).map((name) => ghBranch(name, 'x'))),
+});
 const providers: EngineProviders = {
   github: () => reader,
   amplify: () => undefined,
@@ -87,7 +80,7 @@ function setup() {
 }
 
 const tab = (name: string) => {
-  fireEvent.click(screen.getByRole('button', { name }));
+  fireEvent.mouseDown(screen.getByRole('tab', { name }), { button: 0 });
 };
 
 describe('DashboardEditor', () => {
@@ -159,10 +152,7 @@ describe('DashboardEditor', () => {
     setup();
     tab('Stages');
     const source = screen.getByLabelText('Source stage of dev');
-    const options = within(source)
-      .getAllByRole('option')
-      .map((o) => o.textContent);
-    expect(options).toEqual(['No source stage']); // prod already sources from dev
+    expect(optionsOf(source)).toEqual(['No source stage']); // prod already sources from dev
   });
 });
 
@@ -189,5 +179,15 @@ describe('Create a dashboard', () => {
       loaded.kind === 'ok' &&
         loaded.root.dashboards[0]?.stages.map((s) => s.name),
     ).toEqual(['dev', 'staging', 'prod']);
+  });
+
+  it('saves a field being edited when another tab is chosen', () => {
+    const latest = setup();
+    const input = screen.getByLabelText('Dashboard name');
+    input.focus();
+    fireEvent.change(input, { target: { value: 'Platform' } });
+    tab('Rows');
+    expect(latest.current.name).toBe('Platform');
+    expect(screen.getByRole('tab', { name: 'Rows' })).toHaveFocus();
   });
 });

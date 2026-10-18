@@ -5,7 +5,13 @@
  *
  * @module
  */
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import {
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
@@ -102,8 +108,13 @@ describe('DashboardPage credential lifecycle', () => {
     });
     fireEvent.click(screen.getByRole('button', { name: 'Add' }));
     // The modal panel hides the board from queries; close it to look.
+    // (Escape would first close a tooltip that focus has opened.)
     const close = () => {
-      fireEvent.keyDown(screen.getByRole('dialog'), { key: 'Escape' });
+      fireEvent.click(
+        within(screen.getByRole('dialog')).getByRole('button', {
+          name: 'Close',
+        }),
+      );
     };
     close();
     await waitFor(() => {

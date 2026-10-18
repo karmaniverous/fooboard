@@ -12,6 +12,7 @@
 import { alphabetical } from 'radash';
 
 import { GitHubAuthError, GitHubHttpError } from '@/lib/github/errors';
+import type { RateLimitBudget } from '@/lib/github/rateLimit';
 import type { GitHubReader, RepoRef } from '@/lib/github/reader';
 import type { Job, WorkflowRun } from '@/lib/github/schemas';
 
@@ -164,6 +165,13 @@ export function createDemoGitHubReader(
   clock: () => number = Date.now,
 ): GitHubReader {
   const startMs = clock();
+  const budget = (): RateLimitBudget => ({
+    limit: 5000,
+    remaining: 4870,
+    reset: Math.floor(clock() / 1000) + 3600,
+    used: 130,
+    status: 'ok',
+  });
   const guard = ({ repo }: RepoRef, path: string): void => {
     if (repo === 'legacy-billing') throw new GitHubAuthError(path);
     if (repo === 'flaky-svc') throw new GitHubHttpError(path, 502);
@@ -247,13 +255,8 @@ export function createDemoGitHubReader(
           owner: { login: 'acme' },
         })),
       ),
-    getBudget: () => ({
-      limit: 5000,
-      remaining: 4870,
-      reset: Math.floor(clock() / 1000) + 3600,
-      used: 130,
-      status: 'ok',
-    }),
+    getBudget: budget,
+    readRateLimit: () => Promise.resolve(budget()),
     getTokenExpiration: () => undefined,
   };
 }

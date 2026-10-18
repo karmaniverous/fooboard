@@ -5,12 +5,15 @@
  *
  * @module
  */
+export { githubCredentialIds } from './budgets';
 export { demoProviders } from './demoProviders';
-export { createBoardEngine, emptyModel } from './engine';
+export { createBoardEngine } from './engine';
+export { emptyModel } from './model';
 export {
   type BoardCell,
   type BoardModel,
   cellKey,
+  CellKeySchema,
   type EngineProviders,
   type UnmappedRun,
 } from './types';

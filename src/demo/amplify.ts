@@ -6,15 +6,11 @@
  *
  * @module
  */
-import type {
-  App,
-  Branch,
-  JobStatus,
-  JobSummary,
-} from '@aws-sdk/client-amplify';
+import type { JobStatus, JobSummary } from '@aws-sdk/client-amplify';
 
 import type { AmplifyReader } from '@/lib/amplify/reader';
 import type { AmplifyReaderFor } from '@/lib/amplify/rowJobs';
+import { amplifyApp, amplifyBranch } from '@/lib/amplify/sdkShapes';
 
 import { DEMO_AMPLIFY_APPS, DEMO_STAGE_IDS } from './board';
 import {
@@ -55,7 +51,7 @@ export function createDemoAmplifyReaderFor(
         Object.entries(DEMO_AMPLIFY_APPS).flatMap(([row, sources]) =>
           sources
             .filter((s) => s.region === region)
-            .map((s) => ({ appId: s.appId, name: row }) as App),
+            .map((s) => amplifyApp({ appId: s.appId, name: row })),
         ),
       ),
     listBranches: (appId) => {
@@ -64,7 +60,7 @@ export function createDemoAmplifyReaderFor(
       return Promise.resolve(
         DEMO_STAGE_IDS.filter(
           (id) => scenarioFor(owner.row, id) !== 'noBranch',
-        ).map((id) => ({ branchName: stageBranch(id, true) }) as Branch),
+        ).map((id) => amplifyBranch({ branchName: stageBranch(id, true) })),
       );
     },
     listJobs: (appId, branchName) => {

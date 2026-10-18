@@ -177,11 +177,11 @@ describe('BoardGrid', () => {
     expect(needs.length).toBeGreaterThan(0);
     expect(needs[0]).toHaveTextContent('needs credential');
     fireEvent.click(needs[0]);
+    const detail = screen.getByRole('dialog', { name: 'Cell detail' });
+    expect(within(detail).getByText('needs credential')).toBeInTheDocument();
     expect(
-      within(screen.getByRole('dialog', { name: 'Cell detail' })).getByText(
-        'needs credential',
-      ),
-    ).toBeInTheDocument();
+      within(detail).getByRole('link', { name: /How to set up a credential/ }),
+    ).toHaveAttribute('href', expect.stringMatching(/#credentials$/));
   });
 
   it('renders a 40 x 8 board (spec.md step 10 size check)', () => {
@@ -211,5 +211,21 @@ describe('BoardGrid', () => {
       />,
     );
     expect(screen.getAllByRole('gridcell')).toHaveLength(320);
+  });
+
+  it('shows the full row and stage names in tooltips from the keyboard', async () => {
+    renderBoard();
+    const row = screen.getByRole('rowheader', { name: 'billing' });
+    row.focus();
+    expect(row).toHaveFocus();
+    expect(await screen.findByRole('tooltip')).toHaveTextContent(
+      'billing (acme/billing)',
+    );
+    const stage = screen.getByRole('columnheader', { name: 'Bali' });
+    stage.focus();
+    expect(stage).toHaveFocus();
+    await waitFor(() => {
+      expect(screen.getByRole('tooltip')).toHaveTextContent(/^Bali \(/);
+    });
   });
 });

@@ -6,12 +6,22 @@
  *
  * @module
  */
-import * as Dialog from '@radix-ui/react-dialog';
-import { useLayoutEffect, useRef, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { useState } from 'react';
 
 import { ExternalLink } from '@/components/ExternalLink';
+import {
+  Popover,
+  PopoverAnchor,
+  PopoverContent,
+} from '@/components/ui/popover';
+import {
+  Sheet,
+  SheetClose,
+  SheetContent,
+  SheetTitle,
+} from '@/components/ui/sheet';
 import type { BoardCell } from '@/engine';
+import { readmeSection } from '@/lib/site';
 
 import {
   badgeDescription,
@@ -19,7 +29,6 @@ import {
   shortSha,
   STATUS_META,
 } from './cellView';
-import { type Placement, placeTooltip } from './placement';
 
 export function CellDetail({
   cell,
@@ -47,9 +56,13 @@ export function CellDetail({
             <div className="text-muted-foreground">{derivation.reason}</div>
           )}
           {interactive && derivation.state === 'needs-credential' && (
-            <Link to="/guide/credentials" className="block text-sky-400">
+            <ExternalLink
+              unstyled
+              href={readmeSection('credentials')}
+              className="block text-sky-400"
+            >
               How to set up a credential
-            </Link>
+            </ExternalLink>
           )}
         </div>
       ) : (
@@ -133,7 +146,9 @@ function SubjectList({
   );
 }
 
-/** Hover/focus tooltip, measured and placed to stay inside the viewport. */
+/** Hover/focus tooltip: the library's Popover anchored to the cell, placed
+ * below it when it fits, else above, always inside the window. Not modal
+ * and never focused (the cell keeps focus); it has the tooltip role. */
 export function CellTooltip({
   rect,
   children,
@@ -141,33 +156,29 @@ export function CellTooltip({
   rect: DOMRect;
   children: React.ReactNode;
 }): React.JSX.Element {
-  const ref = useRef<HTMLDivElement>(null);
-  const [place, setPlace] = useState<Placement | null>(null);
-  useLayoutEffect(() => {
-    const el = ref.current;
-    if (!el) return;
-    setPlace(
-      placeTooltip(
-        rect,
-        { width: el.offsetWidth, height: el.scrollHeight },
-        { width: window.innerWidth, height: window.innerHeight },
-      ),
-    );
-  }, [rect]);
+  const anchor = { current: { getBoundingClientRect: () => rect } };
   return (
-    <div
-      ref={ref}
-      role="tooltip"
-      className="pointer-events-none fixed z-50 w-80 max-w-[calc(100vw-12px)] overflow-hidden rounded-lg bg-slate-900 p-3 text-slate-100 shadow-xl"
-      style={place ?? { left: rect.left, top: rect.bottom, opacity: 0 }}
-    >
-      {children}
-    </div>
+    <Popover open>
+      <PopoverAnchor virtualRef={anchor} />
+      <PopoverContent
+        role="tooltip"
+        side="bottom"
+        align="start"
+        avoidCollisions
+        onOpenAutoFocus={(e) => {
+          e.preventDefault();
+        }}
+        className="pointer-events-none max-h-[var(--radix-popover-content-available-height)] w-80 max-w-[calc(100vw-12px)] overflow-hidden rounded-lg border-0 bg-slate-900 p-3 text-slate-100 shadow-xl"
+      >
+        {children}
+      </PopoverContent>
+    </Popover>
   );
 }
 
-/** Bottom sheet opened from a cell: a modal dialog that takes focus,
- * traps Tab, closes on Escape, the backdrop or Close, and returns focus. */
+/** Bottom sheet opened from a cell: the library's Sheet, modal (takes
+ * focus, traps Tab, closes on Escape, the backdrop or Close) and returning
+ * focus to the cell that opened it. */
 export function CellSheet({
   onClose,
   children,
@@ -175,36 +186,33 @@ export function CellSheet({
   onClose: () => void;
   children: React.ReactNode;
 }): React.JSX.Element {
-  // Focus goes back to the cell that opened the sheet.
   const [opener] = useState(() =>
     document.activeElement instanceof HTMLElement
       ? document.activeElement
       : null,
   );
   return (
-    <Dialog.Root
+    <Sheet
       open
       onOpenChange={(open) => {
         if (!open) onClose();
       }}
     >
-      <Dialog.Portal>
-        <Dialog.Overlay className="fixed inset-0 z-50 bg-black/40" />
-        <Dialog.Content
-          aria-describedby={undefined}
-          onCloseAutoFocus={(e) => {
-            e.preventDefault();
-            opener?.focus();
-          }}
-          className="fixed inset-x-0 bottom-0 z-50 max-h-[80vh] overflow-auto rounded-t-xl bg-slate-900 p-4 text-slate-100"
-        >
-          <Dialog.Title className="sr-only">Cell detail</Dialog.Title>
-          {children}
-          <Dialog.Close className="mt-3 text-sm text-sky-400">
-            Close
-          </Dialog.Close>
-        </Dialog.Content>
-      </Dialog.Portal>
-    </Dialog.Root>
+      <SheetContent
+        side="bottom"
+        closeButton={false}
+        onCloseAutoFocus={(e) => {
+          e.preventDefault();
+          opener?.focus();
+        }}
+        className="gap-0 border-0 bg-slate-900 p-4 text-slate-100"
+      >
+        <SheetTitle className="sr-only">Cell detail</SheetTitle>
+        {children}
+        <SheetClose className="mt-3 self-start text-sm text-sky-400">
+          Close
+        </SheetClose>
+      </SheetContent>
+    </Sheet>
   );
 }

@@ -7,13 +7,15 @@
 import type { JobSummary } from '@aws-sdk/client-amplify';
 import { describe, expect, it } from 'vitest';
 
+import { amplifyJobSummary } from '@/lib/amplify/sdkShapes';
+
 import { newestJob } from './newestJob';
 
 const job = (jobId: string, startTime?: string): JobSummary =>
-  ({
+  amplifyJobSummary({
     jobId,
     startTime: startTime ? new Date(startTime) : undefined,
-  }) as JobSummary;
+  });
 
 describe('newestJob', () => {
   it('returns undefined for no jobs', () => {

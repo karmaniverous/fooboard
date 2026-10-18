@@ -5,6 +5,8 @@
  *
  * @module
  */
+import { z } from 'zod';
+
 import type {
   AmplifyCellDerivation,
   GithubCellDerivation,
@@ -63,6 +65,9 @@ export interface BoardModel {
 
 /** The key of one cell in `BoardModel.cells`. */
 /** Ids may contain any character, so the pair is encoded unambiguously. */
+/** A cell key parsed back into its row and stage ids. */
+export const CellKeySchema = z.tuple([z.string(), z.string()]);
+
 export const cellKey = (rowId: string, stageId: string): string =>
   JSON.stringify([rowId, stageId]);
 

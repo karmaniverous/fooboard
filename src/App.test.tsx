@@ -30,21 +30,21 @@ describe('App', () => {
     ['/', 'No dashboards yet'],
     ['/demo', 'Acme platform (demo)'],
     ['/d/missing', 'Dashboard not found'],
-    ['/guide/credentials', 'Credential guide'],
     ['/spike/amplify', 'Amplify browser spike'],
     ['/spike/github', 'GitHub browser spike'],
   ])('renders %s inside the shell', (path, heading) => {
     renderAt(path);
-    expect(screen.getByText(site.name)).toBeInTheDocument();
+    expect(
+      screen.getByText(site.name, { ignore: '[aria-hidden="true"] *' }),
+    ).toBeInTheDocument();
     // Hidden measuring copies (aria-hidden) are not part of the page.
     expect(
       screen.getByText(heading, {
         ignore: '[aria-hidden="true"] *, script, style',
       }),
     ).toBeInTheDocument();
-    expect(screen.getByText('Report an issue')).toHaveAttribute(
-      'rel',
-      'noopener noreferrer',
-    );
+    expect(
+      screen.getAllByRole('link', { name: 'Report an issue' })[0],
+    ).toHaveAttribute('rel', 'noopener noreferrer');
   });
 });

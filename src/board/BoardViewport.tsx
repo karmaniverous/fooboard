@@ -22,18 +22,13 @@ import { cn } from '@/lib/utils';
 
 import { BoardGrid } from './BoardGrid';
 import { BoardToolbar } from './BoardToolbar';
-import {
-  layoutAtZoom,
-  type LayoutInput,
-  snapZoom,
-  stepZoom,
-  zoomRange,
-} from './layout';
+import { type LayoutInput } from './layout';
 import { boardContents } from './layoutContents';
 import type { CellFilter } from './summary';
 import { createTextMeasure } from './textMeasure';
 import type { BoardView } from './useBoardView';
 import { useStableModel } from './useStableModel';
+import { layoutAtZoom, snapZoom, stepZoom, zoomRange } from './zoom';
 
 const DOUBLE_TAP_MS = 300;
 /** Movement (px) after which a press is a drag, not a tap or click. */

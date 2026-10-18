@@ -25,6 +25,19 @@ export interface RateLimitBudget {
 /** Fraction of `limit` at or under which the budget is reported `'low'`. */
 const LOW_BUDGET_FRACTION = 0.1;
 
+/** A budget from its numbers (rate-limit headers, or the `rate_limit`
+ * endpoint's `core` resource), flagged low at 10% left. */
+export function budgetFrom({
+  limit,
+  remaining,
+  reset,
+  used,
+}: Omit<RateLimitBudget, 'status'>): RateLimitBudget {
+  const status: RateLimitBudget['status'] =
+    remaining <= limit * LOW_BUDGET_FRACTION ? 'low' : 'ok';
+  return { limit, remaining, reset, used, status };
+}
+
 /**
  * Parse rate-limit headers into a `RateLimitBudget`, or `undefined` if the
  * response carried none (e.g. a request that bypassed the API gateway).
@@ -46,10 +59,7 @@ export function parseRateLimitHeaders(
 
   const usedHeader = headers.get('x-ratelimit-used');
   const used = usedHeader === null ? limit - remaining : Number(usedHeader);
-  const status: RateLimitBudget['status'] =
-    remaining <= limit * LOW_BUDGET_FRACTION ? 'low' : 'ok';
-
-  return { limit, remaining, reset, used, status };
+  return budgetFrom({ limit, remaining, reset, used });
 }
 
 /**

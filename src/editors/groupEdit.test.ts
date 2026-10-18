@@ -83,10 +83,10 @@ describe('group lifecycle', () => {
 describe('listHandlers', () => {
   it('commits drops and offers only the steps that can happen', () => {
     const grouped = setGroup(base, 'rows', 'b', 'new');
-    const onChange = vi.fn();
+    const onChange = vi.fn<(d: Dashboard) => void>();
     const { onDrop, onStep } = listHandlers(grouped, 'rows', onChange);
     onDrop({ id: 'd' }, { id: 'b' });
-    expect(rowIds(onChange.mock.calls[0]?.[0] as Dashboard)).toEqual([
+    expect(rowIds(onChange.mock.calls[0]?.[0] ?? grouped)).toEqual([
       'a',
       'd',
       'b',
@@ -94,6 +94,6 @@ describe('listHandlers', () => {
     ]);
     expect(onStep({ id: 'a' }, -1)).toBeUndefined();
     onStep({ id: 'b' }, 1)?.();
-    expect((onChange.mock.calls[1]?.[0] as Dashboard).rowGroups).toEqual([]);
+    expect(onChange.mock.calls[1]?.[0].rowGroups).toEqual([]);
   });
 });

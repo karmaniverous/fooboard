@@ -8,7 +8,8 @@
 import { describe, expect, it, vi } from 'vitest';
 
 import type { RateLimitBudget } from '@/lib/github/rateLimit';
-import type { GitHubReader } from '@/lib/github/reader';
+import type { MatchingRef, WorkflowRun } from '@/lib/github/schemas';
+import { fakeGitHubReader } from '@/test/fakeReaders';
 
 import { runGithubSpike } from './runGithubSpike';
 
@@ -20,29 +21,42 @@ const budget = (remaining: number): RateLimitBudget => ({
   status: 'ok',
 });
 
-const run = {
+const run: WorkflowRun = {
   id: 7,
   name: 'CI',
   head_branch: 'main',
+  head_sha: 'abc',
   status: 'completed',
   conclusion: 'success',
+  created_at: '2026-10-01T00:00:00Z',
+  updated_at: '2026-10-01T00:05:00Z',
+  html_url: '',
+  workflow_id: 1,
+  event: 'push',
 };
 
 /** A fake reader plus handles on the spies the tests assert on. */
 function fakeReader({
   runs = [run],
-  refs = [{ ref: 'refs/heads/release/24.3' }],
+  refs = [{ ref: 'refs/heads/release/24.3', object: { sha: 'abc' } }],
   budgets = [budget(100), budget(100)],
 }: {
-  runs?: unknown[];
-  refs?: { ref: string }[];
+  runs?: WorkflowRun[];
+  refs?: MatchingRef[];
   budgets?: (RateLimitBudget | undefined)[];
 } = {}) {
-  const getBudget = vi.fn();
+  const getBudget = vi.fn<() => RateLimitBudget | undefined>();
   for (const b of budgets) getBudget.mockReturnValueOnce(b);
   const listRunJobs = vi.fn(() =>
     Promise.resolve([
-      { name: 'deploy', status: 'completed', conclusion: 'success' },
+      {
+        id: 1,
+        run_id: 7,
+        name: 'deploy',
+        status: 'completed',
+        conclusion: 'success',
+        html_url: null,
+      },
     ]),
   );
   const matchingRefs = vi.fn(() => Promise.resolve(refs));
@@ -55,17 +69,13 @@ function fakeReader({
       behindCommitSubjects: [],
     }),
   );
-  const reader = {
+  const reader = fakeGitHubReader({
     listWorkflowRuns: vi.fn(() => Promise.resolve(runs)),
     listRunJobs,
-    listWorkflows: vi.fn(),
     matchingRefs,
     compare,
-    listBranches: vi.fn(),
-    listRepos: vi.fn(),
     getBudget,
-    getTokenExpiration: vi.fn(() => undefined),
-  } as unknown as GitHubReader;
+  });
   return { reader, listRunJobs, matchingRefs, compare };
 }
 

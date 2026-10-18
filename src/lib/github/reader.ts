@@ -9,7 +9,7 @@
 import { GitHubValidationError } from './errors';
 import { type FetchLike, GitHubHttpClient } from './httpClient';
 import { paginateAll } from './pagination';
-import type { RateLimitBudget } from './rateLimit';
+import { budgetFrom, type RateLimitBudget } from './rateLimit';
 import {
   type Branch,
   BranchesResponseSchema,
@@ -19,6 +19,7 @@ import {
   JobsResponseSchema,
   type MatchingRef,
   MatchingRefsSchema,
+  RateLimitResponseSchema,
   type Repo,
   ReposResponseSchema,
   type Workflow,
@@ -64,6 +65,9 @@ export interface GitHubReader {
   listRepos(): Promise<Repo[]>;
   /** Current rate-limit budget, or `undefined` before the first response. */
   getBudget(): RateLimitBudget | undefined;
+  /** Read the budget from `GET /rate_limit`, which does not count against
+   * it (spec.md C-16), and keep it as the current budget. */
+  readRateLimit(): Promise<RateLimitBudget>;
   /** The token's expiry, if GitHub reports it (spec.md C-5), as an ISO/HTTP-date string. */
   getTokenExpiration(): string | undefined;
 }
@@ -203,6 +207,14 @@ export function createGitHubReader({
       ),
 
     getBudget: () => http.getBudget(),
+    async readRateLimit() {
+      const { core } = (
+        await get(`${API_BASE}/rate_limit`, RateLimitResponseSchema)
+      ).resources;
+      const budget = budgetFrom(core);
+      http.noteBudget(budget);
+      return budget;
+    },
     getTokenExpiration: () => http.getTokenExpiration(),
   };
 }

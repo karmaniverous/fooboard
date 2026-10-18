@@ -187,7 +187,6 @@ export function AmplifyPicker({
               <button
                 type="button"
                 disabled={!a.repo}
-                title={a.repo ? undefined : 'Not connected to a GitHub repo'}
                 className="w-full rounded px-2 py-1 text-left hover:bg-muted disabled:opacity-50"
                 onClick={() => {
                   if (!a.repo) return;
