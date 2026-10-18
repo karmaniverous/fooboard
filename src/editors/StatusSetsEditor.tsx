@@ -1,14 +1,23 @@
 /**
  * The dashboard's status sets (spec.md A§4.3.6): the set each provider's
  * cells use unless a row group, row or cell chooses another, from the
- * bundled presets and the dashboard's own sets.
+ * bundled presets and the dashboard's own sets. *Customise* copies the
+ * chosen set into one the dashboard owns, to edit.
  *
  * @module
  */
 import { Choice } from '@/components/Choice';
+import { Button } from '@/components/ui/button';
 import type { Dashboard } from '@/domain/config/dashboard';
 import type { StatusProvider } from '@/domain/config/statusSets';
 
+import {
+  customise,
+  removeSet,
+  setInUse,
+  updateSet,
+} from './statuses/customSet';
+import { CustomSetEditor } from './statuses/CustomSetEditor';
 import { setOptions } from './statusSetOptions';
 
 const PROVIDERS: { provider: StatusProvider; label: string }[] = [
@@ -43,7 +52,32 @@ export function StatusSetsEditor({
               });
             }}
           />
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => {
+              onChange(customise(dashboard, dashboard.statusSets[provider]));
+            }}
+          >
+            Customise
+          </Button>
         </label>
+      ))}
+      {dashboard.customStatusSets.map((set) => (
+        <CustomSetEditor
+          key={set.id}
+          set={set}
+          onChange={(next) => {
+            onChange(updateSet(dashboard, set.id, () => next));
+          }}
+          onRemove={
+            setInUse(dashboard, set.id)
+              ? undefined
+              : () => {
+                  onChange(removeSet(dashboard, set.id));
+                }
+          }
+        />
       ))}
     </div>
   );
