@@ -71,7 +71,7 @@ const model: BoardModel = {
 };
 
 describe('summarize', () => {
-  it('counts each summary status the cells show, Unknown last, then badges', () => {
+  it('counts each summary status the cells show, in set order, Unknown last, then badges', () => {
     expect(summarize(model).map((c) => [c.id, c.count])).toEqual([
       ['failing', 2],
       ['running', 1],

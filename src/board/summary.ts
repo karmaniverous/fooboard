@@ -1,11 +1,12 @@
 /**
  * The board's summary chips and the filters they toggle (spec.md C-14a,
- * A§4.3.6): one per summary status the board's cells show (in order of
- * first appearance, Unknown last), then *behind* and *diverged*. Pure.
+ * A§4.3.6): one per summary status the board's cells show (in their set's
+ * order, Unknown last), then *behind* and *diverged*. Pure.
  *
  * @module
  */
-import { UNKNOWN_STATUS_ID } from '@/domain/config/statusSets';
+import { omit } from 'radash';
+
 import type { BoardCell, BoardModel } from '@/engine';
 
 /** A summary status id, or a staleness badge kind. */
@@ -39,19 +40,19 @@ export function matchesFilter(
 /** The chips for `model`, with their counts. */
 export function summarize(model: BoardModel): SummaryChip[] {
   const cells = Object.values(model.cells);
-  const statuses = new Map<string, SummaryChip>();
+  const statuses = new Map<string, SummaryChip & { rank: number }>();
   for (const cell of cells) {
     const derivation = cell?.derivation;
     if (derivation?.kind !== 'ok') continue;
     const { id, name, color } = derivation.status.summary;
-    const chip = statuses.get(id) ?? { id, name, color, count: 0 };
+    const { rank } = derivation.status;
+    const chip = statuses.get(id) ?? { id, name, color, count: 0, rank };
     chip.count += 1;
     statuses.set(id, chip);
   }
-  const chips = [...statuses.values()].sort(
-    (a, b) =>
-      Number(a.id === UNKNOWN_STATUS_ID) - Number(b.id === UNKNOWN_STATUS_ID),
-  );
+  const chips = [...statuses.values()]
+    .sort((a, b) => a.rank - b.rank)
+    .map((chip) => omit(chip, ['rank']));
   return [
     ...chips,
     ...BADGES.map((id) => ({

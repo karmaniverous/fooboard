@@ -22,6 +22,8 @@ export interface ResolvedStatus {
   icon: StatusIcon;
   outlined: boolean;
   summary: SummaryStatus;
+  /** The summary status's place in its set, for ordering chips. */
+  rank: number;
 }
 
 /** The built-in Unknown summary status (its own chip, shown when any). */
@@ -41,6 +43,7 @@ export const UNKNOWN: ResolvedStatus = {
   icon: 'unknown',
   outlined: false,
   summary: UNKNOWN_SUMMARY,
+  rank: Number.MAX_SAFE_INTEGER,
 };
 
 /** `status` (from `set`) as the board shows it; none is Unknown. */
@@ -49,8 +52,8 @@ export function resolveStatus(
   status: CellStatus | undefined,
 ): ResolvedStatus {
   if (!status) return UNKNOWN;
-  const summary =
-    set.summary.find((s) => s.id === status.summary) ?? UNKNOWN_SUMMARY;
+  const rank = set.summary.findIndex((s) => s.id === status.summary);
+  const summary = set.summary[rank] ?? UNKNOWN_SUMMARY;
   return {
     id: status.id,
     name: status.name,
@@ -58,6 +61,7 @@ export function resolveStatus(
     icon: status.icon ?? summary.icon,
     outlined: status.outlined,
     summary,
+    rank: rank < 0 ? Number.MAX_SAFE_INTEGER : rank,
   };
 }
 
