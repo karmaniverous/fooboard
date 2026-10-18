@@ -40,9 +40,11 @@ export function BoardGrid({
   now,
   filter = null,
 }: BoardGridProps): React.JSX.Element {
-  // Headers stay pinned whenever the grid scrolls (C-13).
-  // Below the pinned app header (its height, set by the header).
-  const pinTop = 'sticky top-[var(--app-header-h,0px)] z-20 bg-background';
+  // Headers stay pinned whenever the grid scrolls (C-13): below the pinned
+  // app header (its height, set by the header) and the column-group label
+  // strip, when there is one (its height, `--strip-h`).
+  const pinTop =
+    'sticky top-[calc(var(--app-header-h,0px)+var(--strip-h,0px))] z-20 bg-background';
   const pinLeft = 'sticky left-0 z-20 bg-background';
   const { rows, stages, statusColors } = dashboard;
   const rowSegments = groupSegments(
@@ -106,12 +108,17 @@ export function BoardGrid({
             lineHeight: LINE_HEIGHT,
             '--cell-pad-x': `${String(layout.padX)}px`,
             '--cell-pad-y': `${String(layout.padY)}px`,
+            // The label strip and the gap below it (C-14b).
+            '--strip-h': colSegments.some((g) => g.group?.label)
+              ? `${String(layout.lineRowHeight + layout.gap)}px`
+              : '0px',
           } as React.CSSProperties
         }
       >
         <ColumnGroupLabels
           segments={colSegments}
           rowHeight={layout.lineRowHeight}
+          gap={layout.gap}
           pinLeft={pinLeft}
           labelLeft={layout.rowNameWidth + layout.gap}
         />
