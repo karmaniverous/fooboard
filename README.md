@@ -19,7 +19,7 @@ separately) for the full product spec.
 - **Domain core** (`src/domain/`): the config schema, branch presets, matching rules and cell derivation. Pure TypeScript.
 - **Live data**:
   - the GitHub and Amplify providers (`src/lib/github/`, `src/lib/amplify/`);
-  - a fictional `acme/*` demo board with demo providers (`src/demo/`), shaped like a real pipeline: three preview environments in a _Preview_ column group, then dev, release and prod; a _Backend_ group of GitHub repos and a _Frontend_ group of Amplify apps that release from `preview/release`;
+  - a fictional `acme/*` demo board with demo providers (`src/demo/`), shaped like a real pipeline: three preview environments in a _Preview_ column group, then dev, release and prod; a _Backend_ group of GitHub repos (one keyed to its own jobs) and a _Frontend_ group of Amplify apps that release from `preview/release` with the group's own AWS key; one unmapped run for each reason;
   - the board engine and poll scheduler (`src/engine/`), which turn provider data into the cell model.
 - **The board** (`src/board/`):
   - cells in solid status colours, with as much detail as their size allows;
@@ -29,6 +29,7 @@ separately) for the full product spec.
   - a layout that keeps text readable (13 px at 100%) and shows as much as fits: equal columns across the screen, and the most detail every cell can show at the same size; tall boards scroll down;
   - zoom (Ctrl/Cmd + wheel, pinch, the buttons, or `+` `-` `0`): zooming out shrinks text to fit more, zooming in adds detail, then magnifies;
   - Default, Comfortable and Compact density (padding only);
+  - light or dark, following the device's setting;
   - summary counts that filter the board (just a dot or circle and the count when space is short, with the word on hover), and a battery meter of the GitHub requests left.
 - **Follow and Share**: _Follow @fooboarding_ in the page header, and a _Share_ button on every board. For now Share offers the demo link: the device's share menu where there is one, _Copy link_, and _Post on X_.
 - **Try the demo**: `/demo`, or _Try the demo_ on the home page, shows the demo board with no account.

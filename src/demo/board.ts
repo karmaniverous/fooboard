@@ -2,7 +2,8 @@
  * The demo dashboard (spec.md C-23): a fictional `acme/*` organisation, 19
  * rows by 6 stages shaped like a real pipeline (three preview
  * environments in a *Preview* column group, dev, release, prod; backend
- * and frontend row groups, the frontend overriding the release branch),
+ * and frontend row groups, the frontend overriding the release branch and
+ * setting its own AWS key; one backend row keyed to its jobs),
  * used by *Try the demo*, tests, design proofs and screenshots. Every name is invented.
  *
  * @module
@@ -43,11 +44,27 @@ export const DEMO_AMPLIFY_APPS = {
   ],
 } as const;
 
+/** The backend row whose repo also runs other services' jobs: its row key
+ * test picks its own (`deploy (payments)`), so a job for another service
+ * is unmapped with *no row key matches* (C-15). */
+export const DEMO_KEYED_REPO = 'payments';
+
 const github = DEMO_GITHUB_REPOS.map((name) => ({
   type: 'github' as const,
   id: name,
   repo: `acme/${name}`,
   displayName: name,
+  ...(name === DEMO_KEYED_REPO
+    ? {
+        rowKeyTests: [
+          {
+            field: 'jobName' as const,
+            operator: 'contains' as const,
+            value: name,
+          },
+        ],
+      }
+    : {}),
 }));
 
 const amplify = Object.entries(DEMO_AMPLIFY_APPS).map(([name, sources]) => ({
@@ -109,6 +126,8 @@ export const demoDashboard: Dashboard = DashboardSchema.parse({
       label: 'Frontend',
       memberIds: amplify.map((r) => r.id),
       branchPatternOverrides: { release: 'preview/release' },
+      // The frontends' AWS key is the group's, not the dashboard's (C-1a).
+      defaultCredentials: { aws: DEMO_AWS_CREDENTIAL },
     },
   ],
   columnGroups: [
@@ -122,10 +141,7 @@ export const demoDashboard: Dashboard = DashboardSchema.parse({
     { id: DEMO_GITHUB_CREDENTIAL, kind: 'github', label: 'Demo GitHub' },
     { id: DEMO_AWS_CREDENTIAL, kind: 'aws', label: 'Demo AWS' },
   ],
-  defaultCredentials: {
-    github: DEMO_GITHUB_CREDENTIAL,
-    aws: DEMO_AWS_CREDENTIAL,
-  },
+  defaultCredentials: { github: DEMO_GITHUB_CREDENTIAL },
 });
 
 /** The demo stage ids, in column order. */

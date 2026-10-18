@@ -3,8 +3,9 @@
  * from the demo scenarios, returning REST-shaped payloads so the real
  * mapping and derivation code runs unchanged. Two rows fail on purpose
  * (`legacy-billing`: rejected credential; `flaky-svc`: server error), and
- * two runs are deliberately unmapped (a `hotfix/*` branch and a lint-only
- * run).
+ * three runs are deliberately unmapped, one per reason (a `hotfix/*`
+ * branch, a lint-only run, and another service's deploy in the keyed row's
+ * repo).
  *
  * @module
  */
@@ -14,7 +15,7 @@ import { GitHubAuthError, GitHubHttpError } from '@/lib/github/errors';
 import type { GitHubReader, RepoRef } from '@/lib/github/reader';
 import type { Job, WorkflowRun } from '@/lib/github/schemas';
 
-import { DEMO_GITHUB_REPOS, DEMO_STAGE_IDS } from './board';
+import { DEMO_GITHUB_REPOS, DEMO_KEYED_REPO, DEMO_STAGE_IDS } from './board';
 import {
   type DemoJobState,
   jobStates,
@@ -93,6 +94,9 @@ function demoRuns(repo: string, startMs: number): DemoRun[] {
     run_attempt: 1,
   });
 
+  // The keyed row's jobs name their service (its row key test).
+  const key = repo === DEMO_KEYED_REPO ? ` (${repo})` : '';
+
   DEMO_STAGE_IDS.forEach((stageId, s) => {
     const scenario = scenarioFor(repo, stageId);
     if (scenario === 'noBranch' || scenario === 'noRuns') return;
@@ -104,8 +108,8 @@ function demoRuns(repo: string, startMs: number): DemoRun[] {
       jobs: (start, now) => {
         const states = jobStates(scenario, now - start);
         return [
-          job(id, 1, 'deploy', states.deploy, createdMs),
-          job(id, 2, 'test', states.test, createdMs + 3 * MINUTE),
+          job(id, 1, `deploy${key}`, states.deploy, createdMs),
+          job(id, 2, `test${key}`, states.test, createdMs + 3 * MINUTE),
         ];
       },
     });
@@ -123,6 +127,16 @@ function demoRuns(repo: string, startMs: number): DemoRun[] {
     runs.push({
       run: makeRun(id, 'dev', startMs - 2 * MINUTE, 'Lint'),
       jobs: () => [job(id, 1, 'lint', 'success', startMs - 2 * MINUTE)],
+    });
+  }
+  if (repo === DEMO_KEYED_REPO) {
+    // Another service's deploy in the same repo: no row key matches.
+    const id = 992;
+    runs.push({
+      run: makeRun(id, 'dev', startMs - 3 * MINUTE),
+      jobs: () => [
+        job(id, 1, 'deploy (refunds)', 'success', startMs - 3 * MINUTE),
+      ],
     });
   }
   return alphabetical(runs, (d) => d.run.created_at, 'desc');

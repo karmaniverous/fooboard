@@ -29,6 +29,12 @@ const stage = (id: string) => {
   return found;
 };
 
+/** The demo row's key tests (only GitHub rows have them). */
+const rowKeyTestsOf = (repo: string) => {
+  const row = demoDashboard.rows.find((r) => r.id === repo);
+  return row?.type === 'github' ? row.rowKeyTests : [];
+};
+
 async function githubCell(reader: GitHubReader, repo: string, stageId: string) {
   const ref = { owner: 'acme', repo };
   const runs = await reader.listWorkflowRuns(ref);
@@ -42,7 +48,7 @@ async function githubCell(reader: GitHubReader, repo: string, stageId: string) {
     runs: withJobs,
     mapping: demoDashboard.mapping,
     branchPattern: stage(stageId).branchPattern,
-    rowKeyTests: [],
+    rowKeyTests: rowKeyTestsOf(repo),
     branchExists: branches.includes(stageBranch(stageId)),
     credentialStatus: 'ok',
   });

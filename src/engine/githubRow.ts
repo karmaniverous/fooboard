@@ -38,9 +38,6 @@ import {
 import { failureOutcome } from './providerOutcome';
 import type { UnmappedRun } from './types';
 
-/** At most this many candidate runs per cell have their jobs fetched. */
-const MAX_RUNS_PER_CELL = 5;
-
 /** A branch in the repo, dated by its newest run (REST branches carry no
  * date; branches without runs date to the epoch). */
 export interface DatedBranch {
@@ -182,9 +179,11 @@ async function refreshWith(
       ),
       credentialStatus: 'ok' as const,
     };
-    const candidates = raw
-      .filter((_, i) => isCandidateRun(runs[i], mapping, stage.branchPattern))
-      .slice(0, MAX_RUNS_PER_CELL);
+    // Newest first, through the whole fetched window (spec.md §4.3.2): jobs are
+    // read only until a run with a relevant job decides the cell.
+    const candidates = raw.filter((_, i) =>
+      isCandidateRun(runs[i], mapping, stage.branchPattern),
+    );
     const seen: GithubRunWithJobs[] = [];
     let derivation = deriveGithubCell({ ...input, runs: seen });
     for (const run of candidates) {

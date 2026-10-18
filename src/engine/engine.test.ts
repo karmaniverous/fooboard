@@ -70,7 +70,7 @@ describe('board engine over the demo', () => {
     ).toHaveLength(3);
   });
 
-  it('lists the two unmapped demo runs with their reasons', async () => {
+  it('lists one unmapped demo run per reason', async () => {
     const reasons = (await demoModel()).unmapped.map(
       (u) => `${u.repo}:${u.reason.kind}`,
     );
@@ -78,6 +78,7 @@ describe('board engine over the demo', () => {
       expect.arrayContaining([
         'acme/api-core:no-stage-matches-branch',
         'acme/web-app:no-phase-matches-job',
+        'acme/payments:no-row-key-matches',
       ]),
     );
   });
