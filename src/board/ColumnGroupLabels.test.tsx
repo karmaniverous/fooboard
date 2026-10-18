@@ -2,7 +2,8 @@
  * Tests for the column-group label strip (spec.md C-14b): absent unless a
  * group has a label; a labelled group is a column header spanning its
  * stages, framed on top and both sides; ungrouped stretches are neither;
- * labels pin just right of the row names.
+ * labels pin just right of the row names; the strip pins to the top and
+ * reaches across the gap to the stage headers.
  *
  * @module
  */
@@ -17,6 +18,7 @@ const strip = (segments: Parameters<typeof ColumnGroupLabels>[0]['segments']) =>
       <ColumnGroupLabels
         segments={segments}
         rowHeight={20}
+        gap={4}
         pinLeft=""
         labelLeft={140}
       />
@@ -31,7 +33,7 @@ describe('ColumnGroupLabels', () => {
     expect(screen.getByRole('grid')).toBeEmptyDOMElement();
   });
 
-  it('frames a labelled group as a header over its stages, pinned left', () => {
+  it('frames a labelled group as a pinned header over its stages, label pinned left', () => {
     const { container } = strip([
       { start: 0, span: 1 },
       {
@@ -44,6 +46,11 @@ describe('ColumnGroupLabels', () => {
     expect(header).toHaveAttribute('aria-colspan', '2');
     expect(header.style.gridColumn).toBe('3 / span 2');
     for (const c of FRAME) expect(header).toHaveClass(c);
+    // Pinned while scrolling down, reaching across the gap to the stage
+    // headers so the frame is unbroken.
+    expect(header).toHaveClass('sticky');
+    expect(header.style.height).toBe('24px');
+    expect(header.style.marginBottom).toBe('-4px');
     expect(screen.getByText('Preview').style.left).toBe('140px');
 
     const ungrouped = container.querySelector('[role=presentation]');

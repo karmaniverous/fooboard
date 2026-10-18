@@ -12,23 +12,33 @@ import { cn } from '@/lib/utils';
 
 import { BOUNDARY, GROUP_LABEL } from './gridStyles';
 
+/** Pinned to the top while the board scrolls down, below the app header. */
+const PIN_TOP = 'sticky top-[var(--app-header-h,0px)] z-20 bg-background';
+
 export function ColumnGroupLabels({
   segments,
   rowHeight,
+  gap,
   pinLeft,
   labelLeft,
 }: {
   segments: readonly GroupSegment<ColumnGroup>[];
   rowHeight: number;
+  /** The grid's gap: the strip reaches across it to the stage headers,
+   * so a group's frame has no break. */
+  gap: number;
   /** The pinned row-name column's classes (its corner cell). */
   pinLeft: string;
   /** Where a pinned label sticks: just right of the row names, in px. */
   labelLeft: number;
 }): React.JSX.Element | null {
   if (!segments.some((g) => g.group?.label)) return null;
+  // Down through the gap below (without growing the row), so the frame's
+  // sides meet the stage headers' and the pinned strip leaves no gap.
+  const span = { height: rowHeight + gap, marginBottom: -gap };
   return (
     <div role="row" className="contents">
-      <div className={pinLeft} style={{ height: rowHeight }} />
+      <div className={cn(PIN_TOP, pinLeft, 'z-30')} style={span} />
       {/* Segments cover every column, so headers never auto-place
           into the strip's gaps; labelled groups are column headers
           spanning their stages (C-14b). */}
@@ -39,12 +49,13 @@ export function ColumnGroupLabels({
           aria-colspan={g.group?.label ? g.span : undefined}
           className={cn(
             'flex items-end',
+            PIN_TOP,
             GROUP_LABEL,
             // The frame's top and sides (C-14b).
             g.group && [BOUNDARY.top, BOUNDARY.left, BOUNDARY.right],
           )}
           style={{
-            height: rowHeight,
+            ...span,
             gridColumn: `${String(g.start + 2)} / span ${String(g.span)}`,
           }}
         >
