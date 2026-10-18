@@ -13,6 +13,8 @@ import type { BoardCell, BoardModel } from '@/engine';
 export type CellFilter = string;
 
 const BADGES = ['behind', 'diverged'] as const;
+const isBadge = (filter: CellFilter): filter is (typeof BADGES)[number] =>
+  BADGES.some((b) => b === filter);
 
 /** One chip: a summary status (with its colour) or a badge kind. */
 export interface SummaryChip {
@@ -29,8 +31,7 @@ export function matchesFilter(
   filter: CellFilter,
 ): boolean {
   if (!cell) return false;
-  if (filter === 'behind' || filter === 'diverged')
-    return cell.badge?.kind === filter;
+  if (isBadge(filter)) return cell.badge?.kind === filter;
   return (
     cell.derivation.kind === 'ok' &&
     cell.derivation.status.summary.id === filter

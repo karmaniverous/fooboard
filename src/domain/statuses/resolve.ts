@@ -9,9 +9,14 @@
  */
 import { groupOf, type RowGroup } from '@/domain/config/groups';
 import type { Row } from '@/domain/config/row';
-import type { StatusProvider, StatusSet } from '@/domain/config/statusSets';
+import {
+  DEFAULT_STATUS_SET_IDS,
+  STATUS_PROVIDERS,
+  type StatusProvider,
+  type StatusSet,
+} from '@/domain/config/statusSets';
 
-import { PRESETS } from './presets';
+import { presetById, PRESETS } from './presets';
 
 /** What resolution needs of a dashboard. */
 export interface StatusSetScope {
@@ -29,37 +34,54 @@ export const findStatusSet = (
 ): StatusSet | undefined =>
   PRESETS.find((p) => p.id === id) ?? custom.find((s) => s.id === id);
 
-/** The id of the set a row's cell in `stageId` uses, and where it comes
- * from (for the editor's "inherits" hints). */
-function statusSetIdFor(
-  scope: StatusSetScope,
+/** The id of the set a row inherits: its row group's, else the
+ * dashboard's, for the row's provider. */
+export function inheritedStatusSetId(
+  scope: Pick<StatusSetScope, 'statusSets' | 'rowGroups'>,
+  row: Row,
+): string {
+  const provider = providerOf(row);
+  return (
+    groupOf(scope.rowGroups, row.id)?.statusSets[provider] ??
+    scope.statusSets[provider]
+  );
+}
+
+/** Where the set a row's cell uses is chosen; a row group names itself. */
+export type StatusSetSource =
+  | { id: string; from: 'cell' | 'row' | 'dashboard' }
+  | { id: string; from: 'rowGroup'; groupId: string };
+
+/** The id of the set a row's cell in `stageId` uses, and the level that
+ * chose it. */
+export function statusSetSource(
+  scope: Pick<StatusSetScope, 'statusSets' | 'rowGroups'>,
   row: Row,
   stageId?: string,
-): { id: string; from: 'cell' | 'row' | 'rowGroup' | 'dashboard' } {
-  const provider = providerOf(row);
+): StatusSetSource {
   const cell = stageId === undefined ? undefined : row.cellStatusSets[stageId];
   if (cell) return { id: cell, from: 'cell' };
   if (row.statusSet) return { id: row.statusSet, from: 'row' };
-  const group = groupOf(scope.rowGroups, row.id)?.statusSets[provider];
-  if (group) return { id: group, from: 'rowGroup' };
-  return { id: scope.statusSets[provider], from: 'dashboard' };
+  const group = groupOf(scope.rowGroups, row.id);
+  const fromGroup = group?.statusSets[providerOf(row)];
+  if (group && fromGroup)
+    return { id: fromGroup, from: 'rowGroup', groupId: group.id };
+  return { id: inheritedStatusSetId(scope, row), from: 'dashboard' };
 }
 
 /** The set a row's cell in `stageId` uses. References are validated when
  * the dashboard is parsed, so an unknown id only reaches here through a
- * bug; it falls back to the provider's first preset rather than throwing. */
+ * bug; it falls back to the provider's default preset rather than throwing. */
 export function statusSetFor(
   scope: StatusSetScope,
   row: Row,
   stageId?: string,
 ): StatusSet {
-  const { id } = statusSetIdFor(scope, row, stageId);
+  const { id } = statusSetSource(scope, row, stageId);
   const provider = providerOf(row);
   const found = findStatusSet(id, scope.customStatusSets);
   if (found?.provider === provider) return found;
-  const fallback = PRESETS.find((p) => p.provider === provider);
-  if (!fallback) throw new Error(`no preset for ${provider}`);
-  return fallback;
+  return presetById(DEFAULT_STATUS_SET_IDS[provider]);
 }
 
 type Issue = { message: string; path: (string | number)[] };
@@ -97,10 +119,10 @@ export function statusSetReferenceIssues(
       issues.push({ message: `duplicate status set id: ${s.id}`, path });
     seen.add(s.id);
   });
-  for (const provider of ['github', 'amplify'] as const)
+  for (const provider of STATUS_PROVIDERS)
     check(dashboard.statusSets[provider], provider, ['statusSets', provider]);
   dashboard.rowGroups.forEach((g, gi) => {
-    for (const provider of ['github', 'amplify'] as const) {
+    for (const provider of STATUS_PROVIDERS) {
       const id = g.statusSets[provider];
       if (id) check(id, provider, ['rowGroups', gi, 'statusSets', provider]);
     }

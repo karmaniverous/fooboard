@@ -9,22 +9,19 @@
 import { Choice } from '@/components/Choice';
 import { Button } from '@/components/ui/button';
 import type { Dashboard } from '@/domain/config/dashboard';
-import type { StatusProvider } from '@/domain/config/statusSets';
+import { PROVIDER_LABELS, STATUS_PROVIDERS } from '@/domain/config/statusSets';
 
-import {
-  customise,
-  removeSet,
-  setInUse,
-  updateSet,
-} from './statuses/customSet';
-import { CustomSetEditor } from './statuses/CustomSetEditor';
-import { addStatusFor, type UnknownCell } from './statuses/unknownRuns';
+import { customise, removeSet, setInUse, updateSet } from './customSet';
+import { CustomSetEditor } from './CustomSetEditor';
+import { setDashboardStatusSet } from './overrideSets';
 import { setOptions } from './statusSetOptions';
+import { addStatusFor, type UnknownCell } from './unknownRuns';
+import { UnknownRunsList } from './UnknownRunsList';
 
-const PROVIDERS: { provider: StatusProvider; label: string }[] = [
-  { provider: 'github', label: 'GitHub' },
-  { provider: 'amplify', label: 'Amplify' },
-];
+const PROVIDERS = STATUS_PROVIDERS.map((provider) => ({
+  provider,
+  label: PROVIDER_LABELS[provider],
+}));
 
 export function StatusSetsEditor({
   dashboard,
@@ -50,10 +47,7 @@ export function StatusSetsEditor({
             value={dashboard.statusSets[provider]}
             options={setOptions(dashboard, provider)}
             onValueChange={(id) => {
-              onChange({
-                ...dashboard,
-                statusSets: { ...dashboard.statusSets, [provider]: id },
-              });
+              onChange(setDashboardStatusSet(dashboard, provider, id));
             }}
           />
           <Button
@@ -67,41 +61,12 @@ export function StatusSetsEditor({
           </Button>
         </label>
       ))}
-      {unknown.length > 0 && (
-        <section
-          aria-label="Runs no status matches"
-          className="flex flex-col gap-2 rounded border border-dashed p-2"
-        >
-          <h4 className="text-xs font-semibold">
-            Runs no status matches ({unknown.length})
-          </h4>
-          {unknown.map((c) => (
-            <div
-              key={`${c.rowId}/${c.stageId}`}
-              className="flex flex-col gap-1"
-            >
-              <div className="flex items-center justify-between gap-2">
-                <span>
-                  {c.rowName} &middot; {c.stageName} ({c.setName})
-                </span>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  aria-label={`Add status for ${c.rowName} ${c.stageName}`}
-                  onClick={() => {
-                    onChange(addStatusFor(dashboard, c));
-                  }}
-                >
-                  Add status
-                </Button>
-              </div>
-              <pre className="max-h-32 overflow-auto rounded bg-muted p-1 text-[0.7rem]">
-                {JSON.stringify(c.document, null, 2)}
-              </pre>
-            </div>
-          ))}
-        </section>
-      )}
+      <UnknownRunsList
+        unknown={unknown}
+        onAddStatus={(c) => {
+          onChange(addStatusFor(dashboard, c));
+        }}
+      />
       {dashboard.customStatusSets.map((set) => (
         <CustomSetEditor
           key={set.id}

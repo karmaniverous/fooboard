@@ -13,6 +13,15 @@ import { HexColorSchema } from './colors';
 const StatusProviderSchema = z.enum(['github', 'amplify']);
 export type StatusProvider = z.infer<typeof StatusProviderSchema>;
 
+/** Every provider a status set can be for. */
+export const STATUS_PROVIDERS = StatusProviderSchema.options;
+
+/** Each provider's name in the editor. */
+export const PROVIDER_LABELS = {
+  github: 'GitHub',
+  amplify: 'Amplify',
+} as const satisfies Record<StatusProvider, string>;
+
 /** The set each provider uses unless a level overrides it: bundled presets. */
 export const DEFAULT_STATUS_SET_IDS = {
   github: 'github-deploy-test',
@@ -43,6 +52,9 @@ const StatusIconSchema = z.enum([
 ]);
 
 export type StatusIcon = z.infer<typeof StatusIconSchema>;
+
+/** Every status icon. */
+export const STATUS_ICONS = StatusIconSchema.options;
 
 /** The id of the built-in Unknown status and summary status. */
 export const UNKNOWN_STATUS_ID = 'unknown';

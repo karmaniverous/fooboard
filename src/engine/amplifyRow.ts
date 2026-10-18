@@ -22,6 +22,7 @@ import {
   deriveAmplifyCell,
   type ProviderFailure,
 } from '@/domain/derivation';
+import { inProgress } from '@/domain/statuses/resolved';
 import { AmplifyAuthError, AmplifyThrottledError } from '@/lib/amplify/errors';
 import {
   type AmplifyReaderFor,
@@ -136,8 +137,7 @@ export function amplifyCellViews(
       stageId,
       {
         derivation,
-        active:
-          derivation.kind === 'ok' && derivation.status.summary.inProgress,
+        active: inProgress(derivation),
       },
     ]),
   );

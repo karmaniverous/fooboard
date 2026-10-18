@@ -6,13 +6,20 @@
  *
  * @module
  */
+import { STATUS_GLYPH } from '@/board/cellView';
 import { Choice } from '@/components/Choice';
 import { Button } from '@/components/ui/button';
-import type { StatusSet } from '@/domain/config/statusSets';
+import { STATUS_ICONS, type StatusSet } from '@/domain/config/statusSets';
+import { move, patchAt } from '@/lib/lists';
 
 import { CommitInput } from '../fields';
-import { addCellStatus, move } from './customSet';
+import { addCellStatus } from './customSet';
 import { TestEditor } from './TestEditor';
+
+const iconOptions = STATUS_ICONS.map((icon) => ({
+  value: icon,
+  label: `${STATUS_GLYPH[icon]} ${icon}`,
+}));
 
 export function CustomSetEditor({
   set,
@@ -77,9 +84,7 @@ export function CustomSetEditor({
               onChange={(e) => {
                 onChange({
                   ...set,
-                  summary: set.summary.map((x, j) =>
-                    j === i ? { ...x, color: e.target.value } : x,
-                  ),
+                  summary: patchAt(set.summary, i, { color: e.target.value }),
                 });
               }}
             />
@@ -90,12 +95,36 @@ export function CustomSetEditor({
               onCommit={(name) => {
                 onChange({
                   ...set,
-                  summary: set.summary.map((x, j) =>
-                    j === i ? { ...x, name } : x,
-                  ),
+                  summary: patchAt(set.summary, i, { name }),
                 });
               }}
             />
+            <Choice
+              label={`${s.name} icon`}
+              value={s.icon}
+              options={iconOptions}
+              onValueChange={(icon) => {
+                onChange({
+                  ...set,
+                  summary: patchAt(set.summary, i, { icon }),
+                });
+              }}
+            />
+            <label className="flex items-center gap-1 text-xs">
+              <input
+                type="checkbox"
+                checked={s.inProgress}
+                onChange={(e) => {
+                  onChange({
+                    ...set,
+                    summary: patchAt(set.summary, i, {
+                      inProgress: e.target.checked,
+                    }),
+                  });
+                }}
+              />
+              In progress
+            </label>
           </div>
         ))}
       </div>
@@ -118,7 +147,7 @@ export function CustomSetEditor({
           const update = (change: Partial<typeof c>) => {
             onChange({
               ...set,
-              cell: set.cell.map((x, j) => (j === i ? { ...x, ...change } : x)),
+              cell: patchAt(set.cell, i, change),
             });
           };
           return (
@@ -151,6 +180,19 @@ export function CustomSetEditor({
                   options={summaryOptions}
                   onValueChange={(summary) => {
                     update({ summary });
+                  }}
+                />
+                <Choice
+                  label={`${c.name} icon`}
+                  value={c.icon ?? ''}
+                  options={[
+                    { value: '', label: 'Summary icon' },
+                    ...iconOptions,
+                  ]}
+                  onValueChange={(icon) => {
+                    update({
+                      icon: icon || undefined,
+                    });
                   }}
                 />
                 <label className="flex items-center gap-1 text-xs">

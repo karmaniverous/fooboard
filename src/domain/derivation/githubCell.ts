@@ -12,8 +12,8 @@ import type { MatchTest } from '@/domain/config/matchTest';
 import type { StatusSet } from '@/domain/config/statusSets';
 import {
   type GithubRunDocument,
-  githubRunDocument,
   relevantRowJobs,
+  runDocument,
 } from '@/domain/statuses/documents';
 import { type ResolvedStatus, statusOf } from '@/domain/statuses/resolved';
 
@@ -89,11 +89,18 @@ export function deriveGithubCell(input: {
     input.branchPattern,
   );
 
-  let matched: { entry: GithubRunWithJobs; doc: GithubRunDocument } | undefined;
+  let matched:
+    | {
+        entry: GithubRunWithJobs;
+        doc: GithubRunDocument;
+        jobs: GithubWorkflowJob[];
+      }
+    | undefined;
   for (const entry of candidates) {
-    const doc = githubRunDocument(entry, input.rowKeyTests, input.set.jobs);
+    const jobs = relevantRowJobs(entry, input.rowKeyTests, input.set.jobs);
+    const doc = runDocument(entry, jobs);
     if (doc) {
-      matched = { entry, doc };
+      matched = { entry, doc, jobs };
       break;
     }
   }
@@ -108,17 +115,14 @@ export function deriveGithubCell(input: {
   if (emptyState) return emptyState;
   if (!matched) return { kind: 'empty', state: 'no-recent-runs' };
 
-  const { entry, doc } = matched;
+  const { entry, doc, jobs } = matched;
   return {
     kind: 'ok',
     status: statusOf(doc, input.set),
     branch: entry.run.headBranch ?? '',
     commit: entry.run.headSha,
     message: entry.run.headCommitMessage,
-    ...timeAndLink(
-      entry,
-      relevantRowJobs(entry, input.rowKeyTests, input.set.jobs),
-    ),
+    ...timeAndLink(entry, jobs),
     document: doc,
   };
 }

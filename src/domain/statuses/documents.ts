@@ -10,7 +10,7 @@
  * @module
  */
 import type { MatchTest } from '@/domain/config/matchTest';
-import { latestAttemptJobs } from '@/domain/derivation/githubPhase';
+import { latestAttemptJobs } from '@/domain/derivation/latestAttempt';
 import type {
   AmplifyJobWithBranch,
   GithubRunWithJobs,
@@ -75,14 +75,12 @@ export function relevantRowJobs(
   );
 }
 
-/** A run's document for a row and status set, or `undefined` when it has
- * no relevant jobs (the run is not the cell's, A§4.3.6). */
-export function githubRunDocument(
+/** A run's document from its relevant jobs, or `undefined` when there are
+ * none (the run is not the cell's, A§4.3.6). */
+export function runDocument(
   entry: GithubRunWithJobs,
-  rowKeyTests: readonly MatchTest[],
-  jobTest: Record<string, unknown> = {},
+  jobs: readonly GithubWorkflowJob[],
 ): GithubRunDocument | undefined {
-  const jobs = relevantRowJobs(entry, rowKeyTests, jobTest);
   if (jobs.length === 0) return undefined;
   return {
     workflow: entry.run.workflowName,
@@ -92,6 +90,14 @@ export function githubRunDocument(
     jobs: jobs.map(jobDocument),
   };
 }
+
+/** A run's document for a row and status set (see `runDocument`). */
+export const githubRunDocument = (
+  entry: GithubRunWithJobs,
+  rowKeyTests: readonly MatchTest[],
+  jobTest: Record<string, unknown> = {},
+): GithubRunDocument | undefined =>
+  runDocument(entry, relevantRowJobs(entry, rowKeyTests, jobTest));
 
 export function amplifyJobDocument({
   branch,

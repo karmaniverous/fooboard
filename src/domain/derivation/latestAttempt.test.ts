@@ -6,7 +6,7 @@
  */
 import { describe, expect, it } from 'vitest';
 
-import { latestAttemptJobs } from './githubPhase';
+import { latestAttemptJobs } from './latestAttempt';
 import { makeJob } from './testFixtures';
 
 describe('latestAttemptJobs', () => {

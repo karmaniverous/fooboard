@@ -15,6 +15,7 @@ import {
   deployTestJobs,
   deployTestStatuses,
   PRESET_SUMMARY,
+  presetById,
   PRESETS,
 } from '@/domain/statuses/presets';
 
@@ -69,12 +70,6 @@ const V2DashboardSchema = z.looseObject({
   statusColors: StatusColorsSchema.default(() => StatusColorsSchema.parse({})),
 });
 
-const preset = (id: string): StatusSet => {
-  const found = PRESETS.find((p) => p.id === id);
-  if (!found) throw new Error(`missing preset ${id}`);
-  return found;
-};
-
 /** v2 to v3 for one dashboard. Invalid data is passed through for the v3
  * schema to reject. */
 export function phasesToStatusSets(input: unknown): unknown {
@@ -92,7 +87,7 @@ export function phasesToStatusSets(input: unknown): unknown {
   const { deploy, test } = mapping.phases;
   const github: StatusSet = recolored(
     {
-      ...preset('github-deploy-test'),
+      ...presetById('github-deploy-test'),
       id: 'custom-github',
       name: 'Deploy and test (upgraded)',
       jobs: deployTestJobs(deploy, test),
@@ -102,10 +97,10 @@ export function phasesToStatusSets(input: unknown): unknown {
     statusColors,
   );
   const amplify: StatusSet = defaultColors
-    ? preset('amplify')
+    ? presetById('amplify')
     : recolored(
         {
-          ...preset('amplify'),
+          ...presetById('amplify'),
           id: 'custom-amplify',
           name: 'Amplify (upgraded)',
         },

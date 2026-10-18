@@ -8,7 +8,7 @@ export * from './amplifyCell';
 export * from './candidateRuns';
 export * from './emptyStates';
 export * from './githubCell';
-export * from './githubPhase';
+export * from './latestAttempt';
 export * from './staleness';
 export * from './types';
 export * from './unmapped';

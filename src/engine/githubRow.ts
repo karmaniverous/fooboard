@@ -26,6 +26,7 @@ import {
   type ProviderFailure,
 } from '@/domain/derivation';
 import { matchesBranchPattern } from '@/domain/matching/branchPattern';
+import { inProgress } from '@/domain/statuses/resolved';
 import {
   GitHubAuthError,
   type GitHubReader,
@@ -45,8 +46,7 @@ export interface DatedBranch {
   updatedAt: string;
 }
 
-/** One derived cell and whether its run is still going (jobs queued or in
- * progress), which the displayed status alone can't tell. */
+/** One derived cell and whether it is still in progress (polled fast). */
 interface CellView {
   derivation: GithubCellDerivation;
   active: boolean;
@@ -207,10 +207,7 @@ async function refreshWith(
       derivation = deriveGithubCell({ ...input, runs: seen });
       if (derivation.kind === 'ok') break;
     }
-    // Polled fast while its status counts toward an in-progress summary.
-    const active =
-      derivation.kind === 'ok' && derivation.status.summary.inProgress;
-    return { derivation, active };
+    return { derivation, active: inProgress(derivation) };
   };
 
   const result: Record<string, Record<string, CellView>> = {};

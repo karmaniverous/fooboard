@@ -9,9 +9,17 @@
 import { omit } from 'radash';
 
 import type { Dashboard } from '@/domain/config/dashboard';
-import { groupOf } from '@/domain/config/groups';
 import type { Row } from '@/domain/config/row';
 import type { StatusProvider } from '@/domain/config/statusSets';
+
+export const setDashboardStatusSet = (
+  dashboard: Dashboard,
+  provider: StatusProvider,
+  id: string,
+): Dashboard => ({
+  ...dashboard,
+  statusSets: { ...dashboard.statusSets, [provider]: id },
+});
 
 export function setGroupStatusSet(
   dashboard: Dashboard,
@@ -62,11 +70,3 @@ export const setCellStatusSet = (
       ? { ...r.cellStatusSets, [stageId]: id }
       : omit(r.cellStatusSets, [stageId]),
   }));
-
-/** The set id a row inherits (its group's, else the dashboard's). */
-export function rowInherits(dashboard: Dashboard, row: Row): string {
-  return (
-    groupOf(dashboard.rowGroups, row.id)?.statusSets[row.type] ??
-    dashboard.statusSets[row.type]
-  );
-}

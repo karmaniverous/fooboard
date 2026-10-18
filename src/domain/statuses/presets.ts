@@ -235,3 +235,10 @@ export const PRESETS: readonly StatusSet[] = [
     ],
   },
 ].map((p) => StatusSetSchema.parse(p));
+
+/** The bundled preset `id`; a missing one is a bug. */
+export function presetById(id: string): StatusSet {
+  const preset = PRESETS.find((p) => p.id === id);
+  if (!preset) throw new Error(`no preset ${id}`);
+  return preset;
+}

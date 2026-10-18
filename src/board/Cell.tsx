@@ -15,7 +15,6 @@ import { useRef } from 'react';
 
 import { ExternalLink } from '@/components/ExternalLink';
 import type { BoardCell } from '@/engine';
-import { textOn } from '@/lib/contrast';
 import { cn } from '@/lib/utils';
 
 import { type Keyed, Lines } from './CellLines';
@@ -28,6 +27,7 @@ import {
   relativeTime,
   shortSha,
   STATUS_GLYPH,
+  statusLook,
 } from './cellView';
 import { type Rung } from './layout';
 import { firstLine } from './layoutContents';
@@ -191,15 +191,15 @@ export function Cell({
     .filter(Boolean)
     .join(', ');
 
+  const look = statusLook(status);
   return (
     <div
       className={cn(
         'relative flex h-full overflow-hidden rounded-md font-medium',
         pad,
-        status.outlined && 'border border-dashed border-slate-500',
+        look.className,
       )}
-      // Text in white or near-black, whichever reads on the fill (WCAG AA).
-      style={{ backgroundColor: status.color, color: textOn(status.color) }}
+      style={look.style}
     >
       <ExternalLink
         unstyled

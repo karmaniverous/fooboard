@@ -8,10 +8,9 @@
 import { describe, expect, it } from 'vitest';
 
 import { DashboardSchema } from '@/domain/config/dashboard';
-import { statusSetFor } from '@/domain/statuses/resolve';
+import { inheritedStatusSetId, statusSetFor } from '@/domain/statuses/resolve';
 
 import {
-  rowInherits,
   setCellStatusSet,
   setGroupStatusSet,
   setRowStatusSet,
@@ -29,7 +28,7 @@ const row = (d: typeof base) => d.rows[0];
 describe('status-set overrides', () => {
   it('resolve cell over row over row group over dashboard, and clear', () => {
     let d = setGroupStatusSet(base, 'g', 'github', 'github-single-job');
-    expect(rowInherits(d, row(d))).toBe('github-single-job');
+    expect(inheritedStatusSetId(d, row(d))).toBe('github-single-job');
     expect(statusSetFor(d, row(d), 'dev').id).toBe('github-single-job');
     d = setRowStatusSet(d, 'web', 'github-deploy-test');
     expect(statusSetFor(d, row(d), 'dev').id).toBe('github-deploy-test');

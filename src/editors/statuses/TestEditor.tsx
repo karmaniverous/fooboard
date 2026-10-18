@@ -15,6 +15,7 @@ import {
   fromSchema,
   toSchema,
 } from '@/domain/statuses/testForm';
+import { patchAt } from '@/lib/lists';
 
 import { CommitInput } from '../fields';
 
@@ -91,7 +92,7 @@ function ConditionsForm({
   jobsScope: boolean;
 }): React.JSX.Element {
   const set = (i: number, change: Partial<Condition>) => {
-    onChange(conditions.map((c, j) => (j === i ? { ...c, ...change } : c)));
+    onChange(patchAt(conditions, i, change));
   };
   return (
     <div className="flex flex-col gap-1" role="group" aria-label={label}>

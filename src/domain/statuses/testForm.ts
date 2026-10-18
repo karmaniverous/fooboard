@@ -10,6 +10,7 @@
 import { z } from 'zod';
 
 import { caseless, textPattern } from './pattern';
+import { all, anyJob, everyJob, has } from './schemaBuilders';
 
 type ConditionScope = 'value' | 'anyJob' | 'everyJob';
 
@@ -28,12 +29,6 @@ export interface Condition {
 
 type Schema = Record<string, unknown>;
 
-const has = (field: string, test: Schema): Schema => ({
-  type: 'object',
-  properties: { [field]: test },
-  required: [field],
-});
-
 /** One value test. Text operators ignore case; `oneOf` is exact. */
 function valueTest({ operator, value }: Condition): Schema {
   if (operator === 'oneOf')
@@ -49,25 +44,17 @@ function valueTest({ operator, value }: Condition): Schema {
 function conditionSchema(c: Condition): Schema {
   const own = has(c.field, valueTest(c));
   if (c.scope === 'value') return own;
-  return has(
-    'jobs',
-    c.scope === 'anyJob'
-      ? { type: 'array', contains: own }
-      : { type: 'array', minItems: 1, items: own },
-  );
+  return c.scope === 'anyJob' ? anyJob(own) : everyJob(own);
 }
 
 /** All of `conditions` (none: matches anything). */
-export function toSchema(conditions: readonly Condition[]): Schema {
-  const parts = conditions.map(conditionSchema);
-  if (parts.length === 1 && parts[0]) return parts[0];
-  return parts.length ? { allOf: parts } : {};
-}
+export const toSchema = (conditions: readonly Condition[]): Schema =>
+  all(...conditions.map(conditionSchema));
 
 // --- Reading back ---------------------------------------------------------
 
 const ValueTestSchema = z.union([
-  z.strictObject({ enum: z.array(z.string()).min(1) }),
+  z.strictObject({ enum: z.array(z.string()) }),
   z.strictObject({ type: z.literal('string'), pattern: z.string() }),
 ]);
 

@@ -26,8 +26,8 @@ import { CommitInput } from './fields';
 import { RowsEditor } from './RowsEditor';
 import { MappingEditor } from './SettingsEditors';
 import { StagesEditor } from './StagesEditor';
+import { StatusSetsEditor } from './statuses/StatusSetsEditor';
 import type { UnknownCell } from './statuses/unknownRuns';
-import { StatusSetsEditor } from './StatusSetsEditor';
 
 const TABS = ['General', 'Rows', 'Stages', 'Mapping', 'Statuses'] as const;
 type Tab = (typeof TABS)[number];

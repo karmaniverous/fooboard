@@ -13,6 +13,8 @@ import { type Condition, fromSchema, toSchema } from './testForm';
 
 const conditions: Condition[][] = [
   [],
+  // No values yet (mid-edit): still the form's.
+  [{ scope: 'value', field: 'status', operator: 'oneOf', value: '' }],
   [
     {
       scope: 'value',
@@ -76,8 +78,8 @@ describe('testForm', () => {
         conclusion,
       })),
     });
-    const any = conditions[2];
-    const every = conditions[3];
+    const any = conditions[3];
+    const every = conditions[4];
     expect(passes(any, run(['failure']))).toBe(true);
     expect(passes(every, run(['success', 'success']))).toBe(true);
     expect(passes(every, run(['success', 'failure']))).toBe(false);

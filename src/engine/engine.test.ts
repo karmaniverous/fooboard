@@ -283,9 +283,9 @@ describe('board engine review regressions', () => {
     );
   });
 
-  it('marks a cell active while a job is queued, whatever it displays', async () => {
+  it('marks a cell active while its status is in progress', async () => {
     const model = await demoModel();
-    // Partial success: deploy done, test still queued.
+    // Partial: deploy done, tests to come.
     expect(cell(model, 'web-app', 'bali')?.active).toBe(true);
     expect(cell(model, 'mobile-bff', 'prod')?.active).toBe(false);
   });

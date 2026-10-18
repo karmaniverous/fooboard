@@ -11,15 +11,18 @@ import { textPattern } from './pattern';
 
 export type JsonSchema = Record<string, unknown>;
 
+/** An object whose `property` is present and passes `test`. */
+export const has = (property: string, test: JsonSchema): JsonSchema => ({
+  type: 'object',
+  properties: { [property]: test },
+  required: [property],
+});
+
 /** A property is one of `values` (`null` allowed). */
 export const oneOf = (
   property: string,
   values: readonly (string | null)[],
-): JsonSchema => ({
-  type: 'object',
-  properties: { [property]: { enum: [...values] } },
-  required: [property],
-});
+): JsonSchema => has(property, { enum: [...values] });
 
 /** The job's name passes any of `tests` (OR'd, as match tests are). */
 export const nameMatches = (tests: readonly MatchTest[]): JsonSchema => ({
@@ -35,26 +38,22 @@ export const nameMatches = (tests: readonly MatchTest[]): JsonSchema => ({
   required: ['name'],
 });
 
-/** Every one of `parts` holds. */
-export const all = (...parts: JsonSchema[]): JsonSchema =>
-  parts.length === 1 && parts[0] ? parts[0] : { allOf: parts };
+/** Every one of `parts` holds (none: anything does). */
+export const all = (...parts: JsonSchema[]): JsonSchema => {
+  if (parts.length === 0) return {};
+  return parts.length === 1 && parts[0] ? parts[0] : { allOf: parts };
+};
 
 /** Not `part`. */
 export const not = (part: JsonSchema): JsonSchema => ({ not: part });
 
 /** Some job of the run passes `job`. */
-export const anyJob = (job: JsonSchema): JsonSchema => ({
-  type: 'object',
-  properties: { jobs: { type: 'array', contains: job } },
-  required: ['jobs'],
-});
+export const anyJob = (job: JsonSchema): JsonSchema =>
+  has('jobs', { type: 'array', contains: job });
 
 /** Every job of the run passes `job` (and there is at least one). */
-export const everyJob = (job: JsonSchema): JsonSchema => ({
-  type: 'object',
-  properties: { jobs: { type: 'array', minItems: 1, items: job } },
-  required: ['jobs'],
-});
+export const everyJob = (job: JsonSchema): JsonSchema =>
+  has('jobs', { type: 'array', minItems: 1, items: job });
 
 /** GitHub job conclusions that count as failed (as today, A§4.3.3). */
 export const FAILED = ['failure', 'timed_out', 'startup_failure'] as const;

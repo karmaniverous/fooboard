@@ -8,6 +8,20 @@
 import type { StatusIcon } from '@/domain/config/statusSets';
 import type { EmptyCellState } from '@/domain/derivation';
 import type { StalenessBadge } from '@/domain/derivation';
+import type { ResolvedStatus } from '@/domain/statuses/resolved';
+import { textOn } from '@/lib/contrast';
+
+/** How a status fills a cell or a legend swatch: its colour, text in white
+ * or near-black (whichever reads, WCAG AA), and a dashed outline when
+ * outlined. */
+export const statusLook = (
+  status: Pick<ResolvedStatus, 'color' | 'outlined'>,
+): { className: string | undefined; style: React.CSSProperties } => ({
+  className: status.outlined
+    ? 'border border-dashed border-slate-500'
+    : undefined,
+  style: { backgroundColor: status.color, color: textOn(status.color) },
+});
 
 /** The glyph for each status icon (A§4.3.6). */
 export const STATUS_GLYPH: Record<StatusIcon, string> = {

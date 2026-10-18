@@ -45,6 +45,10 @@ describe('StatusLegend', () => {
     const set = screen.getByRole('region', { name: 'GitHub deploy and test' });
     expect(within(set).getByText('Tests failed')).toBeInTheDocument();
     expect(within(set).getAllByRole('listitem')).toHaveLength(9);
+    // Outlined statuses are outlined here too.
+    expect(within(set).getByText('Queued').closest('li')).toHaveClass(
+      'border-dashed',
+    );
     expect(
       screen.getByRole('region', { name: 'GitHub single job' }),
     ).toBeInTheDocument();

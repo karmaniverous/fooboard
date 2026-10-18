@@ -9,7 +9,7 @@ import { max } from 'radash';
 
 import type { PhaseTests } from '@/domain/config/legacyV2';
 import type { MatchTest } from '@/domain/config/matchTest';
-import { latestAttemptJobs } from '@/domain/derivation/githubPhase';
+import { latestAttemptJobs } from '@/domain/derivation/latestAttempt';
 import type { GithubWorkflowJob } from '@/domain/derivation/types';
 import { matchesAny } from '@/domain/matching/matchTest';
 

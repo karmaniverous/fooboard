@@ -118,4 +118,69 @@ describe('addStatusFor', () => {
       (once.customStatusSets[0]?.cell.length ?? 0) + 1,
     );
   });
+
+  it.each([
+    [
+      'row',
+      {
+        rows: [
+          { ...base.rows[0], statusSet: 'github-single-job' },
+          base.rows[1],
+        ],
+      },
+    ],
+    [
+      'row group',
+      {
+        rowGroups: [
+          {
+            id: 'g',
+            memberIds: ['web'],
+            statusSets: { github: 'github-single-job' },
+          },
+        ],
+      },
+    ],
+  ])('chooses the copy at the %s that chose the preset', (_, change) => {
+    const d = DashboardSchema.parse({ ...base, ...change });
+    const next = addStatusFor(d, {
+      rowId: 'web',
+      stageId: 'dev',
+      document: run,
+    });
+    expect(next.statusSets.github).toBe('github-deploy-test');
+    expect(statusSetFor(next, next.rows[0], 'dev').id).toBe('custom-github');
+    expect(statusSetFor(next, next.rows[1], 'dev').id).toBe(
+      'github-deploy-test',
+    );
+  });
+
+  it("drafts from an Amplify job's status, or matches nothing for an unreadable document", () => {
+    const job = {
+      branch: 'main',
+      status: 'CANCELLING',
+      commitId: 'a',
+      startTime: null,
+      endTime: null,
+    };
+    const amplify = addStatusFor(base, {
+      rowId: 'web',
+      stageId: 'dev',
+      document: job,
+    });
+    const set = statusSetFor(amplify, amplify.rows[0], 'dev');
+    expect(classify(job, set)?.id).toBe(set.cell[0]?.id);
+    const odd = addStatusFor(base, {
+      rowId: 'web',
+      stageId: 'dev',
+      document: 42,
+    });
+    expect(odd.customStatusSets[0]?.cell[0]?.test).toEqual({ not: {} });
+  });
+
+  it('leaves the dashboard alone for a row it does not have', () => {
+    expect(
+      addStatusFor(base, { rowId: 'gone', stageId: 'dev', document: run }),
+    ).toBe(base);
+  });
 });

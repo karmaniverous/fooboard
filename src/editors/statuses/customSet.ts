@@ -10,6 +10,8 @@ import type { Dashboard } from '@/domain/config/dashboard';
 import type { CellStatus, StatusSet } from '@/domain/config/statusSets';
 import { findStatusSet } from '@/domain/statuses/resolve';
 
+import { setDashboardStatusSet } from './overrideSets';
+
 /** A fresh id: `base`, then `base-2`, `base-3`... not in `taken`. */
 function freshId(base: string, taken: readonly string[]): string {
   if (!taken.includes(base)) return base;
@@ -18,14 +20,14 @@ function freshId(base: string, taken: readonly string[]): string {
   return `${base}-${String(n)}`;
 }
 
-/** A copy of set `id` the dashboard owns (not yet chosen anywhere), and
- * its id. */
+/** The dashboard with a copy of set `id` it owns (not yet chosen
+ * anywhere), and the copy; `undefined` for an unknown set. */
 export function copySet(
   dashboard: Dashboard,
   id: string,
-): { dashboard: Dashboard; id: string } {
+): { dashboard: Dashboard; copy: StatusSet } | undefined {
   const source = findStatusSet(id, dashboard.customStatusSets);
-  if (!source) return { dashboard, id };
+  if (!source) return undefined;
   const copy: StatusSet = {
     ...structuredClone(source),
     id: freshId(
@@ -39,7 +41,7 @@ export function copySet(
       ...dashboard,
       customStatusSets: [...dashboard.customStatusSets, copy],
     },
-    id: copy.id,
+    copy,
   };
 }
 
@@ -47,14 +49,13 @@ export function copySet(
  * board looks the same until it is edited. */
 export function customise(dashboard: Dashboard, id: string): Dashboard {
   const copied = copySet(dashboard, id);
-  const copy = copied.dashboard.customStatusSets.find(
-    (s) => s.id === copied.id,
-  );
-  if (!copy || copied.dashboard === dashboard) return dashboard;
-  return {
-    ...copied.dashboard,
-    statusSets: { ...dashboard.statusSets, [copy.provider]: copy.id },
-  };
+  return copied
+    ? setDashboardStatusSet(
+        copied.dashboard,
+        copied.copy.provider,
+        copied.copy.id,
+      )
+    : dashboard;
 }
 
 /** `dashboard` with its own set `id` replaced by `change(set)`. */
@@ -106,13 +107,4 @@ export function addCellStatus(set: StatusSet, name = 'New status'): StatusSet {
     test: { not: {} },
   };
   return { ...set, cell: [status, ...set.cell] };
-}
-
-/** Move item `index` of `list` by `by` places (clamped). */
-export function move<T>(list: readonly T[], index: number, by: number): T[] {
-  const to = Math.max(0, Math.min(list.length - 1, index + by));
-  const next = [...list];
-  const [item] = next.splice(index, 1);
-  if (item !== undefined) next.splice(to, 0, item);
-  return next;
 }

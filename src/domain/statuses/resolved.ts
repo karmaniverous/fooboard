@@ -65,6 +65,12 @@ export function resolveStatus(
   };
 }
 
+/** Is a derived cell still in progress? It counts toward an in-progress
+ * summary status, and is polled at the active interval (C-16). */
+export const inProgress = (
+  derivation: { kind: 'ok'; status: ResolvedStatus } | { kind: 'empty' },
+): boolean => derivation.kind === 'ok' && derivation.status.summary.inProgress;
+
 /** Classify `doc` against `set` and resolve the result. */
 export const statusOf = (doc: unknown, set: StatusSet): ResolvedStatus =>
   resolveStatus(set, classify(doc, set));

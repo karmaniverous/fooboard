@@ -11,14 +11,19 @@
 import { z } from 'zod';
 
 import type { Dashboard } from '@/domain/config/dashboard';
-import { groupOf } from '@/domain/config/groups';
 import type { Row } from '@/domain/config/row';
 import { UNKNOWN_STATUS_ID } from '@/domain/config/statusSets';
-import { statusSetFor } from '@/domain/statuses/resolve';
+import { statusSetFor, statusSetSource } from '@/domain/statuses/resolve';
 import { toSchema } from '@/domain/statuses/testForm';
 import type { BoardModel } from '@/engine';
 
 import { addCellStatus, copySet, updateSet } from './customSet';
+import {
+  setCellStatusSet,
+  setDashboardStatusSet,
+  setGroupStatusSet,
+  setRowStatusSet,
+} from './overrideSets';
 
 export interface UnknownCell {
   rowId: string;
@@ -57,38 +62,24 @@ export function unknownCells(
   );
 }
 
-/** Point whichever level chose `from` for this cell at `to`. */
+/** Point the level that chose this cell's set at `to`. */
 function chooseAt(
   dashboard: Dashboard,
   row: Row,
   stageId: string,
   to: string,
 ): Dashboard {
-  const setRow = (
-    change: Partial<Pick<Row, 'statusSet' | 'cellStatusSets'>>,
-  ): Dashboard => ({
-    ...dashboard,
-    rows: dashboard.rows.map((r) =>
-      r.id === row.id ? { ...r, ...change } : r,
-    ),
-  });
-  if (row.cellStatusSets[stageId])
-    return setRow({ cellStatusSets: { ...row.cellStatusSets, [stageId]: to } });
-  if (row.statusSet) return setRow({ statusSet: to });
-  const group = groupOf(dashboard.rowGroups, row.id);
-  if (group?.statusSets[row.type])
-    return {
-      ...dashboard,
-      rowGroups: dashboard.rowGroups.map((g) =>
-        g.id === group.id
-          ? { ...g, statusSets: { ...g.statusSets, [row.type]: to } }
-          : g,
-      ),
-    };
-  return {
-    ...dashboard,
-    statusSets: { ...dashboard.statusSets, [row.type]: to },
-  };
+  const source = statusSetSource(dashboard, row, stageId);
+  switch (source.from) {
+    case 'cell':
+      return setCellStatusSet(dashboard, row.id, stageId, to);
+    case 'row':
+      return setRowStatusSet(dashboard, row.id, to);
+    case 'rowGroup':
+      return setGroupStatusSet(dashboard, source.groupId, row.type, to);
+    case 'dashboard':
+      return setDashboardStatusSet(dashboard, row.type, to);
+  }
 }
 
 /** What a first test needs of a document: an Amplify job's status, or a
@@ -139,13 +130,12 @@ export function addStatusFor(
   const row = dashboard.rows.find((r) => r.id === cell.rowId);
   if (!row) return dashboard;
   const used = statusSetFor(dashboard, row, cell.stageId);
-  let next = dashboard;
-  let id = used.id;
-  if (!dashboard.customStatusSets.some((s) => s.id === used.id)) {
-    ({ dashboard: next, id } = copySet(dashboard, used.id));
-    next = chooseAt(next, row, cell.stageId, id);
-  }
-  return updateSet(next, id, (set) => {
+  const owned = dashboard.customStatusSets.some((s) => s.id === used.id);
+  const copied = owned ? undefined : copySet(dashboard, used.id);
+  const next = copied
+    ? chooseAt(copied.dashboard, row, cell.stageId, copied.copy.id)
+    : dashboard;
+  return updateSet(next, copied?.copy.id ?? used.id, (set) => {
     const added = addCellStatus(set);
     const [first, ...rest] = added.cell;
     return {

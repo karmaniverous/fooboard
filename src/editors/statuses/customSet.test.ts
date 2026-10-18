@@ -13,7 +13,6 @@ import { DashboardSchema } from '@/domain/config/dashboard';
 import {
   addCellStatus,
   customise,
-  move,
   removeSet,
   setInUse,
   updateSet,
@@ -77,16 +76,5 @@ describe('addCellStatus', () => {
       test: { not: {} },
     });
     expect(next.cell).toHaveLength(set.cell.length + 1);
-  });
-});
-
-describe('move', () => {
-  it.each([
-    [0, 1, ['b', 'a', 'c']],
-    [2, -1, ['a', 'c', 'b']],
-    [0, -1, ['a', 'b', 'c']],
-    [2, 5, ['a', 'b', 'c']],
-  ])('moves item %i by %i', (index, by, expected) => {
-    expect(move(['a', 'b', 'c'], index, by)).toEqual(expected);
   });
 });

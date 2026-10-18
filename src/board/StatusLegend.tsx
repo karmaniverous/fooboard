@@ -16,20 +16,20 @@ import {
   resolveStatus,
   UNKNOWN,
 } from '@/domain/statuses/resolved';
-import { textOn } from '@/lib/contrast';
 import { cn } from '@/lib/utils';
 
-import { STATUS_GLYPH } from './cellView';
+import { STATUS_GLYPH, statusLook } from './cellView';
 import { legendSets } from './legendSets';
 
 function Swatch({ status }: { status: ResolvedStatus }): React.JSX.Element {
+  const look = statusLook(status);
   return (
     <li
       className={cn(
         'flex items-center gap-1.5 rounded px-1.5 py-0.5',
-        status.outlined && 'border border-dashed border-slate-500',
+        look.className,
       )}
-      style={{ backgroundColor: status.color, color: textOn(status.color) }}
+      style={look.style}
     >
       <span aria-hidden className="w-[1em] text-center">
         {STATUS_GLYPH[status.icon]}
