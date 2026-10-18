@@ -18,8 +18,11 @@ import {
   PRESETS,
 } from '@/domain/statuses/presets';
 
-import { DEFAULT_STATUS_COLORS, StatusColorsSchema } from './colors';
-import { PhaseTestsSchema } from './mappingSettings';
+import {
+  DEFAULT_STATUS_COLORS,
+  PhaseTestsSchema,
+  StatusColorsSchema,
+} from './legacyV2';
 import type { StatusSet } from './statusSets';
 
 type LegacyColor = keyof typeof DEFAULT_STATUS_COLORS;

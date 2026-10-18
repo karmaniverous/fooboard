@@ -1,29 +1,79 @@
 /**
- * GitHub cell status (spec.md §4.3.3): map each relevant job to a state,
- * apply rules 1-5 in order, and pick the determining job, which supplies
- * the cell's phase label, link and time. Pure.
+ * Today's (pre-A§4.3.6) GitHub phase tests and status rules (A§4.3.1,
+ * A§4.3.3), frozen as the reference the bundled *GitHub deploy and test*
+ * status set is checked against. Test-only; the board no longer uses them.
  *
  * @module
  */
 import { max } from 'radash';
 
-import type { Phase, RelevantJob } from './githubPhase';
-import type { GithubWorkflowJob } from './types';
+import type { PhaseTests } from '@/domain/config/legacyV2';
+import type { MatchTest } from '@/domain/config/matchTest';
+import { latestAttemptJobs } from '@/domain/derivation/githubPhase';
+import type { GithubWorkflowJob } from '@/domain/derivation/types';
+import { matchesAny } from '@/domain/matching/matchTest';
+
+/** The two fixed phases, in order (spec.md §4.3.1: deploy, then test). */
+type Phase = 'deploy' | 'test';
+
+/** A job that matched a phase, paired with that phase. */
+export interface RelevantJob {
+  job: GithubWorkflowJob;
+  phase: Phase;
+}
+
+const IGNORED_CONCLUSIONS = new Set(['skipped', 'neutral', 'stale']);
+
+/** Which phase a job's name matches, if any. A job matching both phase
+ * tests counts as `test` (spec.md §4.3.1). */
+function jobPhase(
+  job: GithubWorkflowJob,
+  phases: PhaseTests,
+): Phase | undefined {
+  const context = { jobName: job.name, workflowName: '' };
+  if (matchesAny(phases.test, context, false)) return 'test';
+  if (matchesAny(phases.deploy, context, false)) return 'deploy';
+  return undefined;
+}
+
+/**
+ * The relevant jobs of a run (spec.md §4.3.2): latest attempt, matching a
+ * phase and, for a keyed row, a row key test on job or workflow name. A
+ * key-less row (`rowKeyTests` empty) sees all phase-matching jobs,
+ * including ones that also match another row's key (spec.md §4.3.2 point 4).
+ */
+export function relevantJobs(
+  jobs: readonly GithubWorkflowJob[],
+  workflowName: string,
+  phases: PhaseTests,
+  rowKeyTests: readonly MatchTest[],
+): RelevantJob[] {
+  return latestAttemptJobs(jobs)
+    .filter((job) => !IGNORED_CONCLUSIONS.has(job.conclusion ?? ''))
+    .flatMap((job) => {
+      const phase = jobPhase(job, phases);
+      if (!phase) return [];
+      if (rowKeyTests.length > 0) {
+        const context = { jobName: job.name, workflowName };
+        if (!matchesAny(rowKeyTests, context, false)) return [];
+      }
+      return [{ job, phase }];
+    });
+}
 
 /** Cell status vocabulary (spec.md §3), in the order the rules test for them. */
 export type CellStatus =
   'failure' | 'cancelled' | 'started' | 'success' | 'partialSuccess' | 'queued';
 
 /** A job's mapped state (spec.md §4.3.3). */
-export type JobState =
-  'queued' | 'running' | 'succeeded' | 'failed' | 'cancelled';
+type JobState = 'queued' | 'running' | 'succeeded' | 'failed' | 'cancelled';
 
 const FAILED_CONCLUSIONS = new Set(['failure', 'timed_out', 'startup_failure']);
 
 /** Map one job's status/conclusion to its state (spec.md §4.3.3: `queued`,
  * `waiting`, `pending`, `requested` statuses and `action_required` all
  * count as queued, which covers approval waits). */
-export function jobState(job: GithubWorkflowJob): JobState {
+function jobState(job: GithubWorkflowJob): JobState {
   if (job.conclusion === 'action_required') return 'queued';
   if (job.conclusion === 'success') return 'succeeded';
   if (job.conclusion && FAILED_CONCLUSIONS.has(job.conclusion)) return 'failed';
@@ -34,7 +84,7 @@ export function jobState(job: GithubWorkflowJob): JobState {
 
 /** The run's final phase: `test` if any relevant job is a test job,
  * otherwise `deploy` (spec.md §4.3.3). */
-export function finalPhase(jobs: readonly RelevantJob[]): Phase {
+function finalPhase(jobs: readonly RelevantJob[]): Phase {
   return jobs.some((j) => j.phase === 'test') ? 'test' : 'deploy';
 }
 

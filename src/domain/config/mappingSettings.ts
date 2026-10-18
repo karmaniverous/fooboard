@@ -9,41 +9,7 @@
  */
 import { z } from 'zod';
 
-import { JobNameTestSchema, WorkflowNameTestSchema } from './matchTest';
-
-/** Default phase test for `deploy`: job name contains "deploy". */
-export const DEFAULT_DEPLOY_PHASE_TESTS = [
-  { field: 'jobName', operator: 'contains', value: 'deploy' },
-] as const;
-
-/** Default phase test for `test`: job name contains "test". */
-export const DEFAULT_TEST_PHASE_TESTS = [
-  { field: 'jobName', operator: 'contains', value: 'test' },
-] as const;
-
-/** Fresh copies of the default tests. Zod defaults skip inner parsing, so
- * returning the constants' own objects would share them across dashboards. */
-const fresh = <T extends object>(tests: readonly T[]): T[] =>
-  tests.map((t) => ({ ...t }));
-
-const defaultPhaseTests = () => ({
-  deploy: fresh(DEFAULT_DEPLOY_PHASE_TESTS),
-  test: fresh(DEFAULT_TEST_PHASE_TESTS),
-});
-
-/**
- * Phase tests on job name, OR'd within each phase. Phase order is fixed
- * (`deploy`, then `test`); a job matching both tests counts as `test`.
- */
-export const PhaseTestsSchema = z.object({
-  deploy: z
-    .array(JobNameTestSchema)
-    .default(() => fresh(DEFAULT_DEPLOY_PHASE_TESTS)),
-  test: z
-    .array(JobNameTestSchema)
-    .default(() => fresh(DEFAULT_TEST_PHASE_TESTS)),
-});
-export type PhaseTests = z.infer<typeof PhaseTestsSchema>;
+import { WorkflowNameTestSchema } from './matchTest';
 
 /**
  * Workflow-name include/exclude filter. An empty `include` list means
@@ -57,7 +23,6 @@ export type WorkflowFilter = z.infer<typeof WorkflowFilterSchema>;
 
 /** Dashboard-level mapping settings (spec.md §4.3.1), with defaults. */
 export const MappingSettingsSchema = z.object({
-  phases: PhaseTestsSchema.default(defaultPhaseTests),
   workflowFilter: WorkflowFilterSchema.default(() => ({
     include: [],
     exclude: [],

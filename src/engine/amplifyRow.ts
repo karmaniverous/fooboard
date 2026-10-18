@@ -15,6 +15,7 @@ import {
 } from '@/domain/config/credentialRefs';
 import type { AmplifyRow } from '@/domain/config/row';
 import type { Stage } from '@/domain/config/stage';
+import type { StatusSet } from '@/domain/config/statusSets';
 import {
   type AmplifyCellDerivation,
   type CredentialStatus,
@@ -36,17 +37,22 @@ export type AmplifyRowRefresh =
   | { kind: 'refreshed'; cells: Record<string, AmplifyCellDerivation> }
   | { kind: 'rate-limited' };
 
+/** The status set a cell in a stage uses (A§4.3.6). */
+type SetFor = (stageId: string) => StatusSet;
+
 function emptyRow(
   stages: readonly Stage[],
+  setFor: SetFor,
   credentialStatus: CredentialStatus,
   providerFailure?: ProviderFailure,
 ): AmplifyRowRefresh {
   const cells = objectify(
     stages,
     (s) => s.id,
-    () =>
+    (s) =>
       deriveAmplifyCell({
         jobsByBranch: [],
+        set: setFor(s.id),
         branchExists: false,
         credentialStatus,
         providerFailure,
@@ -62,6 +68,7 @@ function emptyRow(
 export async function refreshAmplifyRow(
   row: AmplifyRow,
   stages: readonly Stage[],
+  setFor: SetFor,
   defaults: DefaultCredentials,
   readersFor: (credentialId: string) => AmplifyReaderFor | undefined,
 ): Promise<AmplifyRowRefresh> {
@@ -72,14 +79,14 @@ export async function refreshAmplifyRow(
       'aws',
       source.credentialId,
     );
-    if (!credentialId) return emptyRow(stages, 'missing');
+    if (!credentialId) return emptyRow(stages, setFor, 'missing');
     sources.push({ ...source, credentialId });
   }
   const readers = new Map(
     sources.map((s) => [s.credentialId, readersFor(s.credentialId)]),
   );
   if ([...readers.values()].some((r) => r === undefined)) {
-    return emptyRow(stages, 'missing');
+    return emptyRow(stages, setFor, 'missing');
   }
   // One read per source and branch, however many stages share it.
   const readerFor: AmplifyReaderFor = memoizeReaderFor((source) => {
@@ -96,7 +103,11 @@ export async function refreshAmplifyRow(
         stage.branchPattern,
         readerFor,
       );
-      cells[stage.id] = deriveAmplifyCell({ ...jobs, credentialStatus: 'ok' });
+      cells[stage.id] = deriveAmplifyCell({
+        ...jobs,
+        set: setFor(stage.id),
+        credentialStatus: 'ok',
+      });
     }
     return { kind: 'refreshed', cells };
   } catch (err) {
@@ -106,12 +117,17 @@ export async function refreshAmplifyRow(
     });
     return outcome.kind === 'rate-limited'
       ? outcome
-      : emptyRow(stages, outcome.credentialStatus, outcome.providerFailure);
+      : emptyRow(
+          stages,
+          setFor,
+          outcome.credentialStatus,
+          outcome.providerFailure,
+        );
   }
 }
 
-/** Cell views for an Amplify row: a cell is active while its job is
- * queued or running (it drives the faster poll). */
+/** Cell views for an Amplify row: a cell is active while its status
+ * counts toward an in-progress summary (it drives the faster poll). */
 export function amplifyCellViews(
   cells: Readonly<Record<string, AmplifyCellDerivation>>,
 ): Record<string, { derivation: AmplifyCellDerivation; active: boolean }> {
@@ -121,8 +137,7 @@ export function amplifyCellViews(
       {
         derivation,
         active:
-          derivation.kind === 'ok' &&
-          (derivation.status === 'started' || derivation.status === 'queued'),
+          derivation.kind === 'ok' && derivation.status.summary.inProgress,
       },
     ]),
   );

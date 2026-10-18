@@ -10,7 +10,8 @@ import { describe, expect, it } from 'vitest';
 
 import { amplifyJobSummary } from '@/lib/amplify/sdkShapes';
 
-import { deriveAmplifyCell, mapAmplifyStatus } from './amplifyCell';
+import { deriveAmplifyCell } from './amplifyCell';
+import { amplifySet } from './testFixtures';
 import type { AmplifyJobWithBranch } from './types';
 
 function job(overrides: Partial<JobSummary> = {}): JobSummary {
@@ -23,19 +24,6 @@ function job(overrides: Partial<JobSummary> = {}): JobSummary {
     ...overrides,
   });
 }
-
-describe('mapAmplifyStatus', () => {
-  it.each([
-    ['PENDING', 'queued'],
-    ['PROVISIONING', 'queued'],
-    ['RUNNING', 'started'],
-    ['SUCCEED', 'success'],
-    ['FAILED', 'failure'],
-    ['CANCELLED', 'cancelled'],
-  ] as const)('maps %s to %s', (status, expected) => {
-    expect(mapAmplifyStatus(status)).toBe(expected);
-  });
-});
 
 const appA = { region: 'us-east-1', appId: 'appA' };
 const appB = { region: 'eu-west-1', appId: 'appB' };
@@ -58,6 +46,7 @@ describe('deriveAmplifyCell', () => {
     };
     const result = deriveAmplifyCell({
       jobsByBranch: [older, newer],
+      set: amplifySet,
       branchExists: true,
       credentialStatus: 'ok',
     });
@@ -77,6 +66,7 @@ describe('deriveAmplifyCell', () => {
       jobsByBranch: [
         { source: appA, branch: 'main', job: job({ jobId: undefined }) },
       ],
+      set: amplifySet,
       branchExists: true,
       credentialStatus: 'ok',
     });
@@ -86,6 +76,7 @@ describe('deriveAmplifyCell', () => {
   it('needs-credential takes priority over everything else', () => {
     const result = deriveAmplifyCell({
       jobsByBranch: [],
+      set: amplifySet,
       branchExists: true,
       credentialStatus: 'expired',
     });
@@ -95,6 +86,7 @@ describe('deriveAmplifyCell', () => {
   it('reports no-branch when no Amplify branch matches the stage pattern', () => {
     const result = deriveAmplifyCell({
       jobsByBranch: [],
+      set: amplifySet,
       branchExists: false,
       credentialStatus: 'ok',
     });
@@ -104,13 +96,14 @@ describe('deriveAmplifyCell', () => {
   it('reports no-recent-runs when the branch exists but has no jobs', () => {
     const result = deriveAmplifyCell({
       jobsByBranch: [],
+      set: amplifySet,
       branchExists: true,
       credentialStatus: 'ok',
     });
     expect(result).toEqual({ kind: 'empty', state: 'no-recent-runs' });
   });
 
-  it('maps a failed job to Failure with its branch and commit', () => {
+  it('classifies a failed job through the Amplify set', () => {
     const entry: AmplifyJobWithBranch = {
       source: appA,
       branch: 'main',
@@ -118,13 +111,26 @@ describe('deriveAmplifyCell', () => {
     };
     const result = deriveAmplifyCell({
       jobsByBranch: [entry],
+      set: amplifySet,
       branchExists: true,
       credentialStatus: 'ok',
     });
     expect(result).toMatchObject({
       kind: 'ok',
-      status: 'failure',
-      phase: 'deploy',
+      status: { id: 'failed', summary: { id: 'failing' } },
+      document: { branch: 'main', status: 'FAILED' },
     });
+  });
+
+  it('shows Unknown for a status the set has no rule for', () => {
+    const result = deriveAmplifyCell({
+      jobsByBranch: [
+        { source: appA, branch: 'main', job: job({ status: undefined }) },
+      ],
+      set: amplifySet,
+      branchExists: true,
+      credentialStatus: 'ok',
+    });
+    expect(result).toMatchObject({ kind: 'ok', status: { id: 'unknown' } });
   });
 });

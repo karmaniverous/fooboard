@@ -7,13 +7,20 @@
  */
 import { describe, expect, it } from 'vitest';
 
-import { defaultMapping, makeJob, makeRunWithJobs } from './testFixtures';
+import {
+  defaultMapping,
+  githubSet,
+  makeJob,
+  makeRunWithJobs,
+} from './testFixtures';
 import { classifyUnmappedRun, describeUnmappedReason } from './unmapped';
 
 const patterns = ['main', 'release/**'];
-const keyless = { rowKeyTests: [], branchPatterns: patterns };
+const jobTest = githubSet.jobs;
+const keyless = { rowKeyTests: [], branchPatterns: patterns, jobTest };
 const keyed = (value: string) => ({
   branchPatterns: patterns,
+  jobTest,
   rowKeyTests: [
     { field: 'jobName' as const, operator: 'contains' as const, value },
   ],
@@ -36,10 +43,10 @@ describe('classifyUnmappedRun', () => {
       { kind: 'no-stage-matches-branch', branch: 'feature/x' },
     ],
     [
-      'no-phase-matches-job',
+      'no-relevant-job',
       run('main', 'lint'),
       [keyless],
-      { kind: 'no-phase-matches-job' },
+      { kind: 'no-relevant-job' },
     ],
     ['mapped by a key-less row', run('main', 'deploy'), [keyless], undefined],
     [
@@ -78,7 +85,15 @@ describe('classifyUnmappedRun', () => {
       ),
     ).toBeUndefined();
   });
+
+  it("uses each row's status set: a run its set covers is placed", () => {
+    const anyJob = { ...keyless, jobTest: {} };
+    expect(
+      classifyUnmappedRun(run('main', 'lint'), [anyJob], defaultMapping),
+    ).toBeUndefined();
+  });
 });
+
 describe('describeUnmappedReason', () => {
   it('renders each reason as the C-15 message text', () => {
     expect(
@@ -87,8 +102,8 @@ describe('describeUnmappedReason', () => {
         branch: 'feature/x',
       }),
     ).toBe('no stage matches branch "feature/x"');
-    expect(describeUnmappedReason({ kind: 'no-phase-matches-job' })).toBe(
-      'no phase matches any job',
+    expect(describeUnmappedReason({ kind: 'no-relevant-job' })).toBe(
+      'no job its status set covers',
     );
     expect(describeUnmappedReason({ kind: 'no-row-key-matches' })).toBe(
       'no row key matches',

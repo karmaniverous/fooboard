@@ -9,6 +9,8 @@
  * @module
  */
 import { MappingSettingsSchema } from '@/domain/config/mappingSettings';
+import type { StatusSet } from '@/domain/config/statusSets';
+import { findStatusSet } from '@/domain/statuses/resolve';
 
 import type {
   GithubRunWithJobs,
@@ -65,3 +67,13 @@ export function makeRunWithJobs(
 
 /** Default mapping settings (spec.md §4.3.1 defaults). */
 export const defaultMapping = MappingSettingsSchema.parse({});
+
+const preset = (id: string): StatusSet => {
+  const set = findStatusSet(id);
+  if (!set) throw new Error(`missing preset ${id}`);
+  return set;
+};
+
+/** The bundled *GitHub deploy and test* and *Amplify* sets (A§4.3.6). */
+export const githubSet = preset('github-deploy-test');
+export const amplifySet = preset('amplify');

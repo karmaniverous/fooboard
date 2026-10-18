@@ -1,11 +1,18 @@
 /**
- * Amplify cell derivation (spec.md §4.3.4): across all of a row's sources,
- * the newest job (by start time) among branches matching the stage's
- * pattern, reusing the existing `newestJob` port. Phase is always `deploy`
- * (Amplify's single-step status). Pure; no network.
+ * Amplify cell derivation (spec.md A§4.3.4, A§4.3.6): across all of a row's
+ * sources, the newest job (by start time) among branches matching the
+ * stage's pattern, reusing the `newestJob` port; its status is the first
+ * cell status of the cell's set its document matches, or Unknown. Pure; no
+ * network.
  *
  * @module
  */
+import type { StatusSet } from '@/domain/config/statusSets';
+import {
+  type AmplifyJobDocument,
+  amplifyJobDocument,
+} from '@/domain/statuses/documents';
+import { type ResolvedStatus, statusOf } from '@/domain/statuses/resolved';
 import { buildAmplifyConsoleLink } from '@/lib/amplify/consoleLink';
 import { newestJob } from '@/lib/amplify/newestJob';
 
@@ -15,50 +22,11 @@ import type {
   ProviderFailure,
 } from './emptyStates';
 import { resolveEmptyState } from './emptyStates';
-import type { CellStatus } from './githubStatus';
 import type { AmplifyJobWithBranch } from './types';
-
-/** Amplify job status values (AWS SDK `JobStatus`): `PENDING`,
- * `PROVISIONING`, `RUNNING`, `SUCCEED`, `FAILED`, `CANCELLED`, plus
- * `CANCELLING` and `CREATED`, which spec.md §4.3.4 does not map to a cell
- * status and so fall to `mapAmplifyStatus`'s `queued` default. */
-export type AmplifyJobStatus =
-  | 'PENDING'
-  | 'PROVISIONING'
-  | 'RUNNING'
-  | 'SUCCEED'
-  | 'FAILED'
-  | 'CANCELLED'
-  | 'CANCELLING'
-  | 'CREATED';
-
-/** Map an Amplify job status to the shared cell status vocabulary. An
- * absent status (the SDK types `JobSummary.status` as optional) maps to
- * `queued`, same as the unmapped `CANCELLING`/`CREATED` values. */
-export function mapAmplifyStatus(
-  status: AmplifyJobStatus | undefined,
-): CellStatus {
-  switch (status) {
-    case 'PENDING':
-    case 'PROVISIONING':
-      return 'queued';
-    case 'RUNNING':
-      return 'started';
-    case 'SUCCEED':
-      return 'success';
-    case 'FAILED':
-      return 'failure';
-    case 'CANCELLED':
-      return 'cancelled';
-    default:
-      return 'queued';
-  }
-}
 
 export interface AmplifyCellResult {
   kind: 'ok';
-  status: CellStatus;
-  phase: 'deploy';
+  status: ResolvedStatus;
   branch: string;
   commit: string | undefined;
   /** The job's commit message, if known (C-13 rung 5). */
@@ -69,6 +37,8 @@ export interface AmplifyCellResult {
   appId: string;
   jobId: string | undefined;
   linkUrl: string | undefined;
+  /** The job's document, for the detail and *Add status* (A§4.3.6). */
+  document: AmplifyJobDocument;
 }
 
 export type AmplifyCellDerivation = AmplifyCellResult | EmptyCellResult;
@@ -77,6 +47,7 @@ export type AmplifyCellDerivation = AmplifyCellResult | EmptyCellResult;
  * of the row's sources and matching branches. */
 export function deriveAmplifyCell(input: {
   jobsByBranch: readonly AmplifyJobWithBranch[];
+  set: StatusSet;
   branchExists: boolean;
   credentialStatus: CredentialStatus;
   providerFailure?: ProviderFailure;
@@ -95,10 +66,10 @@ export function deriveAmplifyCell(input: {
   if (!bestEntry) return { kind: 'empty', state: 'no-recent-runs' };
 
   const { source, branch, job } = bestEntry;
+  const document = amplifyJobDocument(bestEntry);
   return {
     kind: 'ok',
-    status: mapAmplifyStatus(job.status),
-    phase: 'deploy',
+    status: statusOf(document, input.set),
     branch,
     commit: job.commitId,
     message: job.commitMessage,
@@ -110,5 +81,6 @@ export function deriveAmplifyCell(input: {
       job.jobId === undefined
         ? undefined
         : buildAmplifyConsoleLink({ ...source, branch, jobId: job.jobId }),
+    document,
   };
 }

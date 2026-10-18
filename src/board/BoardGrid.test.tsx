@@ -104,7 +104,7 @@ describe('BoardGrid', () => {
         ...testLayout,
         rung,
         format: 'packed',
-        lineOf: { time: 1, commit: 1, phase: 1 },
+        lineOf: { time: 1, commit: 1 },
       });
       const row = screen.getByRole('rowheader', {
         name: 'billing',
@@ -124,7 +124,7 @@ describe('BoardGrid', () => {
 
   it('opens the detail sheet on a touch tap', () => {
     renderBoard();
-    const link = screen.getAllByRole('link', { name: /Success, dev/ })[0];
+    const link = screen.getAllByRole('link', { name: /Passed, dev/ })[0];
     fireEvent.pointerDown(link, { pointerType: 'touch' });
     fireEvent.click(link);
     expect(

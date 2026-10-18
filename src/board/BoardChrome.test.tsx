@@ -27,12 +27,12 @@ describe('BoardSummary', () => {
     const { rerender } = render(
       <BoardSummary model={model} filter={null} onFilter={onFilter} />,
     );
-    fireEvent.click(screen.getByRole('radio', { name: /failing/ }));
-    expect(onFilter).toHaveBeenLastCalledWith('failing');
+    fireEvent.click(screen.getByRole('radio', { name: /behind/ }));
+    expect(onFilter).toHaveBeenLastCalledWith('behind');
     rerender(
-      <BoardSummary model={model} filter="failing" onFilter={onFilter} />,
+      <BoardSummary model={model} filter="behind" onFilter={onFilter} />,
     );
-    fireEvent.click(screen.getByRole('radio', { name: /failing/ }));
+    fireEvent.click(screen.getByRole('radio', { name: /behind/ }));
     expect(onFilter).toHaveBeenLastCalledWith(null);
   });
 });
@@ -47,8 +47,8 @@ describe('BoardSummary without words', () => {
         words={false}
       />,
     );
-    fireEvent.focus(screen.getByRole('radio', { name: '0 failing' }));
-    expect(await screen.findByRole('tooltip')).toHaveTextContent('0 failing');
+    fireEvent.focus(screen.getByRole('radio', { name: '0 behind' }));
+    expect(await screen.findByRole('tooltip')).toHaveTextContent('0 behind');
   });
 });
 

@@ -15,6 +15,7 @@ import { objectify } from 'radash';
 import type { MappingSettings } from '@/domain/config/mappingSettings';
 import type { GithubRow } from '@/domain/config/row';
 import type { Stage } from '@/domain/config/stage';
+import type { StatusSet } from '@/domain/config/statusSets';
 import {
   classifyUnmappedRun,
   type CredentialStatus,
@@ -23,7 +24,6 @@ import {
   type GithubRunWithJobs,
   isCandidateRun,
   type ProviderFailure,
-  relevantJobs,
 } from '@/domain/derivation';
 import { matchesBranchPattern } from '@/domain/matching/branchPattern';
 import {
@@ -74,10 +74,14 @@ export const repoRef = (repo: string): { owner: string; repo: string } => {
 /** The stages as one row sees them (effective branch patterns, C-14c). */
 export type StagesFor = (row: GithubRow) => readonly Stage[];
 
+/** The status set a row's cell in a stage uses (A§4.3.6). */
+export type SetFor = (row: GithubRow, stageId: string) => StatusSet;
+
 /** Every cell of every row shows the same empty state. */
 function emptyRows(
   rows: readonly GithubRow[],
   stagesFor: StagesFor,
+  setFor: SetFor,
   mapping: MappingSettings,
   credentialStatus: CredentialStatus,
   providerFailure?: ProviderFailure,
@@ -91,6 +95,7 @@ function emptyRows(
         derivation: deriveGithubCell({
           runs: [],
           mapping,
+          set: setFor(row, s.id),
           branchPattern: s.branchPattern,
           rowKeyTests: row.rowKeyTests,
           branchExists: false,
@@ -115,12 +120,20 @@ export async function refreshGithubRepo(
   repoRows: readonly GithubRow[],
   /** The stages as each row sees them (effective patterns, C-14c). */
   stagesFor: StagesFor,
+  setFor: SetFor,
   mapping: MappingSettings,
   reader: GitHubReader | undefined,
 ): Promise<GithubRepoRefresh | GithubRepoRateLimited> {
-  if (!reader) return emptyRows(rows, stagesFor, mapping, 'missing');
+  if (!reader) return emptyRows(rows, stagesFor, setFor, mapping, 'missing');
   try {
-    return await refreshWith(rows, repoRows, stagesFor, mapping, reader);
+    return await refreshWith(
+      rows,
+      repoRows,
+      stagesFor,
+      setFor,
+      mapping,
+      reader,
+    );
   } catch (err) {
     const outcome = failureOutcome(err, {
       isRateLimit: (e) => e instanceof RateLimitedError,
@@ -131,6 +144,7 @@ export async function refreshGithubRepo(
       : emptyRows(
           rows,
           stagesFor,
+          setFor,
           mapping,
           outcome.credentialStatus,
           outcome.providerFailure,
@@ -142,6 +156,7 @@ async function refreshWith(
   rows: readonly GithubRow[],
   repoRows: readonly GithubRow[],
   stagesFor: StagesFor,
+  setFor: SetFor,
   mapping: MappingSettings,
   reader: GitHubReader,
 ): Promise<GithubRepoRefresh> {
@@ -172,6 +187,7 @@ async function refreshWith(
   const cellFor = async (row: GithubRow, stage: Stage): Promise<CellView> => {
     const input = {
       mapping,
+      set: setFor(row, stage.id),
       branchPattern: stage.branchPattern,
       rowKeyTests: row.rowKeyTests,
       branchExists: branchNames.some((b) =>
@@ -191,15 +207,9 @@ async function refreshWith(
       derivation = deriveGithubCell({ ...input, runs: seen });
       if (derivation.kind === 'ok') break;
     }
-    const decided = derivation.kind === 'ok' ? seen.at(-1) : undefined;
-    const active = decided
-      ? relevantJobs(
-          decided.jobs,
-          decided.run.workflowName,
-          mapping.phases,
-          row.rowKeyTests,
-        ).some(({ job }) => job.status !== 'completed')
-      : false;
+    // Polled fast while its status counts toward an in-progress summary.
+    const active =
+      derivation.kind === 'ok' && derivation.status.summary.inProgress;
     return { derivation, active };
   };
 
@@ -216,7 +226,15 @@ async function refreshWith(
   return {
     kind: 'refreshed',
     rows: result,
-    unmapped: unmappedRuns(repo, repoRows, stagesFor, mapping, runs, settled),
+    unmapped: unmappedRuns(
+      repo,
+      repoRows,
+      stagesFor,
+      setFor,
+      mapping,
+      runs,
+      settled,
+    ),
     branches: datedBranches(branchNames, runs),
   };
 }
@@ -228,14 +246,19 @@ function unmappedRuns(
   repo: string,
   repoRows: readonly GithubRow[],
   stagesFor: StagesFor,
+  setFor: SetFor,
   mapping: MappingSettings,
   runs: readonly GithubRunWithJobs[],
   fetched: ReadonlyMap<number, GithubRunWithJobs>,
 ): UnmappedRun[] {
-  const rowInputs = repoRows.map((row) => ({
-    rowKeyTests: row.rowKeyTests,
-    branchPatterns: stagesFor(row).map((s) => s.branchPattern),
-  }));
+  // One input per row and stage: each cell may use its own status set.
+  const rowInputs = repoRows.flatMap((row) =>
+    stagesFor(row).map((s) => ({
+      rowKeyTests: row.rowKeyTests,
+      branchPatterns: [s.branchPattern],
+      jobTest: setFor(row, s.id).jobs,
+    })),
+  );
   return runs.flatMap((entry) => {
     const full = fetched.get(entry.run.id);
     const reason = classifyUnmappedRun(full ?? entry, rowInputs, mapping);

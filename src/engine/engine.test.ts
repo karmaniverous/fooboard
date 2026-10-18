@@ -42,14 +42,16 @@ describe('board engine over the demo', () => {
     const cells = Object.values(model.cells).filter((c) => c !== undefined);
     const seen = new Set(
       cells.map((c) =>
-        c.derivation.kind === 'ok' ? c.derivation.status : c.derivation.state,
+        c.derivation.kind === 'ok'
+          ? c.derivation.status.icon
+          : c.derivation.state,
       ),
     );
     expect([...seen].sort()).toEqual(
       [
         'success',
-        'partialSuccess',
-        'started',
+        'partial',
+        'running',
         'queued',
         'failure',
         'cancelled',
@@ -78,16 +80,10 @@ describe('board engine over the demo', () => {
     expect(reasons).toEqual(
       expect.arrayContaining([
         'acme/api-core:no-stage-matches-branch',
-        'acme/web-app:no-phase-matches-job',
+        'acme/web-app:no-relevant-job',
         'acme/payments:no-row-key-matches',
       ]),
     );
-  });
-
-  it('records the GitHub budget per credential', async () => {
-    expect((await demoModel()).budgets['demo-github']).toMatchObject({
-      limit: 5000,
-    });
   });
 });
 

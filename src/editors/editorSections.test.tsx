@@ -9,7 +9,6 @@
 import { fireEvent, screen, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
-import { DEFAULT_STATUS_COLORS } from '@/domain/config/colors';
 import { choose } from '@/test/choose';
 
 import { setup, tab } from './editorSectionsHarness';
@@ -63,26 +62,26 @@ describe('editor sections', () => {
     expect(latest.current.stages.map((s) => s.id)).toEqual(['prod', 'dev']);
   });
 
-  it('edits mapping rules and colours', () => {
+  it('edits the workflow filter and the status sets', () => {
     const latest = setup();
     tab('Mapping');
-    fireEvent.change(screen.getByLabelText('New Deploy phase tests value'), {
-      target: { value: 'deploy' },
+    fireEvent.change(
+      screen.getByLabelText('New Only workflows matching value'),
+      {
+        target: { value: 'Deploy' },
+      },
+    );
+    const filter = screen.getByRole('group', {
+      name: 'Only workflows matching',
     });
-    const deploy = screen.getByRole('group', { name: 'Deploy phase tests' });
-    fireEvent.click(within(deploy).getByRole('button', { name: 'Add' }));
-    expect(latest.current.mapping.phases.deploy.at(-1)).toEqual({
-      field: 'jobName',
-      operator: 'contains',
-      value: 'deploy',
+    fireEvent.click(within(filter).getByRole('button', { name: 'Add' }));
+    expect(latest.current.mapping.workflowFilter.include.at(-1)).toMatchObject({
+      field: 'workflowName',
+      value: 'Deploy',
     });
 
-    tab('Colours');
-    fireEvent.change(screen.getByLabelText('Failure colour'), {
-      target: { value: '#123456' },
-    });
-    expect(latest.current.statusColors.failure).toBe('#123456');
-    fireEvent.click(screen.getByRole('button', { name: 'Reset colours' }));
-    expect(latest.current.statusColors).toEqual(DEFAULT_STATUS_COLORS);
+    tab('Statuses');
+    choose(screen.getByLabelText('GitHub status set'), 'GitHub single job');
+    expect(latest.current.statusSets.github).toBe('github-single-job');
   });
 });

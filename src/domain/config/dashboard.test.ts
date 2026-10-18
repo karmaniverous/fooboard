@@ -1,29 +1,26 @@
 /**
- * Tests for `DashboardSchema`: defaults for mapping, colors, groups and
- * credentials, GitHub/Amplify row discrimination, the source-stage cycle
+ * Tests for `DashboardSchema`: defaults for mapping, status sets, groups
+ * and credentials, GitHub/Amplify row discrimination, the source-stage cycle
  * guard, and group membership checks.
  *
  * @module
  */
 import { describe, expect, it } from 'vitest';
 
-import { DEFAULT_STATUS_COLORS } from './colors';
 import { DashboardSchema } from './dashboard';
-import {
-  DEFAULT_DEPLOY_PHASE_TESTS,
-  DEFAULT_TEST_PHASE_TESTS,
-} from './mappingSettings';
 
 describe('DashboardSchema', () => {
-  it('applies mapping, color, group and credential defaults', () => {
+  it('applies mapping, status set, group and credential defaults', () => {
     const dashboard = DashboardSchema.parse({ id: 'd1', name: 'Dashboard 1' });
-    expect(dashboard.mapping.phases.deploy).toEqual(DEFAULT_DEPLOY_PHASE_TESTS);
-    expect(dashboard.mapping.phases.test).toEqual(DEFAULT_TEST_PHASE_TESTS);
     expect(dashboard.mapping.workflowFilter).toEqual({
       include: [],
       exclude: [],
     });
-    expect(dashboard.statusColors).toEqual(DEFAULT_STATUS_COLORS);
+    expect(dashboard.statusSets).toEqual({
+      github: 'github-deploy-test',
+      amplify: 'amplify',
+    });
+    expect(dashboard.customStatusSets).toEqual([]);
     expect(dashboard.rowGroups).toEqual([]);
     expect(dashboard.columnGroups).toEqual([]);
     expect(dashboard.credentials).toEqual([]);
@@ -198,5 +195,27 @@ describe('DashboardSchema', () => {
       ...groups,
     });
     expect(result.error?.issues.map((i) => i.message)).toEqual([message]);
+  });
+
+  it('rejects a status set that is unknown or for the other provider', () => {
+    const bad = (extra: object) =>
+      DashboardSchema.safeParse({ id: 'd', name: 'D', ...extra }).success;
+    expect(bad({ statusSets: { github: 'nope' } })).toBe(false);
+    expect(bad({ statusSets: { github: 'amplify' } })).toBe(false);
+    expect(
+      bad({
+        stages: [{ id: 'dev', name: 'dev', branchPattern: 'dev' }],
+        rows: [
+          {
+            type: 'github',
+            id: 'a',
+            repo: 'acme/a',
+            displayName: 'a',
+            cellStatusSets: { prod: 'github-single-job' },
+          },
+        ],
+      }),
+    ).toBe(false);
+    expect(bad({ statusSets: { github: 'github-single-job' } })).toBe(true);
   });
 });

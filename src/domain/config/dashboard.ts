@@ -11,7 +11,6 @@ import { z } from 'zod';
 
 import { statusSetReferenceIssues } from '@/domain/statuses/resolve';
 
-import { StatusColorsSchema } from './colors';
 import {
   credentialReferenceIssues,
   DefaultCredentialsSchema,
@@ -85,9 +84,6 @@ export const DashboardSchema = z
     stages: z.array(StageSchema).default(() => []),
     mapping: MappingSettingsSchema.default(() =>
       MappingSettingsSchema.parse({}),
-    ),
-    statusColors: StatusColorsSchema.default(() =>
-      StatusColorsSchema.parse({}),
     ),
     /** Row groups replacing dividers (spec.md C-14b). */
     rowGroups: z.array(RowGroupSchema).default(() => []),

@@ -56,6 +56,8 @@ describe('migrate v2 to v3', () => {
       amplify: 'amplify',
     });
     expect(d.customStatusSets).toEqual([]);
+    expect(d).not.toHaveProperty('statusColors');
+    expect(d.mapping).not.toHaveProperty('phases');
   });
 
   it("gives edited phase tests the dashboard's own GitHub set", () => {

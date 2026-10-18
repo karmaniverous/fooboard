@@ -8,6 +8,7 @@ import { describe, expect, it } from 'vitest';
 import { vi } from 'vitest';
 
 import type { AmplifyRow } from '@/domain/config/row';
+import { amplifySet } from '@/domain/derivation/testFixtures';
 import { AmplifyAuthError, AmplifyThrottledError } from '@/lib/amplify/errors';
 import type { AmplifyReader } from '@/lib/amplify/reader';
 import { amplifyBranch } from '@/lib/amplify/sdkShapes';
@@ -41,8 +42,12 @@ describe('refreshAmplifyRow', () => {
       ...row,
       sources: [{ region: 'us-east-1', appId: 'a1' }],
     };
-    const result = await refreshAmplifyRow(keyless, stages, defaults, () =>
-      failing(new Error('never called')),
+    const result = await refreshAmplifyRow(
+      keyless,
+      stages,
+      () => amplifySet,
+      defaults,
+      () => failing(new Error('never called')),
     );
     expect(result).toMatchObject({
       cells: { prod: { state: 'needs-credential' } },
@@ -53,6 +58,7 @@ describe('refreshAmplifyRow', () => {
     const result = await refreshAmplifyRow(
       row,
       stages,
+      () => amplifySet,
       defaults,
       () => undefined,
     );
@@ -63,8 +69,12 @@ describe('refreshAmplifyRow', () => {
   });
 
   it('shows needs credential when AWS rejects the key', async () => {
-    const result = await refreshAmplifyRow(row, stages, defaults, () =>
-      failing(new AmplifyAuthError('denied', 'ListBranches')),
+    const result = await refreshAmplifyRow(
+      row,
+      stages,
+      () => amplifySet,
+      defaults,
+      () => failing(new AmplifyAuthError('denied', 'ListBranches')),
     );
     expect(result).toMatchObject({
       cells: { prod: { state: 'needs-credential' } },
@@ -72,15 +82,24 @@ describe('refreshAmplifyRow', () => {
   });
 
   it('keeps the previous cells while throttled', async () => {
-    const result = await refreshAmplifyRow(row, stages, defaults, () =>
-      failing(new AmplifyThrottledError('slow down', 'ListBranches', 5_000)),
+    const result = await refreshAmplifyRow(
+      row,
+      stages,
+      () => amplifySet,
+      defaults,
+      () =>
+        failing(new AmplifyThrottledError('slow down', 'ListBranches', 5_000)),
     );
     expect(result).toEqual({ kind: 'rate-limited' });
   });
 
   it('shows error with the reason for other failures', async () => {
-    const result = await refreshAmplifyRow(row, stages, defaults, () =>
-      failing(new Error('socket hang up')),
+    const result = await refreshAmplifyRow(
+      row,
+      stages,
+      () => amplifySet,
+      defaults,
+      () => failing(new Error('socket hang up')),
     );
     expect(result).toMatchObject({
       cells: { prod: { kind: 'empty', state: 'error' } },
@@ -111,6 +130,7 @@ describe('refreshAmplifyRow request count', () => {
     await refreshAmplifyRow(
       twoSources,
       sixStages,
+      () => amplifySet,
       defaults,
       () => () => reader,
     );

@@ -38,7 +38,7 @@ describe('boardContents', () => {
     expect(status(0)?.lead).toBe('\u2298');
     expect(keys(1)).toEqual([]);
     expect(keys(2)).toEqual(['time']);
-    expect(keys(3)).toEqual(['time', 'commit', 'phase']);
+    expect(keys(3)).toEqual(['time', 'commit']);
     // The badge moves from the lead to the commit at rung 3.
     expect(status(2)?.badge).toBeDefined();
     expect(status(3)?.badge).toBeUndefined();

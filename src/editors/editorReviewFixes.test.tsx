@@ -14,28 +14,35 @@ describe('editor review fixes', () => {
   it('asks before deleting a match test, and Keep preserves it', () => {
     const latest = setup();
     tab('Mapping');
-    fireEvent.change(screen.getByLabelText('New Deploy phase tests value'), {
-      target: { value: 'deploy' },
+    fireEvent.change(
+      screen.getByLabelText('New Only workflows matching value'),
+      {
+        target: { value: 'deploy' },
+      },
+    );
+    const filter = screen.getByRole('group', {
+      name: 'Only workflows matching',
     });
-    const deploy = screen.getByRole('group', { name: 'Deploy phase tests' });
-    fireEvent.click(within(deploy).getByRole('button', { name: 'Add' }));
-    const count = latest.current.mapping.phases.deploy.length;
-    const del = within(deploy).getByRole('button', {
-      name: `Delete Deploy phase tests ${String(count)}`,
+    fireEvent.click(within(filter).getByRole('button', { name: 'Add' }));
+    const count = latest.current.mapping.workflowFilter.include.length;
+    const del = within(filter).getByRole('button', {
+      name: `Delete Only workflows matching ${String(count)}`,
     });
     fireEvent.click(del);
-    expect(latest.current.mapping.phases.deploy).toHaveLength(count);
-    fireEvent.click(within(deploy).getByRole('button', { name: 'Keep' }));
-    expect(latest.current.mapping.phases.deploy).toHaveLength(count);
+    expect(latest.current.mapping.workflowFilter.include).toHaveLength(count);
+    fireEvent.click(within(filter).getByRole('button', { name: 'Keep' }));
+    expect(latest.current.mapping.workflowFilter.include).toHaveLength(count);
     fireEvent.click(
-      within(deploy).getByRole('button', {
-        name: `Delete Deploy phase tests ${String(count)}`,
+      within(filter).getByRole('button', {
+        name: `Delete Only workflows matching ${String(count)}`,
       }),
     );
     fireEvent.click(
-      within(deploy).getByRole('button', { name: 'Delete deploy' }),
+      within(filter).getByRole('button', { name: 'Delete deploy' }),
     );
-    expect(latest.current.mapping.phases.deploy).toHaveLength(count - 1);
+    expect(latest.current.mapping.workflowFilter.include).toHaveLength(
+      count - 1,
+    );
   });
 
   it('retries a failed repo list', async () => {

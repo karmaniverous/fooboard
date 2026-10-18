@@ -42,8 +42,10 @@ const StatusIconSchema = z.enum([
   'unknown',
 ]);
 
+export type StatusIcon = z.infer<typeof StatusIconSchema>;
+
 /** The id of the built-in Unknown status and summary status. */
-const UNKNOWN_STATUS_ID = 'unknown';
+export const UNKNOWN_STATUS_ID = 'unknown';
 
 const StatusIdSchema = z
   .string()

@@ -14,8 +14,8 @@
 import { useRef } from 'react';
 
 import { ExternalLink } from '@/components/ExternalLink';
-import type { StatusColors } from '@/domain/config/colors';
 import type { BoardCell } from '@/engine';
+import { textOn } from '@/lib/contrast';
 import { cn } from '@/lib/utils';
 
 import { type Keyed, Lines } from './CellLines';
@@ -27,7 +27,7 @@ import {
   EMPTY_SYMBOL,
   relativeTime,
   shortSha,
-  STATUS_META,
+  STATUS_GLYPH,
 } from './cellView';
 import { type Rung } from './layout';
 import { firstLine } from './layoutContents';
@@ -38,7 +38,6 @@ export interface CellProps {
   rung: Rung;
   /** The board's line map: which line each item sits on (C-13). */
   lineOf: LineMap;
-  colors: StatusColors;
   now: number;
   /** Hover or focus: show the tooltip for this cell. */
   onInspect?: (target: HTMLElement | null) => void;
@@ -63,7 +62,6 @@ export function Cell({
   cell,
   rung,
   lineOf,
-  colors,
   now,
   onInspect,
   onOpenSheet,
@@ -117,8 +115,7 @@ export function Cell({
   }
 
   const { status } = derivation;
-  const meta = STATUS_META[status];
-  const queued = status === 'queued';
+
   const { time, commit, branch, message } = derivation;
   const relative = time ? relativeTime(time, now) : undefined;
 
@@ -169,17 +166,6 @@ export function Cell({
         ),
       });
     }
-    items.push({
-      key: 'phase',
-      node: (
-        <span
-          aria-hidden
-          className="rounded border border-current px-1 text-[0.85em]"
-        >
-          {derivation.phase}
-        </span>
-      ),
-    });
   }
   if (rung >= 4 && branch) {
     items.push({
@@ -197,7 +183,7 @@ export function Cell({
   }
 
   const name = [
-    meta.label,
+    status.name,
     branch,
     relative && `${relative} ago`,
     badge && badgeDescription(badge),
@@ -210,11 +196,10 @@ export function Cell({
       className={cn(
         'relative flex h-full overflow-hidden rounded-md font-medium',
         pad,
-        queued
-          ? 'border border-dashed border-slate-500 text-status-queued-text'
-          : 'text-white',
+        status.outlined && 'border border-dashed border-slate-500',
       )}
-      style={{ backgroundColor: colors[status] }}
+      // Text in white or near-black, whichever reads on the fill (WCAG AA).
+      style={{ backgroundColor: status.color, color: textOn(status.color) }}
     >
       <ExternalLink
         unstyled
@@ -246,14 +231,14 @@ export function Cell({
                 aria-hidden
                 className={cn(
                   'w-[1em] flex-none text-center',
-                  status === 'started' && 'animate-pulse',
+                  status.summary.inProgress && 'animate-pulse',
                 )}
               >
-                {meta.icon}
+                {STATUS_GLYPH[status.icon]}
               </span>
               {rung >= 1 && (
                 <span aria-hidden className="font-semibold">
-                  {meta.label}
+                  {status.name}
                 </span>
               )}
               {!badgeAfterCommit && badgeLink}

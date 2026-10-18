@@ -9,7 +9,6 @@ export * from './candidateRuns';
 export * from './emptyStates';
 export * from './githubCell';
 export * from './githubPhase';
-export * from './githubStatus';
 export * from './staleness';
 export * from './types';
 export * from './unmapped';

@@ -145,7 +145,7 @@ export function deployTestStatuses(
       'partial',
       'Partial',
       '#0e7490',
-      'ok',
+      'running',
       anyJob(all(relevant, succeeded)),
       { icon: 'partial' },
     ),

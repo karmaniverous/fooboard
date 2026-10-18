@@ -1,20 +1,26 @@
 /**
- * Summary header counts (spec.md C-14a): failing, running, behind and
- * diverged cells, each usable as a filter that highlights the matching cells. Pure.
+ * The board's summary chips and the filters they toggle (spec.md C-14a,
+ * A§4.3.6): one per summary status the board's cells show (in order of
+ * first appearance, Unknown last), then *behind* and *diverged*. Pure.
  *
  * @module
  */
+import { UNKNOWN_STATUS_ID } from '@/domain/config/statusSets';
 import type { BoardCell, BoardModel } from '@/engine';
 
-/** A summary category, and the filter it toggles. */
-export type CellFilter = 'failing' | 'running' | 'behind' | 'diverged';
+/** A summary status id, or a staleness badge kind. */
+export type CellFilter = string;
 
-export const FILTERS: readonly CellFilter[] = [
-  'failing',
-  'running',
-  'behind',
-  'diverged',
-];
+const BADGES = ['behind', 'diverged'] as const;
+
+/** One chip: a summary status (with its colour) or a badge kind. */
+export interface SummaryChip {
+  id: CellFilter;
+  name: string;
+  /** The summary status's colour; badges are styled by kind. */
+  color?: string;
+  count: number;
+}
 
 /** Does `cell` belong to `filter`? Behind and diverged are separate. */
 export function matchesFilter(
@@ -22,26 +28,36 @@ export function matchesFilter(
   filter: CellFilter,
 ): boolean {
   if (!cell) return false;
-  const { derivation } = cell;
-  switch (filter) {
-    case 'failing':
-      return derivation.kind === 'ok' && derivation.status === 'failure';
-    case 'running':
-      return cell.active;
-    case 'behind':
-      return cell.badge?.kind === 'behind';
-    case 'diverged':
-      return cell.badge?.kind === 'diverged';
-  }
+  if (filter === 'behind' || filter === 'diverged')
+    return cell.badge?.kind === filter;
+  return (
+    cell.derivation.kind === 'ok' &&
+    cell.derivation.status.summary.id === filter
+  );
 }
 
-/** Cell counts per category. */
-export function summarize(model: BoardModel): Record<CellFilter, number> {
+/** The chips for `model`, with their counts. */
+export function summarize(model: BoardModel): SummaryChip[] {
   const cells = Object.values(model.cells);
-  return {
-    failing: cells.filter((c) => matchesFilter(c, 'failing')).length,
-    running: cells.filter((c) => matchesFilter(c, 'running')).length,
-    behind: cells.filter((c) => matchesFilter(c, 'behind')).length,
-    diverged: cells.filter((c) => matchesFilter(c, 'diverged')).length,
-  };
+  const statuses = new Map<string, SummaryChip>();
+  for (const cell of cells) {
+    const derivation = cell?.derivation;
+    if (derivation?.kind !== 'ok') continue;
+    const { id, name, color } = derivation.status.summary;
+    const chip = statuses.get(id) ?? { id, name, color, count: 0 };
+    chip.count += 1;
+    statuses.set(id, chip);
+  }
+  const chips = [...statuses.values()].sort(
+    (a, b) =>
+      Number(a.id === UNKNOWN_STATUS_ID) - Number(b.id === UNKNOWN_STATUS_ID),
+  );
+  return [
+    ...chips,
+    ...BADGES.map((id) => ({
+      id,
+      name: id,
+      count: cells.filter((c) => matchesFilter(c, id)).length,
+    })),
+  ];
 }

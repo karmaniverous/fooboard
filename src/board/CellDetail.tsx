@@ -23,12 +23,7 @@ import {
 import type { BoardCell } from '@/engine';
 import { readmeSection } from '@/lib/site';
 
-import {
-  badgeDescription,
-  EMPTY_LABEL,
-  shortSha,
-  STATUS_META,
-} from './cellView';
+import { badgeDescription, EMPTY_LABEL, shortSha } from './cellView';
 
 export function CellDetail({
   cell,
@@ -68,9 +63,7 @@ export function CellDetail({
       ) : (
         <dl className="grid grid-cols-[auto_1fr] gap-x-3">
           <dt className="text-muted-foreground">Status</dt>
-          <dd>
-            {STATUS_META[derivation.status].label} ({derivation.phase})
-          </dd>
+          <dd>{derivation.status.name}</dd>
           <dt className="text-muted-foreground">Branch</dt>
           <dd className="truncate">{derivation.branch}</dd>
           {derivation.commit && (

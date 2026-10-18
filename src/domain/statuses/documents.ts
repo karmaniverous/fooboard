@@ -57,7 +57,7 @@ const jobDocument = (j: GithubWorkflowJob): GithubJobDocument => ({
 /** The jobs of a run a row sees that the status set cares about: latest
  * attempt, not skipped, neutral or stale, passing the row key tests and
  * the set's job test. */
-function relevantRowJobs(
+export function relevantRowJobs(
   { run, jobs }: GithubRunWithJobs,
   rowKeyTests: readonly MatchTest[],
   jobTest: Record<string, unknown>,

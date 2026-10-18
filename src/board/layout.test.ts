@@ -29,7 +29,7 @@ const cell = (rung: Rung): Content => ({
     ...(rung >= 3
       ? [
           { key: 'commit' as const, text: '0000000' },
-          { key: 'phase' as const, text: 'deploy' },
+          { key: 'extra' as const, text: 'deploy' },
         ]
       : []),
     ...(rung >= 4
@@ -69,10 +69,10 @@ describe('packContent', () => {
     expect(two).toMatchObject({
       oneLine: false,
       lines: 2,
-      lineOf: { time: 1, commit: 1, phase: 1 },
+      lineOf: { time: 1, commit: 1, extra: 1 },
     });
     const three = packContent(c, 70, 10, measure);
-    expect(three?.lineOf).toEqual({ time: 1, commit: 1, phase: 2 });
+    expect(three?.lineOf).toEqual({ time: 1, commit: 1, extra: 2 });
     expect(packContent(c, 40, 10, measure)).toBeNull();
   });
 

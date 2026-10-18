@@ -10,8 +10,7 @@
  */
 
 /** The items a cell can show after its lead, in display order. */
-export type ItemKey =
-  'time' | 'commit' | 'phase' | 'branch' | 'message' | 'extra';
+export type ItemKey = 'time' | 'commit' | 'branch' | 'message' | 'extra';
 
 /** One line per cell, or items packed onto lines after the lead's. */
 export type CellFormat = 'line' | 'packed';

@@ -8,17 +8,17 @@
  */
 import { describe, expect, it } from 'vitest';
 
-import { MappingSettingsSchema } from '@/domain/config/mappingSettings';
-import { relevantJobs } from '@/domain/derivation/githubPhase';
-import {
-  type CellStatus as LegacyStatus,
-  deriveGithubCellStatus,
-} from '@/domain/derivation/githubStatus';
+import { PhaseTestsSchema } from '@/domain/config/legacyV2';
 import type {
   GithubJobConclusion,
   GithubJobStatus,
   GithubWorkflowJob,
 } from '@/domain/derivation/types';
+import {
+  type CellStatus as LegacyStatus,
+  deriveGithubCellStatus,
+  relevantJobs,
+} from '@/test/legacyStatusRules';
 
 import { classify } from './classify';
 import { githubRunDocument } from './documents';
@@ -96,7 +96,7 @@ const docOf = (jobs: GithubWorkflowJob[]) => ({
   })),
 });
 
-const PHASES = MappingSettingsSchema.parse({}).phases;
+const PHASES = PhaseTestsSchema.parse({});
 
 describe('GitHub deploy and test', () => {
   const set = findStatusSet('github-deploy-test');

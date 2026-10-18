@@ -16,7 +16,7 @@ export type EditorDraft =
   | { tab: 'Rows'; rowId: string; test: MatchTest }
   | { tab: 'Rows'; rowId: string; overrideBranch: string }
   | { tab: 'Stages'; pattern: string }
-  | { tab: 'Mapping' };
+  | { tab: 'Statuses' };
 
 /** The GitHub row reading the run's repo: unmapped runs are GitHub runs,
  * so only a GitHub row's key tests or overrides can place one. */
@@ -30,8 +30,8 @@ export function draftFor(
   switch (run.reason.kind) {
     case 'no-stage-matches-branch':
       return { tab: 'Stages', pattern: run.reason.branch };
-    case 'no-phase-matches-job':
-      return { tab: 'Mapping' };
+    case 'no-relevant-job':
+      return { tab: 'Statuses' };
     case 'no-row-key-matches': {
       const row = githubRowFor(run, dashboard);
       return row

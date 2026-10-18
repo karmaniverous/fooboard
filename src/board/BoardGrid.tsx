@@ -46,7 +46,7 @@ export function BoardGrid({
   const pinTop =
     'sticky top-[calc(var(--app-header-h,0px)+var(--strip-h,0px))] z-20 bg-background';
   const pinLeft = 'sticky left-0 z-20 bg-background';
-  const { rows, stages, statusColors } = dashboard;
+  const { rows, stages } = dashboard;
   const rowSegments = groupSegments(
     rows.map((r) => r.id),
     dashboard.rowGroups,
@@ -221,7 +221,6 @@ export function BoardGrid({
                             cell={model.cells[key]}
                             rung={layout.rung}
                             lineOf={layout.lineOf}
-                            colors={statusColors}
                             now={now}
                             onInspect={(el) => {
                               setTip(

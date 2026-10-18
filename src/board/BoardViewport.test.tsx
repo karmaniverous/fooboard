@@ -143,7 +143,7 @@ describe('BoardViewport', () => {
     fireEvent.focus(field);
     fireEvent.change(field, { target: { value: '9999' } });
     fireEvent.keyDown(field, { key: 'Enter' });
-    const cell = screen.getAllByRole('link', { name: /Success, dev/ })[0];
+    const cell = screen.getAllByRole('link', { name: /Passed, dev/ })[0];
     const drag = { pointerId: 1, pointerType: 'touch' };
     fireEvent.pointerDown(cell, { ...drag, clientX: 200, clientY: 200 });
     fireEvent.pointerMove(cell, { ...drag, clientX: 150, clientY: 160 });
