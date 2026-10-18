@@ -1,7 +1,10 @@
 /**
  * The demo dashboard (spec.md C-23): a fictional `acme/*` organisation, 19
- * rows by 6 stages with row groups and a column divider, used by *Try the
- * demo*, tests, design proofs and screenshots. Every name is invented.
+ * rows by 6 stages shaped like a real pipeline (three preview
+ * environments in a *Preview* column group, dev, release, prod; backend
+ * and frontend row groups, the frontend overriding the release branch and
+ * setting its own AWS key; one backend row keyed to its jobs),
+ * used by *Try the demo*, tests, design proofs and screenshots. Every name is invented.
  *
  * @module
  */
@@ -11,7 +14,7 @@ import { type Dashboard, DashboardSchema } from '@/domain/config/dashboard';
 const DEMO_GITHUB_CREDENTIAL = 'demo-github';
 const DEMO_AWS_CREDENTIAL = 'demo-aws';
 
-/** GitHub repos, in board order, grouped by the row dividers below. */
+/** GitHub repos (the *Backend* row group), in board order. */
 export const DEMO_GITHUB_REPOS = [
   'api-core',
   'web-app',
@@ -41,11 +44,27 @@ export const DEMO_AMPLIFY_APPS = {
   ],
 } as const;
 
+/** The backend row whose repo also runs other services' jobs: its row key
+ * test picks its own (`deploy (payments)`), so a job for another service
+ * is unmapped with *no row key matches* (C-15). */
+export const DEMO_KEYED_REPO = 'payments';
+
 const github = DEMO_GITHUB_REPOS.map((name) => ({
   type: 'github' as const,
   id: name,
   repo: `acme/${name}`,
   displayName: name,
+  ...(name === DEMO_KEYED_REPO
+    ? {
+        rowKeyTests: [
+          {
+            field: 'jobName' as const,
+            operator: 'contains' as const,
+            value: name,
+          },
+        ],
+      }
+    : {}),
 }));
 
 const amplify = Object.entries(DEMO_AMPLIFY_APPS).map(([name, sources]) => ({
@@ -62,48 +81,67 @@ export const demoDashboard: Dashboard = DashboardSchema.parse({
   name: 'Acme platform (demo)',
   rows: [...github, ...amplify],
   stages: [
-    { id: 'dev', name: 'Dev', branchPattern: 'dev' },
-    { id: 'test', name: 'Test', branchPattern: 'test', sourceStageId: 'dev' },
     {
-      id: 'staging',
-      name: 'Staging',
-      branchPattern: 'staging',
-      sourceStageId: 'test',
-    },
-    {
-      id: 'preview',
-      name: 'Previews',
-      branchPattern: 'preview/*',
+      id: 'bali',
+      name: 'Bali',
+      branchPattern: 'preview/bali',
       sourceStageId: 'dev',
     },
+    {
+      id: 'spokane',
+      name: 'Spokane',
+      branchPattern: 'preview/spokane',
+      sourceStageId: 'dev',
+    },
+    {
+      id: 'texas',
+      name: 'Texas',
+      branchPattern: 'preview/texas',
+      sourceStageId: 'dev',
+    },
+    { id: 'dev', name: 'Dev', branchPattern: 'dev' },
     {
       id: 'release',
       name: 'Release',
       branchPattern: 'release/*',
-      sourceStageId: 'prod',
+      sourceStageId: 'dev',
     },
     {
       id: 'prod',
       name: 'Prod',
       branchPattern: 'main',
-      sourceStageId: 'staging',
+      sourceStageId: 'release',
     },
   ],
-  rowDividers: [
-    { beforeId: 'billing', style: 'thick', label: 'Commerce' },
-    { beforeId: 'catalog', style: 'thick', label: 'Discovery & data' },
-    { beforeId: 'legacy-billing', style: 'dashed', label: 'Needs attention' },
-    { beforeId: 'marketing-site', style: 'double', label: 'Amplify sites' },
+  // Backend services on GitHub Actions, frontends on Amplify, which
+  // deploys releases from `preview/release` (a row-group override, C-14c).
+  rowGroups: [
+    {
+      id: 'backend',
+      label: 'Backend',
+      memberIds: github.map((r) => r.id),
+    },
+    {
+      id: 'frontend',
+      label: 'Frontend',
+      memberIds: amplify.map((r) => r.id),
+      branchPatternOverrides: { release: 'preview/release' },
+      // The frontends' AWS key is the group's, not the dashboard's (C-1a).
+      defaultCredentials: { aws: DEMO_AWS_CREDENTIAL },
+    },
   ],
-  columnDividers: [{ beforeId: 'preview', style: 'dashed' }],
+  columnGroups: [
+    {
+      id: 'preview',
+      label: 'Preview',
+      memberIds: ['bali', 'spokane', 'texas'],
+    },
+  ],
   credentials: [
     { id: DEMO_GITHUB_CREDENTIAL, kind: 'github', label: 'Demo GitHub' },
     { id: DEMO_AWS_CREDENTIAL, kind: 'aws', label: 'Demo AWS' },
   ],
-  defaultCredentials: {
-    github: DEMO_GITHUB_CREDENTIAL,
-    aws: DEMO_AWS_CREDENTIAL,
-  },
+  defaultCredentials: { github: DEMO_GITHUB_CREDENTIAL },
 });
 
 /** The demo stage ids, in column order. */

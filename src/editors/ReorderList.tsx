@@ -1,7 +1,8 @@
 /**
  * An ordered, editable list (spec.md C-14, C-21): drag an item by its
  * handle to reorder, or use its *Move up* / *Move down* buttons (the
- * keyboard alternative); remove with confirmation.
+ * keyboard alternative); remove with confirmation. The owner decides what
+ * a drop or a step means (rows and stages move across group edges, C-14b).
  *
  * @module
  */
@@ -12,22 +13,25 @@ import { ConfirmButton } from '@/components/ConfirmButton';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 
-import { moveItem } from './edit';
-
 export function ReorderList<T>({
   items,
   keyOf,
   nameOf,
-  onReorder,
   onRemove,
+  onDrop,
+  onStep,
   children,
 }: {
   items: readonly T[];
   keyOf: (item: T) => string;
   /** Used in button labels, e.g. "Move api up". */
   nameOf: (item: T) => string;
-  onReorder: (items: T[]) => void;
   onRemove: (item: T) => void;
+  /** `from` dropped onto `to`. */
+  onDrop: (from: T, to: T) => void;
+  /** The move one step up or down, or undefined when it can't move
+   * (the button is disabled). */
+  onStep: (item: T, delta: -1 | 1) => (() => void) | undefined;
   /** The item's own fields. */
   children: (item: T) => React.ReactNode;
 }): React.JSX.Element {
@@ -36,6 +40,8 @@ export function ReorderList<T>({
     <ol className="flex flex-col gap-2">
       {items.map((item, index) => {
         const name = nameOf(item);
+        const up = onStep(item, -1);
+        const down = onStep(item, 1);
         return (
           <li
             key={keyOf(item)}
@@ -48,9 +54,8 @@ export function ReorderList<T>({
             }}
             onDrop={(e) => {
               e.preventDefault();
-              if (dragging !== null && dragging !== index) {
-                onReorder(moveItem(items, dragging, index - dragging));
-              }
+              const from = dragging === null ? undefined : items[dragging];
+              if (from !== undefined && dragging !== index) onDrop(from, item);
               setDragging(null);
             }}
           >
@@ -76,10 +81,8 @@ export function ReorderList<T>({
                   size="icon"
                   variant="ghost"
                   aria-label={`Move ${name} up`}
-                  disabled={index === 0}
-                  onClick={() => {
-                    onReorder(moveItem(items, index, -1));
-                  }}
+                  disabled={!up}
+                  onClick={up}
                 >
                   <ArrowUp className="size-4" />
                 </Button>
@@ -87,10 +90,8 @@ export function ReorderList<T>({
                   size="icon"
                   variant="ghost"
                   aria-label={`Move ${name} down`}
-                  disabled={index === items.length - 1}
-                  onClick={() => {
-                    onReorder(moveItem(items, index, 1));
-                  }}
+                  disabled={!down}
+                  onClick={down}
                 >
                   <ArrowDown className="size-4" />
                 </Button>

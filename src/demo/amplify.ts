@@ -64,13 +64,13 @@ export function createDemoAmplifyReaderFor(
       return Promise.resolve(
         DEMO_STAGE_IDS.filter(
           (id) => scenarioFor(owner.row, id) !== 'noBranch',
-        ).map((id) => ({ branchName: stageBranch(id) }) as Branch),
+        ).map((id) => ({ branchName: stageBranch(id, true) }) as Branch),
       );
     },
     listJobs: (appId, branchName) => {
       const owner = appOwner(appId);
       const s = DEMO_STAGE_IDS.findIndex(
-        (id) => stageBranch(id) === branchName,
+        (id) => stageBranch(id, true) === branchName,
       );
       if (!owner || s < 0) return Promise.resolve([]);
       const scenario = scenarioFor(owner.row, DEMO_STAGE_IDS[s] ?? '');

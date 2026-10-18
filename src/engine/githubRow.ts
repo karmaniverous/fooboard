@@ -38,9 +38,6 @@ import {
 import { failureOutcome } from './providerOutcome';
 import type { UnmappedRun } from './types';
 
-/** At most this many candidate runs per cell have their jobs fetched. */
-const MAX_RUNS_PER_CELL = 5;
-
 /** A branch in the repo, dated by its newest run (REST branches carry no
  * date; branches without runs date to the epoch). */
 export interface DatedBranch {
@@ -74,17 +71,20 @@ export const repoRef = (repo: string): { owner: string; repo: string } => {
   return { owner, repo: name };
 };
 
+/** The stages as one row sees them (effective branch patterns, C-14c). */
+export type StagesFor = (row: GithubRow) => readonly Stage[];
+
 /** Every cell of every row shows the same empty state. */
 function emptyRows(
   rows: readonly GithubRow[],
-  stages: readonly Stage[],
+  stagesFor: StagesFor,
   mapping: MappingSettings,
   credentialStatus: CredentialStatus,
   providerFailure?: ProviderFailure,
 ): GithubRepoRefresh {
   const cellsOf = (row: GithubRow) =>
     objectify(
-      stages,
+      stagesFor(row),
       (s) => s.id,
       (s): CellView => ({
         active: false,
@@ -113,13 +113,14 @@ function emptyRows(
 export async function refreshGithubRepo(
   rows: readonly GithubRow[],
   repoRows: readonly GithubRow[],
-  stages: readonly Stage[],
+  /** The stages as each row sees them (effective patterns, C-14c). */
+  stagesFor: StagesFor,
   mapping: MappingSettings,
   reader: GitHubReader | undefined,
 ): Promise<GithubRepoRefresh | GithubRepoRateLimited> {
-  if (!reader) return emptyRows(rows, stages, mapping, 'missing');
+  if (!reader) return emptyRows(rows, stagesFor, mapping, 'missing');
   try {
-    return await refreshWith(rows, repoRows, stages, mapping, reader);
+    return await refreshWith(rows, repoRows, stagesFor, mapping, reader);
   } catch (err) {
     const outcome = failureOutcome(err, {
       isRateLimit: (e) => e instanceof RateLimitedError,
@@ -129,7 +130,7 @@ export async function refreshGithubRepo(
       ? outcome
       : emptyRows(
           rows,
-          stages,
+          stagesFor,
           mapping,
           outcome.credentialStatus,
           outcome.providerFailure,
@@ -140,7 +141,7 @@ export async function refreshGithubRepo(
 async function refreshWith(
   rows: readonly GithubRow[],
   repoRows: readonly GithubRow[],
-  stages: readonly Stage[],
+  stagesFor: StagesFor,
   mapping: MappingSettings,
   reader: GitHubReader,
 ): Promise<GithubRepoRefresh> {
@@ -178,9 +179,11 @@ async function refreshWith(
       ),
       credentialStatus: 'ok' as const,
     };
-    const candidates = raw
-      .filter((_, i) => isCandidateRun(runs[i], mapping, stage.branchPattern))
-      .slice(0, MAX_RUNS_PER_CELL);
+    // Newest first, through the whole fetched window (spec.md §4.3.2): jobs are
+    // read only until a run with a relevant job decides the cell.
+    const candidates = raw.filter((_, i) =>
+      isCandidateRun(runs[i], mapping, stage.branchPattern),
+    );
     const seen: GithubRunWithJobs[] = [];
     let derivation = deriveGithubCell({ ...input, runs: seen });
     for (const run of candidates) {
@@ -203,7 +206,8 @@ async function refreshWith(
   const result: Record<string, Record<string, CellView>> = {};
   for (const row of rows) {
     const cells: Record<string, CellView> = {};
-    for (const stage of stages) cells[stage.id] = await cellFor(row, stage);
+    for (const stage of stagesFor(row))
+      cells[stage.id] = await cellFor(row, stage);
     result[row.id] = cells;
   }
 
@@ -212,7 +216,7 @@ async function refreshWith(
   return {
     kind: 'refreshed',
     rows: result,
-    unmapped: unmappedRuns(repo, repoRows, stages, mapping, runs, settled),
+    unmapped: unmappedRuns(repo, repoRows, stagesFor, mapping, runs, settled),
     branches: datedBranches(branchNames, runs),
   };
 }
@@ -223,19 +227,18 @@ async function refreshWith(
 function unmappedRuns(
   repo: string,
   repoRows: readonly GithubRow[],
-  stages: readonly Stage[],
+  stagesFor: StagesFor,
   mapping: MappingSettings,
   runs: readonly GithubRunWithJobs[],
   fetched: ReadonlyMap<number, GithubRunWithJobs>,
 ): UnmappedRun[] {
+  const rowInputs = repoRows.map((row) => ({
+    rowKeyTests: row.rowKeyTests,
+    branchPatterns: stagesFor(row).map((s) => s.branchPattern),
+  }));
   return runs.flatMap((entry) => {
     const full = fetched.get(entry.run.id);
-    const reason = classifyUnmappedRun(
-      full ?? entry,
-      stages,
-      repoRows,
-      mapping,
-    );
+    const reason = classifyUnmappedRun(full ?? entry, rowInputs, mapping);
     if (!reason) return [];
     if (reason.kind !== 'no-stage-matches-branch' && !full) return [];
     return [

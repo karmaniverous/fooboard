@@ -1,8 +1,9 @@
 /**
  * Zod schema for a dashboard (spec.md §3, §4.2): rows, stages, mapping
- * settings, status colors, dividers and credential references. Rejects a
- * source-stage cycle at parse time as a defensive integrity check (the
- * stage editor is expected to prevent cycles before they are saved).
+ * settings, status colors, row and column groups and credential
+ * references. Rejects, as defensive integrity checks, a source-stage
+ * cycle, duplicate group ids, and group members that are unknown, in two
+ * groups or split apart (the editors prevent all of these before saving).
  *
  * @module
  */
@@ -15,11 +16,59 @@ import {
 } from './credentialRefs';
 import { CredentialRefSchema } from './credentials';
 import { findAnyCycle } from './cycle';
-import { DividerSchema } from './dividers';
+import { ColumnGroupSchema, type Group, RowGroupSchema } from './groups';
 import { MappingSettingsSchema } from './mappingSettings';
 import { RowSchema } from './row';
 import { StageSchema } from './stage';
 
+/** Groups on one axis must have distinct ids, and name existing items,
+ * each in at most one group, in one unbroken run, so overrides and labels
+ * never orphan, contradict or repeat themselves (C-14b). */
+function groupIssues(
+  groups: readonly Group[],
+  items: readonly { id: string }[],
+  key: 'rowGroups' | 'columnGroups',
+  noun: string,
+): { message: string; path: (string | number)[] }[] {
+  const position = new Map(items.map((item, i) => [item.id, i]));
+  const owner = new Map<string, string>();
+  const groupIds = new Set<string>();
+  return groups.flatMap((g, gi) => {
+    const issues: { message: string; path: (string | number)[] }[] = [];
+    if (groupIds.has(g.id))
+      issues.push({
+        message: `duplicate group id: ${g.id}`,
+        path: [key, gi, 'id'],
+      });
+    groupIds.add(g.id);
+    g.memberIds.forEach((id, mi) => {
+      const path = [key, gi, 'memberIds', mi];
+      const first = owner.get(id);
+      owner.set(id, first ?? g.id);
+      if (!position.has(id))
+        issues.push({
+          message: `group ${g.id} names unknown ${noun}: ${id}`,
+          path,
+        });
+      else if (first !== undefined)
+        issues.push({
+          message: `${noun} ${id} is in groups ${first} and ${g.id}`,
+          path,
+        });
+    });
+    if (issues.length > 0) return issues;
+    const at = g.memberIds.map((id) => position.get(id) ?? 0);
+    const span = Math.max(...at) - Math.min(...at) + 1;
+    return span === new Set(at).size
+      ? []
+      : [
+          {
+            message: `group ${g.id} is split: its ${noun}s are not together`,
+            path: [key, gi, 'memberIds'],
+          },
+        ];
+  });
+}
 /** A dashboard: rows, stages and the settings that derive its cells. */
 export const DashboardSchema = z
   .object({
@@ -33,14 +82,25 @@ export const DashboardSchema = z
     statusColors: StatusColorsSchema.default(() =>
       StatusColorsSchema.parse({}),
     ),
-    rowDividers: z.array(DividerSchema).default(() => []),
-    columnDividers: z.array(DividerSchema).default(() => []),
+    /** Row groups replacing dividers (spec.md C-14b). */
+    rowGroups: z.array(RowGroupSchema).default(() => []),
+    /** Column groups replacing dividers (spec.md C-14b). */
+    columnGroups: z.array(ColumnGroupSchema).default(() => []),
     credentials: z.array(CredentialRefSchema).default(() => []),
     /** Default GitHub token and AWS key; rows and sources may override. */
     defaultCredentials: DefaultCredentialsSchema.default(() => ({})),
   })
   .superRefine((dashboard, ctx) => {
-    for (const issue of credentialReferenceIssues(dashboard)) {
+    for (const issue of [
+      ...credentialReferenceIssues(dashboard),
+      ...groupIssues(dashboard.rowGroups, dashboard.rows, 'rowGroups', 'row'),
+      ...groupIssues(
+        dashboard.columnGroups,
+        dashboard.stages,
+        'columnGroups',
+        'stage',
+      ),
+    ]) {
       ctx.addIssue({ code: 'custom', ...issue });
     }
 

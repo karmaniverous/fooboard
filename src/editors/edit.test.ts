@@ -1,6 +1,6 @@
 /**
- * Tests for the editing helpers: reordering at the edges, readable unique
- * ids, rows from repos, independent duplicates, and branch discovery.
+ * Tests for the editing helpers: readable unique ids, rows from repos,
+ * independent duplicates, and removing rows and stages.
  *
  * @module
  */
@@ -9,15 +9,11 @@ import { describe, expect, it } from 'vitest';
 import { DashboardSchema } from '@/domain/config/dashboard';
 
 import {
-  branchCounts,
   duplicateDashboard,
-  moveItem,
-  patternPreview,
   removeRow,
   removeStage,
   repoFromUrl,
   rowFromRepo,
-  setDivider,
   uniqueId,
 } from './edit';
 
@@ -39,30 +35,18 @@ describe('removing rows and stages', () => {
       { id: 'a', name: 'a', branchPattern: 'main' },
       { id: 'b', name: 'b', branchPattern: 'dev', sourceStageId: 'a' },
     ],
-    rowDividers: [{ beforeId: 'r', style: 'thin' }],
-    columnDividers: [{ beforeId: 'a', style: 'thin', label: 'Prod' }],
+    rowGroups: [
+      { id: 'g', memberIds: ['r'], branchPatternOverrides: { a: 'x/*' } },
+    ],
+    columnGroups: [{ id: 'cg', label: 'Prod', memberIds: ['a'] }],
   });
 
-  it('takes the attached divider and any source use with it', () => {
-    expect(removeRow(d, 'r')).toMatchObject({ rows: [], rowDividers: [] });
+  it('takes the emptied group, the overrides and any source use with it', () => {
+    expect(removeRow(d, 'r')).toMatchObject({ rows: [], rowGroups: [] });
     const s = DashboardSchema.parse(removeStage(d, 'a'));
     expect(s.stages).toEqual([{ id: 'b', name: 'b', branchPattern: 'dev' }]);
-    expect(s.columnDividers).toEqual([]);
-  });
-
-  it('sets, replaces and clears a divider', () => {
-    const one = setDivider([], 'x', { style: 'thin' });
-    const two = setDivider(one, 'x', { style: 'dashed', label: 'L' });
-    expect(two).toEqual([{ beforeId: 'x', style: 'dashed', label: 'L' }]);
-    expect(setDivider(two, 'x', undefined)).toEqual([]);
-  });
-});
-
-describe('moveItem', () => {
-  it('moves within bounds and ignores moves past the ends', () => {
-    expect(moveItem(['a', 'b', 'c'], 0, 1)).toEqual(['b', 'a', 'c']);
-    expect(moveItem(['a', 'b', 'c'], 2, -2)).toEqual(['c', 'a', 'b']);
-    expect(moveItem(['a', 'b'], 0, -1)).toEqual(['a', 'b']);
+    expect(s.columnGroups).toEqual([]);
+    expect(s.rowGroups[0]?.branchPatternOverrides).toEqual({});
   });
 });
 
@@ -80,7 +64,7 @@ describe('uniqueId and rowFromRepo', () => {
 });
 
 describe('duplicateDashboard', () => {
-  it('re-keys every credential reference', () => {
+  it('re-keys every credential reference and keeps groups and overrides', () => {
     const d = DashboardSchema.parse({
       id: 'd',
       name: 'D',
@@ -93,6 +77,16 @@ describe('duplicateDashboard', () => {
           repo: 'o/r',
           displayName: 'r',
           credentialId: 'c',
+          branchPatternOverrides: { s: 'rc/*' },
+        },
+      ],
+      stages: [{ id: 's', name: 's', branchPattern: 'main' }],
+      rowGroups: [
+        {
+          id: 'g',
+          memberIds: ['r'],
+          branchPatternOverrides: { s: 'release/*' },
+          defaultCredentials: { github: 'c' },
         },
       ],
     });
@@ -102,30 +96,11 @@ describe('duplicateDashboard', () => {
     expect(copy).toMatchObject({ id: 'd2', name: 'D copy' });
     expect(JSON.stringify(copy)).not.toMatch(/"c"/);
     expect(copy.defaultCredentials.github).toBe('c-new');
-    expect(d.credentials[0]?.id).toBe('c');
-  });
-});
-
-describe('branch discovery', () => {
-  const byRepo = new Map([
-    ['acme/a', ['main', 'release/24.3', 'release/24.2']],
-    ['acme/b', ['main', 'release/24.3']],
-    ['acme/c', ['main']],
-  ]);
-
-  it('counts branches across repos, most common first', () => {
-    expect(branchCounts(byRepo)).toEqual([
-      { name: 'main', count: 3 },
-      { name: 'release/24.3', count: 2 },
-      { name: 'release/24.2', count: 1 },
-    ]);
-  });
-
-  it('previews what a pattern matches', () => {
-    expect(patternPreview('release/**', byRepo)).toEqual({
-      repos: ['acme/a', 'acme/b'],
-      branches: ['release/24.2', 'release/24.3'],
+    expect(copy.rowGroups[0]).toMatchObject({
+      branchPatternOverrides: { s: 'release/*' },
+      defaultCredentials: { github: 'c-new' },
     });
-    expect(patternPreview('  ', byRepo).repos).toEqual([]);
+    expect(copy.rows[0]?.branchPatternOverrides).toEqual({ s: 'rc/*' });
+    expect(d.credentials[0]?.id).toBe('c');
   });
 });

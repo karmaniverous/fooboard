@@ -1,7 +1,7 @@
 /**
  * Tests for the editor sections the main editor tests don't reach:
  * Amplify rows from `ListApps` (apps without a GitHub repo can't be
- * added), repo-list failures, dividers with labels, drag reordering,
+ * added), repo-list failures, labelled column groups, drag reordering,
  * mapping rules and colours.
  *
  * @module
@@ -105,17 +105,17 @@ describe('editor sections', () => {
     );
   });
 
-  it('sets a labelled divider before a stage', () => {
+  it('creates a labelled column group from a stage', () => {
     const latest = setup();
     tab('Stages');
-    fireEvent.change(screen.getByLabelText('Divider before prod'), {
-      target: { value: 'thick' },
+    fireEvent.change(screen.getByLabelText('Group of prod'), {
+      target: { value: 'new' },
     });
-    const label = screen.getByLabelText('Group label before prod');
+    const label = screen.getByLabelText('Label of the group of prod');
     fireEvent.change(label, { target: { value: 'Production' } });
     fireEvent.blur(label);
-    expect(latest.current.columnDividers).toEqual([
-      { beforeId: 'prod', style: 'thick', label: 'Production' },
+    expect(latest.current.columnGroups).toEqual([
+      { id: 'group-prod', label: 'Production', memberIds: ['prod'] },
     ]);
   });
 

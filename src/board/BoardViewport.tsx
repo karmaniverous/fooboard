@@ -14,25 +14,19 @@
  *
  * @module
  */
-import { Maximize2, Minimize2, Minus, Plus, RotateCcw } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 
-import { ToggleButton } from '@/components/ToggleButton';
-import { Button } from '@/components/ui/button';
 import type { Dashboard } from '@/domain/config/dashboard';
-import type { Density } from '@/domain/config/devicePreferences';
 import type { BoardModel } from '@/engine';
-import { measuredWidth, useMeasured } from '@/lib/useMeasured';
-import { cn, PINNED_X } from '@/lib/utils';
+import { cn } from '@/lib/utils';
 
 import { BoardGrid } from './BoardGrid';
+import { BoardToolbar } from './BoardToolbar';
 import {
   layoutAtZoom,
   type LayoutInput,
   snapZoom,
   stepZoom,
-  zoomLabel,
-  type ZoomRange,
   zoomRange,
 } from './layout';
 import { boardContents } from './layoutContents';
@@ -49,14 +43,6 @@ const DRAG_THRESHOLD = 8;
 const INTERACTION_MS = 5_000;
 /** Accumulated wheel delta that makes one 10% zoom step. */
 const WHEEL_STEP_DELTA = 50;
-const DENSITIES: Density[] = ['compact', 'default', 'comfortable'];
-/** `gap-x-2` in px. */
-const TOOLBAR_GAP_PX = 8;
-const DENSITY_ICON = {
-  compact: Minimize2,
-  default: Minus,
-  comfortable: Maximize2,
-} as const;
 
 /** The grid area (C-13): the window's width less the page's side margins,
  * and the window height below the grid's top when the page is scrolled to
@@ -91,50 +77,6 @@ function useAreaSize(ref: React.RefObject<HTMLElement | null>) {
 
 /** The editable zoom percentage: Enter or leaving the field applies it,
  * snapped to 10% and clamped to the board's range (C-13). */
-function ZoomField({
-  zoom,
-  range,
-  onZoom,
-}: {
-  zoom: number;
-  range: ZoomRange;
-  onZoom: (zoom: number) => void;
-}): React.JSX.Element {
-  const label = zoomLabel(zoom, range);
-  const [draft, setDraft] = useState<string | null>(null);
-  const apply = () => {
-    if (draft === null) return;
-    const value = Number.parseFloat(draft);
-    if (Number.isFinite(value)) onZoom(snapZoom(value / 100, range));
-    setDraft(null);
-  };
-  return (
-    <input
-      aria-label="Zoom"
-      inputMode="numeric"
-      className="h-6 w-14 rounded-md border border-input bg-background px-1 text-center text-xs tabular-nums"
-      value={draft ?? label}
-      onFocus={(e) => {
-        setDraft(label.replace('%', ''));
-        e.currentTarget.select();
-      }}
-      onChange={(e) => {
-        setDraft(e.currentTarget.value);
-      }}
-      onBlur={apply}
-      onKeyDown={(e) => {
-        if (e.key === 'Enter') {
-          apply();
-          e.currentTarget.blur();
-        } else if (e.key === 'Escape') {
-          setDraft(null);
-          e.currentTarget.blur();
-        }
-      }}
-    />
-  );
-}
-
 export function BoardViewport({
   dashboard,
   model,
@@ -152,20 +94,6 @@ export function BoardViewport({
   lead?: (options: { words: boolean }) => React.ReactNode;
 }): React.JSX.Element {
   const { zoom, setZoom, density, setDensity } = view;
-  // Wide when the summary and zoom each fit half of what is left beside
-  // the centred density control; else narrow, dropping the chip words
-  // ("tight") when the worded chips would not fit one line (C-13).
-  const [toolbar, mode] = useMeasured<
-    HTMLDivElement,
-    'wide' | 'narrow' | 'tight'
-  >((el) => {
-    const lead = measuredWidth(el, 'lead');
-    const side = Math.max(lead, measuredWidth(el, 'zoom'));
-    const width = el.clientWidth;
-    if (2 * side + measuredWidth(el, 'density') + 2 * TOOLBAR_GAP_PX <= width)
-      return 'wide';
-    return lead <= width ? 'narrow' : 'tight';
-  }, 'wide');
   const scroller = useRef<HTMLDivElement>(null);
   const area = useAreaSize(scroller);
   const [measure] = useState(createTextMeasure);
@@ -193,8 +121,8 @@ export function BoardViewport({
       rows: dashboard.rows.length,
       stages: dashboard.stages.length,
       labelRows:
-        dashboard.rowDividers.filter((d) => d.label).length +
-        (dashboard.columnDividers.some((d) => d.label) ? 1 : 0),
+        dashboard.rowGroups.filter((g) => g.label).length +
+        (dashboard.columnGroups.some((g) => g.label) ? 1 : 0),
       rowNames: dashboard.rows.map((r) => r.displayName),
       contents: boardContents(dashboard, sizingModel),
       measure,
@@ -260,107 +188,15 @@ export function BoardViewport({
 
   return (
     <div className="flex flex-col gap-2">
-      {/* Wide: summary, density centred, zoom right. Narrow: summary on its
-          own line (words dropped before the chips would wrap), then density
-          left and zoom right. Chosen by measuring the content (C-13). */}
-      <div ref={toolbar} className={cn('relative text-xs', PINNED_X)}>
-        {lead && (
-          <div
-            aria-hidden
-            inert
-            className="invisible absolute left-0 top-0 w-max"
-          >
-            <div data-measure="lead">{lead({ words: true })}</div>
-          </div>
-        )}
-        <div
-          className={cn(
-            'grid items-center gap-x-2 gap-y-1',
-            mode === 'wide'
-              ? 'grid-cols-[1fr_auto_1fr]'
-              : 'grid-cols-[1fr_auto]',
-          )}
-        >
-          <div
-            className={cn(
-              'justify-self-start',
-              mode !== 'wide' && 'col-span-2',
-            )}
-          >
-            {lead?.({ words: mode !== 'tight' })}
-          </div>
-          <div
-            role="group"
-            aria-label="Density"
-            data-measure="density"
-            className={cn(
-              'inline-flex overflow-hidden rounded-md border',
-              mode === 'wide' ? 'justify-self-center' : 'justify-self-start',
-            )}
-          >
-            {DENSITIES.map((d) => {
-              const Icon = DENSITY_ICON[d];
-              return (
-                <ToggleButton
-                  key={d}
-                  pressed={density === d}
-                  aria-label={d}
-                  title={d.charAt(0).toUpperCase() + d.slice(1)}
-                  className="flex h-6 w-7 items-center justify-center"
-                  onClick={() => {
-                    setDensity(d);
-                  }}
-                >
-                  <Icon aria-hidden className="size-3.5" />
-                </ToggleButton>
-              );
-            })}
-          </div>
-          <div
-            data-measure="zoom"
-            className="flex items-center gap-0.5 justify-self-end"
-          >
-            <Button
-              size="icon"
-              variant="outline"
-              className="size-6"
-              aria-label="Zoom out"
-              disabled={zoom <= range.min}
-              onClick={() => {
-                step(-1);
-              }}
-            >
-              <Minus className="size-3.5" />
-            </Button>
-            <ZoomField zoom={zoom} range={range} onZoom={setZoom} />
-            <Button
-              size="icon"
-              variant="outline"
-              className="size-6"
-              aria-label="Zoom in"
-              disabled={zoom >= range.max}
-              onClick={() => {
-                step(1);
-              }}
-            >
-              <Plus className="size-3.5" />
-            </Button>
-            <Button
-              size="icon"
-              variant="outline"
-              className="size-6"
-              title="Zoom to 100%"
-              aria-label="Zoom to 100%"
-              disabled={zoom === 1}
-              onClick={() => {
-                setZoom(1);
-              }}
-            >
-              <RotateCcw className="size-3.5" />
-            </Button>
-          </div>
-        </div>
-      </div>
+      <BoardToolbar
+        zoom={zoom}
+        range={range}
+        onZoom={setZoom}
+        onStep={step}
+        density={density}
+        onDensity={setDensity}
+        lead={lead}
+      />
 
       <div className="relative">
         <div

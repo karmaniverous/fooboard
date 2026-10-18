@@ -1,59 +1,22 @@
 /**
- * The row editor's pickers (spec.md C-21): credential choice, the GitHub
- * repo picker, the Amplify app picker (via `ListApps`), and extra
+ * The row editor's pickers (spec.md C-21): the GitHub repo picker, the Amplify app picker (via `ListApps`), and extra
  * Amplify sources.
  *
  * @module
  */
 import { useState } from 'react';
 
-import { NativeSelect } from '@/components/NativeSelect';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { resolveCredentialId } from '@/domain/config/credentialRefs';
-import type { CredentialKind } from '@/domain/config/credentials';
 import type { Dashboard } from '@/domain/config/dashboard';
 import type { AmplifyRow } from '@/domain/config/row';
 import type { EngineProviders } from '@/engine';
 
+import { CredentialSelect, type Inherited } from './CredentialSelect';
 import { repoFromUrl, uniqueId } from './edit';
 import { LoadStatus } from './LoadStatus';
 import { useLoad } from './useLoad';
-
-/** A credential choice: the dashboard default, or one of its credentials. */
-export function CredentialSelect({
-  dashboard,
-  kind,
-  value,
-  onChange,
-  label,
-}: {
-  dashboard: Dashboard;
-  kind: CredentialKind;
-  value: string | undefined;
-  onChange: (id: string | undefined) => void;
-  label: string;
-}): React.JSX.Element {
-  return (
-    <NativeSelect
-      aria-label={label}
-      className="h-8 px-1 text-xs"
-      value={value ?? ''}
-      onChange={(e) => {
-        onChange(e.target.value || undefined);
-      }}
-    >
-      <option value="">Dashboard default</option>
-      {dashboard.credentials
-        .filter((c) => c.kind === kind)
-        .map((c) => (
-          <option key={c.id} value={c.id}>
-            {c.label}
-          </option>
-        ))}
-    </NativeSelect>
-  );
-}
 
 export function RepoPicker({
   dashboard,
@@ -169,7 +132,7 @@ export function AmplifyPicker({
   }
   return (
     <div className="flex flex-col gap-1 text-xs">
-      <div className="flex items-center gap-1">
+      <div className="flex flex-wrap items-center gap-1">
         <CredentialSelect
           dashboard={dashboard}
           kind="aws"
@@ -243,6 +206,7 @@ export function AmplifyPicker({
                         appId: a.appId,
                       },
                     ],
+                    branchPatternOverrides: {},
                   });
                 }}
               >
@@ -263,9 +227,12 @@ export function AddSource({
   dashboard,
   onAdd,
   name,
+  inherited,
 }: {
   dashboard: Dashboard;
   name: string;
+  /** What an unset key inherits: the row's group's or the dashboard's. */
+  inherited: Inherited;
   onAdd: (source: AmplifyRow['sources'][number]) => void;
 }): React.JSX.Element {
   const [credentialId, setCredentialId] = useState<string | undefined>();
@@ -273,7 +240,7 @@ export function AddSource({
   const [appId, setAppId] = useState('');
   return (
     <form
-      className="flex items-center gap-1"
+      className="flex flex-wrap items-center gap-1"
       onSubmit={(e) => {
         e.preventDefault();
         onAdd({ credentialId, region: region.trim(), appId: appId.trim() });
@@ -286,6 +253,7 @@ export function AddSource({
         kind="aws"
         value={credentialId}
         onChange={setCredentialId}
+        inherited={inherited}
         label={`AWS key for a new ${name} source`}
       />
       <Input

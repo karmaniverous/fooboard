@@ -26,25 +26,25 @@ export type DemoScenario =
 
 /** Cells that aren't plain success, keyed `row:stage`. */
 const OVERRIDES: Record<string, DemoScenario> = {
-  'api-core:staging': 'started',
-  'web-app:test': 'partial',
-  'web-app:preview': 'queued',
+  'api-core:spokane': 'started',
+  'web-app:bali': 'partial',
+  'web-app:texas': 'queued',
   'mobile-bff:prod': 'failure',
   'auth-service:release': 'noBranch',
-  'billing:test': 'behind',
-  'orders:staging': 'diverged',
+  'billing:bali': 'behind',
+  'orders:spokane': 'diverged',
   'payments:dev': 'cancelled',
-  'inventory:preview': 'noRuns',
+  'inventory:texas': 'noRuns',
   'shipping:prod': 'behind',
   'catalog:release': 'failure',
-  'search:preview': 'noBranch',
-  'notifications:staging': 'partial',
-  'analytics:test': 'started',
-  'admin-portal:preview': 'noBranch',
+  'search:texas': 'noBranch',
+  'notifications:spokane': 'partial',
+  'analytics:bali': 'started',
+  'admin-portal:texas': 'noBranch',
   'docs-site:release': 'noBranch',
-  'marketing-site:staging': 'started',
+  'marketing-site:spokane': 'started',
   'marketing-site:prod': 'failure',
-  'partner-portal:preview': 'noBranch',
+  'partner-portal:texas': 'noBranch',
 };
 
 /** The scenario for one cell. */
@@ -53,23 +53,36 @@ export function scenarioFor(rowId: string, stageId: string): DemoScenario {
 }
 
 /** The concrete branch each demo stage's pattern matches. */
-const STAGE_BRANCH: Record<string, string> = {
+const STAGE_BRANCH: Partial<Record<string, string>> = {
+  bali: 'preview/bali',
+  spokane: 'preview/spokane',
+  texas: 'preview/texas',
   dev: 'dev',
-  test: 'test',
-  staging: 'staging',
-  preview: 'preview/bali',
   release: 'release/24.3',
   prod: 'main',
 };
 
-/** The demo branch for a stage id (every demo stage has exactly one). */
-export function stageBranch(stageId: string): string {
-  return STAGE_BRANCH[stageId] ?? stageId;
+/** Frontend (Amplify) rows deploy releases from another branch: the
+ * demo's row-group override (C-14c). */
+const FRONTEND_BRANCH: Partial<Record<string, string>> = {
+  release: 'preview/release',
+};
+
+/** The demo branch for a stage id on a backend row, or on a frontend row
+ * when `frontend` is set (every demo stage has exactly one). */
+export function stageBranch(stageId: string, frontend = false): string {
+  return (
+    (frontend ? FRONTEND_BRANCH[stageId] : undefined) ??
+    STAGE_BRANCH[stageId] ??
+    stageId
+  );
 }
 
 /** The stage a demo branch belongs to, if any. */
 export function stageForBranch(branch: string): string | undefined {
-  return Object.keys(STAGE_BRANCH).find((id) => STAGE_BRANCH[id] === branch);
+  return [STAGE_BRANCH, FRONTEND_BRANCH]
+    .flatMap((map) => Object.keys(map).filter((id) => map[id] === branch))
+    .at(0);
 }
 
 /** A job's state at one moment, in provider-neutral terms. */

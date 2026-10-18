@@ -109,3 +109,21 @@ export async function refreshAmplifyRow(
       : emptyRow(stages, outcome.credentialStatus, outcome.providerFailure);
   }
 }
+
+/** Cell views for an Amplify row: a cell is active while its job is
+ * queued or running (it drives the faster poll). */
+export function amplifyCellViews(
+  cells: Readonly<Record<string, AmplifyCellDerivation>>,
+): Record<string, { derivation: AmplifyCellDerivation; active: boolean }> {
+  return Object.fromEntries(
+    Object.entries(cells).map(([stageId, derivation]) => [
+      stageId,
+      {
+        derivation,
+        active:
+          derivation.kind === 'ok' &&
+          (derivation.status === 'started' || derivation.status === 'queued'),
+      },
+    ]),
+  );
+}

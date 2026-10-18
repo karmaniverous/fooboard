@@ -8,6 +8,7 @@
  */
 import { z } from 'zod';
 
+import { BranchPatternOverridesSchema } from './groups';
 import { MatchTestSchema } from './matchTest';
 
 /** `owner/name` GitHub repo identifier. */
@@ -27,6 +28,8 @@ export const GithubRowSchema = z.object({
   rowKeyTests: z.array(MatchTestSchema).default(() => []),
   /** Overrides the dashboard's default GitHub token for this row. */
   credentialId: z.string().min(1).optional(),
+  /** Per-stage branch-pattern overrides for this row (spec.md C-14c). */
+  branchPatternOverrides: BranchPatternOverridesSchema.default(() => ({})),
 });
 export type GithubRow = z.infer<typeof GithubRowSchema>;
 
@@ -55,6 +58,8 @@ export const AmplifyRowSchema = z.object({
   displayName: z.string().min(1),
   /** Overrides the dashboard's default GitHub token for `repo`. */
   githubCredentialId: z.string().min(1).optional(),
+  /** Per-stage branch-pattern overrides for this row (spec.md C-14c). */
+  branchPatternOverrides: BranchPatternOverridesSchema.default(() => ({})),
 });
 export type AmplifyRow = z.infer<typeof AmplifyRowSchema>;
 

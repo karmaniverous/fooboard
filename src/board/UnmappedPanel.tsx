@@ -13,10 +13,14 @@ import type { UnmappedRun } from '@/engine';
 export function UnmappedPanel({
   runs,
   onAddTest,
+  onAddOverride,
 }: {
   runs: readonly UnmappedRun[];
   /** Absent when there's no fix to pre-fill for this run. */
   onAddTest: (run: UnmappedRun) => (() => void) | undefined;
+  /** For a branch no stage matches: a branch-pattern override instead of
+   * a new stage (C-15). Absent when it can't help. */
+  onAddOverride?: (run: UnmappedRun) => (() => void) | undefined;
 }): React.JSX.Element {
   if (runs.length === 0) {
     return (
@@ -29,6 +33,7 @@ export function UnmappedPanel({
     <ul className="flex flex-col gap-2 text-sm">
       {runs.map((run) => {
         const add = onAddTest(run);
+        const override = onAddOverride?.(run);
         return (
           <li
             key={`${run.repo}-${String(run.runId)}`}
@@ -50,6 +55,16 @@ export function UnmappedPanel({
                   onClick={add}
                 >
                   Add test
+                </Button>
+              )}
+              {override && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className={add ? undefined : 'ml-auto'}
+                  onClick={override}
+                >
+                  Add override
                 </Button>
               )}
             </div>

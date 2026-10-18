@@ -3,28 +3,27 @@
  * token can see (display name defaults to the repo without its owner), or
  * an Amplify row by choosing credential, region and app (listed via
  * `ListApps`); rename, reorder, remove; per-row token override, row key
- * tests, extra Amplify sources and the divider before each row.
+ * tests, extra Amplify sources, the row's group, its branch-pattern
+ * overrides, and its group's overrides and default credentials.
  *
  * @module
  */
 
 import { ConfirmButton } from '@/components/ConfirmButton';
 import type { Dashboard } from '@/domain/config/dashboard';
+import { inheritedCredential } from '@/domain/config/inheritance';
 import type { MatchTest } from '@/domain/config/matchTest';
 import type { Row } from '@/domain/config/row';
 import type { EngineProviders } from '@/engine';
 
-import { removeRow, rowFromRepo, setDivider } from './edit';
-import { CommitInput, DividerControl } from './fields';
+import { CredentialSelect } from './CredentialSelect';
+import { removeRow, rowFromRepo } from './edit';
+import { CommitInput } from './fields';
+import { listHandlers } from './groupEdit';
 import { MatchTestsEditor } from './MatchTestsEditor';
 import { ReorderList } from './ReorderList';
-import {
-  AddSource,
-  AmplifyPicker,
-  CredentialSelect,
-  RepoPicker,
-} from './rowPickers';
-
+import { RowGrouping } from './RowGrouping';
+import { AddSource, AmplifyPicker, RepoPicker } from './rowPickers';
 export function RowsEditor({
   dashboard,
   providers,
@@ -34,8 +33,10 @@ export function RowsEditor({
   dashboard: Dashboard;
   providers: EngineProviders;
   onChange: (dashboard: Dashboard) => void;
-  /** A row key test to pre-fill on one row. */
-  draft?: { rowId: string; test: MatchTest };
+  /** A row key test or a branch override to pre-fill on one row. */
+  draft?:
+    | { rowId: string; test: MatchTest }
+    | { rowId: string; overrideBranch: string };
 }): React.JSX.Element {
   const replaceRow = (row: Row) => {
     onChange({
@@ -49,9 +50,7 @@ export function RowsEditor({
         items={dashboard.rows}
         keyOf={(r) => r.id}
         nameOf={(r) => r.displayName}
-        onReorder={(rows) => {
-          onChange({ ...dashboard, rows });
-        }}
+        {...listHandlers(dashboard, 'rows', onChange)}
         onRemove={(r) => {
           onChange(removeRow(dashboard, r.id));
         }}
@@ -80,6 +79,7 @@ export function RowsEditor({
                   ? row.credentialId
                   : row.githubCredentialId
               }
+              inherited={inheritedCredential(dashboard, row.id, 'github')}
               label={`GitHub token for ${row.displayName}`}
               onChange={(id) => {
                 replaceRow(
@@ -94,7 +94,11 @@ export function RowsEditor({
                 title={`Row key tests for ${row.displayName}`}
                 fields={['jobName', 'workflowName']}
                 tests={row.rowKeyTests}
-                draft={draft?.rowId === row.id ? draft.test : undefined}
+                draft={
+                  draft?.rowId === row.id && 'test' in draft
+                    ? draft.test
+                    : undefined
+                }
                 onChange={(rowKeyTests) => {
                   replaceRow({ ...row, rowKeyTests });
                 }}
@@ -128,25 +132,23 @@ export function RowsEditor({
                 <AddSource
                   dashboard={dashboard}
                   name={row.displayName}
+                  inherited={inheritedCredential(dashboard, row.id, 'aws')}
                   onAdd={(source) => {
                     replaceRow({ ...row, sources: [...row.sources, source] });
                   }}
                 />
               </div>
             )}
-            <DividerControl
-              name={row.displayName}
-              divider={dashboard.rowDividers.find((d) => d.beforeId === row.id)}
-              onChange={(divider) => {
-                onChange({
-                  ...dashboard,
-                  rowDividers: setDivider(
-                    dashboard.rowDividers,
-                    row.id,
-                    divider,
-                  ),
-                });
-              }}
+            <RowGrouping
+              dashboard={dashboard}
+              providers={providers}
+              row={row}
+              overrideBranch={
+                draft?.rowId === row.id && 'overrideBranch' in draft
+                  ? draft.overrideBranch
+                  : undefined
+              }
+              onChange={onChange}
             />
           </div>
         )}

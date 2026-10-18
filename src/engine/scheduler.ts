@@ -133,3 +133,20 @@ export function createPollScheduler({
     },
   };
 }
+
+/** Per target id: join its running refresh rather than start another, so
+ * polling and `refreshAll` never refresh one target twice at once. */
+export function joinInFlight(): (
+  id: string,
+  refresh: () => Promise<void>,
+) => Promise<void> {
+  const inFlight = new Map<string, Promise<void>>();
+  return (id, refresh) => {
+    let pending = inFlight.get(id);
+    if (!pending) {
+      pending = refresh().finally(() => inFlight.delete(id));
+      inFlight.set(id, pending);
+    }
+    return pending;
+  };
+}

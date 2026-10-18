@@ -1,0 +1,51 @@
+/**
+ * Tests for override editing (spec.md C-14c, C-1a): set and clear branch
+ * overrides on rows and row groups, a group's default credentials, and
+ * whether a group carries settings that would be lost.
+ *
+ * @module
+ */
+import { describe, expect, it } from 'vitest';
+
+import { DashboardSchema } from '@/domain/config/dashboard';
+
+import {
+  carriesSettings,
+  setRowGroupCredential,
+  setRowGroupOverride,
+  setRowOverride,
+} from './overrideEdit';
+
+const base = DashboardSchema.parse({
+  id: 'd',
+  name: 'd',
+  credentials: [{ id: 'tok', kind: 'github', label: 'tok' }],
+  rows: [{ type: 'github', id: 'a', repo: 'o/a', displayName: 'a' }],
+  stages: [{ id: 'prod', name: 'prod', branchPattern: 'main' }],
+  rowGroups: [{ id: 'g', memberIds: ['a'] }],
+});
+
+describe('override editing', () => {
+  it('sets a trimmed override and clears it with an empty pattern', () => {
+    const row = setRowOverride(base, 'a', 'prod', ' develop ');
+    expect(row.rows[0]?.branchPatternOverrides).toEqual({ prod: 'develop' });
+    expect(
+      setRowOverride(row, 'a', 'prod', ' ').rows[0]?.branchPatternOverrides,
+    ).toEqual({});
+    const group = setRowGroupOverride(base, 'g', 'prod', 'release/*');
+    expect(group.rowGroups[0]?.branchPatternOverrides).toEqual({
+      prod: 'release/*',
+    });
+  });
+
+  it("knows when a group's disappearance would lose settings", () => {
+    const group = (d: typeof base) => d.rowGroups[0] ?? base.rowGroups[0];
+    expect(carriesSettings(group(base))).toBe(false);
+    const withToken = setRowGroupCredential(base, 'g', 'github', 'tok');
+    expect(group(withToken).defaultCredentials.github).toBe('tok');
+    expect(carriesSettings(group(withToken))).toBe(true);
+    expect(
+      carriesSettings(group(setRowGroupOverride(base, 'g', 'prod', 'x'))),
+    ).toBe(true);
+  });
+});

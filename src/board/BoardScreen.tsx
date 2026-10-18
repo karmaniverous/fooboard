@@ -7,6 +7,7 @@
  */
 import { useState } from 'react';
 
+import { ShareButton } from '@/components/ShareButton';
 import type { Dashboard } from '@/domain/config/dashboard';
 import type { BoardModel, EngineProviders } from '@/engine';
 import { measuredWidth, useMeasured } from '@/lib/useMeasured';
@@ -86,6 +87,7 @@ export function BoardScreen({
             )}
           >
             <BudgetMeter model={model} />
+            <ShareButton />
             {typeof actions === 'function' ? actions(model) : actions}
           </div>
           {subtitle && (

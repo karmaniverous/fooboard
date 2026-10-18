@@ -10,7 +10,6 @@
  */
 import type { MappingSettings } from '@/domain/config/mappingSettings';
 import type { MatchTest } from '@/domain/config/matchTest';
-import type { Stage } from '@/domain/config/stage';
 
 import { isCandidateRun, isExcludedEvent } from './candidateRuns';
 import { relevantJobs } from './githubPhase';
@@ -33,39 +32,39 @@ export function describeUnmappedReason(reason: UnmappedReason): string {
   }
 }
 
-/** A row's key tests, keyed just enough to check for a match (repo
- * membership is the caller's responsibility: pass only the rows for the
- * run's repo). */
+/** What classification needs of a row reading the run's repo (repo
+ * membership is the caller's responsibility: pass only those rows). */
 export interface RowKeyInput {
   rowKeyTests: readonly MatchTest[];
+  /** The row's effective branch patterns, one per stage (C-14c). */
+  branchPatterns: readonly string[];
 }
 
 /**
- * Classify why `entry` (a run with its jobs) was not placed in any cell of
- * a dashboard, given the stages and rows for its repo. Returns `undefined`
- * if the run **is** mapped to at least one row/stage, meaning it should not
- * appear in the Unmapped runs panel.
+ * Classify why `entry` (a run with its jobs) was not placed in any cell,
+ * given the rows reading its repo. Returns `undefined` if the run **is**
+ * mapped to at least one row and stage, meaning it should not appear in
+ * the Unmapped runs panel.
  */
 export function classifyUnmappedRun(
   entry: GithubRunWithJobs,
-  stages: readonly Pick<Stage, 'branchPattern'>[],
   rows: readonly RowKeyInput[],
   mapping: MappingSettings,
 ): UnmappedReason | undefined {
   if (isExcludedEvent(entry.run.event)) return undefined;
 
-  const matchedStages = stages.filter((stage) =>
-    isCandidateRun(entry, mapping, stage.branchPattern),
+  // Only rows whose own (effective) patterns take the branch can place it.
+  const branchRows = rows.filter((row) =>
+    row.branchPatterns.some((p) => isCandidateRun(entry, mapping, p)),
   );
-  if (matchedStages.length === 0) {
+  if (branchRows.length === 0) {
     return {
       kind: 'no-stage-matches-branch',
       branch: entry.run.headBranch ?? '',
     };
   }
-
-  const keylessRows = rows.filter((row) => row.rowKeyTests.length === 0);
-  const keyedRows = rows.filter((row) => row.rowKeyTests.length > 0);
+  const keylessRows = branchRows.filter((row) => row.rowKeyTests.length === 0);
+  const keyedRows = branchRows.filter((row) => row.rowKeyTests.length > 0);
 
   const phaseOnly = relevantJobs(
     entry.jobs,

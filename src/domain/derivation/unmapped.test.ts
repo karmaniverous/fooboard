@@ -1,7 +1,7 @@
 /**
  * Tests for unmapped-run classification (spec.md C-15): the three reason
- * buckets, a mapped run returning `undefined`, and `pull_request` runs
- * never appearing as unmapped.
+ * buckets, a mapped run returning `undefined`, `pull_request` runs never
+ * appearing as unmapped, and per-row branch patterns (C-14c).
  *
  * @module
  */
@@ -10,89 +10,75 @@ import { describe, expect, it } from 'vitest';
 import { defaultMapping, makeJob, makeRunWithJobs } from './testFixtures';
 import { classifyUnmappedRun, describeUnmappedReason } from './unmapped';
 
-const stages = [{ branchPattern: 'main' }, { branchPattern: 'release/**' }];
+const patterns = ['main', 'release/**'];
+const keyless = { rowKeyTests: [], branchPatterns: patterns };
+const keyed = (value: string) => ({
+  branchPatterns: patterns,
+  rowKeyTests: [
+    { field: 'jobName' as const, operator: 'contains' as const, value },
+  ],
+});
+const run = (headBranch: string, job: string, event = 'push') =>
+  makeRunWithJobs({ event, headBranch }, [makeJob({ name: job })]);
 
 describe('classifyUnmappedRun', () => {
-  it('is undefined (never unmapped) for pull_request events', () => {
-    const entry = makeRunWithJobs(
-      { event: 'pull_request', headBranch: 'feature/x' },
-      [],
-    );
-    expect(
-      classifyUnmappedRun(entry, stages, [], defaultMapping),
-    ).toBeUndefined();
+  it.each([
+    [
+      'never unmapped: pull_request',
+      run('feature/x', 'deploy', 'pull_request'),
+      [keyless],
+      undefined,
+    ],
+    [
+      'no-stage-matches-branch',
+      run('feature/x', 'deploy'),
+      [keyless],
+      { kind: 'no-stage-matches-branch', branch: 'feature/x' },
+    ],
+    [
+      'no-phase-matches-job',
+      run('main', 'lint'),
+      [keyless],
+      { kind: 'no-phase-matches-job' },
+    ],
+    ['mapped by a key-less row', run('main', 'deploy'), [keyless], undefined],
+    [
+      'no-row-key-matches',
+      run('main', 'deploy (billing)'),
+      [keyed('invoicing')],
+      { kind: 'no-row-key-matches' },
+    ],
+    [
+      'mapped by a keyed row',
+      run('main', 'deploy (billing)'),
+      [keyed('billing')],
+      undefined,
+    ],
+  ])('%s', (_label, entry, rows, expected) => {
+    expect(classifyUnmappedRun(entry, rows, defaultMapping)).toEqual(expected);
   });
 
-  it('reports no-stage-matches-branch when no stage pattern matches', () => {
-    const entry = makeRunWithJobs({ event: 'push', headBranch: 'feature/x' }, [
-      makeJob({ name: 'deploy' }),
-    ]);
-    expect(classifyUnmappedRun(entry, stages, [], defaultMapping)).toEqual({
+  it('lets only rows whose effective patterns take the branch place it (C-14c)', () => {
+    const entry = run('preview/release', 'deploy');
+    // The override is on the keyed row whose key doesn't match: unmapped.
+    const overridden = { ...keyed('web'), branchPatterns: ['preview/release'] };
+    const api = { ...keyless, branchPatterns: ['release/**'] };
+    expect(classifyUnmappedRun(entry, [api], defaultMapping)).toEqual({
       kind: 'no-stage-matches-branch',
-      branch: 'feature/x',
+      branch: 'preview/release',
     });
-  });
-
-  it('reports no-phase-matches-job when the branch matches but no job matches a phase', () => {
-    const entry = makeRunWithJobs({ event: 'push', headBranch: 'main' }, [
-      makeJob({ name: 'lint' }),
-    ]);
-    expect(classifyUnmappedRun(entry, stages, [], defaultMapping)).toEqual({
-      kind: 'no-phase-matches-job',
-    });
-  });
-
-  it('is mapped (undefined) when a key-less row would see the phase-matching job', () => {
-    const entry = makeRunWithJobs({ event: 'push', headBranch: 'main' }, [
-      makeJob({ name: 'deploy' }),
-    ]);
-    const rows = [{ rowKeyTests: [] }];
     expect(
-      classifyUnmappedRun(entry, stages, rows, defaultMapping),
-    ).toBeUndefined();
-  });
-
-  it('reports no-row-key-matches when only keyed rows exist and none match', () => {
-    const entry = makeRunWithJobs({ event: 'push', headBranch: 'main' }, [
-      makeJob({ name: 'deploy (billing)' }),
-    ]);
-    const rows = [
-      {
-        rowKeyTests: [
-          {
-            field: 'jobName' as const,
-            operator: 'contains' as const,
-            value: 'invoicing',
-          },
-        ],
-      },
-    ];
-    expect(classifyUnmappedRun(entry, stages, rows, defaultMapping)).toEqual({
-      kind: 'no-row-key-matches',
-    });
-  });
-
-  it("is mapped (undefined) when a keyed row's test matches the job", () => {
-    const entry = makeRunWithJobs({ event: 'push', headBranch: 'main' }, [
-      makeJob({ name: 'deploy (billing)' }),
-    ]);
-    const rows = [
-      {
-        rowKeyTests: [
-          {
-            field: 'jobName' as const,
-            operator: 'contains' as const,
-            value: 'billing',
-          },
-        ],
-      },
-    ];
+      classifyUnmappedRun(entry, [api, overridden], defaultMapping),
+    ).toEqual({ kind: 'no-row-key-matches' });
     expect(
-      classifyUnmappedRun(entry, stages, rows, defaultMapping),
+      classifyUnmappedRun(
+        entry,
+        [api, { ...overridden, rowKeyTests: [] }],
+        defaultMapping,
+      ),
     ).toBeUndefined();
   });
 });
-
 describe('describeUnmappedReason', () => {
   it('renders each reason as the C-15 message text', () => {
     expect(

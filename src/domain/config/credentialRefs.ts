@@ -10,6 +10,7 @@
 import { z } from 'zod';
 
 import type { CredentialKind, CredentialRef } from './credentials';
+import type { RowGroup } from './groups';
 import type { Row } from './row';
 
 /** The dashboard's default credential per kind; either may be unset. */
@@ -19,9 +20,9 @@ export const DefaultCredentialsSchema = z.object({
 });
 export type DefaultCredentials = z.infer<typeof DefaultCredentialsSchema>;
 
-/** The credential id to use: the override if set, else the dashboard
- * default for that kind, else `undefined` (the cell shows *needs
- * credential*). */
+/** The credential id to use: the override if set, else the inherited
+ * default for that kind (see `inheritedCredentials`, spec.md C-1a), else
+ * `undefined` (the cell shows *needs credential*). */
 export function resolveCredentialId(
   defaults: DefaultCredentials,
   kind: CredentialKind,
@@ -67,20 +68,31 @@ function rowUses(row: Row, index: number): CredentialUse[] {
     : sources;
 }
 
+/** The references in a set of default credentials found at `path`. */
+function defaultUses(
+  defaults: DefaultCredentials,
+  ...path: (string | number)[]
+): CredentialUse[] {
+  return (['github', 'aws'] as const).flatMap((kind) => {
+    const id = defaults[kind];
+    return id ? [{ id, kind, path: [...path, kind] }] : [];
+  });
+}
+
 /** Every reference that names no credential, or one of the wrong kind. */
 export function credentialReferenceIssues(dashboard: {
   credentials: readonly CredentialRef[];
   defaultCredentials: DefaultCredentials;
   rows: readonly Row[];
+  rowGroups: readonly RowGroup[];
 }): { message: string; path: (string | number)[] }[] {
   const kindOf = new Map(dashboard.credentials.map((c) => [c.id, c.kind]));
-  const defaults = (['github', 'aws'] as const).flatMap((kind) => {
-    const id = dashboard.defaultCredentials[kind];
-    return id ? [{ id, kind, path: ['defaultCredentials', kind] }] : [];
-  });
   const uses: CredentialUse[] = [
-    ...defaults,
+    ...defaultUses(dashboard.defaultCredentials, 'defaultCredentials'),
     ...dashboard.rows.flatMap(rowUses),
+    ...dashboard.rowGroups.flatMap((g, i) =>
+      defaultUses(g.defaultCredentials, 'rowGroups', i, 'defaultCredentials'),
+    ),
   ];
 
   return uses.flatMap(({ id, kind, path }) => {

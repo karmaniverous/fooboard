@@ -58,19 +58,19 @@ describe('board engine over the demo', () => {
         'error',
       ].sort(),
     );
-    expect(cell(model, 'billing', 'test')?.badge).toEqual({
+    expect(cell(model, 'billing', 'bali')?.badge).toEqual({
       kind: 'behind',
       count: 3,
     });
-    expect(cell(model, 'orders', 'staging')?.badge).toMatchObject({
+    expect(cell(model, 'orders', 'spokane')?.badge).toMatchObject({
       kind: 'diverged',
     });
     expect(
-      cell(model, 'billing', 'test')?.compare?.behindSubjects,
+      cell(model, 'billing', 'bali')?.compare?.behindSubjects,
     ).toHaveLength(3);
   });
 
-  it('lists the two unmapped demo runs with their reasons', async () => {
+  it('lists one unmapped demo run per reason', async () => {
     const reasons = (await demoModel()).unmapped.map(
       (u) => `${u.repo}:${u.reason.kind}`,
     );
@@ -78,6 +78,7 @@ describe('board engine over the demo', () => {
       expect.arrayContaining([
         'acme/api-core:no-stage-matches-branch',
         'acme/web-app:no-phase-matches-job',
+        'acme/payments:no-row-key-matches',
       ]),
     );
   });
@@ -132,6 +133,49 @@ describe('board engine credentials and limits', () => {
       cell(engine.getModel(), 'api-core', 'dev')?.derivation,
     ).toMatchObject({
       kind: 'empty',
+      state: 'needs-credential',
+    });
+  });
+
+  it("reads each row's effective branch and inherited token (C-14c, C-1a)", async () => {
+    const demo = demoProviders(() => 0);
+    const dashboard = {
+      ...demoDashboard,
+      credentials: [
+        ...demoDashboard.credentials,
+        { id: 'org-b', kind: 'github' as const, label: 'Org B' },
+      ],
+      // api-core moves to a group whose token isn't entered.
+      rowGroups: [
+        ...demoDashboard.rowGroups.map((g) => ({
+          ...g,
+          memberIds: g.memberIds.filter((id) => id !== 'api-core'),
+        })),
+        {
+          id: 'locked',
+          memberIds: ['api-core'],
+          branchPatternOverrides: {},
+          defaultCredentials: { github: 'org-b' },
+        },
+      ],
+    };
+    const engine = createBoardEngine({
+      dashboard,
+      providers: {
+        ...demo,
+        github: (id) => (id === 'org-b' ? undefined : demo.github(id)),
+      },
+      visibility: visible,
+    });
+    await engine.refreshAll();
+    const model = engine.getModel();
+    expect(cell(model, 'marketing-site', 'release')?.derivation).toMatchObject({
+      branch: 'preview/release',
+    });
+    expect(cell(model, 'billing', 'release')?.derivation).toMatchObject({
+      branch: 'release/24.3',
+    });
+    expect(cell(model, 'api-core', 'dev')?.derivation).toMatchObject({
       state: 'needs-credential',
     });
   });
@@ -206,6 +250,7 @@ describe('board engine review regressions', () => {
             value: 'deploy',
           },
         ],
+        branchPatternOverrides: {},
       },
     ],
   };
@@ -244,7 +289,7 @@ describe('board engine review regressions', () => {
   it('marks a cell active while a job is queued, whatever it displays', async () => {
     const model = await demoModel();
     // Partial success: deploy done, test still queued.
-    expect(cell(model, 'web-app', 'test')?.active).toBe(true);
+    expect(cell(model, 'web-app', 'bali')?.active).toBe(true);
     expect(cell(model, 'mobile-bff', 'prod')?.active).toBe(false);
   });
 

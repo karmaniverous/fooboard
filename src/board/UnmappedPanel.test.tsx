@@ -12,7 +12,7 @@ import { describe, expect, it, vi } from 'vitest';
 
 import { type Dashboard, DashboardSchema } from '@/domain/config/dashboard';
 import { DashboardEditor } from '@/editors/DashboardEditor';
-import { draftFor, type EditorDraft } from '@/editors/draft';
+import { draftFor, type EditorDraft, overrideDraftFor } from '@/editors/draft';
 import type { UnmappedRun } from '@/engine';
 import { createAppStores } from '@/storage';
 import { memoryStorage } from '@/storage/keyValue';
@@ -58,6 +58,36 @@ describe('UnmappedPanel', () => {
       '_blank',
     );
     expect(screen.getAllByRole('button', { name: 'Add test' })).toHaveLength(1);
+  });
+
+  it('offers Add override only for a branch no stage matches, on a known repo', () => {
+    const branchRuns: UnmappedRun[] = [
+      {
+        ...runs[0],
+        runId: 9,
+        reason: { kind: 'no-stage-matches-branch', branch: 'hotfix/1' },
+      },
+      {
+        ...runs[1],
+        runId: 10,
+        reason: { kind: 'no-stage-matches-branch', branch: 'x' },
+      },
+      ...runs,
+    ];
+    const add = vi.fn();
+    render(
+      <UnmappedPanel
+        runs={branchRuns}
+        onAddTest={() => undefined}
+        onAddOverride={(r) =>
+          overrideDraftFor(r, dashboard) ? add : undefined
+        }
+      />,
+    );
+    const buttons = screen.getAllByRole('button', { name: 'Add override' });
+    expect(buttons).toHaveLength(1);
+    fireEvent.click(buttons[0]);
+    expect(add).toHaveBeenCalledOnce();
   });
 
   it('opens the editor on the row with the test pre-filled', () => {

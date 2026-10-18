@@ -3,8 +3,8 @@
  * the dashboard's repos, listed with how many repos have each; pick one,
  * or type a pattern and see what it matches before adding. Stages can be
  * renamed, re-patterned, reordered and removed, and given a source stage
- * (choices that would make a cycle are not offered), plus the divider
- * before each column.
+ * (choices that would make a cycle are not offered), and put into, out of
+ * or between column groups.
  *
  * @module
  */
@@ -13,50 +13,19 @@ import { useState } from 'react';
 import { NativeSelect } from '@/components/NativeSelect';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { resolveCredentialId } from '@/domain/config/credentialRefs';
 import { wouldCreateCycle } from '@/domain/config/cycle';
 import type { Dashboard } from '@/domain/config/dashboard';
 import type { Stage } from '@/domain/config/stage';
 import type { EngineProviders } from '@/engine';
 
-import {
-  branchCounts,
-  patternPreview,
-  removeStage,
-  setDivider,
-  uniqueId,
-} from './edit';
-import { CommitInput, DividerControl } from './fields';
-import { LoadStatus } from './LoadStatus';
+import { discoverBranches, patternPreview } from './branches';
+import { BranchFinder } from './BranchFinder';
+import { removeStage, uniqueId } from './edit';
+import { CommitInput } from './fields';
+import { GroupControl } from './GroupControl';
+import { listHandlers } from './groupEdit';
 import { ReorderList } from './ReorderList';
 import { useLoad } from './useLoad';
-
-/** Branch names per repo, read with each row's own GitHub token. */
-async function discoverBranches(
-  dashboard: Dashboard,
-  providers: EngineProviders,
-): Promise<Map<string, string[]>> {
-  const byRepo = new Map<string, string[]>();
-  for (const row of dashboard.rows) {
-    if (byRepo.has(row.repo)) continue;
-    const override =
-      row.type === 'github' ? row.credentialId : row.githubCredentialId;
-    const id = resolveCredentialId(
-      dashboard.defaultCredentials,
-      'github',
-      override,
-    );
-    const reader = id ? providers.github(id) : undefined;
-    if (!reader) continue;
-    const [owner = '', repo = ''] = row.repo.split('/');
-    const branches = await reader.listBranches({ owner, repo });
-    byRepo.set(
-      row.repo,
-      branches.map((b) => b.name),
-    );
-  }
-  return byRepo;
-}
 
 function AddStage({
   dashboard,
@@ -91,42 +60,15 @@ function AddStage({
   return (
     <section className="flex flex-col gap-2 rounded-md border p-2 text-xs">
       <h3 className="text-sm font-semibold">Add a stage</h3>
-      {found.kind !== 'done' && (
-        <Button
-          size="sm"
-          variant="outline"
-          className="self-start"
-          disabled={found.kind === 'loading' || dashboard.rows.length === 0}
-          onClick={() => {
-            load(() => discoverBranches(dashboard, providers));
-          }}
-        >
-          {found.kind === 'loading'
-            ? 'Finding branches…'
-            : 'Find branches in your repos'}
-        </Button>
-      )}
-      <LoadStatus state={found} loading="" />
-      {byRepo && (
-        <ul className="flex max-h-40 flex-wrap gap-1 overflow-y-auto">
-          {branchCounts(byRepo).map((b) => (
-            <li key={b.name}>
-              <button
-                type="button"
-                className="rounded-full border px-2 py-0.5 hover:bg-muted"
-                onClick={() => {
-                  setPattern(b.name);
-                }}
-              >
-                {b.name}{' '}
-                <span className="text-muted-foreground">
-                  {b.count}/{byRepo.size}
-                </span>
-              </button>
-            </li>
-          ))}
-        </ul>
-      )}
+      <BranchFinder
+        found={found}
+        label="Find branches in your repos"
+        disabled={dashboard.rows.length === 0}
+        onFind={() => {
+          load(() => discoverBranches(dashboard, providers));
+        }}
+        onPick={setPattern}
+      />
       <form
         className="flex flex-wrap items-center gap-1"
         onSubmit={(e) => {
@@ -197,9 +139,7 @@ export function StagesEditor({
         items={stages}
         keyOf={(s) => s.id}
         nameOf={(s) => s.name}
-        onReorder={(next) => {
-          onChange({ ...dashboard, stages: next });
-        }}
+        {...listHandlers(dashboard, 'stages', onChange)}
         onRemove={(s) => {
           onChange(removeStage(dashboard, s.id));
         }}
@@ -244,21 +184,12 @@ export function StagesEditor({
                   </option>
                 ))}
             </NativeSelect>
-            <DividerControl
+            <GroupControl
+              dashboard={dashboard}
+              axis="stages"
+              itemId={stage.id}
               name={stage.name}
-              divider={dashboard.columnDividers.find(
-                (d) => d.beforeId === stage.id,
-              )}
-              onChange={(divider) => {
-                onChange({
-                  ...dashboard,
-                  columnDividers: setDivider(
-                    dashboard.columnDividers,
-                    stage.id,
-                    divider,
-                  ),
-                });
-              }}
+              onChange={onChange}
             />
           </div>
         )}
