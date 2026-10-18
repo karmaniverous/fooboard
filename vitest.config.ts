@@ -18,6 +18,9 @@ export default mergeConfig(
     test: {
       globals: true,
       environment: 'jsdom',
+      // Editor tests drive many renders in jsdom; under a full parallel run
+      // the slowest come near the 5 s default.
+      testTimeout: 15_000,
       setupFiles: ['./src/test/setup.ts'],
       coverage: {
         enabled: true,

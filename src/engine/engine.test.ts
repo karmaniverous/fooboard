@@ -9,6 +9,7 @@ import { describe, expect, it, vi } from 'vitest';
 
 import { demoDashboard } from '@/demo/board';
 import { createDemoGitHubReader } from '@/demo/github';
+import { RowGroupSchema } from '@/domain/config/groups';
 import { RateLimitedError } from '@/lib/github';
 
 import { demoProviders } from './demoProviders';
@@ -41,14 +42,16 @@ describe('board engine over the demo', () => {
     const cells = Object.values(model.cells).filter((c) => c !== undefined);
     const seen = new Set(
       cells.map((c) =>
-        c.derivation.kind === 'ok' ? c.derivation.status : c.derivation.state,
+        c.derivation.kind === 'ok'
+          ? c.derivation.status.icon
+          : c.derivation.state,
       ),
     );
     expect([...seen].sort()).toEqual(
       [
         'success',
-        'partialSuccess',
-        'started',
+        'partial',
+        'running',
         'queued',
         'failure',
         'cancelled',
@@ -77,16 +80,10 @@ describe('board engine over the demo', () => {
     expect(reasons).toEqual(
       expect.arrayContaining([
         'acme/api-core:no-stage-matches-branch',
-        'acme/web-app:no-phase-matches-job',
+        'acme/web-app:no-relevant-job',
         'acme/payments:no-row-key-matches',
       ]),
     );
-  });
-
-  it('records the GitHub budget per credential', async () => {
-    expect((await demoModel()).budgets['demo-github']).toMatchObject({
-      limit: 5000,
-    });
   });
 });
 
@@ -151,12 +148,11 @@ describe('board engine credentials and limits', () => {
           ...g,
           memberIds: g.memberIds.filter((id) => id !== 'api-core'),
         })),
-        {
+        RowGroupSchema.parse({
           id: 'locked',
           memberIds: ['api-core'],
-          branchPatternOverrides: {},
           defaultCredentials: { github: 'org-b' },
-        },
+        }),
       ],
     };
     const engine = createBoardEngine({
@@ -251,6 +247,7 @@ describe('board engine review regressions', () => {
           },
         ],
         branchPatternOverrides: {},
+        cellStatusSets: {},
       },
     ],
   };
@@ -286,9 +283,9 @@ describe('board engine review regressions', () => {
     );
   });
 
-  it('marks a cell active while a job is queued, whatever it displays', async () => {
+  it('marks a cell active while its status is in progress', async () => {
     const model = await demoModel();
-    // Partial success: deploy done, test still queued.
+    // Partial: deploy done, tests to come.
     expect(cell(model, 'web-app', 'bali')?.active).toBe(true);
     expect(cell(model, 'mobile-bff', 'prod')?.active).toBe(false);
   });

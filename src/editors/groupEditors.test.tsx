@@ -105,6 +105,7 @@ describe('row groups in the editor', () => {
         memberIds: ['api'],
         branchPatternOverrides: { prod: 'release/*' },
         defaultCredentials: { github: 'team' },
+        statusSets: {},
       },
     ]);
     const token = screen.getByLabelText('GitHub token for api');

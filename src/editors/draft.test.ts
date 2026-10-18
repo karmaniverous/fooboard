@@ -50,8 +50,8 @@ describe('draftFor', () => {
         dashboard,
       ),
     ).toEqual({ tab: 'Stages', pattern: 'hotfix/1' });
-    expect(draftFor(run({ kind: 'no-phase-matches-job' }), dashboard)).toEqual({
-      tab: 'Mapping',
+    expect(draftFor(run({ kind: 'no-relevant-job' }), dashboard)).toEqual({
+      tab: 'Statuses',
     });
   });
 
@@ -63,7 +63,7 @@ describe('draftFor', () => {
       overrideBranch: 'hotfix/1',
     });
     expect(
-      overrideDraftFor(run({ kind: 'no-phase-matches-job' }), dashboard),
+      overrideDraftFor(run({ kind: 'no-relevant-job' }), dashboard),
     ).toBeUndefined();
   });
 

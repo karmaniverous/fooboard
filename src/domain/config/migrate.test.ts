@@ -10,13 +10,13 @@ import { migrate } from './migrate';
 
 describe('migrate', () => {
   it('validates and returns already-current data', () => {
-    const input = { schemaVersion: 2, dashboards: [] };
+    const input = { schemaVersion: 3, dashboards: [] };
     expect(migrate(input)).toEqual(input);
   });
 
   it('defaults a missing dashboards array', () => {
-    expect(migrate({ schemaVersion: 2 })).toEqual({
-      schemaVersion: 2,
+    expect(migrate({ schemaVersion: 3 })).toEqual({
+      schemaVersion: 3,
       dashboards: [],
     });
   });
@@ -46,7 +46,7 @@ describe('migrate', () => {
         },
       ],
     });
-    expect(out.schemaVersion).toBe(2);
+    expect(out.schemaVersion).toBe(3);
     const d = out.dashboards[0];
     expect(d).not.toHaveProperty('rowDividers');
     expect(d.rowGroups).toEqual([
@@ -56,12 +56,14 @@ describe('migrate', () => {
         memberIds: ['b'],
         branchPatternOverrides: {},
         defaultCredentials: {},
+        statusSets: {},
       },
       {
         id: 'group-c',
         memberIds: ['c'],
         branchPatternOverrides: {},
         defaultCredentials: {},
+        statusSets: {},
       },
     ]);
     expect(d.columnGroups).toEqual([

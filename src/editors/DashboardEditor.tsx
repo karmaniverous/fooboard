@@ -1,6 +1,6 @@
 /**
  * The dashboard editor (spec.md C-21): general settings (rename,
- * duplicate, delete), rows, stages, mapping rules and colours. Every
+ * duplicate, delete), rows, stages, mapping rules and status sets. Every
  * change is validated against the dashboard schema before it is saved, so
  * an edit can never leave a dashboard that won't load.
  *
@@ -24,10 +24,12 @@ import type { EditorDraft } from './draft';
 import { duplicateDashboard } from './edit';
 import { CommitInput } from './fields';
 import { RowsEditor } from './RowsEditor';
-import { ColorsEditor, MappingEditor } from './SettingsEditors';
+import { MappingEditor } from './SettingsEditors';
 import { StagesEditor } from './StagesEditor';
+import { StatusSetsEditor } from './statuses/StatusSetsEditor';
+import type { UnknownCell } from './statuses/unknownRuns';
 
-const TABS = ['General', 'Rows', 'Stages', 'Mapping', 'Colours'] as const;
+const TABS = ['General', 'Rows', 'Stages', 'Mapping', 'Statuses'] as const;
 type Tab = (typeof TABS)[number];
 
 function GeneralEditor({
@@ -105,12 +107,15 @@ export function DashboardEditor({
   providers,
   onChange,
   draft,
+  unknown,
 }: {
   dashboard: Dashboard;
   providers: EngineProviders;
   onChange: (dashboard: Dashboard) => void;
   /** Open on a pre-filled fix (*Add test* from an unmapped run). */
   draft?: EditorDraft;
+  /** The board's cells whose run matched no status (A§4.3.6). */
+  unknown?: readonly UnknownCell[];
 }): React.JSX.Element {
   const [tab, setTab] = useState<Tab>(draft?.tab ?? 'General');
   const [error, setError] = useState<string | null>(null);
@@ -168,8 +173,8 @@ export function DashboardEditor({
       <TabsContent value="Mapping">
         <MappingEditor {...props} />
       </TabsContent>
-      <TabsContent value="Colours">
-        <ColorsEditor {...props} />
+      <TabsContent value="Statuses">
+        <StatusSetsEditor {...props} unknown={unknown} />
       </TabsContent>
     </Tabs>
   );

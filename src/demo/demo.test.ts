@@ -13,6 +13,7 @@ import {
   deriveAmplifyCell,
   deriveGithubCell,
 } from '@/domain/derivation';
+import { amplifySet, githubSet } from '@/domain/derivation/testFixtures';
 import { collectRowJobs } from '@/lib/amplify/rowJobs';
 import { GitHubAuthError, GitHubHttpError } from '@/lib/github/errors';
 import { mapRunWithJobs } from '@/lib/github/mapToDerivation';
@@ -45,6 +46,7 @@ async function githubCell(reader: GitHubReader, repo: string, stageId: string) {
   );
   const branches = (await reader.listBranches(ref)).map((b) => b.name);
   return deriveGithubCell({
+    set: githubSet,
     runs: withJobs,
     mapping: demoDashboard.mapping,
     branchPattern: stage(stageId).branchPattern,
@@ -59,22 +61,22 @@ describe('demo GitHub provider', () => {
 
   it.each([
     ['api-core', 'dev', 'success'],
-    ['api-core', 'spokane', 'started'],
-    ['web-app', 'bali', 'partialSuccess'],
+    ['api-core', 'spokane', 'running'],
+    ['web-app', 'bali', 'partial'],
     ['web-app', 'texas', 'queued'],
     ['mobile-bff', 'prod', 'failure'],
     ['payments', 'dev', 'cancelled'],
-  ])('%s/%s derives %s', async (repo, stageId, status) => {
+  ])('%s/%s derives %s', async (repo, stageId, icon) => {
     expect(await githubCell(reader, repo, stageId)).toMatchObject({
       kind: 'ok',
-      status,
+      status: { icon },
     });
   });
 
   it('skips the lint-only run and still derives the dev cell', async () => {
     expect(await githubCell(reader, 'web-app', 'dev')).toMatchObject({
       kind: 'ok',
-      status: 'success',
+      status: { icon: 'success' },
     });
   });
 
@@ -115,7 +117,7 @@ describe('demo GitHub provider', () => {
     const live = createDemoGitHubReader(() => now);
     now = 2 * 60_000;
     expect(await githubCell(live, 'api-core', 'spokane')).toMatchObject({
-      status: 'success',
+      status: { icon: 'success' },
     });
   });
 });
@@ -126,17 +128,21 @@ describe('demo Amplify provider', () => {
     DEMO_AMPLIFY_APPS[row].map((s) => ({ credentialId: 'demo-aws', ...s }));
 
   it.each([
-    ['marketing-site', 'spokane', 'started'],
+    ['marketing-site', 'spokane', 'running'],
     ['marketing-site', 'prod', 'failure'],
-  ] as const)('%s/%s derives %s', async (row, stageId, status) => {
+  ] as const)('%s/%s derives %s', async (row, stageId, icon) => {
     const jobs = await collectRowJobs(
       sourcesOf(row),
       stage(stageId).branchPattern,
       readerFor,
     );
     expect(
-      deriveAmplifyCell({ ...jobs, credentialStatus: 'ok' }),
-    ).toMatchObject({ kind: 'ok', status });
+      deriveAmplifyCell({
+        set: amplifySet,
+        ...jobs,
+        credentialStatus: 'ok',
+      }),
+    ).toMatchObject({ kind: 'ok', status: { icon } });
   });
 
   it('prefers the newer of the partner portal sources', async () => {
@@ -146,7 +152,11 @@ describe('demo Amplify provider', () => {
       readerFor,
     );
     expect(
-      deriveAmplifyCell({ ...jobs, credentialStatus: 'ok' }),
+      deriveAmplifyCell({
+        set: amplifySet,
+        ...jobs,
+        credentialStatus: 'ok',
+      }),
     ).toMatchObject({ kind: 'ok', appId: 'd1demopartnerus' });
   });
 });

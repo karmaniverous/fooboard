@@ -8,6 +8,7 @@
 import { describe, expect, it, vi } from 'vitest';
 
 import type { GithubCellResult } from '@/domain/derivation/githubCell';
+import { UNKNOWN } from '@/domain/statuses/resolved';
 import { type CompareResult, RateLimitedError } from '@/lib/github';
 
 import { rowStaleness } from './staleness';
@@ -23,12 +24,18 @@ const cells = Object.fromEntries(
     s.id,
     {
       kind: 'ok',
-      status: 'success',
-      phase: 'deploy',
+      status: UNKNOWN,
       branch: s.branchPattern,
       commit: 'abc',
       time: undefined,
       linkUrl: '',
+      document: {
+        workflow: 'CI',
+        event: 'push',
+        branch: s.branchPattern,
+        attempt: 1,
+        jobs: [],
+      },
     },
   ]),
 );

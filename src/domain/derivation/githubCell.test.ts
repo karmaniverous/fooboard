@@ -10,7 +10,7 @@ import { describe, expect, it } from 'vitest';
 
 import type { GithubCellDerivation, GithubCellResult } from './githubCell';
 import { deriveGithubCell } from './githubCell';
-import { defaultMapping, makeJob, makeRun } from './testFixtures';
+import { defaultMapping, githubSet, makeJob, makeRun } from './testFixtures';
 import type { GithubRunWithJobs } from './types';
 
 function entry(
@@ -35,6 +35,7 @@ describe('deriveGithubCell', () => {
     const result = deriveGithubCell({
       runs: [],
       mapping: defaultMapping,
+      set: githubSet,
       branchPattern: 'main',
       rowKeyTests: [],
       branchExists: true,
@@ -47,6 +48,7 @@ describe('deriveGithubCell', () => {
     const result = deriveGithubCell({
       runs: [],
       mapping: defaultMapping,
+      set: githubSet,
       branchPattern: 'main',
       rowKeyTests: [],
       branchExists: false,
@@ -62,6 +64,7 @@ describe('deriveGithubCell', () => {
     const result = deriveGithubCell({
       runs: [irrelevant],
       mapping: defaultMapping,
+      set: githubSet,
       branchPattern: 'main',
       rowKeyTests: [],
       branchExists: true,
@@ -86,6 +89,7 @@ describe('deriveGithubCell', () => {
     const result = deriveGithubCell({
       runs: [newerButIrrelevant, olderButRelevant],
       mapping: defaultMapping,
+      set: githubSet,
       branchPattern: 'main',
       rowKeyTests: [],
       branchExists: true,
@@ -93,7 +97,7 @@ describe('deriveGithubCell', () => {
     });
     assertOk(result);
     expect(result.commit).toBe('abc123');
-    expect(result.status).toBe('success');
+    expect(result.status.id).toBe('deployed');
   });
 
   it('a re-run (higher runAttempt) updates the cell in place', () => {
@@ -115,13 +119,14 @@ describe('deriveGithubCell', () => {
     const result = deriveGithubCell({
       runs: [reRun],
       mapping: defaultMapping,
+      set: githubSet,
       branchPattern: 'main',
       rowKeyTests: [],
       branchExists: true,
       credentialStatus: 'ok',
     });
     assertOk(result);
-    expect(result.status).toBe('success');
+    expect(result.status.id).toBe('deployed');
   });
 
   it('derives a full ok result with branch, commit, time and link from the determining job', () => {
@@ -135,19 +140,68 @@ describe('deriveGithubCell', () => {
     const result = deriveGithubCell({
       runs: [entry(run, [job])],
       mapping: defaultMapping,
+      set: githubSet,
       branchPattern: 'release/**',
       rowKeyTests: [],
       branchExists: true,
       credentialStatus: 'ok',
     });
-    expect(result).toEqual({
+    expect(result).toMatchObject({
       kind: 'ok',
-      status: 'success',
-      phase: 'deploy',
+      status: { id: 'deployed', name: 'Deployed' },
       branch: 'release/24.3',
       commit: 'deadbeef',
       time: '2026-10-01T00:05:00Z',
       linkUrl: 'https://github.com/acme/api-core/actions/runs/1/job/9',
+      document: { branch: 'release/24.3' },
+    });
+  });
+
+  it('shows Unknown for a relevant run that matches no status', () => {
+    const narrow = { ...githubSet, cell: githubSet.cell.slice(0, 1) };
+    const result = deriveGithubCell({
+      runs: [entry(makeRun({ headBranch: 'main' }), [makeJob()])],
+      mapping: defaultMapping,
+      set: narrow,
+      branchPattern: 'main',
+      rowKeyTests: [],
+      branchExists: true,
+      credentialStatus: 'ok',
+    });
+    assertOk(result);
+    expect(result.status.id).toBe('unknown');
+    expect(result.status.summary.id).toBe('unknown');
+  });
+
+  it('takes time and link from a running job before the latest finished one', () => {
+    const run = makeRun({ headBranch: 'main' });
+    const result = deriveGithubCell({
+      runs: [
+        entry(run, [
+          makeJob({ name: 'deploy', completedAt: '2026-10-01T00:09:00Z' }),
+          makeJob({
+            name: 'test',
+            status: 'in_progress',
+            conclusion: null,
+            startedAt: '2026-10-01T00:03:00Z',
+            completedAt: null,
+            htmlUrl: 'running-job',
+          }),
+        ]),
+      ],
+      mapping: defaultMapping,
+      set: githubSet,
+      branchPattern: 'main',
+      rowKeyTests: [],
+      branchExists: true,
+      credentialStatus: 'ok',
+    });
+    assertOk(result);
+    expect(result.status.id).toBe('testing');
+    expect(result.status.summary.inProgress).toBe(true);
+    expect(result).toMatchObject({
+      time: '2026-10-01T00:03:00Z',
+      linkUrl: 'running-job',
     });
   });
 });

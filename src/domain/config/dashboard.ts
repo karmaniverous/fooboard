@@ -9,7 +9,8 @@
  */
 import { z } from 'zod';
 
-import { StatusColorsSchema } from './colors';
+import { statusSetReferenceIssues } from '@/domain/statuses/resolve';
+
 import {
   credentialReferenceIssues,
   DefaultCredentialsSchema,
@@ -20,6 +21,11 @@ import { ColumnGroupSchema, type Group, RowGroupSchema } from './groups';
 import { MappingSettingsSchema } from './mappingSettings';
 import { RowSchema } from './row';
 import { StageSchema } from './stage';
+import {
+  DashboardStatusSetsSchema,
+  DEFAULT_STATUS_SET_IDS,
+  StatusSetSchema,
+} from './statusSets';
 
 /** Groups on one axis must have distinct ids, and name existing items,
  * each in at most one group, in one unbroken run, so overrides and labels
@@ -79,9 +85,6 @@ export const DashboardSchema = z
     mapping: MappingSettingsSchema.default(() =>
       MappingSettingsSchema.parse({}),
     ),
-    statusColors: StatusColorsSchema.default(() =>
-      StatusColorsSchema.parse({}),
-    ),
     /** Row groups replacing dividers (spec.md C-14b). */
     rowGroups: z.array(RowGroupSchema).default(() => []),
     /** Column groups replacing dividers (spec.md C-14b). */
@@ -89,10 +92,18 @@ export const DashboardSchema = z
     credentials: z.array(CredentialRefSchema).default(() => []),
     /** Default GitHub token and AWS key; rows and sources may override. */
     defaultCredentials: DefaultCredentialsSchema.default(() => ({})),
+    /** The status set per provider (A§4.3.6); levels below may override. */
+    statusSets: DashboardStatusSetsSchema.default(() => ({
+      ...DEFAULT_STATUS_SET_IDS,
+    })),
+    /** The dashboard's own status sets (customised presets), so it stays
+     * self-contained for sharing and export. */
+    customStatusSets: z.array(StatusSetSchema).default(() => []),
   })
   .superRefine((dashboard, ctx) => {
     for (const issue of [
       ...credentialReferenceIssues(dashboard),
+      ...statusSetReferenceIssues(dashboard),
       ...groupIssues(dashboard.rowGroups, dashboard.rows, 'rowGroups', 'row'),
       ...groupIssues(
         dashboard.columnGroups,

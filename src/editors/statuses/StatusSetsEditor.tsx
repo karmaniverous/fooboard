@@ -1,0 +1,88 @@
+/**
+ * The dashboard's status sets (spec.md A§4.3.6): the set each provider's
+ * cells use unless a row group, row or cell chooses another, from the
+ * bundled presets and the dashboard's own sets. *Customise* copies the
+ * chosen set into one the dashboard owns, to edit.
+ *
+ * @module
+ */
+import { Choice } from '@/components/Choice';
+import { Button } from '@/components/ui/button';
+import type { Dashboard } from '@/domain/config/dashboard';
+import { PROVIDER_LABELS, STATUS_PROVIDERS } from '@/domain/config/statusSets';
+
+import { customise, removeSet, setInUse, updateSet } from './customSet';
+import { CustomSetEditor } from './CustomSetEditor';
+import { setDashboardStatusSet } from './overrideSets';
+import { setOptions } from './statusSetOptions';
+import { addStatusFor, type UnknownCell } from './unknownRuns';
+import { UnknownRunsList } from './UnknownRunsList';
+
+const PROVIDERS = STATUS_PROVIDERS.map((provider) => ({
+  provider,
+  label: PROVIDER_LABELS[provider],
+}));
+
+export function StatusSetsEditor({
+  dashboard,
+  onChange,
+  unknown = [],
+}: {
+  dashboard: Dashboard;
+  onChange: (dashboard: Dashboard) => void;
+  /** The board's cells whose run matched no status. */
+  unknown?: readonly UnknownCell[];
+}): React.JSX.Element {
+  return (
+    <div className="flex flex-col gap-3 text-sm">
+      <p className="text-xs text-muted-foreground">
+        A status set decides which jobs count and what status a cell shows: the
+        first status whose test matches.
+      </p>
+      {PROVIDERS.map(({ provider, label }) => (
+        <label key={provider} className="flex items-center gap-2">
+          <span className="w-20">{label}</span>
+          <Choice
+            label={`${label} status set`}
+            value={dashboard.statusSets[provider]}
+            options={setOptions(dashboard, provider)}
+            onValueChange={(id) => {
+              onChange(setDashboardStatusSet(dashboard, provider, id));
+            }}
+          />
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => {
+              onChange(customise(dashboard, dashboard.statusSets[provider]));
+            }}
+          >
+            Customise
+          </Button>
+        </label>
+      ))}
+      <UnknownRunsList
+        unknown={unknown}
+        onAddStatus={(c) => {
+          onChange(addStatusFor(dashboard, c));
+        }}
+      />
+      {dashboard.customStatusSets.map((set) => (
+        <CustomSetEditor
+          key={set.id}
+          set={set}
+          onChange={(next) => {
+            onChange(updateSet(dashboard, set.id, () => next));
+          }}
+          onRemove={
+            setInUse(dashboard, set.id)
+              ? undefined
+              : () => {
+                  onChange(removeSet(dashboard, set.id));
+                }
+          }
+        />
+      ))}
+    </div>
+  );
+}

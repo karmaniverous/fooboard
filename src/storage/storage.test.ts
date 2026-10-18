@@ -26,7 +26,7 @@ describe('config store', () => {
     const store = createConfigStore(memoryStorage());
     expect(store.load()).toEqual({
       kind: 'ok',
-      root: { schemaVersion: 2, dashboards: [] },
+      root: { schemaVersion: 3, dashboards: [] },
     });
     const second = { ...demoDashboard, id: 'second', name: 'Second' };
     store.saveDashboard(demoDashboard);

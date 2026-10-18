@@ -23,6 +23,7 @@ const frontend = {
   memberIds: ['web'],
   branchPatternOverrides: { release: 'preview/release' },
   defaultCredentials: { github: 'team' },
+  statusSets: {},
 };
 
 describe('branch patterns', () => {

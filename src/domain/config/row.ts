@@ -11,6 +11,15 @@ import { z } from 'zod';
 import { BranchPatternOverridesSchema } from './groups';
 import { MatchTestSchema } from './matchTest';
 
+/** A row's status-set overrides (A§4.3.6): its own set, and one per
+ * stage for single cells. Cell beats row beats row group beats dashboard. */
+const rowStatusSets = {
+  statusSet: z.string().min(1).optional(),
+  cellStatusSets: z
+    .record(z.string().min(1), z.string().min(1))
+    .default(() => ({})),
+};
+
 /** `owner/name` GitHub repo identifier. */
 export const RepoSchema = z
   .string()
@@ -30,6 +39,7 @@ export const GithubRowSchema = z.object({
   credentialId: z.string().min(1).optional(),
   /** Per-stage branch-pattern overrides for this row (spec.md C-14c). */
   branchPatternOverrides: BranchPatternOverridesSchema.default(() => ({})),
+  ...rowStatusSets,
 });
 export type GithubRow = z.infer<typeof GithubRowSchema>;
 
@@ -60,6 +70,7 @@ export const AmplifyRowSchema = z.object({
   githubCredentialId: z.string().min(1).optional(),
   /** Per-stage branch-pattern overrides for this row (spec.md C-14c). */
   branchPatternOverrides: BranchPatternOverridesSchema.default(() => ({})),
+  ...rowStatusSets,
 });
 export type AmplifyRow = z.infer<typeof AmplifyRowSchema>;
 

@@ -10,14 +10,14 @@
  */
 import type { MappingSettings } from '@/domain/config/mappingSettings';
 import type { MatchTest } from '@/domain/config/matchTest';
+import { githubRunDocument } from '@/domain/statuses/documents';
 
 import { isCandidateRun, isExcludedEvent } from './candidateRuns';
-import { relevantJobs } from './githubPhase';
 import type { GithubRunWithJobs } from './types';
 
 export type UnmappedReason =
   | { kind: 'no-stage-matches-branch'; branch: string }
-  | { kind: 'no-phase-matches-job' }
+  | { kind: 'no-relevant-job' }
   | { kind: 'no-row-key-matches' };
 
 /** Human-readable text for the Unmapped runs panel (spec.md C-15). */
@@ -25,8 +25,8 @@ export function describeUnmappedReason(reason: UnmappedReason): string {
   switch (reason.kind) {
     case 'no-stage-matches-branch':
       return `no stage matches branch "${reason.branch}"`;
-    case 'no-phase-matches-job':
-      return 'no phase matches any job';
+    case 'no-relevant-job':
+      return 'no job its status set covers';
     case 'no-row-key-matches':
       return 'no row key matches';
   }
@@ -38,6 +38,8 @@ export interface RowKeyInput {
   rowKeyTests: readonly MatchTest[];
   /** The row's effective branch patterns, one per stage (C-14c). */
   branchPatterns: readonly string[];
+  /** The job test of the status set those cells use (A§4.3.6). */
+  jobTest: Record<string, unknown>;
 }
 
 /**
@@ -63,27 +65,12 @@ export function classifyUnmappedRun(
       branch: entry.run.headBranch ?? '',
     };
   }
-  const keylessRows = branchRows.filter((row) => row.rowKeyTests.length === 0);
-  const keyedRows = branchRows.filter((row) => row.rowKeyTests.length > 0);
-
-  const phaseOnly = relevantJobs(
-    entry.jobs,
-    entry.run.workflowName,
-    mapping.phases,
-    [],
-  );
-  if (phaseOnly.length === 0) return { kind: 'no-phase-matches-job' };
-
-  if (keylessRows.length > 0) return undefined;
-
-  for (const row of keyedRows) {
-    const keyed = relevantJobs(
-      entry.jobs,
-      entry.run.workflowName,
-      mapping.phases,
-      row.rowKeyTests,
-    );
-    if (keyed.length > 0) return undefined;
-  }
+  // Placed when a row whose patterns take the branch sees a job its status
+  // set covers (A§4.3.6).
+  const sees = (row: RowKeyInput, keys: readonly MatchTest[]) =>
+    githubRunDocument(entry, keys, row.jobTest) !== undefined;
+  if (!branchRows.some((row) => sees(row, [])))
+    return { kind: 'no-relevant-job' };
+  if (branchRows.some((row) => sees(row, row.rowKeyTests))) return undefined;
   return { kind: 'no-row-key-matches' };
 }

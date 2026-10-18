@@ -21,6 +21,7 @@ import {
 } from '@/domain/config/inheritance';
 import type { AmplifyRow, GithubRow, Row } from '@/domain/config/row';
 import type { Stage } from '@/domain/config/stage';
+import { statusSetFor } from '@/domain/statuses/resolve';
 import type { GitHubReader } from '@/lib/github';
 import { isOverPollingShare } from '@/lib/github';
 
@@ -144,6 +145,7 @@ export function createBoardEngine({
       rows,
       rowsByRepo[first.repo] ?? rows,
       stagesFor,
+      (row, stageId) => statusSetFor(dashboard, row, stageId),
       mapping,
       access?.reader,
     );
@@ -178,6 +180,7 @@ export function createBoardEngine({
     const result = await refreshAmplifyRow(
       row,
       stagesFor(row),
+      (stageId) => statusSetFor(dashboard, row, stageId),
       inheritedCredentials(dashboard, row.id),
       (id) => providers.amplify(id),
     );

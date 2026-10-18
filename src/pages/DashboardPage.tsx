@@ -18,6 +18,7 @@ import { useCredentialVersion } from '@/credentials/useCredentialVersion';
 import type { Dashboard } from '@/domain/config/dashboard';
 import { DashboardEditor } from '@/editors/DashboardEditor';
 import { draftFor, type EditorDraft, overrideDraftFor } from '@/editors/draft';
+import { unknownCells } from '@/editors/statuses/unknownRuns';
 import { credentialProviders } from '@/engine/credentialProviders';
 import { dashboardsOf } from '@/storage/configStore';
 import { useStores } from '@/storage/storesContext';
@@ -101,6 +102,7 @@ function SavedDashboard({
               dashboard={dashboard}
               providers={providers}
               onChange={save}
+              unknown={unknownCells(dashboard, model)}
             />
           </SidePanel>
           <SidePanel

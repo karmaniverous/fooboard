@@ -5,19 +5,34 @@
  *
  * @module
  */
-import type { CellStatus, EmptyCellState } from '@/domain/derivation';
+import type { StatusIcon } from '@/domain/config/statusSets';
+import type { EmptyCellState } from '@/domain/derivation';
 import type { StalenessBadge } from '@/domain/derivation';
+import type { ResolvedStatus } from '@/domain/statuses/resolved';
+import { textOn } from '@/lib/contrast';
 
-/** Icon and label per status (spec.md §3). */
-export const STATUS_META: Record<CellStatus, { icon: string; label: string }> =
-  {
-    queued: { icon: '\u25cb', label: 'Queued' },
-    started: { icon: '\u25d4', label: 'Started' },
-    partialSuccess: { icon: '\u25d1', label: 'Partial' },
-    success: { icon: '\u2713', label: 'Success' },
-    failure: { icon: '\u2715', label: 'Failure' },
-    cancelled: { icon: '\u2298', label: 'Cancelled' },
-  };
+/** How a status fills a cell or a legend swatch: its colour, text in white
+ * or near-black (whichever reads, WCAG AA), and a dashed outline when
+ * outlined. */
+export const statusLook = (
+  status: Pick<ResolvedStatus, 'color' | 'outlined'>,
+): { className: string | undefined; style: React.CSSProperties } => ({
+  className: status.outlined
+    ? 'border border-dashed border-slate-500'
+    : undefined,
+  style: { backgroundColor: status.color, color: textOn(status.color) },
+});
+
+/** The glyph for each status icon (A§4.3.6). */
+export const STATUS_GLYPH: Record<StatusIcon, string> = {
+  queued: '\u25cb',
+  running: '\u25d4',
+  partial: '\u25d1',
+  success: '\u2713',
+  failure: '\u2715',
+  cancelled: '\u2298',
+  unknown: '?',
+};
 
 /** Text shown in an empty cell (spec.md §4.3.5). */
 export const EMPTY_LABEL: Record<EmptyCellState, string> = {

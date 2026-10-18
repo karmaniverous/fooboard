@@ -9,6 +9,7 @@ import { describe, expect, it } from 'vitest';
 
 import { demoDashboard } from '@/demo/board';
 import { createDemoGitHubReader } from '@/demo/github';
+import { githubSet } from '@/domain/derivation/testFixtures';
 import type { GitHubReader } from '@/lib/github/reader';
 
 import { refreshGithubRepo } from './githubRow';
@@ -45,13 +46,14 @@ describe('refreshGithubRepo', () => {
       [row],
       [row],
       () => demoDashboard.stages,
+      () => githubSet,
       demoDashboard.mapping,
       reader,
     );
     if (result.kind !== 'refreshed') throw new Error(result.kind);
     expect(result.rows['api-core'].dev.derivation).toMatchObject({
       kind: 'ok',
-      status: 'success',
+      status: { icon: 'success' },
     });
   });
 });

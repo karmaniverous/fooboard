@@ -9,13 +9,12 @@ import { WithTooltip } from '@/components/ui/tooltip';
 import type { BoardModel } from '@/engine';
 import { cn } from '@/lib/utils';
 
-import { type CellFilter, FILTERS, summarize } from './summary';
+import { type BadgeKind, type CellFilter, summarize } from './summary';
 
-/** Status chips get a filled dot; behind and diverged, whose colours may
- * repeat status colours, get a white circle ringed in their colour. */
-const DOT: Record<CellFilter, string> = {
-  failing: 'size-2 bg-status-failure',
-  running: 'size-2 bg-status-started',
+/** Summary-status chips get a dot in the status's colour; behind and
+ * diverged, whose colours may repeat status colours, get a white circle
+ * ringed in their colour. */
+const BADGE_DOT: Record<BadgeKind, string> = {
   behind: 'size-2.5 border-2 border-badge-behind bg-white',
   diverged: 'size-2.5 border-2 border-badge-diverged bg-white',
 };
@@ -32,7 +31,7 @@ export function BoardSummary({
   /** Show each chip's word; dropped before the chips would wrap (C-13). */
   words?: boolean;
 }): React.JSX.Element {
-  const counts = summarize(model);
+  const chips = summarize(model);
   return (
     <ToggleGroup
       type="single"
@@ -40,27 +39,35 @@ export function BoardSummary({
       className="flex-wrap gap-1.5"
       value={filter ?? ''}
       onValueChange={(v) => {
-        onFilter(FILTERS.find((f) => f === v) ?? null);
+        onFilter(chips.find((c) => c.id === v)?.id ?? null);
       }}
     >
-      {FILTERS.map((f) => {
+      {chips.map(({ id, name, color, badge, count }) => {
+        const label = `${String(count)} ${name}`;
         const chip = (
           <ToggleGroupItem
-            key={f}
-            value={f}
-            aria-label={`${String(counts[f])} ${f}`}
+            key={id}
+            value={id}
+            aria-label={label}
             className="inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5"
           >
-            <span aria-hidden className={cn('rounded-full', DOT[f])} />
-            {counts[f]}
-            {words && <span>{f}</span>}
+            <span
+              aria-hidden
+              className={cn(
+                'rounded-full',
+                badge ? BADGE_DOT[badge] : 'size-2',
+              )}
+              style={color ? { backgroundColor: color } : undefined}
+            />
+            {count}
+            {words && <span>{name}</span>}
           </ToggleGroupItem>
         );
         // Without its word, a chip says what it counts on hover (C-14a).
         return words ? (
           chip
         ) : (
-          <WithTooltip key={f} label={`${String(counts[f])} ${f}`}>
+          <WithTooltip key={id} label={label}>
             {chip}
           </WithTooltip>
         );

@@ -206,6 +206,7 @@ export function AmplifyPicker({
                       },
                     ],
                     branchPatternOverrides: {},
+                    cellStatusSets: {},
                   });
                 }}
               >
