@@ -43,6 +43,7 @@ describe('group lifecycle', () => {
         memberIds: ['b'],
         branchPatternOverrides: {},
         defaultCredentials: {},
+        statusSets: {},
       },
     ]);
     const two = setGroup(one, 'rows', 'd', 'group-b');

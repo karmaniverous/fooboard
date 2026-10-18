@@ -43,6 +43,7 @@ export function rowFromRepo(
     displayName: name,
     rowKeyTests: [],
     branchPatternOverrides: {},
+    cellStatusSets: {},
   };
 }
 

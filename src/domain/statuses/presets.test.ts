@@ -22,7 +22,8 @@ import type {
 
 import { classify } from './classify';
 import { githubRunDocument } from './documents';
-import { findStatusSet, PRESETS } from './presets';
+import { PRESETS } from './presets';
+import { findStatusSet } from './resolve';
 
 /** Today's status for each deploy-and-test status. */
 const LEGACY: Record<string, LegacyStatus> = {

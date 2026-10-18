@@ -10,6 +10,7 @@
 import { z } from 'zod';
 
 import { DefaultCredentialsSchema } from './credentialRefs';
+import { StatusSetRefsSchema } from './statusSets';
 
 /** Per-stage branch-pattern overrides, keyed by stage id (C-14c). */
 export const BranchPatternOverridesSchema = z.record(
@@ -29,11 +30,12 @@ const GroupSchema = z.object({
 });
 export type Group = z.infer<typeof GroupSchema>;
 
-/** A row group: also an override level for branch patterns (C-14c) and
- * default credentials (C-1a). */
+/** A row group: also an override level for branch patterns (C-14c),
+ * default credentials (C-1a) and status sets per provider (A§4.3.6). */
 export const RowGroupSchema = GroupSchema.extend({
   branchPatternOverrides: BranchPatternOverridesSchema.default(() => ({})),
   defaultCredentials: DefaultCredentialsSchema.default(() => ({})),
+  statusSets: StatusSetRefsSchema.default(() => ({})),
 });
 export type RowGroup = z.infer<typeof RowGroupSchema>;
 

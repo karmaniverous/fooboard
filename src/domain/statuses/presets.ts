@@ -30,7 +30,7 @@ import {
 } from './schemaBuilders';
 
 /** The summary statuses every preset uses. */
-const PRESET_SUMMARY: SummaryStatus[] = [
+export const PRESET_SUMMARY: SummaryStatus[] = [
   {
     id: 'failing',
     name: 'Failing',
@@ -79,7 +79,7 @@ const status = (
 });
 
 /** The jobs a deploy-and-test set cares about: deploy or test jobs. */
-function deployTestJobs(
+export function deployTestJobs(
   deployTests: readonly MatchTest[],
   testTests: readonly MatchTest[],
 ): JsonSchema {
@@ -88,7 +88,7 @@ function deployTestJobs(
 
 /** Cell statuses for jobs whose names pass the deploy and test phase tests
  * (a job passing both is a test job, as today). */
-function deployTestStatuses(
+export function deployTestStatuses(
   deployTests: readonly MatchTest[],
   testTests: readonly MatchTest[],
 ): CellStatus[] {
@@ -235,10 +235,3 @@ export const PRESETS: readonly StatusSet[] = [
     ],
   },
 ].map((p) => StatusSetSchema.parse(p));
-
-/** The set with `id`: a bundled preset, or one of `custom`. */
-export const findStatusSet = (
-  id: string,
-  custom: readonly StatusSet[] = [],
-): StatusSet | undefined =>
-  PRESETS.find((p) => p.id === id) ?? custom.find((s) => s.id === id);

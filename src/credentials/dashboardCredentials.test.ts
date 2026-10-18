@@ -42,6 +42,7 @@ describe('dashboard credentials', () => {
           rowKeyTests: [],
           credentialId: 'a',
           branchPatternOverrides: {},
+          cellStatusSets: {},
         },
         {
           type: 'amplify',
@@ -51,6 +52,7 @@ describe('dashboard credentials', () => {
           githubCredentialId: 'a',
           sources: [{ credentialId: 'k', region: 'us-east-1', appId: 'x' }],
           branchPatternOverrides: {},
+          cellStatusSets: {},
         },
       ],
     };

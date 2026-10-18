@@ -39,6 +39,7 @@ function onAxis(
       memberIds: [],
       branchPatternOverrides: {},
       defaultCredentials: {},
+      statusSets: {},
     }));
     return next && { ...d, rows: next.items, rowGroups: next.groups };
   }

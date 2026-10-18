@@ -9,6 +9,7 @@ import { describe, expect, it, vi } from 'vitest';
 
 import { demoDashboard } from '@/demo/board';
 import { createDemoGitHubReader } from '@/demo/github';
+import { RowGroupSchema } from '@/domain/config/groups';
 import { RateLimitedError } from '@/lib/github';
 
 import { demoProviders } from './demoProviders';
@@ -151,12 +152,11 @@ describe('board engine credentials and limits', () => {
           ...g,
           memberIds: g.memberIds.filter((id) => id !== 'api-core'),
         })),
-        {
+        RowGroupSchema.parse({
           id: 'locked',
           memberIds: ['api-core'],
-          branchPatternOverrides: {},
           defaultCredentials: { github: 'org-b' },
-        },
+        }),
       ],
     };
     const engine = createBoardEngine({
@@ -251,6 +251,7 @@ describe('board engine review regressions', () => {
           },
         ],
         branchPatternOverrides: {},
+        cellStatusSets: {},
       },
     ],
   };

@@ -5,13 +5,15 @@
  * validates it against `ConfigRootSchema`.
  *
  * Steps so far: v1 to v2, row and column groups replacing dividers
- * (spec.md C-14b).
+ * (spec.md C-14b); v2 to v3, status sets replacing phase tests and status
+ * colours (A§4.3.6).
  *
  * @module
  */
 import { omit, sort } from 'radash';
 import { z } from 'zod';
 
+import { phasesToStatusSets } from './migrateV3';
 import type { ConfigRoot } from './root';
 import { ConfigRootSchema, CURRENT_SCHEMA_VERSION } from './root';
 
@@ -81,6 +83,12 @@ const migrations: Partial<Record<number, Migration>> = {
     ...data,
     dashboards: Array.isArray(data.dashboards)
       ? data.dashboards.map(dividersToGroups)
+      : data.dashboards,
+  }),
+  2: (data) => ({
+    ...data,
+    dashboards: Array.isArray(data.dashboards)
+      ? data.dashboards.map(phasesToStatusSets)
       : data.dashboards,
   }),
 };
