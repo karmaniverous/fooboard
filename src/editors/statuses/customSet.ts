@@ -18,11 +18,14 @@ function freshId(base: string, taken: readonly string[]): string {
   return `${base}-${String(n)}`;
 }
 
-/** A copy of set `id` the dashboard owns, chosen for its provider, so the
- * board looks the same until it is edited. */
-export function customise(dashboard: Dashboard, id: string): Dashboard {
+/** A copy of set `id` the dashboard owns (not yet chosen anywhere), and
+ * its id. */
+export function copySet(
+  dashboard: Dashboard,
+  id: string,
+): { dashboard: Dashboard; id: string } {
   const source = findStatusSet(id, dashboard.customStatusSets);
-  if (!source) return dashboard;
+  if (!source) return { dashboard, id };
   const copy: StatusSet = {
     ...structuredClone(source),
     id: freshId(
@@ -32,9 +35,25 @@ export function customise(dashboard: Dashboard, id: string): Dashboard {
     name: `${source.name} (custom)`,
   };
   return {
-    ...dashboard,
-    customStatusSets: [...dashboard.customStatusSets, copy],
-    statusSets: { ...dashboard.statusSets, [source.provider]: copy.id },
+    dashboard: {
+      ...dashboard,
+      customStatusSets: [...dashboard.customStatusSets, copy],
+    },
+    id: copy.id,
+  };
+}
+
+/** A copy of set `id` the dashboard owns, chosen for its provider, so the
+ * board looks the same until it is edited. */
+export function customise(dashboard: Dashboard, id: string): Dashboard {
+  const copied = copySet(dashboard, id);
+  const copy = copied.dashboard.customStatusSets.find(
+    (s) => s.id === copied.id,
+  );
+  if (!copy || copied.dashboard === dashboard) return dashboard;
+  return {
+    ...copied.dashboard,
+    statusSets: { ...dashboard.statusSets, [copy.provider]: copy.id },
   };
 }
 

@@ -26,6 +26,7 @@ import { CommitInput } from './fields';
 import { RowsEditor } from './RowsEditor';
 import { MappingEditor } from './SettingsEditors';
 import { StagesEditor } from './StagesEditor';
+import type { UnknownCell } from './statuses/unknownRuns';
 import { StatusSetsEditor } from './StatusSetsEditor';
 
 const TABS = ['General', 'Rows', 'Stages', 'Mapping', 'Statuses'] as const;
@@ -106,12 +107,15 @@ export function DashboardEditor({
   providers,
   onChange,
   draft,
+  unknown,
 }: {
   dashboard: Dashboard;
   providers: EngineProviders;
   onChange: (dashboard: Dashboard) => void;
   /** Open on a pre-filled fix (*Add test* from an unmapped run). */
   draft?: EditorDraft;
+  /** The board's cells whose run matched no status (A§4.3.6). */
+  unknown?: readonly UnknownCell[];
 }): React.JSX.Element {
   const [tab, setTab] = useState<Tab>(draft?.tab ?? 'General');
   const [error, setError] = useState<string | null>(null);
@@ -170,7 +174,7 @@ export function DashboardEditor({
         <MappingEditor {...props} />
       </TabsContent>
       <TabsContent value="Statuses">
-        <StatusSetsEditor {...props} />
+        <StatusSetsEditor {...props} unknown={unknown} />
       </TabsContent>
     </Tabs>
   );

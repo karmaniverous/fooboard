@@ -18,6 +18,7 @@ import {
   updateSet,
 } from './statuses/customSet';
 import { CustomSetEditor } from './statuses/CustomSetEditor';
+import { addStatusFor, type UnknownCell } from './statuses/unknownRuns';
 import { setOptions } from './statusSetOptions';
 
 const PROVIDERS: { provider: StatusProvider; label: string }[] = [
@@ -28,9 +29,12 @@ const PROVIDERS: { provider: StatusProvider; label: string }[] = [
 export function StatusSetsEditor({
   dashboard,
   onChange,
+  unknown = [],
 }: {
   dashboard: Dashboard;
   onChange: (dashboard: Dashboard) => void;
+  /** The board's cells whose run matched no status. */
+  unknown?: readonly UnknownCell[];
 }): React.JSX.Element {
   return (
     <div className="flex flex-col gap-3 text-sm">
@@ -63,6 +67,41 @@ export function StatusSetsEditor({
           </Button>
         </label>
       ))}
+      {unknown.length > 0 && (
+        <section
+          aria-label="Runs no status matches"
+          className="flex flex-col gap-2 rounded border border-dashed p-2"
+        >
+          <h4 className="text-xs font-semibold">
+            Runs no status matches ({unknown.length})
+          </h4>
+          {unknown.map((c) => (
+            <div
+              key={`${c.rowId}/${c.stageId}`}
+              className="flex flex-col gap-1"
+            >
+              <div className="flex items-center justify-between gap-2">
+                <span>
+                  {c.rowName} &middot; {c.stageName} ({c.setName})
+                </span>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  aria-label={`Add status for ${c.rowName} ${c.stageName}`}
+                  onClick={() => {
+                    onChange(addStatusFor(dashboard, c));
+                  }}
+                >
+                  Add status
+                </Button>
+              </div>
+              <pre className="max-h-32 overflow-auto rounded bg-muted p-1 text-[0.7rem]">
+                {JSON.stringify(c.document, null, 2)}
+              </pre>
+            </div>
+          ))}
+        </section>
+      )}
       {dashboard.customStatusSets.map((set) => (
         <CustomSetEditor
           key={set.id}
