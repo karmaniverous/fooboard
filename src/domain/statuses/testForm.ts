@@ -12,20 +12,24 @@ import { z } from 'zod';
 import { caseless, textPattern } from './pattern';
 import { all, anyJob, everyJob, has } from './schemaBuilders';
 
-type ConditionScope = 'value' | 'anyJob' | 'everyJob';
-
-type FormOperator =
-  'is' | 'oneOf' | 'startsWith' | 'endsWith' | 'contains' | 'regex';
-
-export interface Condition {
+/** One condition of the form. */
+export const ConditionSchema = z.object({
   /** `value`: a field of the document itself (the run, Amplify job or, in
    * a job test, the job); `anyJob`/`everyJob`: a field of the run's jobs. */
-  scope: ConditionScope;
-  field: string;
-  operator: FormOperator;
+  scope: z.enum(['value', 'anyJob', 'everyJob']),
+  field: z.string(),
+  operator: z.enum([
+    'is',
+    'oneOf',
+    'startsWith',
+    'endsWith',
+    'contains',
+    'regex',
+  ]),
   /** For `oneOf`, comma-separated exact values. */
-  value: string;
-}
+  value: z.string(),
+});
+export type Condition = z.infer<typeof ConditionSchema>;
 
 type Schema = Record<string, unknown>;
 
@@ -54,7 +58,12 @@ export const toSchema = (conditions: readonly Condition[]): Schema =>
 // --- Reading back ---------------------------------------------------------
 
 const ValueTestSchema = z.union([
-  z.strictObject({ enum: z.array(z.string()) }),
+  // Only values the comma-separated field gives back unchanged.
+  z.strictObject({
+    enum: z.array(
+      z.string().refine((v) => v !== '' && v === v.trim() && !v.includes(',')),
+    ),
+  }),
   z.strictObject({ type: z.literal('string'), pattern: z.string() }),
 ]);
 
@@ -75,8 +84,10 @@ const JobsSchema = z.union([
 
 /** The literal text a caseless pattern matches, if it is one. */
 function uncaseless(pattern: string): string | undefined {
-  const text = pattern.replace(/\[(.)(.)\]|\\(.)/gsu, (_, lo, _up, esc) =>
-    typeof esc === 'string' ? esc : String(lo),
+  const text = pattern.replace(
+    /\[(.)(.)\]|\\(.)/gsu,
+    (_: string, lo: unknown, _up: unknown, esc: unknown) =>
+      typeof esc === 'string' ? esc : typeof lo === 'string' ? lo : '',
   );
   return caseless(text) === pattern ? text : undefined;
 }

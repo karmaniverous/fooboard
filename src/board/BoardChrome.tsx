@@ -9,12 +9,12 @@ import { WithTooltip } from '@/components/ui/tooltip';
 import type { BoardModel } from '@/engine';
 import { cn } from '@/lib/utils';
 
-import { type CellFilter, summarize } from './summary';
+import { type BadgeKind, type CellFilter, summarize } from './summary';
 
 /** Summary-status chips get a dot in the status's colour; behind and
  * diverged, whose colours may repeat status colours, get a white circle
  * ringed in their colour. */
-const BADGE_DOT: Partial<Record<CellFilter, string>> = {
+const BADGE_DOT: Record<BadgeKind, string> = {
   behind: 'size-2.5 border-2 border-badge-behind bg-white',
   diverged: 'size-2.5 border-2 border-badge-diverged bg-white',
 };
@@ -42,7 +42,7 @@ export function BoardSummary({
         onFilter(chips.find((c) => c.id === v)?.id ?? null);
       }}
     >
-      {chips.map(({ id, name, color, count }) => {
+      {chips.map(({ id, name, color, badge, count }) => {
         const label = `${String(count)} ${name}`;
         const chip = (
           <ToggleGroupItem
@@ -53,7 +53,10 @@ export function BoardSummary({
           >
             <span
               aria-hidden
-              className={cn('rounded-full', BADGE_DOT[id] ?? 'size-2')}
+              className={cn(
+                'rounded-full',
+                badge ? BADGE_DOT[badge] : 'size-2',
+              )}
               style={color ? { backgroundColor: color } : undefined}
             />
             {count}

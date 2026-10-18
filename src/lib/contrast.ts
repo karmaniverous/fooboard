@@ -25,10 +25,13 @@ export function luminance(hex: string): number {
 export const contrast = (a: number, b: number): number =>
   (Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05);
 
-/** White or near-black, whichever reads better on `fill`. */
+/** White or near-black, whichever reads better on `fill`; true black on
+ * mid-tones where neither reaches WCAG AA (4.5:1). Black always does when
+ * white doesn't. */
 export function textOn(fill: string): string {
   const l = luminance(fill);
-  return contrast(l, 1) >= contrast(l, luminance(DARK_TEXT))
-    ? '#ffffff'
-    : DARK_TEXT;
+  const white = contrast(l, 1);
+  const dark = contrast(l, luminance(DARK_TEXT));
+  if (Math.max(white, dark) < 4.5) return '#000000';
+  return white >= dark ? '#ffffff' : DARK_TEXT;
 }

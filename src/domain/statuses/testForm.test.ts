@@ -93,6 +93,15 @@ describe('testForm', () => {
       preset?.cell.map(() => undefined),
     );
     expect(fromSchema({ not: {} })).toBeUndefined();
+    // Enum values the comma-separated field would change stay JSON.
+    for (const v of ['Build, deploy', '', ' padded '])
+      expect(
+        fromSchema({
+          type: 'object',
+          properties: { status: { enum: [v] } },
+          required: ['status'],
+        }),
+      ).toBeUndefined();
     expect(fromSchema([])).toBeUndefined();
   });
 });

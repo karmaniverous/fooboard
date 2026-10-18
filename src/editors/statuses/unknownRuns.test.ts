@@ -13,7 +13,7 @@ import { classify } from '@/domain/statuses/classify';
 import type { GithubRunDocument } from '@/domain/statuses/documents';
 import { statusSetFor } from '@/domain/statuses/resolve';
 import { UNKNOWN } from '@/domain/statuses/resolved';
-import type { BoardCell } from '@/engine';
+import { type BoardCell, cellKey } from '@/engine';
 
 import { addStatusFor, unknownCells } from './unknownRuns';
 
@@ -70,7 +70,10 @@ const unknownCell = (rowId: string, stageId: string): BoardCell => ({
 
 describe('unknownCells', () => {
   it('lists Unknown cells with their set and document', () => {
-    const cells = { a: unknownCell('api', 'prod'), b: undefined };
+    const cells = {
+      [cellKey('api', 'prod')]: unknownCell('api', 'prod'),
+      [cellKey('web', 'dev')]: undefined,
+    };
     expect(unknownCells(base, { cells })).toEqual([
       {
         rowId: 'api',
@@ -182,5 +185,32 @@ describe('addStatusFor', () => {
     expect(
       addStatusFor(base, { rowId: 'gone', stageId: 'dev', document: run }),
     ).toBe(base);
+  });
+
+  it.each([
+    [
+      'a GitHub job still running (no conclusion)',
+      'github',
+      {
+        ...run,
+        jobs: [{ ...run.jobs[0], status: 'in_progress', conclusion: null }],
+      },
+    ],
+    [
+      'an Amplify job with no status',
+      'amplify',
+      {
+        branch: 'main',
+        status: null,
+        commitId: null,
+        startTime: null,
+        endTime: null,
+      },
+    ],
+  ])('drafts a status that matches %s', (_, kind, document) => {
+    const next = addStatusFor(base, { rowId: 'web', stageId: 'dev', document });
+    const [added] = next.customStatusSets[0]?.cell ?? [];
+    expect(classify(document, { cell: [added] })?.id).toBe(added.id);
+    expect(kind).toBeTruthy();
   });
 });

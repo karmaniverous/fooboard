@@ -28,9 +28,9 @@ describe('BoardSummary', () => {
       <BoardSummary model={model} filter={null} onFilter={onFilter} />,
     );
     fireEvent.click(screen.getByRole('radio', { name: /behind/ }));
-    expect(onFilter).toHaveBeenLastCalledWith('behind');
+    expect(onFilter).toHaveBeenLastCalledWith('badge:behind');
     rerender(
-      <BoardSummary model={model} filter="behind" onFilter={onFilter} />,
+      <BoardSummary model={model} filter="badge:behind" onFilter={onFilter} />,
     );
     fireEvent.click(screen.getByRole('radio', { name: /behind/ }));
     expect(onFilter).toHaveBeenLastCalledWith(null);

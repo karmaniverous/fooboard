@@ -87,7 +87,8 @@ export function removeRow(dashboard: Dashboard, id: string): Dashboard {
 }
 
 /** Remove a stage: any stage's use of it as a source, its overrides on
- * rows and row groups (C-14c), and its column-group membership. */
+ * rows and row groups (C-14c), rows' status-set choices for its cells
+ * (A§4.3.6), and its column-group membership. */
 export function removeStage(dashboard: Dashboard, id: string): Dashboard {
   const drop = <T extends { branchPatternOverrides: Record<string, string> }>(
     x: T,
@@ -98,7 +99,10 @@ export function removeStage(dashboard: Dashboard, id: string): Dashboard {
   return tidyGroups(
     {
       ...dashboard,
-      rows: dashboard.rows.map(drop),
+      rows: dashboard.rows.map((r) => ({
+        ...drop(r),
+        cellStatusSets: omit(r.cellStatusSets, [id]),
+      })),
       rowGroups: dashboard.rowGroups.map(drop),
       stages: dashboard.stages
         .filter((s) => s.id !== id)

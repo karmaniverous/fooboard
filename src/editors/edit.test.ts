@@ -48,6 +48,18 @@ describe('removing rows and stages', () => {
     expect(s.columnGroups).toEqual([]);
     expect(s.rowGroups[0]?.branchPatternOverrides).toEqual({});
   });
+
+  it("drops a row's status-set choice for the removed stage, so the dashboard still saves", () => {
+    const chosen = DashboardSchema.parse({
+      ...d,
+      rows: d.rows.map((r) => ({
+        ...r,
+        cellStatusSets: { a: 'github-single-job', b: 'github-single-job' },
+      })),
+    });
+    const s = DashboardSchema.parse(removeStage(chosen, 'a'));
+    expect(s.rows[0]?.cellStatusSets).toEqual({ b: 'github-single-job' });
+  });
 });
 
 describe('uniqueId and rowFromRepo', () => {

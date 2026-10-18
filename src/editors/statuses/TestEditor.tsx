@@ -12,6 +12,7 @@ import { Choice } from '@/components/Choice';
 import { Button } from '@/components/ui/button';
 import {
   type Condition,
+  ConditionSchema,
   fromSchema,
   toSchema,
 } from '@/domain/statuses/testForm';
@@ -21,20 +22,28 @@ import { CommitInput } from '../fields';
 
 type Schema = Record<string, unknown>;
 
-const SCOPES: { value: Condition['scope']; label: string }[] = [
-  { value: 'value', label: 'the run' },
-  { value: 'anyJob', label: 'any job' },
-  { value: 'everyJob', label: 'every job' },
-];
+const SCOPE_LABELS: Record<Condition['scope'], string> = {
+  value: 'the run',
+  anyJob: 'any job',
+  everyJob: 'every job',
+};
+const SCOPES = ConditionSchema.shape.scope.options.map((value) => ({
+  value,
+  label: SCOPE_LABELS[value],
+}));
 
-const OPERATORS: { value: Condition['operator']; label: string }[] = [
-  { value: 'is', label: 'is' },
-  { value: 'oneOf', label: 'is one of' },
-  { value: 'startsWith', label: 'starts with' },
-  { value: 'endsWith', label: 'ends with' },
-  { value: 'contains', label: 'contains' },
-  { value: 'regex', label: 'matches regex' },
-];
+const OPERATOR_LABELS: Record<Condition['operator'], string> = {
+  is: 'is',
+  oneOf: 'is one of',
+  startsWith: 'starts with',
+  endsWith: 'ends with',
+  contains: 'contains',
+  regex: 'matches regex',
+};
+const OPERATORS = ConditionSchema.shape.operator.options.map((value) => ({
+  value,
+  label: OPERATOR_LABELS[value],
+}));
 
 const isObject = (v: unknown): v is Schema =>
   typeof v === 'object' && v !== null && !Array.isArray(v);

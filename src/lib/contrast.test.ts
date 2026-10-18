@@ -16,10 +16,14 @@ describe('textOn', () => {
     expect(textOn('#dc2626')).toBe('#ffffff');
     expect(textOn('#e2e8f0')).toBe(DARK_TEXT);
     expect(textOn('#ffff00')).toBe(DARK_TEXT);
+    expect(textOn('#777777')).toBe('#000000');
   });
 
   it.each([
     UNKNOWN.color,
+    // Mid-tone custom fills where neither white nor slate reaches AA.
+    '#777777',
+    '#7c7c7c',
     ...PRESETS.flatMap((p) => p.cell.map((s) => s.color)),
   ])('meets WCAG AA on %s', (color) => {
     expect(

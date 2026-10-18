@@ -5,7 +5,6 @@
  *
  * @module
  */
-import { useState } from 'react';
 
 import type { Dashboard } from '@/domain/config/dashboard';
 import type { BoardModel, EngineProviders } from '@/engine';
@@ -14,7 +13,7 @@ import { cn, PINNED_X } from '@/lib/utils';
 import { BoardSummary, BudgetMeter } from './BoardChrome';
 import { BoardViewport } from './BoardViewport';
 import { StatusLegend } from './StatusLegend';
-import type { CellFilter } from './summary';
+import { useCellFilter } from './summary';
 import { useBoardEngine } from './useBoardEngine';
 import { useBoardView } from './useBoardView';
 
@@ -36,7 +35,7 @@ export function BoardScreen({
     dashboard.rows.length,
     dashboard.stages.length,
   );
-  const [filter, setFilter] = useState<CellFilter | null>(null);
+  const [filter, setFilter] = useCellFilter(model);
   return (
     <div className="flex flex-col gap-2 px-4 py-2">
       {/* Title at the left, requests and controls at the right; the

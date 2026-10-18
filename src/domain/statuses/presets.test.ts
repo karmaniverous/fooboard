@@ -152,7 +152,7 @@ describe('GitHub single job', () => {
       ],
       'succeeded',
     ],
-  ] as [[GithubJobStatus, GithubJobConclusion][], string][])(
+  ] satisfies [[GithubJobStatus, GithubJobConclusion][], string][])(
     'classifies %j as %s',
     (states, expected) => {
       const set = findStatusSet('github-single-job');

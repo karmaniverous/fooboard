@@ -14,8 +14,9 @@ import type { Dashboard } from '@/domain/config/dashboard';
 import type { Row } from '@/domain/config/row';
 import { UNKNOWN_STATUS_ID } from '@/domain/config/statusSets';
 import { statusSetFor, statusSetSource } from '@/domain/statuses/resolve';
-import { toSchema } from '@/domain/statuses/testForm';
-import type { BoardModel } from '@/engine';
+import { oneOf } from '@/domain/statuses/schemaBuilders';
+import { type Condition, toSchema } from '@/domain/statuses/testForm';
+import { type BoardModel, cellKey } from '@/engine';
 
 import { addCellStatus, copySet, updateSet } from './customSet';
 import {
@@ -40,13 +41,9 @@ export function unknownCells(
   dashboard: Dashboard,
   model: Pick<BoardModel, 'cells'>,
 ): UnknownCell[] {
-  const cells = Object.values(model.cells);
   return dashboard.rows.flatMap((row) =>
     dashboard.stages.flatMap((stage) => {
-      const cell = cells.find(
-        (c) => c?.rowId === row.id && c.stageId === stage.id,
-      );
-      const d = cell?.derivation;
+      const d = model.cells[cellKey(row.id, stage.id)]?.derivation;
       if (d?.kind !== 'ok' || d.status.id !== UNKNOWN_STATUS_ID) return [];
       return [
         {
@@ -101,24 +98,26 @@ function draftTest(document: unknown): Record<string, unknown> {
   const parsed = DraftSourceSchema.safeParse(document);
   if (!parsed.success) return { not: {} };
   const doc = parsed.data;
-  if ('status' in doc)
-    return toSchema([
-      {
-        scope: 'value',
-        field: 'status',
-        operator: 'oneOf',
-        value: doc.status ?? '',
-      },
-    ]);
+  // Exact, so a job with no status yet (null) is matched too.
+  if ('status' in doc) return oneOf('status', [doc.status]);
+  // A job that hasn't finished has no conclusion: test its status.
   const job = doc.jobs.at(0);
+  const jobCondition: Condition = job?.conclusion
+    ? {
+        scope: 'anyJob',
+        field: 'conclusion',
+        operator: 'is',
+        value: job.conclusion,
+      }
+    : {
+        scope: 'anyJob',
+        field: 'status',
+        operator: 'is',
+        value: job?.status ?? '',
+      };
   return toSchema([
     { scope: 'value', field: 'workflow', operator: 'is', value: doc.workflow },
-    {
-      scope: 'anyJob',
-      field: 'conclusion',
-      operator: 'is',
-      value: job ? (job.conclusion ?? job.status) : '',
-    },
+    jobCondition,
   ]);
 }
 
