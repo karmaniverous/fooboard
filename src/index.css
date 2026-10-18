@@ -22,6 +22,8 @@ body,
   --color-primary: var(--primary);
   --color-primary-foreground: var(--primary-foreground);
   --color-accent: var(--accent);
+  --color-chrome: var(--chrome);
+  --color-pressed: var(--pressed);
   --color-accent-foreground: var(--accent-foreground);
   --color-popover: var(--popover);
   --color-popover-foreground: var(--popover-foreground);
@@ -49,6 +51,14 @@ body,
 }
 
 @layer base {
+  /* Tailwind v4 draws a bare `border` in currentColor; use the theme's
+     quiet border colour instead (as shadcn does). */
+  *,
+  ::before,
+  ::after {
+    border-color: var(--border);
+  }
+
   :root {
     color-scheme: light;
     --background: #ffffff;
@@ -64,6 +74,10 @@ body,
     --popover-foreground: #0a0a0a;
     --destructive: #ef4444;
     --ring: #171717;
+
+    /* App header and footer; a pressed toggle (summary filter, density). */
+    --chrome: #f0f0f0;
+    --pressed: #e5e5e5;
 
     --status-success: #15803d;
     --status-started: #2563eb;
@@ -94,6 +108,9 @@ body,
     --popover-foreground: #fafafa;
     --destructive: #f87171;
     --ring: #d4d4d4;
+
+    --chrome: #1f1f1f;
+    --pressed: #404040;
 
     /* Status/badge colors are fixed in the spec (fill tokens, not theme
        neutrals), so they stay the same in dark mode; only text/ring

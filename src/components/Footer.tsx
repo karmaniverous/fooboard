@@ -49,7 +49,7 @@ export function Footer(): React.JSX.Element {
       ref={ref}
       className={cn(
         PINNED_FULL,
-        'flex items-center justify-between gap-6 overflow-hidden whitespace-nowrap border-t border-border px-5 py-3 text-xs text-muted-foreground',
+        'flex items-center justify-between gap-6 overflow-hidden whitespace-nowrap border-t border-border bg-chrome px-5 py-3 text-xs text-muted-foreground',
       )}
     >
       {/* Natural widths of each form (never shown). */}

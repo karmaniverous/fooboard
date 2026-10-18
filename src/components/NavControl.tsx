@@ -29,7 +29,7 @@ export function NavControl({
   const look = cn(
     buttonVariants({ variant: form === 'icon' ? 'ghost' : 'link' }),
     form === 'icon'
-      ? 'size-8 shrink-0 p-0'
+      ? 'size-8 shrink-0 p-0 hover:bg-foreground/10'
       : 'h-auto px-0 text-xs font-normal text-muted-foreground hover:text-foreground hover:underline',
   );
   const disabled = item.kind === 'action' && item.disabled;

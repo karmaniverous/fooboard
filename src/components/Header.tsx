@@ -91,7 +91,7 @@ export function Header(): React.JSX.Element {
       ref={ref}
       className={cn(
         PINNED_FULL,
-        'top-0 z-40 flex items-center gap-2 overflow-hidden whitespace-nowrap border-b border-border bg-background px-5 py-2 text-foreground',
+        'top-0 z-40 flex items-center gap-2 overflow-hidden whitespace-nowrap border-b border-border bg-chrome px-5 py-2 text-foreground',
       )}
     >
       {/* Natural widths of every part, for the fold (never shown). */}
@@ -131,7 +131,7 @@ export function Header(): React.JSX.Element {
         <DropdownMenu modal={false}>
           <DropdownMenuTrigger
             aria-label="Menu"
-            className="flex size-8 items-center justify-center rounded-md hover:bg-accent"
+            className="flex size-8 items-center justify-center rounded-md hover:bg-foreground/10"
           >
             <Menu className="size-5" />
           </DropdownMenuTrigger>
