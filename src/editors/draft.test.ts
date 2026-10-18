@@ -14,7 +14,16 @@ import { draftFor, overrideDraftFor } from './draft';
 const dashboard = DashboardSchema.parse({
   id: 'd',
   name: 'D',
-  rows: [{ type: 'github', id: 'api', repo: 'acme/api', displayName: 'api' }],
+  rows: [
+    {
+      type: 'amplify',
+      id: 'site',
+      repo: 'acme/api',
+      displayName: 'site',
+      sources: [{ region: 'us-east-1', appId: 'a1' }],
+    },
+    { type: 'github', id: 'api', repo: 'acme/api', displayName: 'api' },
+  ],
 });
 const run = (
   reason: UnmappedRun['reason'],

@@ -51,6 +51,13 @@ function SavedDashboard({
     setDraft((d) => ({ n: d.n + 1, draft: next }));
     setEditorOpen(true);
   };
+  /** A fix button's action: open the editor on `next`, if there is one. */
+  const fixWith = (next: EditorDraft | undefined) =>
+    next
+      ? () => {
+          openEditor(next);
+        }
+      : undefined;
   return (
     <BoardScreen
       dashboard={dashboard}
@@ -68,22 +75,10 @@ function SavedDashboard({
             >
               <UnmappedPanel
                 runs={model.unmapped}
-                onAddTest={(run) => {
-                  const next = draftFor(run, dashboard);
-                  return next
-                    ? () => {
-                        openEditor(next);
-                      }
-                    : undefined;
-                }}
-                onAddOverride={(run) => {
-                  const next = overrideDraftFor(run, dashboard);
-                  return next
-                    ? () => {
-                        openEditor(next);
-                      }
-                    : undefined;
-                }}
+                onAddTest={(run) => fixWith(draftFor(run, dashboard))}
+                onAddOverride={(run) =>
+                  fixWith(overrideDraftFor(run, dashboard))
+                }
               />
             </SidePanel>
           )}

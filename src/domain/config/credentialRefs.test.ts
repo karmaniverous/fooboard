@@ -1,6 +1,7 @@
 /**
- * Tests for credential resolution (row override beats dashboard default)
- * and for rejecting references to missing or wrong-kind credentials.
+ * Tests for credential resolution (an override beats the default) and for
+ * rejecting references, row-group defaults included, to missing or
+ * wrong-kind credentials.
  *
  * @module
  */
@@ -74,6 +75,16 @@ describe('DashboardSchema credential references', () => {
     [
       'a wrong-kind row override',
       { rows: [githubRow('aws')] },
+      'credential aws is aws, expected github',
+    ],
+    [
+      'a wrong-kind row-group default',
+      {
+        rows: [githubRow()],
+        rowGroups: [
+          { id: 'g', memberIds: ['r'], defaultCredentials: { github: 'aws' } },
+        ],
+      },
       'credential aws is aws, expected github',
     ],
   ])('rejects %s', (_label, extra, message) => {

@@ -19,6 +19,10 @@ import { CellDetail, CellSheet, CellTooltip } from './CellDetail';
 import { capText, type Layout, LINE_HEIGHT } from './layout';
 import { type CellFilter, matchesFilter } from './summary';
 
+/** Group label text, over columns and above rows (C-14b). */
+const GROUP_LABEL =
+  'text-[0.85em] font-semibold uppercase tracking-wide text-muted-foreground';
+
 /** The line drawn at every group boundary (C-14b). */
 const BOUNDARY = {
   top: 'border-t-2 border-foreground/40',
@@ -113,7 +117,8 @@ export function BoardGrid({
                 role={g.group?.label ? 'columnheader' : 'presentation'}
                 aria-colspan={g.group?.label ? g.span : undefined}
                 className={cn(
-                  'flex items-end justify-center truncate px-[var(--cell-pad-x)] text-[0.85em] font-semibold uppercase tracking-wide text-muted-foreground',
+                  'flex items-end justify-center truncate px-[var(--cell-pad-x)]',
+                  GROUP_LABEL,
                   i > 0 && BOUNDARY.left,
                 )}
                 style={{
@@ -164,7 +169,8 @@ export function BoardGrid({
               {label && (
                 <div
                   className={cn(
-                    'col-span-full flex items-end text-[0.85em] font-semibold uppercase tracking-wide text-muted-foreground',
+                    'col-span-full flex items-end',
+                    GROUP_LABEL,
                     si > 0 && BOUNDARY.top,
                   )}
                   style={lineRow}

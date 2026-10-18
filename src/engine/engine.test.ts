@@ -136,6 +136,49 @@ describe('board engine credentials and limits', () => {
     });
   });
 
+  it("reads each row's effective branch and inherited token (C-14c, C-1a)", async () => {
+    const demo = demoProviders(() => 0);
+    const dashboard = {
+      ...demoDashboard,
+      credentials: [
+        ...demoDashboard.credentials,
+        { id: 'org-b', kind: 'github' as const, label: 'Org B' },
+      ],
+      // api-core moves to a group whose token isn't entered.
+      rowGroups: [
+        ...demoDashboard.rowGroups.map((g) => ({
+          ...g,
+          memberIds: g.memberIds.filter((id) => id !== 'api-core'),
+        })),
+        {
+          id: 'locked',
+          memberIds: ['api-core'],
+          branchPatternOverrides: {},
+          defaultCredentials: { github: 'org-b' },
+        },
+      ],
+    };
+    const engine = createBoardEngine({
+      dashboard,
+      providers: {
+        ...demo,
+        github: (id) => (id === 'org-b' ? undefined : demo.github(id)),
+      },
+      visibility: visible,
+    });
+    await engine.refreshAll();
+    const model = engine.getModel();
+    expect(cell(model, 'marketing-site', 'release')?.derivation).toMatchObject({
+      branch: 'preview/release',
+    });
+    expect(cell(model, 'billing', 'release')?.derivation).toMatchObject({
+      branch: 'release/24.3',
+    });
+    expect(cell(model, 'api-core', 'dev')?.derivation).toMatchObject({
+      state: 'needs-credential',
+    });
+  });
+
   it('keeps the previous cells while rate limited', async () => {
     const reader = createDemoGitHubReader(() => 0);
     const engine = createBoardEngine({

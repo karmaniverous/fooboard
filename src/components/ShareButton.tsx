@@ -23,7 +23,14 @@ import { ExternalLink } from './ExternalLink';
 
 export function ShareButton(): React.JSX.Element {
   const url = demoUrl();
-  const [copied, setCopied] = useState(false);
+  const [copy, setCopy] = useState<'idle' | 'copied' | 'failed'>('idle');
+  /** Show a copy outcome on the button for a moment. */
+  const flash = (outcome: 'copied' | 'failed') => {
+    setCopy(outcome);
+    setTimeout(() => {
+      setCopy('idle');
+    }, 2000);
+  };
   const canShare = typeof navigator.share === 'function';
   return (
     // Non-modal, like the header menu: no scroll lock, no layout shift.
@@ -31,7 +38,11 @@ export function ShareButton(): React.JSX.Element {
       <DropdownMenuTrigger asChild>
         <Button size="sm" className="h-7 gap-1 px-2 text-xs">
           <Share2 aria-hidden className="size-3.5" />
-          {copied ? 'Link copied' : 'Share'}
+          {copy === 'copied'
+            ? 'Link copied'
+            : copy === 'failed'
+              ? "Couldn't copy"
+              : 'Share'}
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
@@ -40,6 +51,7 @@ export function ShareButton(): React.JSX.Element {
             onSelect={() => {
               void navigator
                 .share({ title: site.name, text: site.tagline, url })
+                // Rejects when the user closes the sheet: nothing to report.
                 .catch(() => undefined);
             }}
           >
@@ -48,15 +60,17 @@ export function ShareButton(): React.JSX.Element {
         )}
         <DropdownMenuItem
           onSelect={() => {
-            void navigator.clipboard
-              .writeText(url)
-              .then(() => {
-                setCopied(true);
-                setTimeout(() => {
-                  setCopied(false);
-                }, 2000);
-              })
-              .catch(() => undefined);
+            // No clipboard (an insecure page) or a refusal: say so.
+            void Promise.resolve()
+              .then(() => navigator.clipboard.writeText(url))
+              .then(
+                () => {
+                  flash('copied');
+                },
+                () => {
+                  flash('failed');
+                },
+              );
           }}
         >
           Copy link

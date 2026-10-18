@@ -1,7 +1,7 @@
 /**
- * Tests for `DashboardSchema`: defaults for mapping, colors and
- * dividers/credentials, GitHub/Amplify row discrimination, and the
- * source-stage cycle guard.
+ * Tests for `DashboardSchema`: defaults for mapping, colors, groups and
+ * credentials, GitHub/Amplify row discrimination, the source-stage cycle
+ * guard, and group membership checks.
  *
  * @module
  */
@@ -132,5 +132,32 @@ describe('DashboardSchema', () => {
       ],
     });
     expect(dashboard.stages).toHaveLength(2);
+  });
+
+  it.each([
+    [
+      'an unknown member',
+      { rowGroups: [{ id: 'g', memberIds: ['nope'] }] },
+      'group g names unknown row: nope',
+    ],
+    [
+      'a member in two groups',
+      {
+        columnGroups: [
+          { id: 'a', memberIds: ['s'] },
+          { id: 'b', memberIds: ['s'] },
+        ],
+      },
+      'stage s is in groups a and b',
+    ],
+  ])('rejects %s', (_label, groups, message) => {
+    const result = DashboardSchema.safeParse({
+      id: 'd',
+      name: 'D',
+      rows: [{ type: 'github', id: 'r', repo: 'o/r', displayName: 'r' }],
+      stages: [{ id: 's', name: 's', branchPattern: 'main' }],
+      ...groups,
+    });
+    expect(result.error?.issues.map((i) => i.message)).toEqual([message]);
   });
 });

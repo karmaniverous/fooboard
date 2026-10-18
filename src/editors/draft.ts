@@ -18,6 +18,11 @@ export type EditorDraft =
   | { tab: 'Stages'; pattern: string }
   | { tab: 'Mapping' };
 
+/** The GitHub row reading the run's repo: unmapped runs are GitHub runs,
+ * so only a GitHub row's key tests or overrides can place one. */
+const githubRowFor = (run: UnmappedRun, dashboard: Pick<Dashboard, 'rows'>) =>
+  dashboard.rows.find((r) => r.type === 'github' && r.repo === run.repo);
+
 export function draftFor(
   run: UnmappedRun,
   dashboard: Pick<Dashboard, 'rows'>,
@@ -28,9 +33,7 @@ export function draftFor(
     case 'no-phase-matches-job':
       return { tab: 'Mapping' };
     case 'no-row-key-matches': {
-      const row = dashboard.rows.find(
-        (r) => r.type === 'github' && r.repo === run.repo,
-      );
+      const row = githubRowFor(run, dashboard);
       return row
         ? {
             tab: 'Rows',
@@ -46,15 +49,15 @@ export function draftFor(
   }
 }
 
-/** The second fix for a branch no stage matches: an override on the row
- * that reads the run's repo (or its group). Undefined for other reasons
- * or when no row reads the repo. */
+/** The second fix for a branch no stage matches: an override on the
+ * GitHub row that reads the run's repo (or its group). Undefined for other
+ * reasons or when no GitHub row reads the repo. */
 export function overrideDraftFor(
   run: UnmappedRun,
   dashboard: Pick<Dashboard, 'rows'>,
 ): EditorDraft | undefined {
   if (run.reason.kind !== 'no-stage-matches-branch') return undefined;
-  const row = dashboard.rows.find((r) => r.repo === run.repo);
+  const row = githubRowFor(run, dashboard);
   return row
     ? { tab: 'Rows', rowId: row.id, overrideBranch: run.reason.branch }
     : undefined;

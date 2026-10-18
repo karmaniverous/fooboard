@@ -70,6 +70,17 @@ describe('migrate', () => {
     expect(d.rows[0].branchPatternOverrides).toEqual({});
   });
 
+  it('migrates a v1 dashboard without dividers, and leaves malformed ones to validation', () => {
+    const v1 = (dashboard: unknown) =>
+      migrate({ schemaVersion: 1, dashboards: [dashboard] });
+    expect(v1({ id: 'd', name: 'd' }).dashboards[0]).toMatchObject({
+      rowGroups: [],
+      columnGroups: [],
+    });
+    expect(() => v1('not a dashboard')).toThrow();
+    expect(() => v1({ id: 'd', name: 'd', rows: [{ repo: 'o/r' }] })).toThrow();
+  });
+
   it('throws for a schema version newer than this codebase understands', () => {
     expect(() => migrate({ schemaVersion: 99, dashboards: [] })).toThrow(
       /newer/,

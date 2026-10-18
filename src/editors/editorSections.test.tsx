@@ -1,7 +1,7 @@
 /**
  * Tests for the editor sections the main editor tests don't reach:
  * Amplify rows from `ListApps` (apps without a GitHub repo can't be
- * added), repo-list failures, dividers with labels, drag reordering,
+ * added), repo-list failures, labelled column groups, drag reordering,
  * mapping rules and colours.
  *
  * @module
