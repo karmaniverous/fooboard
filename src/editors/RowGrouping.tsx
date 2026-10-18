@@ -1,7 +1,7 @@
 /**
  * A row's group and overrides in the row editor (spec.md C-14b, C-14c,
- * C-1a, C-15): its group; its group's default credentials and
- * branch-pattern overrides (shown on each member, since a group has no
+ * C-1a, C-15, A§4.3.6): its group; its group's default credentials,
+ * status sets and branch-pattern overrides (shown on each member, since a group has no
  * editor of its own); *Add override* from an unmapped run; and the row's
  * own overrides.
  *
@@ -26,6 +26,7 @@ import {
   setRowOverride,
 } from './overrideEdit';
 import { OverrideFields } from './OverrideFields';
+import { GroupStatusSets, RowStatusSets } from './statuses/StatusSetOverrides';
 
 interface Props {
   dashboard: Dashboard;
@@ -75,6 +76,7 @@ export function RowGrouping({
           onChange(setRowOverride(dashboard, row.id, stageId, pattern));
         }}
       />
+      <RowStatusSets dashboard={dashboard} row={row} onChange={onChange} />
     </>
   );
 }
@@ -108,6 +110,12 @@ function RowGroupSettings({
           />
         ))}
       </div>
+      <GroupStatusSets
+        dashboard={dashboard}
+        group={group}
+        name={name}
+        onChange={onChange}
+      />
       <OverrideFields
         name={name}
         stages={inheritedStages(dashboard, undefined)}
