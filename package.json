@@ -5,6 +5,7 @@
   },
   "dependencies": {
     "@aws-sdk/client-amplify": "^3.1152.0",
+    "@cfworker/json-schema": "^4.1.1",
     "@radix-ui/react-alert-dialog": "^1.2.1",
     "@radix-ui/react-checkbox": "^1.4.1",
     "@radix-ui/react-collapsible": "^1.2.1",
