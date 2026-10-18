@@ -25,6 +25,7 @@ fooboard shows the deployment state of every repo × stage at a glance. Paste a 
 - [Your own dashboard](#your-own-dashboard)
 - [Reading the board](#reading-the-board)
 - [Editing a dashboard](#editing-a-dashboard)
+- [Status sets](#status-sets)
 - [Unmapped runs](#unmapped-runs)
 - [Credentials](#credentials)
 - [Header, menu and footer](#header-menu-and-footer)
@@ -50,25 +51,27 @@ A dashboard lives at `/d/<id>` in this browser.
 
 > 📷 _Screenshot to come: a board with every status, badge and empty state._
 
-Each **row** is a repo (or an Amplify app, or one deployable unit in a repo), and each **column** a stage: a branch, or a pattern such as `release/*`. Each **cell** shows the latest run on that stage's branch:
+Each **row** is a repo (or an Amplify app, or one deployable unit in a repo), and each **column** a stage: a branch, or a pattern such as `release/*`. Each **cell** shows the newest run on that stage's branch with jobs its **status set** cares about, as the first status in the set whose test the run passes. The built-in sets:
 
-| Cell | Means |
+| Set | Statuses (first match wins) |
 | --- | --- |
-| ✓ green | Success |
-| ✕ red | Failure |
-| ◔ blue, pulsing | Started (still running) |
-| ○ pale, dashed, dark text | Queued |
-| ◑ teal | Partial (some jobs succeeded) |
-| ⊘ slate | Cancelled |
+| _GitHub deploy and test_ (default for GitHub rows) | Tests failed, Deploy failed, Cancelled, Testing, Deploying, Passed, Deployed, Partial (deployed, tests to come), Queued |
+| _GitHub single job_ | Failed, Cancelled, Running, Queued, Succeeded |
+| _Amplify_ (default for Amplify rows) | Failed, Cancelled, Running, Queued, Deployed |
+
+Each status has a name, a colour, an icon (✓ success, ✕ failure, ◔ running, ◑ partial, ○ queued, ⊘ cancelled) and can be outlined, as Queued is. A status in progress pulses. Text on a cell is white or near-black, whichever reads better on its colour.
+
+A run with relevant jobs that matches no status shows **Unknown** (purple, ?), so a gap in the rules is visible; see [Status sets](#status-sets).
 
 A cell can carry a **badge**: _behind_ (amber, with a count) when its branch is missing commits from the stage it is promoted from, or _diverged_ (with `behind/ahead`) when it also has commits the source lacks. A badge links to GitHub's compare page.
 
 An **empty cell** says why: _no branch_, _no recent runs_, _needs credential_ (with a link to [Credentials](#credentials)) or _error_.
 
-- **Details**: hover a cell (or focus it from the keyboard) for its run, commit, phase and time; on a touch screen, tap for a detail sheet. Clicking a cell opens the job on GitHub (or the Amplify console).
+- **Details**: hover a cell (or focus it from the keyboard) for its status, branch, commit and time; on a touch screen, tap for a detail sheet. Clicking a cell opens the job on GitHub (or the Amplify console).
 - **Groups**: rows and stages can be grouped, with a line at each group's edges. A column group is framed, its name at its left; group names stay in view as the board scrolls.
 - **Fitting the screen**: columns share the window's width, and each cell shows as much detail as fits. Zoom with Ctrl/⌘ + wheel, a pinch, the toolbar buttons or `+` `-` `0`; zooming out fits more, zooming in shows more. _Default_, _Comfortable_ and _Compact_ density change the padding.
-- **Summary**: counts of failing, running, behind and diverged cells; click one to show only those cells, again to clear.
+- **Legend**: _Legend_ shows each status set the board’s cells use, with its statuses as cells show them.
+- **Summary**: a count for each summary status the cells show (for the built-in sets: _Failing_, _Running_, _Cancelled_, _OK_; _Unknown_ last), then behind and diverged cells; a cell polls faster while its status is running; click one to show only those cells, again to clear.
 - **Request budget**: a battery for each GitHub token the board uses shows the requests left this hour (grey until first read); its tooltip names the token and says when the budget resets. Reading it costs nothing. fooboard slows its polling as a token's budget runs down, and pauses while the tab is hidden.
 
 ## Editing a dashboard
@@ -80,16 +83,30 @@ _Edit_ (on the board) opens the editor, with these tabs:
 - **General**: rename, duplicate or delete the dashboard.
 - **Rows**: add GitHub rows from your repos, or Amplify rows from the apps your AWS key lists. A row can use its own credentials, and its own branch for any stage (an **override**); _Find branches_ suggests the branches in its repo as you type.
 - **Stages**: add stages from the branches found in your repos, with a preview of what a pattern matches; set each stage's source (for the behind/diverged badges).
-- **Mapping**: the rules that pick which workflow job a cell shows.
-- **Colours**: the status colours.
+- **Mapping**: which workflows count (include and exclude by workflow name).
+- **Statuses**: the status set GitHub rows and Amplify rows use; see [Status sets](#status-sets).
 
-**Groups**: start a group from any row or stage, add others to it, label it, or delete it (its members stay). A row group can have its own default credentials and branch overrides; a row's own override beats its group's, which beats the stage's pattern, and each choice names what it inherits.
+**Groups**: start a group from any row or stage, add others to it, label it, or delete it (its members stay). A row group can have its own default credentials, status sets and branch overrides; a row's own override beats its group's, which beats the stage's pattern, and each choice names what it inherits.
 
 **Reordering**: drag, or use _Move up_ / _Move down_. Dropping onto an item puts it in that item's group. Every removal asks first.
 
+## Status sets
+
+A **status set** decides which of a run's jobs count and what status a cell shows. It has **summary statuses** (the summary chips: each a name and colour, and whether it is in progress) and **cell statuses**, in order: a cell shows the first whose test the run passes. Each cell status counts toward one summary status.
+
+- **Which set a cell uses**: a single cell's choice, else its row's, else its row group's, else the dashboard's. Each choice offers _Inherit_, naming the set it would get. Choose the dashboard's on the _Statuses_ tab; a row's and its cells' under _Status sets_ in the row's editor; a row group's with the group's settings.
+- **Customise**: copies the chosen set into one the dashboard owns, then edit its name, which jobs count (GitHub), its summary statuses, and its cell statuses (name, colour, summary, outline, order). The built-in sets can't be edited. A set still chosen somewhere can't be removed.
+- **Tests**: a list of conditions, all of which must hold: a field, an operator (_is_, _is one of_, _starts with_, _ends with_, _contains_, _matches regex_; text ignores case) and a value, on the run or on any or every job. Any test can also be edited as [JSON Schema](https://json-schema.org/); one the conditions can't express stays JSON.
+- **What a test sees**: for GitHub, the run (`workflow`, `event`, `branch`, `attempt`) and its jobs that count (`name`, `status`, `conclusion`, `startedAt`, `completedAt`), latest attempt only; for Amplify, the job (`branch`, `status`, `commitId`, `startTime`, `endTime`).
+- **Runs no status matches**: the _Statuses_ tab lists the board's Unknown cells with what their tests saw. _Add status_ puts a new status at the top of that cell's set, drafted to match the run; a built-in set is first copied into the dashboard, and only the cells that shared it move to the copy.
+
+A cell's time and link come from its most recently active relevant job: a running one, else the latest finished.
+
+Dashboards saved by an earlier version move to the built-in sets; one whose phase tests or colours were changed gets its own sets built from them, so it looks the same.
+
 ## Unmapped runs
 
-_Unmapped (N)_ lists recent runs that have no cell, with the reason: no stage matches the branch, no rule matches the job, or no row key matches. _Add test_ opens the editor with the fix filled in; for an unmatched branch, _Add override_ uses that branch for a stage on the run's row or its group.
+_Unmapped (N)_ lists recent runs that have no cell, with the reason: no stage matches the branch, no job its status set covers, or no row key matches. _Add test_ opens the editor with the fix filled in; for an unmatched branch, _Add override_ uses that branch for a stage on the run's row or its group.
 
 ## Credentials
 

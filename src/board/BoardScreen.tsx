@@ -13,6 +13,7 @@ import { cn, PINNED_X } from '@/lib/utils';
 
 import { BoardSummary, BudgetMeter } from './BoardChrome';
 import { BoardViewport } from './BoardViewport';
+import { StatusLegend } from './StatusLegend';
 import type { CellFilter } from './summary';
 import { useBoardEngine } from './useBoardEngine';
 import { useBoardView } from './useBoardView';
@@ -48,6 +49,7 @@ export function BoardScreen({
       >
         <h1 className="text-base font-semibold">{dashboard.name}</h1>
         <div className="flex items-center gap-3">
+          <StatusLegend dashboard={dashboard} />
           <BudgetMeter
             model={model}
             labels={Object.fromEntries(
