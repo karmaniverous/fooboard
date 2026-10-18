@@ -189,11 +189,45 @@ describe('row groups in the editor', () => {
       target: { value: 'prod' },
     });
     fireEvent.change(within(fix).getByLabelText('Override scope'), {
-      target: { value: 'group' },
+      target: { value: 'group:g' },
     });
     fireEvent.click(within(fix).getByRole('button', { name: 'Apply' }));
     expect(latest.current.rowGroups[0]?.branchPatternOverrides).toEqual({
       prod: 'preview/release',
+    });
+    expect(latest.current.rows[0]?.branchPatternOverrides).toEqual({});
+  });
+
+  it("offers every GitHub row reading the run's repo as the override target", () => {
+    const twoRows = DashboardSchema.parse({
+      ...start,
+      rows: [
+        { type: 'github', id: 'api', repo: 'acme/api', displayName: 'api' },
+        {
+          type: 'github',
+          id: 'api-jobs',
+          repo: 'acme/api',
+          displayName: 'api-jobs',
+        },
+        { type: 'github', id: 'web', repo: 'acme/web', displayName: 'web' },
+      ],
+    });
+    const latest = setup(twoRows, {
+      tab: 'Rows',
+      rowId: 'api',
+      overrideBranch: 'hotfix/1',
+    });
+    const fix = screen.getByRole('group', { name: 'Override for hotfix/1' });
+    const target = within(fix).getByLabelText('Override scope');
+    expect(
+      within(target)
+        .getAllByRole('option')
+        .map((o) => o.textContent),
+    ).toEqual(['row api', 'row api-jobs']);
+    fireEvent.change(target, { target: { value: 'row:api-jobs' } });
+    fireEvent.click(within(fix).getByRole('button', { name: 'Apply' }));
+    expect(latest.current.rows[1]?.branchPatternOverrides).toEqual({
+      dev: 'hotfix/1',
     });
     expect(latest.current.rows[0]?.branchPatternOverrides).toEqual({});
   });

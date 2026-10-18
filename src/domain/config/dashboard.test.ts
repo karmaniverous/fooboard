@@ -150,12 +150,51 @@ describe('DashboardSchema', () => {
       },
       'stage s is in groups a and b',
     ],
+    [
+      'two row groups with one id',
+      {
+        rowGroups: [
+          { id: 'g', memberIds: ['r'] },
+          { id: 'g', memberIds: ['r2'] },
+        ],
+      },
+      'duplicate group id: g',
+    ],
+    [
+      'two column groups with one id',
+      {
+        columnGroups: [
+          { id: 'g', memberIds: ['s'] },
+          { id: 'g', memberIds: ['s2'] },
+        ],
+      },
+      'duplicate group id: g',
+    ],
+    [
+      'a split row group',
+      { rowGroups: [{ id: 'g', label: 'G', memberIds: ['r', 'r3'] }] },
+      'group g is split: its rows are not together',
+    ],
+    [
+      'a split column group',
+      { columnGroups: [{ id: 'g', memberIds: ['s3', 's'] }] },
+      'group g is split: its stages are not together',
+    ],
   ])('rejects %s', (_label, groups, message) => {
     const result = DashboardSchema.safeParse({
       id: 'd',
       name: 'D',
-      rows: [{ type: 'github', id: 'r', repo: 'o/r', displayName: 'r' }],
-      stages: [{ id: 's', name: 's', branchPattern: 'main' }],
+      rows: ['r', 'r2', 'r3'].map((id) => ({
+        type: 'github',
+        id,
+        repo: `o/${id}`,
+        displayName: id,
+      })),
+      stages: ['s', 's2', 's3'].map((id) => ({
+        id,
+        name: id,
+        branchPattern: id,
+      })),
       ...groups,
     });
     expect(result.error?.issues.map((i) => i.message)).toEqual([message]);

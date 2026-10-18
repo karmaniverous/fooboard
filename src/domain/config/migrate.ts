@@ -53,11 +53,12 @@ function groupsFromDividers(
 }
 
 /** v1 to v2 for one dashboard: dividers become groups (spec.md C-14b).
- * Data that doesn't have a v1 dashboard's shape is left as it is, for
- * validation to reject. */
+ * Data that doesn't have a v1 dashboard's shape is rejected here: the v2
+ * schema would drop the bad dividers silently, and the store would then
+ * overwrite the original on the next save. */
 function dividersToGroups(input: unknown): unknown {
   const parsed = V1DashboardSchema.safeParse(input);
-  if (!parsed.success) return input;
+  if (!parsed.success) throw parsed.error;
   const { rows, stages, rowDividers, columnDividers } = parsed.data;
   return {
     ...omit(parsed.data, ['rowDividers', 'columnDividers']),

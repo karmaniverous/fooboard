@@ -23,9 +23,11 @@ import { ExternalLink } from './ExternalLink';
 
 export function ShareButton(): React.JSX.Element {
   const url = demoUrl();
-  const [copy, setCopy] = useState<'idle' | 'copied' | 'failed'>('idle');
+  const [copy, setCopy] = useState<
+    'idle' | 'copied' | 'failed' | 'shareFailed'
+  >('idle');
   /** Show a copy outcome on the button for a moment. */
-  const flash = (outcome: 'copied' | 'failed') => {
+  const flash = (outcome: 'copied' | 'failed' | 'shareFailed') => {
     setCopy(outcome);
     setTimeout(() => {
       setCopy('idle');
@@ -42,7 +44,9 @@ export function ShareButton(): React.JSX.Element {
             ? 'Link copied'
             : copy === 'failed'
               ? "Couldn't copy"
-              : 'Share'}
+              : copy === 'shareFailed'
+                ? "Couldn't share"
+                : 'Share'}
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
@@ -51,8 +55,14 @@ export function ShareButton(): React.JSX.Element {
             onSelect={() => {
               void navigator
                 .share({ title: site.name, text: site.tagline, url })
-                // Rejects when the user closes the sheet: nothing to report.
-                .catch(() => undefined);
+                // Closing the sheet rejects with AbortError: nothing to
+                // report. Any other failure is said; Copy link remains.
+                .catch((err: unknown) => {
+                  if (!(
+                    err instanceof DOMException && err.name === 'AbortError'
+                  ))
+                    flash('shareFailed');
+                });
             }}
           >
             Share…

@@ -9,6 +9,8 @@
  */
 import { Fragment, useId } from 'react';
 
+import { ownOverride } from '@/domain/config/inheritance';
+
 import { branchCounts } from './branches';
 import { BranchFinder } from './BranchFinder';
 import { CommitInput } from './fields';
@@ -82,7 +84,7 @@ export function OverrideFields({
               label={`${s.name} branch override for ${name}`}
               placeholder={`${s.inherited} (inherited)`}
               className="h-7 text-xs"
-              value={own[s.id] ?? ''}
+              value={ownOverride(own, s.id) ?? ''}
               list={byRepo ? listId : undefined}
               onCommit={(pattern) => {
                 onChange(s.id, pattern);

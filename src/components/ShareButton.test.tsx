@@ -76,4 +76,27 @@ describe('ShareButton', () => {
       url: demoUrl(),
     });
   });
+
+  it.each([
+    [
+      'stays quiet when the sheet is closed',
+      new DOMException('closed', 'AbortError'),
+      'Share',
+    ],
+    [
+      'says so when sharing fails',
+      new DOMException('denied', 'NotAllowedError'),
+      "Couldn't share",
+    ],
+  ])('%s', async (_label, error, shown) => {
+    stub('share', () => Promise.reject(error));
+    render(<ShareButton />);
+    open();
+    await act(async () => {
+      fireEvent.click(screen.getByRole('menuitem', { name: 'Share…' }));
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+    expect(screen.getByRole('button', { name: shown })).toBeInTheDocument();
+  });
 });

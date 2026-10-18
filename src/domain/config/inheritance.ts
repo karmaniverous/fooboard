@@ -19,6 +19,14 @@ interface Levels {
   rowGroups: readonly RowGroup[];
 }
 
+/** An override set for `stageId` itself, never one inherited from
+ * `Object.prototype` (a stage may be called `constructor`). */
+export const ownOverride = (
+  overrides: Readonly<Partial<Record<string, string>>>,
+  stageId: string,
+): string | undefined =>
+  Object.hasOwn(overrides, stageId) ? overrides[stageId] : undefined;
+
 /** The branch pattern `stage` resolves to for a row with `rowOverrides`
  * in `rowGroup`: row, then row group, then stage. */
 export function effectiveBranchPattern(
@@ -29,7 +37,9 @@ export function effectiveBranchPattern(
   const groupOverrides: Readonly<Partial<Record<string, string>>> =
     rowGroup?.branchPatternOverrides ?? {};
   return (
-    rowOverrides[stage.id] ?? groupOverrides[stage.id] ?? stage.branchPattern
+    ownOverride(rowOverrides, stage.id) ??
+    ownOverride(groupOverrides, stage.id) ??
+    stage.branchPattern
   );
 }
 

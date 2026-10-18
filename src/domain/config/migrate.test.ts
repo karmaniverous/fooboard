@@ -91,4 +91,13 @@ describe('migrate', () => {
     expect(() => migrate(null)).toThrow();
     expect(() => migrate('not a config')).toThrow();
   });
+
+  it('rejects a v1 dashboard whose dividers are malformed, instead of dropping them', () => {
+    expect(() =>
+      migrate({
+        schemaVersion: 1,
+        dashboards: [{ id: 'd', name: 'd', rowDividers: null }],
+      }),
+    ).toThrow();
+  });
 });

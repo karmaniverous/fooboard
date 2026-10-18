@@ -64,12 +64,7 @@ export function RowGrouping({
       />
       {group && <RowGroupSettings {...props} group={group} />}
       {overrideBranch !== undefined && (
-        <OverrideFix
-          {...props}
-          row={row}
-          group={group}
-          branch={overrideBranch}
-        />
+        <OverrideFix {...props} row={row} branch={overrideBranch} />
       )}
       <OverrideFields
         name={row.displayName}
@@ -133,20 +128,32 @@ function RowGroupSettings({
 }
 
 /** *Add override* from an unmapped run (C-15): use the run's branch as a
- * stage's pattern for this row or its row group. */
+ * stage's pattern for a row or row group. Every GitHub row reading the
+ * run's repo is offered (with its group), since the one the editor opened
+ * on may not be the row whose key tests pick the run's jobs. */
 function OverrideFix({
   dashboard,
   onChange,
   row,
-  group,
   branch,
 }: Props & {
   row: Row;
-  group: RowGroup | undefined;
   branch: string;
 }): React.JSX.Element {
   const [stageId, setStageId] = useState(dashboard.stages[0]?.id ?? '');
-  const [scope, setScope] = useState<'row' | 'group'>('row');
+  const targets = dashboard.rows
+    .filter((r) => r.type === 'github' && r.repo === row.repo)
+    .flatMap((r) => {
+      const g = groupOf(dashboard.rowGroups, r.id);
+      return [
+        { value: `row:${r.id}`, label: `row ${r.displayName}` },
+        ...(g
+          ? [{ value: `group:${g.id}`, label: `group ${g.label ?? g.id}` }]
+          : []),
+      ];
+    })
+    .filter((t, i, all) => all.findIndex((u) => u.value === t.value) === i);
+  const [target, setTarget] = useState(`row:${row.id}`);
   return (
     <div
       role="group"
@@ -174,22 +181,26 @@ function OverrideFix({
       <NativeSelect
         aria-label="Override scope"
         className="h-7 px-1"
-        value={scope}
+        value={target}
         onChange={(e) => {
-          setScope(e.target.value === 'group' ? 'group' : 'row');
+          setTarget(e.target.value);
         }}
       >
-        <option value="row">this row</option>
-        {group && <option value="group">its group {group.label ?? ''}</option>}
+        {targets.map((t) => (
+          <option key={t.value} value={t.value}>
+            {t.label}
+          </option>
+        ))}
       </NativeSelect>
       <Button
         size="sm"
         disabled={!stageId}
         onClick={() => {
+          const [kind, id = ''] = target.split(/:(.*)/s);
           onChange(
-            scope === 'group' && group
-              ? setRowGroupOverride(dashboard, group.id, stageId, branch)
-              : setRowOverride(dashboard, row.id, stageId, branch),
+            kind === 'group'
+              ? setRowGroupOverride(dashboard, id, stageId, branch)
+              : setRowOverride(dashboard, id, stageId, branch),
           );
         }}
       >

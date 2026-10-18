@@ -2,8 +2,8 @@
  * Zod schema for a dashboard (spec.md §3, §4.2): rows, stages, mapping
  * settings, status colors, row and column groups and credential
  * references. Rejects, as defensive integrity checks, a source-stage
- * cycle and group members that are unknown or in two groups (the editors
- * prevent both before saving).
+ * cycle, duplicate group ids, and group members that are unknown, in two
+ * groups or split apart (the editors prevent all of these before saving).
  *
  * @module
  */
@@ -21,38 +21,54 @@ import { MappingSettingsSchema } from './mappingSettings';
 import { RowSchema } from './row';
 import { StageSchema } from './stage';
 
-/** Group members must name existing items, each in at most one group,
- * so overrides and labels never orphan or contradict themselves (C-14b). */
+/** Groups on one axis must have distinct ids, and name existing items,
+ * each in at most one group, in one unbroken run, so overrides and labels
+ * never orphan, contradict or repeat themselves (C-14b). */
 function groupIssues(
   groups: readonly Group[],
   items: readonly { id: string }[],
   key: 'rowGroups' | 'columnGroups',
   noun: string,
 ): { message: string; path: (string | number)[] }[] {
-  const known = new Set(items.map((i) => i.id));
+  const position = new Map(items.map((item, i) => [item.id, i]));
   const owner = new Map<string, string>();
-  return groups.flatMap((g, gi) =>
-    g.memberIds.flatMap((id, mi) => {
+  const groupIds = new Set<string>();
+  return groups.flatMap((g, gi) => {
+    const issues: { message: string; path: (string | number)[] }[] = [];
+    if (groupIds.has(g.id))
+      issues.push({
+        message: `duplicate group id: ${g.id}`,
+        path: [key, gi, 'id'],
+      });
+    groupIds.add(g.id);
+    g.memberIds.forEach((id, mi) => {
       const path = [key, gi, 'memberIds', mi];
       const first = owner.get(id);
       owner.set(id, first ?? g.id);
-      if (!known.has(id)) {
-        return [
-          { message: `group ${g.id} names unknown ${noun}: ${id}`, path },
+      if (!position.has(id))
+        issues.push({
+          message: `group ${g.id} names unknown ${noun}: ${id}`,
+          path,
+        });
+      else if (first !== undefined)
+        issues.push({
+          message: `${noun} ${id} is in groups ${first} and ${g.id}`,
+          path,
+        });
+    });
+    if (issues.length > 0) return issues;
+    const at = g.memberIds.map((id) => position.get(id) ?? 0);
+    const span = Math.max(...at) - Math.min(...at) + 1;
+    return span === new Set(at).size
+      ? []
+      : [
+          {
+            message: `group ${g.id} is split: its ${noun}s are not together`,
+            path: [key, gi, 'memberIds'],
+          },
         ];
-      }
-      return first === undefined
-        ? []
-        : [
-            {
-              message: `${noun} ${id} is in groups ${first} and ${g.id}`,
-              path,
-            },
-          ];
-    }),
-  );
+  });
 }
-
 /** A dashboard: rows, stages and the settings that derive its cells. */
 export const DashboardSchema = z
   .object({

@@ -102,4 +102,15 @@ describe('credentials', () => {
       'own',
     ]);
   });
+
+  it('ignores Object.prototype names as overrides (a stage called constructor)', () => {
+    const ctor = { id: 'constructor', name: 'c', branchPattern: 'main' };
+    expect(effectiveBranchPattern(ctor, {}, undefined)).toBe('main');
+    expect(
+      effectiveBranchPattern(ctor, {}, { branchPatternOverrides: {} }),
+    ).toBe('main');
+    expect(effectiveBranchPattern(ctor, { constructor: 'x' }, undefined)).toBe(
+      'x',
+    );
+  });
 });
