@@ -72,6 +72,11 @@ export class GitHubHttpClient {
     return this.budget;
   }
 
+  /** Record a budget read from the `rate_limit` endpoint's body. */
+  noteBudget(budget: RateLimitBudget): void {
+    this.budget = budget;
+  }
+
   /** The token's expiry (`github-authentication-token-expiration`), if sent. */
   getTokenExpiration(): string | undefined {
     return this.tokenExpiration;

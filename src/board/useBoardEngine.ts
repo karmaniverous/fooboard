@@ -14,13 +14,23 @@ import {
   createBoardEngine,
   emptyModel,
   type EngineProviders,
+  githubCredentialIds,
 } from '@/engine';
 
 export function useBoardEngine(
   dashboard: Dashboard,
   providers: EngineProviders,
 ): { model: BoardModel; now: number } {
-  const [model, setModel] = useState<BoardModel>(emptyModel);
+  // Every token's battery from the first render (C-16), and again at once
+  // for a changed dashboard, before its engine publishes.
+  const [model, setModel] = useState<BoardModel>(() =>
+    emptyModel(githubCredentialIds(dashboard)),
+  );
+  const [seen, setSeen] = useState(dashboard);
+  if (seen !== dashboard) {
+    setSeen(dashboard);
+    setModel(emptyModel(githubCredentialIds(dashboard)));
+  }
   const [now, setNow] = useState(() => Date.now());
 
   useEffect(() => {

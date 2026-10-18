@@ -69,7 +69,7 @@ An **empty cell** says why: _no branch_, _no recent runs_, _needs credential_ (w
 - **Groups**: rows and stages can be grouped; group names stay in view as the board scrolls.
 - **Fitting the screen**: columns share the window's width, and each cell shows as much detail as fits. Zoom with Ctrl/⌘ + wheel, a pinch, the toolbar buttons or `+` `-` `0`; zooming out fits more, zooming in shows more. _Default_, _Comfortable_ and _Compact_ density change the padding.
 - **Summary**: counts of failing, running, behind and diverged cells; click one to show only those cells, again to clear.
-- **Request budget**: a battery for each GitHub token shows the requests left this hour. fooboard slows its polling as a token's budget runs down, and pauses while the tab is hidden.
+- **Request budget**: a battery for each GitHub token the board uses shows the requests left this hour (grey until first read); its tooltip names the token and says when the budget resets. Reading it costs nothing. fooboard slows its polling as a token's budget runs down, and pauses while the tab is hidden.
 
 ## Editing a dashboard
 

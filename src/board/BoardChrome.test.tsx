@@ -53,7 +53,7 @@ describe('BoardSummary without words', () => {
 });
 
 describe('BudgetMeter', () => {
-  it('shows one battery per credential with a budget, by segments left', () => {
+  it('shows a battery per token, lit by the share left', () => {
     const at = (remaining: number) => ({
       ...model,
       budgets: {
@@ -66,13 +66,14 @@ describe('BudgetMeter', () => {
         },
       },
     });
-    const { rerender } = render(<BudgetMeter model={model} />);
+    const { rerender } = render(
+      <BudgetMeter model={model} labels={{ gh: 'acme token' }} />,
+    );
     const meter = screen.getByRole('meter', {
-      name: /GitHub gh: 300 of 5,000 requests left/,
+      name: /GitHub acme token: 300 of 5,000 requests left/,
     });
     expect(meter).toHaveAttribute('aria-valuenow', '300');
     expect(meter.className).toContain('text-red-600');
-    expect(screen.getAllByRole('meter')).toHaveLength(1);
     for (const [remaining, colour] of [
       [5000, 'text-green-600'],
       [3000, 'text-yellow-500'],
@@ -82,5 +83,15 @@ describe('BudgetMeter', () => {
       rerender(<BudgetMeter model={at(remaining)} />);
       expect(screen.getByRole('meter').className).toContain(colour);
     }
+  });
+
+  it('shows a grey, empty battery for a token not read yet', () => {
+    render(<BudgetMeter model={model} />);
+    const unread = screen.getByRole('meter', {
+      name: 'GitHub off: requests left not known yet',
+    });
+    expect(unread).not.toHaveAttribute('aria-valuenow');
+    expect(unread.className).toContain('text-muted-foreground');
+    expect(screen.getAllByRole('meter')).toHaveLength(2);
   });
 });

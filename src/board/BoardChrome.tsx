@@ -79,39 +79,48 @@ const SEGMENT_COLOR = [
   'text-green-600',
 ] as const;
 
-/** Each credential's remaining GitHub request budget (C-16) as an upright
+/** Each GitHub token's remaining request budget (C-16) as an upright
  * battery of four segments: the fill is what is left, so empty is bad.
  * Outline and fill share one colour: green (4 lit), yellow (3), orange
- * (2), red (1 or empty). Exact numbers and the reset time are in the
- * tooltip and the accessible name. */
+ * (2), red (1 or empty). Every token the board uses has a battery from the
+ * start; one not read yet is grey and empty. The credential's label, exact
+ * numbers and the reset time are in the tooltip and the accessible name. */
 export function BudgetMeter({
   model,
+  labels = {},
 }: {
   model: BoardModel;
+  /** Credential labels by id (the id is shown if a label is missing). */
+  labels?: Readonly<Record<string, string>>;
 }): React.JSX.Element | null {
-  const budgets = Object.entries(model.budgets).flatMap(([id, b]) =>
-    b ? [{ id, ...b }] : [],
-  );
+  const budgets = Object.entries(model.budgets);
   if (budgets.length === 0) return null;
   return (
     <div className="flex items-center gap-2">
-      {budgets.map((b) => {
+      {budgets.map(([id, b]) => {
+        const name = `GitHub ${labels[id] ?? id}`;
         const share =
-          b.limit > 0 ? Math.max(0, Math.min(1, b.remaining / b.limit)) : 0;
-        const lit = Math.ceil(share * SEGMENTS - 1e-9);
-        const label = `GitHub ${b.id}: ${b.remaining.toLocaleString()} of ${b.limit.toLocaleString()} requests left, resets ${new Date(b.reset * 1000).toLocaleTimeString()}`;
+          b && b.limit > 0
+            ? Math.max(0, Math.min(1, b.remaining / b.limit))
+            : 0;
+        const lit = b ? Math.ceil(share * SEGMENTS - 1e-9) : 0;
+        const label = b
+          ? `${name}: ${b.remaining.toLocaleString()} of ${b.limit.toLocaleString()} requests left, resets ${new Date(b.reset * 1000).toLocaleTimeString()}`
+          : `${name}: requests left not known yet`;
         return (
-          <WithTooltip key={b.id} label={label}>
+          <WithTooltip key={id} label={label}>
             <span
               tabIndex={0}
               role="meter"
               aria-label={label}
               aria-valuemin={0}
-              aria-valuemax={b.limit}
-              aria-valuenow={b.remaining}
+              aria-valuemax={b?.limit}
+              aria-valuenow={b?.remaining}
               className={cn(
                 'flex flex-col items-center',
-                SEGMENT_COLOR[lit] ?? SEGMENT_COLOR[0],
+                b
+                  ? (SEGMENT_COLOR[lit] ?? SEGMENT_COLOR[0])
+                  : 'text-muted-foreground',
               )}
             >
               {/* Upright battery: nub on top, segments filled from the bottom. */}

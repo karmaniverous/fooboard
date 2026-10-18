@@ -48,7 +48,12 @@ export function BoardScreen({
       >
         <h1 className="text-base font-semibold">{dashboard.name}</h1>
         <div className="flex items-center gap-3">
-          <BudgetMeter model={model} />
+          <BudgetMeter
+            model={model}
+            labels={Object.fromEntries(
+              dashboard.credentials.map((c) => [c.id, c.label]),
+            )}
+          />
           {typeof actions === 'function' ? actions(model) : actions}
         </div>
       </div>

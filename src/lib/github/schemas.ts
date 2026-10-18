@@ -118,3 +118,15 @@ export type Repo = z.infer<typeof RepoSchema>;
 
 /** `GET /user/repos` response: a plain array, paginated. */
 export const ReposResponseSchema = z.array(RepoSchema);
+
+/** `GET /rate_limit`: only the `core` (REST) resource is read. */
+export const RateLimitResponseSchema = z.object({
+  resources: z.object({
+    core: z.object({
+      limit: z.number(),
+      remaining: z.number(),
+      reset: z.number(),
+      used: z.number(),
+    }),
+  }),
+});

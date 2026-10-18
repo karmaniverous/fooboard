@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Tests for `createGitHubReader`: each method calls the right path, parses
  * the response into the documented shape, rejects malformed payloads, and
  * pagination follows `Link` headers. Uses an injected fake `fetch`; no real
@@ -230,6 +230,29 @@ describe('createGitHubReader', () => {
     expect(reader.getTokenExpiration()).toBe('2026-12-01');
   });
 
+  it('reads the budget from rate_limit and keeps it as the current budget', async () => {
+    const { fetchImpl, calls } = fakeFetch({
+      'https://api.github.com/rate_limit': () =>
+        jsonResponse({
+          resources: {
+            core: { limit: 5000, remaining: 400, reset: 9, used: 4600 },
+            search: { limit: 30, remaining: 30, reset: 9, used: 0 },
+          },
+          rate: { limit: 5000, remaining: 400, reset: 9, used: 4600 },
+        }),
+    });
+    const reader = createGitHubReader({ token: 't', fetchImpl });
+    const budget = await reader.readRateLimit();
+    expect(calls).toEqual(['https://api.github.com/rate_limit']);
+    expect(budget).toEqual({
+      limit: 5000,
+      remaining: 400,
+      reset: 9,
+      used: 4600,
+      status: 'low',
+    });
+    expect(reader.getBudget()).toEqual(budget);
+  });
   it('rejects a malformed payload with GitHubValidationError', async () => {
     const url =
       'https://api.github.com/repos/acme/api-core/actions/runs?per_page=100&exclude_pull_requests=true';

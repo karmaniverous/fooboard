@@ -5,6 +5,7 @@
  *
  * @module
  */
+export { githubCredentialIds } from './budgets';
 export { demoProviders } from './demoProviders';
 export { createBoardEngine, emptyModel } from './engine';
 export {

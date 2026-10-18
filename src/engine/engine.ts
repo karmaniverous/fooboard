@@ -25,6 +25,7 @@ import type { GitHubReader } from '@/lib/github';
 import { isOverPollingShare } from '@/lib/github';
 
 import { amplifyCellViews, refreshAmplifyRow } from './amplifyRow';
+import { budgetTargets, githubCredentialIds } from './budgets';
 import { refreshGithubRepo } from './githubRow';
 import {
   createPollScheduler,
@@ -61,11 +62,14 @@ interface GithubAccess {
   reader: GitHubReader | undefined;
 }
 
-/** A model with nothing loaded yet. */
-export const emptyModel = (): BoardModel => ({
+/** A model with nothing loaded yet: a budget slot (unknown so far) for
+ * each GitHub token in `credentialIds`, so every battery shows at once. */
+export const emptyModel = (
+  credentialIds: readonly string[] = [],
+): BoardModel => ({
   cells: {},
   unmapped: [],
-  budgets: {},
+  budgets: Object.fromEntries(credentialIds.map((id) => [id, undefined])),
   refreshedAt: {},
 });
 
@@ -101,7 +105,8 @@ export function createBoardEngine({
       ? { credentialId, reader: providers.github(credentialId) }
       : undefined;
   };
-  let model = emptyModel();
+  const credentialIds = githubCredentialIds(dashboard);
+  let model = emptyModel(credentialIds);
   const unmappedByTarget = new Map<string, UnmappedRun[]>();
   const listeners = new Set<(m: BoardModel) => void>();
   const publish = (next: BoardModel): void => {
@@ -264,6 +269,17 @@ export function createBoardEngine({
         };
       }),
   ];
+
+  targets.push(
+    ...budgetTargets({
+      credentialIds,
+      reader: (id) => providers.github(id),
+      onBudget: (id, budget) => {
+        publish({ ...model, budgets: { ...model.budgets, [id]: budget } });
+      },
+      now,
+    }),
+  );
 
   const scheduler = createPollScheduler({
     targets,
