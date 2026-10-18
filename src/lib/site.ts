@@ -24,3 +24,15 @@ export const site = {
   ownerName: 'karmaniverous',
   ownerUrl: 'https://github.com/karmaniverous',
 } as const;
+
+/** README sections the app links to (their GitHub heading anchors). */
+const README_SECTIONS = {
+  credentials: 'credentials',
+  github: 'github-token',
+  aws: 'aws-key',
+  leaks: 'what-a-leaked-credential-exposes',
+} as const;
+
+/** A link straight to a README section on GitHub (spec.md C-3a). */
+export const readmeSection = (section: keyof typeof README_SECTIONS): string =>
+  `${site.repoUrl}#${README_SECTIONS[section]}`;

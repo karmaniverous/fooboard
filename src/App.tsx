@@ -12,7 +12,6 @@ import { Header } from '@/components/Header';
 import { ThemeProvider } from '@/components/ThemeProvider';
 import { useViewportWidthVar } from '@/lib/useViewportWidthVar';
 import { PINNED_FULL } from '@/lib/utils';
-import { CredentialGuidePage } from '@/pages/CredentialGuidePage';
 import { DashboardPage } from '@/pages/DashboardPage';
 import { DemoPage } from '@/pages/DemoPage';
 import { Home } from '@/pages/Home';
@@ -56,14 +55,6 @@ export default function App(): React.JSX.Element {
               />
               <Route path="/demo" element={<DemoPage />} />
               <Route path="/d/:id" element={<DashboardPage />} />
-              <Route
-                path="/guide/credentials"
-                element={
-                  <Page>
-                    <CredentialGuidePage />
-                  </Page>
-                }
-              />
               <Route
                 path="/spike/amplify"
                 element={

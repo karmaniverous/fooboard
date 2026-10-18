@@ -7,7 +7,6 @@
  * @module
  */
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
 
 import { ExternalLink } from '@/components/ExternalLink';
 import {
@@ -22,6 +21,7 @@ import {
   SheetTitle,
 } from '@/components/ui/sheet';
 import type { BoardCell } from '@/engine';
+import { readmeSection } from '@/lib/site';
 
 import {
   badgeDescription,
@@ -56,9 +56,13 @@ export function CellDetail({
             <div className="text-muted-foreground">{derivation.reason}</div>
           )}
           {interactive && derivation.state === 'needs-credential' && (
-            <Link to="/guide/credentials" className="block text-sky-400">
+            <ExternalLink
+              unstyled
+              href={readmeSection('credentials')}
+              className="block text-sky-400"
+            >
               How to set up a credential
-            </Link>
+            </ExternalLink>
           )}
         </div>
       ) : (

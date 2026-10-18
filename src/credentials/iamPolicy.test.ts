@@ -1,42 +1,94 @@
 /**
- * Documentation check for the guide's IAM policy: exactly the four
- * read-only actions fooboard calls, each scoped to the resource type AWS
- * supports for it, and no write action.
+ * Tests for the generated IAM policy (spec.md C-3a): only the read actions
+ * fooboard uses, each scoped to the resource AWS supports for it and to
+ * the dashboard's apps (once each), and only `ListApps` with no apps.
  *
  * @module
  */
 import { describe, expect, it } from 'vitest';
 
-import { IAM_POLICY } from './iamPolicy';
+import { DashboardSchema } from '@/domain/config/dashboard';
 
-const scopeOf = (action: string) =>
-  IAM_POLICY.Statement.find((s) =>
-    (s.Action as readonly string[]).includes(action),
-  )?.Resource;
+import { amplifyPolicy, dashboardApps } from './iamPolicy';
 
-describe('IAM_POLICY', () => {
+const resourceOf = (policy: ReturnType<typeof amplifyPolicy>, action: string) =>
+  policy.Statement.find((s) => s.Action.includes(action))?.Resource;
+
+describe('amplifyPolicy', () => {
+  const policy = amplifyPolicy([
+    { region: 'us-east-1', appId: 'd1' },
+    { region: 'eu-west-1', appId: 'd2' },
+    { region: 'us-east-1', appId: 'd1' },
+  ]);
+
   it('allows only the read actions fooboard uses', () => {
-    expect(IAM_POLICY.Statement.flatMap((s) => s.Action).sort()).toEqual([
+    expect(policy.Statement.flatMap((s) => s.Action).sort()).toEqual([
       'amplify:GetJob',
       'amplify:ListApps',
       'amplify:ListBranches',
       'amplify:ListJobs',
     ]);
-    expect(new Set(IAM_POLICY.Statement.map((s) => s.Effect))).toEqual(
+    expect(new Set(policy.Statement.map((s) => s.Effect))).toEqual(
       new Set(['Allow']),
     );
   });
 
-  it('scopes each action to the resource type AWS supports for it', () => {
-    expect(scopeOf('amplify:ListApps')).toBe('*');
-    expect(scopeOf('amplify:ListBranches')).toEqual([
-      expect.stringMatching(/^arn:aws:amplify:[^:]+:\d{12}:apps\/[^/]+$/),
+  it('scopes each action to its resource type, for each app once', () => {
+    expect(resourceOf(policy, 'amplify:ListApps')).toBe('*');
+    expect(resourceOf(policy, 'amplify:ListBranches')).toEqual([
+      'arn:aws:amplify:us-east-1:*:apps/d1',
+      'arn:aws:amplify:eu-west-1:*:apps/d2',
     ]);
-    expect(scopeOf('amplify:ListJobs')).toEqual([
-      expect.stringMatching(/:apps\/[^/]+\/branches\/\*$/),
+    expect(resourceOf(policy, 'amplify:ListJobs')).toEqual([
+      'arn:aws:amplify:us-east-1:*:apps/d1/branches/*',
+      'arn:aws:amplify:eu-west-1:*:apps/d2/branches/*',
     ]);
-    expect(scopeOf('amplify:GetJob')).toEqual([
-      expect.stringMatching(/:apps\/[^/]+\/branches\/\*\/jobs\/\*$/),
+    expect(resourceOf(policy, 'amplify:GetJob')).toEqual([
+      'arn:aws:amplify:us-east-1:*:apps/d1/branches/*/jobs/*',
+      'arn:aws:amplify:eu-west-1:*:apps/d2/branches/*/jobs/*',
+    ]);
+  });
+
+  it('fills in an account when given one (the README template)', () => {
+    expect(
+      resourceOf(
+        amplifyPolicy([{ region: 'REGION', appId: 'APP_ID' }], 'ACCOUNT_ID'),
+        'amplify:ListBranches',
+      ),
+    ).toEqual(['arn:aws:amplify:REGION:ACCOUNT_ID:apps/APP_ID']);
+  });
+
+  it('allows only listing apps when there are none yet', () => {
+    expect(amplifyPolicy([]).Statement.flatMap((s) => s.Action)).toEqual([
+      'amplify:ListApps',
+    ]);
+  });
+});
+
+describe('dashboardApps', () => {
+  it("collects every Amplify source's region and app, skipping GitHub rows", () => {
+    const dashboard = DashboardSchema.parse({
+      id: 'd',
+      name: 'd',
+      credentials: [{ id: 'k', kind: 'aws', label: 'k' }],
+      rows: [
+        { type: 'github', id: 'api', repo: 'acme/api', displayName: 'api' },
+        {
+          type: 'amplify',
+          id: 'web',
+          displayName: 'web',
+          repo: 'acme/web',
+          sources: [
+            { region: 'us-east-1', appId: 'd1' },
+            { region: 'eu-west-1', appId: 'd2', credentialId: 'k' },
+          ],
+        },
+      ],
+      stages: [{ id: 'dev', name: 'dev', branchPattern: 'dev' }],
+    });
+    expect(dashboardApps(dashboard)).toEqual([
+      { region: 'us-east-1', appId: 'd1' },
+      { region: 'eu-west-1', appId: 'd2' },
     ]);
   });
 });

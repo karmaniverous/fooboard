@@ -12,6 +12,7 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { buttonVariants } from '@/components/ui/buttonVariants';
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
+import { copyText } from '@/lib/clipboard';
 import { demoUrl, postUrl } from '@/lib/share';
 import { site } from '@/lib/site';
 
@@ -88,17 +89,9 @@ export function ShareDialog({
             variant="outline"
             className="gap-1.5"
             onClick={() => {
-              // No clipboard (an insecure page) or a refusal: say so.
-              void Promise.resolve()
-                .then(() => navigator.clipboard.writeText(url))
-                .then(
-                  () => {
-                    setOutcome('copied');
-                  },
-                  () => {
-                    setOutcome('copyFailed');
-                  },
-                );
+              void copyText(url).then((ok) => {
+                setOutcome(ok ? 'copied' : 'copyFailed');
+              });
             }}
           >
             <Copy aria-hidden className="size-4" />

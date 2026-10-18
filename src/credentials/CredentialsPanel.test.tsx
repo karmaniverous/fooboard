@@ -10,12 +10,13 @@
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import { useState } from 'react';
 import { MemoryRouter } from 'react-router-dom';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import { type Dashboard, DashboardSchema } from '@/domain/config/dashboard';
 import { type AppStores, createAppStores } from '@/storage';
 import { memoryStorage } from '@/storage/keyValue';
 import { StoresContext } from '@/storage/storesContext';
+import { choose } from '@/test/choose';
 
 import { CredentialsPanel } from './CredentialsPanel';
 
@@ -163,5 +164,60 @@ describe('CredentialsPanel failures and form hygiene', () => {
     expect(screen.getByLabelText('Token')).toHaveValue('github_pat_1');
     expect(latest.current.credentials).toEqual([]);
     expect(stores.config.load()).toMatchObject({ kind: 'ok' });
+  });
+
+  it('links each kind to its README section', () => {
+    setup();
+    expect(
+      screen.getByRole('link', { name: 'How to create a read-only token' }),
+    ).toHaveAttribute('href', expect.stringMatching(/#github-token$/));
+    expect(
+      screen.getByRole('link', { name: /What a leak exposes/ }),
+    ).toHaveAttribute(
+      'href',
+      expect.stringMatching(/#what-a-leaked-credential-exposes$/),
+    );
+    choose(screen.getByRole('combobox', { name: 'Kind' }), 'AWS key');
+    expect(
+      screen.getByRole('link', { name: 'How to create a read-only key' }),
+    ).toHaveAttribute('href', expect.stringMatching(/#aws-key$/));
+  });
+
+  it("copies the AWS policy for the dashboard's Amplify apps", async () => {
+    const writeText = vi.fn<(text: string) => Promise<void>>(() =>
+      Promise.resolve(),
+    );
+    Object.defineProperty(navigator, 'clipboard', {
+      value: { writeText },
+      configurable: true,
+    });
+    setup({
+      initial: DashboardSchema.parse({
+        id: 'd',
+        name: 'D',
+        rows: [
+          {
+            type: 'amplify',
+            id: 'web',
+            displayName: 'web',
+            repo: 'acme/web',
+            sources: [{ region: 'eu-west-1', appId: 'd2' }],
+          },
+        ],
+      }),
+    });
+    choose(screen.getByRole('combobox', { name: 'Kind' }), 'AWS key');
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'Copy AWS policy' }));
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+    expect(writeText.mock.calls[0]?.[0]).toContain(
+      '"arn:aws:amplify:eu-west-1:*:apps/d2"',
+    );
+    expect(screen.getByRole('status')).toHaveTextContent(
+      "read-only access to this dashboard's 1 Amplify app",
+    );
+    Reflect.deleteProperty(navigator, 'clipboard');
   });
 });
