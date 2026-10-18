@@ -18,9 +18,13 @@ import {
   type StalenessBadge,
 } from '@/domain/derivation';
 import { matchesBranchPattern } from '@/domain/matching/branchPattern';
-import { type CompareResult, RateLimitedError } from '@/lib/github';
+import {
+  type CompareResult,
+  type GitHubReader,
+  RateLimitedError,
+} from '@/lib/github';
 
-import type { DatedBranch } from './githubRow';
+import { type DatedBranch, repoRef } from './githubRow';
 import type { CompareDetail } from './types';
 
 /** A cell's badge and the compare behind it, if any. */
@@ -97,4 +101,52 @@ export async function rowStaleness(
     };
   }
   return result;
+}
+
+/** One compare per branch pair within a refresh, shared by its rows. */
+export function compareOnce(
+  reader: GitHubReader,
+  repo: string,
+): (base: string, head: string) => Promise<CompareResult> {
+  const seen = new Map<string, Promise<CompareResult>>();
+  return (base, head) => {
+    const key = `${base}...${head}`;
+    let pending = seen.get(key);
+    if (!pending) {
+      pending = reader.compare(repoRef(repo), base, head);
+      seen.set(key, pending);
+    }
+    return pending;
+  };
+}
+
+/** Staleness for one row from its cells, reading the repo's branches when
+ * the refresh didn't list them. Badges are best-effort: any failure leaves
+ * the row without badges. */
+export async function readStaleness(
+  stages: readonly Stage[],
+  reader: GitHubReader | undefined,
+  repo: string,
+  cells: Record<
+    string,
+    { derivation: GithubCellDerivation | AmplifyCellDerivation }
+  >,
+  branches: readonly DatedBranch[] | undefined,
+  compare: (base: string, head: string) => Promise<CompareResult>,
+): Promise<Record<string, CellStaleness>> {
+  if (!reader) return {};
+  try {
+    const dated =
+      branches ??
+      (await reader.listBranches(repoRef(repo))).map((b) => ({
+        name: b.name,
+        updatedAt: new Date(0).toISOString(),
+      }));
+    const derivations = Object.fromEntries(
+      Object.entries(cells).map(([id, c]) => [id, c.derivation]),
+    );
+    return await rowStaleness(stages, derivations, dated, compare);
+  } catch {
+    return {};
+  }
 }

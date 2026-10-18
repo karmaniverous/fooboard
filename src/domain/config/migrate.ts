@@ -4,69 +4,63 @@
  * arbitrary stored or imported data up to `CURRENT_SCHEMA_VERSION`, then
  * validates it against `ConfigRootSchema`.
  *
- * There is only one schema version so far, so the migration registry is
- * empty; it is the place future version bumps plug into.
+ * Steps so far: v1 to v2, row and column groups replacing dividers
+ * (spec.md C-14b).
  *
  * @module
  */
+import { omit, sort } from 'radash';
+import { z } from 'zod';
+
 import type { ConfigRoot } from './root';
 import { ConfigRootSchema, CURRENT_SCHEMA_VERSION } from './root';
 
 /** A migration step from one schema version to the next. */
 type Migration = (input: Record<string, unknown>) => Record<string, unknown>;
 
-interface V1Divider {
-  beforeId: string;
-  style?: string;
-  label?: string;
-}
+/** The parts of a v1 dashboard the v1 to v2 step reads; anything else is
+ * passed through for `ConfigRootSchema` to validate. */
+const V1DividerSchema = z.object({
+  beforeId: z.string(),
+  label: z.string().min(1).optional(),
+});
+const V1DashboardSchema = z.looseObject({
+  rows: z.array(z.looseObject({ id: z.string() })).default([]),
+  stages: z.array(z.looseObject({ id: z.string() })).default([]),
+  rowDividers: z.array(V1DividerSchema).default([]),
+  columnDividers: z.array(V1DividerSchema).default([]),
+});
 
-/** One group per divider (spec.md C-14b migration): a labelled divider
- * becomes a labelled group, an unlabelled one an unlabelled group; the
- * group runs from the divider's row/stage up to the next divider. Items
- * before the first divider stay ungrouped. Divider styles are dropped. */
+/** One group per divider (spec.md C-14b): a labelled divider becomes a
+ * labelled group, an unlabelled one an unlabelled group; the group runs
+ * from the divider's row or stage up to the next divider. Items before the
+ * first divider stay ungrouped. Divider styles are dropped. */
 function groupsFromDividers(
   itemIds: readonly string[],
-  dividers: readonly V1Divider[],
+  dividers: readonly z.infer<typeof V1DividerSchema>[],
 ): { id: string; label?: string; memberIds: string[] }[] {
-  const positioned = dividers
-    .map((d) => ({ ...d, index: itemIds.indexOf(d.beforeId) }))
-    .filter((d) => d.index >= 0)
-    .sort((a, b) => a.index - b.index);
-  return positioned.map((d, i) => {
-    const end = positioned[i + 1]?.index ?? itemIds.length;
-    return {
-      id: `group-${d.beforeId}`,
-      ...(d.label ? { label: d.label } : {}),
-      memberIds: itemIds.slice(d.index, end),
-    };
-  });
+  const positioned = sort(
+    dividers
+      .map((d) => ({ ...d, index: itemIds.indexOf(d.beforeId) }))
+      .filter((d) => d.index >= 0),
+    (d) => d.index,
+  );
+  return positioned.map((d, i) => ({
+    id: `group-${d.beforeId}`,
+    ...(d.label ? { label: d.label } : {}),
+    memberIds: itemIds.slice(d.index, positioned[i + 1]?.index),
+  }));
 }
 
-/** Migrate one v1 dashboard's `rowDividers`/`columnDividers` to v2's
- * `rowGroups`/`columnGroups` (spec.md C-14b). */
-function migrateDashboardDividersToGroups(
-  dashboard: Record<string, unknown>,
-): Record<string, unknown> {
-  const rows = Array.isArray(dashboard.rows)
-    ? (dashboard.rows as { id: string }[])
-    : [];
-  const stages = Array.isArray(dashboard.stages)
-    ? (dashboard.stages as { id: string }[])
-    : [];
-  const rowDividers = Array.isArray(dashboard.rowDividers)
-    ? (dashboard.rowDividers as V1Divider[])
-    : [];
-  const columnDividers = Array.isArray(dashboard.columnDividers)
-    ? (dashboard.columnDividers as V1Divider[])
-    : [];
-  const rest = Object.fromEntries(
-    Object.entries(dashboard).filter(
-      ([key]) => key !== 'rowDividers' && key !== 'columnDividers',
-    ),
-  );
+/** v1 to v2 for one dashboard: dividers become groups (spec.md C-14b).
+ * Data that doesn't have a v1 dashboard's shape is left as it is, for
+ * validation to reject. */
+function dividersToGroups(input: unknown): unknown {
+  const parsed = V1DashboardSchema.safeParse(input);
+  if (!parsed.success) return input;
+  const { rows, stages, rowDividers, columnDividers } = parsed.data;
   return {
-    ...rest,
+    ...omit(parsed.data, ['rowDividers', 'columnDividers']),
     rowGroups: groupsFromDividers(
       rows.map((r) => r.id),
       rowDividers,
@@ -80,22 +74,15 @@ function migrateDashboardDividersToGroups(
 
 /** Migrations keyed by the version they migrate *from*. `Partial` so a
  * missing step types as `undefined` (there is no `noUncheckedIndexedAccess`
- * project-wide), matching the runtime behavior of an empty registry. */
+ * project-wide). */
 const migrations: Partial<Record<number, Migration>> = {
-  // v1 -> v2: row/column groups replace dividers (spec.md C-14b).
-  1: (data) => {
-    const dashboards = Array.isArray(data.dashboards) ? data.dashboards : [];
-    return {
-      ...data,
-      dashboards: dashboards.map((d: unknown) =>
-        typeof d === 'object' && d !== null
-          ? migrateDashboardDividersToGroups(d as Record<string, unknown>)
-          : d,
-      ),
-    };
-  },
+  1: (data) => ({
+    ...data,
+    dashboards: Array.isArray(data.dashboards)
+      ? data.dashboards.map(dividersToGroups)
+      : data.dashboards,
+  }),
 };
-
 function readVersion(input: unknown): number {
   if (
     typeof input === 'object' &&

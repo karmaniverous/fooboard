@@ -1,16 +1,20 @@
 /**
  * Branch discovery for the editors (spec.md C-21): branch names per repo,
- * read with each row's own GitHub token (row, then row group, then
- * dashboard default, C-1a).
+ * each read with the row's own GitHub token (C-1a), and what they show:
+ * how many repos have each branch, and what a pattern would match.
  *
  * @module
  */
-import { resolveCredentialId } from '@/domain/config/credentialRefs';
+import { unique } from 'radash';
+
 import type { Dashboard } from '@/domain/config/dashboard';
-import { rowGroupOf } from '@/domain/config/groups';
+import { rowGithubCredentialId } from '@/domain/config/inheritance';
 import type { Row } from '@/domain/config/row';
+import { matchesBranchPattern } from '@/domain/matching';
 import type { EngineProviders } from '@/engine';
 
+/** Branch names per repo for `rows` (default: every row). A repo whose
+ * row has no usable token is skipped; a read failure rejects. */
 export async function discoverBranches(
   dashboard: Dashboard,
   providers: EngineProviders,
@@ -19,14 +23,7 @@ export async function discoverBranches(
   const byRepo = new Map<string, string[]>();
   for (const row of rows) {
     if (byRepo.has(row.repo)) continue;
-    const override =
-      row.type === 'github' ? row.credentialId : row.githubCredentialId;
-    const id = resolveCredentialId(
-      dashboard.defaultCredentials,
-      'github',
-      override,
-      rowGroupOf(dashboard.rowGroups, row.id)?.defaultCredentials,
-    );
+    const id = rowGithubCredentialId(dashboard, row);
     const reader = id ? providers.github(id) : undefined;
     if (!reader) continue;
     const [owner = '', repo = ''] = row.repo.split('/');
@@ -37,4 +34,36 @@ export async function discoverBranches(
     );
   }
   return byRepo;
+}
+/** Branches found across repos, with how many repos have each, most
+ * common first (spec.md C-21: `main` 19/19, `release/24.3` 17/19). */
+export function branchCounts(
+  branchesByRepo: ReadonlyMap<string, readonly string[]>,
+): { name: string; count: number }[] {
+  const counts = new Map<string, number>();
+  for (const branches of branchesByRepo.values()) {
+    for (const name of unique(branches)) {
+      counts.set(name, (counts.get(name) ?? 0) + 1);
+    }
+  }
+  return [...counts]
+    .map(([name, count]) => ({ name, count }))
+    .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name));
+}
+
+/** What a pattern would match: the repos with at least one matching
+ * branch, and every matching branch name. */
+export function patternPreview(
+  pattern: string,
+  branchesByRepo: ReadonlyMap<string, readonly string[]>,
+): { repos: string[]; branches: string[] } {
+  const repos: string[] = [];
+  const branches = new Set<string>();
+  if (!pattern.trim()) return { repos, branches: [] };
+  for (const [repo, names] of branchesByRepo) {
+    const hits = names.filter((b) => matchesBranchPattern(pattern, b));
+    if (hits.length > 0) repos.push(repo);
+    hits.forEach((b) => branches.add(b));
+  }
+  return { repos, branches: [...branches].sort() };
 }

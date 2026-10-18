@@ -1,8 +1,9 @@
 /**
  * Zod schema for a dashboard (spec.md §3, §4.2): rows, stages, mapping
- * settings, status colors, dividers and credential references. Rejects a
- * source-stage cycle at parse time as a defensive integrity check (the
- * stage editor is expected to prevent cycles before they are saved).
+ * settings, status colors, row and column groups and credential
+ * references. Rejects, as defensive integrity checks, a source-stage
+ * cycle and group members that are unknown or in two groups (the editors
+ * prevent both before saving).
  *
  * @module
  */
@@ -15,10 +16,42 @@ import {
 } from './credentialRefs';
 import { CredentialRefSchema } from './credentials';
 import { findAnyCycle } from './cycle';
-import { ColumnGroupSchema, RowGroupSchema } from './groups';
+import { ColumnGroupSchema, type Group, RowGroupSchema } from './groups';
 import { MappingSettingsSchema } from './mappingSettings';
 import { RowSchema } from './row';
 import { StageSchema } from './stage';
+
+/** Group members must name existing items, each in at most one group,
+ * so overrides and labels never orphan or contradict themselves (C-14b). */
+function groupIssues(
+  groups: readonly Group[],
+  items: readonly { id: string }[],
+  key: 'rowGroups' | 'columnGroups',
+  noun: string,
+): { message: string; path: (string | number)[] }[] {
+  const known = new Set(items.map((i) => i.id));
+  const owner = new Map<string, string>();
+  return groups.flatMap((g, gi) =>
+    g.memberIds.flatMap((id, mi) => {
+      const path = [key, gi, 'memberIds', mi];
+      const first = owner.get(id);
+      owner.set(id, first ?? g.id);
+      if (!known.has(id)) {
+        return [
+          { message: `group ${g.id} names unknown ${noun}: ${id}`, path },
+        ];
+      }
+      return first === undefined
+        ? []
+        : [
+            {
+              message: `${noun} ${id} is in groups ${first} and ${g.id}`,
+              path,
+            },
+          ];
+    }),
+  );
+}
 
 /** A dashboard: rows, stages and the settings that derive its cells. */
 export const DashboardSchema = z
@@ -42,36 +75,18 @@ export const DashboardSchema = z
     defaultCredentials: DefaultCredentialsSchema.default(() => ({})),
   })
   .superRefine((dashboard, ctx) => {
-    for (const issue of credentialReferenceIssues(dashboard)) {
+    for (const issue of [
+      ...credentialReferenceIssues(dashboard),
+      ...groupIssues(dashboard.rowGroups, dashboard.rows, 'rowGroups', 'row'),
+      ...groupIssues(
+        dashboard.columnGroups,
+        dashboard.stages,
+        'columnGroups',
+        'stage',
+      ),
+    ]) {
       ctx.addIssue({ code: 'custom', ...issue });
     }
-
-    // Group member ids must name rows/stages that actually exist, so
-    // overrides and labels never orphan themselves silently.
-    const rowIds = new Set(dashboard.rows.map((r) => r.id));
-    dashboard.rowGroups.forEach((g, gi) => {
-      g.memberIds.forEach((id, mi) => {
-        if (!rowIds.has(id)) {
-          ctx.addIssue({
-            code: 'custom',
-            message: `row group ${g.id} names unknown row: ${id}`,
-            path: ['rowGroups', gi, 'memberIds', mi],
-          });
-        }
-      });
-    });
-    const stageIds = new Set(dashboard.stages.map((s) => s.id));
-    dashboard.columnGroups.forEach((g, gi) => {
-      g.memberIds.forEach((id, mi) => {
-        if (!stageIds.has(id)) {
-          ctx.addIssue({
-            code: 'custom',
-            message: `column group ${g.id} names unknown stage: ${id}`,
-            path: ['columnGroups', gi, 'memberIds', mi],
-          });
-        }
-      });
-    });
 
     // Duplicate ids make source references ambiguous and would let a cycle
     // hide behind a later stage with the same id, so reject them first.

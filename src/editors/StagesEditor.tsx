@@ -3,8 +3,8 @@
  * the dashboard's repos, listed with how many repos have each; pick one,
  * or type a pattern and see what it matches before adding. Stages can be
  * renamed, re-patterned, reordered and removed, and given a source stage
- * (choices that would make a cycle are not offered), plus the divider
- * before each column.
+ * (choices that would make a cycle are not offered), and put into, out of
+ * or between column groups.
  *
  * @module
  */
@@ -18,18 +18,12 @@ import type { Dashboard } from '@/domain/config/dashboard';
 import type { Stage } from '@/domain/config/stage';
 import type { EngineProviders } from '@/engine';
 
-import { discoverBranches } from './branches';
-import { branchCounts, patternPreview, removeStage, uniqueId } from './edit';
-import { CommitInput, GroupControl } from './fields';
-import {
-  deleteColumnGroup,
-  dropStage,
-  renameColumnGroup,
-  reorderStages,
-  setColumnGroup,
-  stepStage,
-} from './groupEdit';
-import { LoadStatus } from './LoadStatus';
+import { discoverBranches, patternPreview } from './branches';
+import { BranchFinder } from './BranchFinder';
+import { removeStage, uniqueId } from './edit';
+import { CommitInput } from './fields';
+import { GroupControl } from './GroupControl';
+import { listHandlers } from './groupEdit';
 import { ReorderList } from './ReorderList';
 import { useLoad } from './useLoad';
 
@@ -66,42 +60,15 @@ function AddStage({
   return (
     <section className="flex flex-col gap-2 rounded-md border p-2 text-xs">
       <h3 className="text-sm font-semibold">Add a stage</h3>
-      {found.kind !== 'done' && (
-        <Button
-          size="sm"
-          variant="outline"
-          className="self-start"
-          disabled={found.kind === 'loading' || dashboard.rows.length === 0}
-          onClick={() => {
-            load(() => discoverBranches(dashboard, providers));
-          }}
-        >
-          {found.kind === 'loading'
-            ? 'Finding branches…'
-            : 'Find branches in your repos'}
-        </Button>
-      )}
-      <LoadStatus state={found} loading="" />
-      {byRepo && (
-        <ul className="flex max-h-40 flex-wrap gap-1 overflow-y-auto">
-          {branchCounts(byRepo).map((b) => (
-            <li key={b.name}>
-              <button
-                type="button"
-                className="rounded-full border px-2 py-0.5 hover:bg-muted"
-                onClick={() => {
-                  setPattern(b.name);
-                }}
-              >
-                {b.name}{' '}
-                <span className="text-muted-foreground">
-                  {b.count}/{byRepo.size}
-                </span>
-              </button>
-            </li>
-          ))}
-        </ul>
-      )}
+      <BranchFinder
+        found={found}
+        label="Find branches in your repos"
+        disabled={dashboard.rows.length === 0}
+        onFind={() => {
+          load(() => discoverBranches(dashboard, providers));
+        }}
+        onPick={setPattern}
+      />
       <form
         className="flex flex-wrap items-center gap-1"
         onSubmit={(e) => {
@@ -172,22 +139,9 @@ export function StagesEditor({
         items={stages}
         keyOf={(s) => s.id}
         nameOf={(s) => s.name}
-        onReorder={(next) => {
-          onChange(reorderStages(dashboard, next));
-        }}
+        {...listHandlers(dashboard, 'stages', onChange)}
         onRemove={(s) => {
           onChange(removeStage(dashboard, s.id));
-        }}
-        onDrop={(from, to) => {
-          onChange(dropStage(dashboard, from.id, to.id));
-        }}
-        onStep={(s, delta) => {
-          const next = stepStage(dashboard, s.id, delta);
-          return next
-            ? () => {
-                onChange(next);
-              }
-            : undefined;
         }}
       >
         {(stage) => (
@@ -231,22 +185,11 @@ export function StagesEditor({
                 ))}
             </NativeSelect>
             <GroupControl
+              dashboard={dashboard}
+              axis="stages"
+              itemId={stage.id}
               name={stage.name}
-              groups={dashboard.columnGroups}
-              groupId={
-                dashboard.columnGroups.find((g) =>
-                  g.memberIds.includes(stage.id),
-                )?.id
-              }
-              onChange={(target) => {
-                onChange(setColumnGroup(dashboard, stage.id, target));
-              }}
-              onRename={(id, label) => {
-                onChange(renameColumnGroup(dashboard, id, label));
-              }}
-              onDelete={(id) => {
-                onChange(deleteColumnGroup(dashboard, id));
-              }}
+              onChange={onChange}
             />
           </div>
         )}

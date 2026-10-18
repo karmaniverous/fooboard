@@ -64,8 +64,6 @@ export async function refreshAmplifyRow(
   stages: readonly Stage[],
   defaults: DefaultCredentials,
   readersFor: (credentialId: string) => AmplifyReaderFor | undefined,
-  /** The row group's default credentials (C-1a), if it is in one. */
-  groupDefaults?: DefaultCredentials,
 ): Promise<AmplifyRowRefresh> {
   const sources: ResolvedAmplifySource[] = [];
   for (const source of row.sources) {
@@ -73,7 +71,6 @@ export async function refreshAmplifyRow(
       defaults,
       'aws',
       source.credentialId,
-      groupDefaults,
     );
     if (!credentialId) return emptyRow(stages, 'missing');
     sources.push({ ...source, credentialId });
@@ -111,4 +108,22 @@ export async function refreshAmplifyRow(
       ? outcome
       : emptyRow(stages, outcome.credentialStatus, outcome.providerFailure);
   }
+}
+
+/** Cell views for an Amplify row: a cell is active while its job is
+ * queued or running (it drives the faster poll). */
+export function amplifyCellViews(
+  cells: Readonly<Record<string, AmplifyCellDerivation>>,
+): Record<string, { derivation: AmplifyCellDerivation; active: boolean }> {
+  return Object.fromEntries(
+    Object.entries(cells).map(([stageId, derivation]) => [
+      stageId,
+      {
+        derivation,
+        active:
+          derivation.kind === 'ok' &&
+          (derivation.status === 'started' || derivation.status === 'queued'),
+      },
+    ]),
+  );
 }

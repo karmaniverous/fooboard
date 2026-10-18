@@ -20,16 +20,15 @@ export const DefaultCredentialsSchema = z.object({
 });
 export type DefaultCredentials = z.infer<typeof DefaultCredentialsSchema>;
 
-/** The credential id to use: the override if set, else the row group's
- * default (spec.md C-1a), else the dashboard default for that kind, else
+/** The credential id to use: the override if set, else the inherited
+ * default for that kind (see `inheritedCredentials`, spec.md C-1a), else
  * `undefined` (the cell shows *needs credential*). */
 export function resolveCredentialId(
   defaults: DefaultCredentials,
   kind: CredentialKind,
   override?: string,
-  rowGroupDefaults?: DefaultCredentials,
 ): string | undefined {
-  return override ?? rowGroupDefaults?.[kind] ?? defaults[kind];
+  return override ?? defaults[kind];
 }
 
 /** One credential reference somewhere in a dashboard. */
@@ -69,11 +68,14 @@ function rowUses(row: Row, index: number): CredentialUse[] {
     : sources;
 }
 
-function rowGroupUses(group: RowGroup, index: number): CredentialUse[] {
-  const at = (kind: string) => ['rowGroups', index, 'defaultCredentials', kind];
+/** The references in a set of default credentials found at `path`. */
+function defaultUses(
+  defaults: DefaultCredentials,
+  ...path: (string | number)[]
+): CredentialUse[] {
   return (['github', 'aws'] as const).flatMap((kind) => {
-    const id = group.defaultCredentials[kind];
-    return id ? [{ id, kind, path: at(kind) }] : [];
+    const id = defaults[kind];
+    return id ? [{ id, kind, path: [...path, kind] }] : [];
   });
 }
 
@@ -82,17 +84,15 @@ export function credentialReferenceIssues(dashboard: {
   credentials: readonly CredentialRef[];
   defaultCredentials: DefaultCredentials;
   rows: readonly Row[];
-  rowGroups?: readonly RowGroup[];
+  rowGroups: readonly RowGroup[];
 }): { message: string; path: (string | number)[] }[] {
   const kindOf = new Map(dashboard.credentials.map((c) => [c.id, c.kind]));
-  const defaults = (['github', 'aws'] as const).flatMap((kind) => {
-    const id = dashboard.defaultCredentials[kind];
-    return id ? [{ id, kind, path: ['defaultCredentials', kind] }] : [];
-  });
   const uses: CredentialUse[] = [
-    ...defaults,
+    ...defaultUses(dashboard.defaultCredentials, 'defaultCredentials'),
     ...dashboard.rows.flatMap(rowUses),
-    ...(dashboard.rowGroups ?? []).flatMap(rowGroupUses),
+    ...dashboard.rowGroups.flatMap((g, i) =>
+      defaultUses(g.defaultCredentials, 'rowGroups', i, 'defaultCredentials'),
+    ),
   ];
 
   return uses.flatMap(({ id, kind, path }) => {

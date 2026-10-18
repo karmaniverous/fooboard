@@ -10,12 +10,12 @@
 import { Fragment, useState } from 'react';
 
 import type { Dashboard } from '@/domain/config/dashboard';
+import { groupSegments } from '@/domain/groups/segments';
 import { type BoardModel, cellKey } from '@/engine';
 import { cn } from '@/lib/utils';
 
 import { Cell } from './Cell';
 import { CellDetail, CellSheet, CellTooltip } from './CellDetail';
-import { groupSegments } from './groupLayout';
 import { capText, type Layout, LINE_HEIGHT } from './layout';
 import { type CellFilter, matchesFilter } from './summary';
 

@@ -1,34 +1,16 @@
 /**
- * Pure editing helpers (spec.md C-21): reordering, unique ids, rows from
- * picked repos, duplicating a dashboard, and the branch discovery that
- * seeds new stages (branch counts and pattern previews).
+ * Pure editing helpers (spec.md C-21): unique ids, rows from picked
+ * repos, duplicating a dashboard, and removing rows and stages.
  *
  * @module
  */
-import { unique } from 'radash';
+import { omit } from 'radash';
 
 import { mapCredentialRefs } from '@/credentials/dashboardCredentials';
 import type { Dashboard } from '@/domain/config/dashboard';
 import type { GithubRow } from '@/domain/config/row';
-import { matchesBranchPattern } from '@/domain/matching';
 
-import { reorderRows, reorderStages } from './groupEdit';
-
-/** Move the item at `index` by `delta` places (keyboard reordering). */
-export function moveItem<T>(
-  list: readonly T[],
-  index: number,
-  delta: number,
-): T[] {
-  const to = index + delta;
-  if (index < 0 || index >= list.length || to < 0 || to >= list.length) {
-    return [...list];
-  }
-  const next = [...list];
-  const [item] = next.splice(index, 1);
-  next.splice(to, 0, item);
-  return next;
-}
+import { tidyGroups } from './groupEdit';
 
 /** A readable id from `base`, made unique among `taken`. */
 export function uniqueId(base: string, taken: Iterable<string>): string {
@@ -86,39 +68,6 @@ export function duplicateDashboard(
   };
 }
 
-/** Branches found across repos, with how many repos have each, most
- * common first (spec.md C-21: `main` 19/19, `release/24.3` 17/19). */
-export function branchCounts(
-  branchesByRepo: ReadonlyMap<string, readonly string[]>,
-): { name: string; count: number }[] {
-  const counts = new Map<string, number>();
-  for (const branches of branchesByRepo.values()) {
-    for (const name of unique(branches)) {
-      counts.set(name, (counts.get(name) ?? 0) + 1);
-    }
-  }
-  return [...counts]
-    .map(([name, count]) => ({ name, count }))
-    .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name));
-}
-
-/** What a pattern would match: the repos with at least one matching
- * branch, and every matching branch name. */
-export function patternPreview(
-  pattern: string,
-  branchesByRepo: ReadonlyMap<string, readonly string[]>,
-): { repos: string[]; branches: string[] } {
-  const repos: string[] = [];
-  const branches = new Set<string>();
-  if (!pattern.trim()) return { repos, branches: [] };
-  for (const [repo, names] of branchesByRepo) {
-    const hits = names.filter((b) => matchesBranchPattern(pattern, b));
-    if (hits.length > 0) repos.push(repo);
-    hits.forEach((b) => branches.add(b));
-  }
-  return { repos, branches: [...branches].sort() };
-}
-
 /** `owner/name` from an Amplify app's repository URL, if it is GitHub. */
 export function repoFromUrl(url: string | undefined): string | undefined {
   const match =
@@ -130,33 +79,32 @@ export function repoFromUrl(url: string | undefined): string | undefined {
 
 /** Remove a row; its group loses it (and disappears if empty). */
 export function removeRow(dashboard: Dashboard, id: string): Dashboard {
-  return reorderRows(
-    dashboard,
-    dashboard.rows.filter((r) => r.id !== id),
+  return tidyGroups(
+    { ...dashboard, rows: dashboard.rows.filter((r) => r.id !== id) },
+    'rows',
   );
 }
 
 /** Remove a stage: any stage's use of it as a source, its overrides on
  * rows and row groups (C-14c), and its column-group membership. */
 export function removeStage(dashboard: Dashboard, id: string): Dashboard {
-  const drop = (o: Readonly<Record<string, string>>) =>
-    Object.fromEntries(Object.entries(o).filter(([k]) => k !== id));
-  return reorderStages(
+  const drop = <T extends { branchPatternOverrides: Record<string, string> }>(
+    x: T,
+  ): T => ({
+    ...x,
+    branchPatternOverrides: omit(x.branchPatternOverrides, [id]),
+  });
+  return tidyGroups(
     {
       ...dashboard,
-      rows: dashboard.rows.map((r) => ({
-        ...r,
-        branchPatternOverrides: drop(r.branchPatternOverrides),
-      })),
-      rowGroups: dashboard.rowGroups.map((g) => ({
-        ...g,
-        branchPatternOverrides: drop(g.branchPatternOverrides),
-      })),
+      rows: dashboard.rows.map(drop),
+      rowGroups: dashboard.rowGroups.map(drop),
+      stages: dashboard.stages
+        .filter((s) => s.id !== id)
+        .map((s) =>
+          s.sourceStageId === id ? { ...s, sourceStageId: undefined } : s,
+        ),
     },
-    dashboard.stages
-      .filter((s) => s.id !== id)
-      .map((s) =>
-        s.sourceStageId === id ? { ...s, sourceStageId: undefined } : s,
-      ),
+    'stages',
   );
 }

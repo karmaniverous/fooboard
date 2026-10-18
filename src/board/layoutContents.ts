@@ -10,10 +10,10 @@
  * @module
  */
 import type { Dashboard } from '@/domain/config/dashboard';
+import { groupSegments } from '@/domain/groups/segments';
 import type { BoardModel } from '@/engine';
 
 import { badgeText, EMPTY_LABEL, EMPTY_SYMBOL, STATUS_META } from './cellView';
-import { groupSegments } from './groupLayout';
 import { capText, type Content, type Item, type Rung } from './layout';
 
 /** Longest forms of the fixed fields. */

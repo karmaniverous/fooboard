@@ -74,10 +74,13 @@ export const repoRef = (repo: string): { owner: string; repo: string } => {
   return { owner, repo: name };
 };
 
+/** The stages as one row sees them (effective branch patterns, C-14c). */
+export type StagesFor = (row: GithubRow) => readonly Stage[];
+
 /** Every cell of every row shows the same empty state. */
 function emptyRows(
   rows: readonly GithubRow[],
-  stagesFor: (row: GithubRow) => readonly Stage[],
+  stagesFor: StagesFor,
   mapping: MappingSettings,
   credentialStatus: CredentialStatus,
   providerFailure?: ProviderFailure,
@@ -113,11 +116,10 @@ function emptyRows(
 export async function refreshGithubRepo(
   rows: readonly GithubRow[],
   repoRows: readonly GithubRow[],
-  stages: readonly Stage[],
+  /** The stages as each row sees them (effective patterns, C-14c). */
+  stagesFor: StagesFor,
   mapping: MappingSettings,
   reader: GitHubReader | undefined,
-  /** The stages as each row sees them (effective patterns, C-14c). */
-  stagesFor: (row: GithubRow) => readonly Stage[] = () => stages,
 ): Promise<GithubRepoRefresh | GithubRepoRateLimited> {
   if (!reader) return emptyRows(rows, stagesFor, mapping, 'missing');
   try {
@@ -142,7 +144,7 @@ export async function refreshGithubRepo(
 async function refreshWith(
   rows: readonly GithubRow[],
   repoRows: readonly GithubRow[],
-  stagesFor: (row: GithubRow) => readonly Stage[],
+  stagesFor: StagesFor,
   mapping: MappingSettings,
   reader: GitHubReader,
 ): Promise<GithubRepoRefresh> {
@@ -226,7 +228,7 @@ async function refreshWith(
 function unmappedRuns(
   repo: string,
   repoRows: readonly GithubRow[],
-  stagesFor: (row: GithubRow) => readonly Stage[],
+  stagesFor: StagesFor,
   mapping: MappingSettings,
   runs: readonly GithubRunWithJobs[],
   fetched: ReadonlyMap<number, GithubRunWithJobs>,
@@ -235,17 +237,9 @@ function unmappedRuns(
     rowKeyTests: row.rowKeyTests,
     branchPatterns: stagesFor(row).map((s) => s.branchPattern),
   }));
-  const allPatterns = rowInputs.flatMap((r) =>
-    r.branchPatterns.map((branchPattern) => ({ branchPattern })),
-  );
   return runs.flatMap((entry) => {
     const full = fetched.get(entry.run.id);
-    const reason = classifyUnmappedRun(
-      full ?? entry,
-      allPatterns,
-      rowInputs,
-      mapping,
-    );
+    const reason = classifyUnmappedRun(full ?? entry, rowInputs, mapping);
     if (!reason) return [];
     if (reason.kind !== 'no-stage-matches-branch' && !full) return [];
     return [

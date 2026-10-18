@@ -1,59 +1,22 @@
 /**
- * The row editor's pickers (spec.md C-21): credential choice, the GitHub
- * repo picker, the Amplify app picker (via `ListApps`), and extra
+ * The row editor's pickers (spec.md C-21): the GitHub repo picker, the Amplify app picker (via `ListApps`), and extra
  * Amplify sources.
  *
  * @module
  */
 import { useState } from 'react';
 
-import { NativeSelect } from '@/components/NativeSelect';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { resolveCredentialId } from '@/domain/config/credentialRefs';
-import type { CredentialKind } from '@/domain/config/credentials';
 import type { Dashboard } from '@/domain/config/dashboard';
 import type { AmplifyRow } from '@/domain/config/row';
 import type { EngineProviders } from '@/engine';
 
+import { CredentialSelect } from './CredentialSelect';
 import { repoFromUrl, uniqueId } from './edit';
 import { LoadStatus } from './LoadStatus';
 import { useLoad } from './useLoad';
-
-/** A credential choice: the dashboard default, or one of its credentials. */
-export function CredentialSelect({
-  dashboard,
-  kind,
-  value,
-  onChange,
-  label,
-}: {
-  dashboard: Dashboard;
-  kind: CredentialKind;
-  value: string | undefined;
-  onChange: (id: string | undefined) => void;
-  label: string;
-}): React.JSX.Element {
-  return (
-    <NativeSelect
-      aria-label={label}
-      className="h-8 px-1 text-xs"
-      value={value ?? ''}
-      onChange={(e) => {
-        onChange(e.target.value || undefined);
-      }}
-    >
-      <option value="">Dashboard default</option>
-      {dashboard.credentials
-        .filter((c) => c.kind === kind)
-        .map((c) => (
-          <option key={c.id} value={c.id}>
-            {c.label}
-          </option>
-        ))}
-    </NativeSelect>
-  );
-}
 
 export function RepoPicker({
   dashboard,
@@ -264,9 +227,12 @@ export function AddSource({
   dashboard,
   onAdd,
   name,
+  inheritFrom,
 }: {
   dashboard: Dashboard;
   name: string;
+  /** Where an unset key inherits from: the row's group or the dashboard. */
+  inheritFrom: 'group' | 'dashboard';
   onAdd: (source: AmplifyRow['sources'][number]) => void;
 }): React.JSX.Element {
   const [credentialId, setCredentialId] = useState<string | undefined>();
@@ -287,6 +253,7 @@ export function AddSource({
         kind="aws"
         value={credentialId}
         onChange={setCredentialId}
+        inheritFrom={inheritFrom}
         label={`AWS key for a new ${name} source`}
       />
       <Input

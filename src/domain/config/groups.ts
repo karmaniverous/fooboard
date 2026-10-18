@@ -1,5 +1,5 @@
 /**
- * Zod schema for row and column groups (spec.md C-14b, replacing
+ * Zod schemas for row and column groups (spec.md C-14b, replacing
  * dividers): an optional, labelled set of adjacent rows or stages. Groups
  * are one level deep; ungrouped rows and stages may sit between them. A
  * row group is also an override level (C-14c) and may set default
@@ -20,45 +20,32 @@ export type BranchPatternOverrides = z.infer<
   typeof BranchPatternOverridesSchema
 >;
 
-/**
- * A row group: a labelled or unlabelled set of adjacent rows, created from
- * a member and removed when its last member leaves (spec.md C-14b, C-21).
- * Carries branch-pattern overrides and default credentials, both an
- * override level (C-14c, C-1a).
- */
-export const RowGroupSchema = z.object({
+/** What every group has: an id, an optional label, and its members (row
+ * or stage ids, in board order). Created from a member, so never empty. */
+const GroupSchema = z.object({
   id: z.string().min(1),
   label: z.string().min(1).optional(),
   memberIds: z.array(z.string().min(1)).min(1),
+});
+export type Group = z.infer<typeof GroupSchema>;
+
+/** A row group: also an override level for branch patterns (C-14c) and
+ * default credentials (C-1a). */
+export const RowGroupSchema = GroupSchema.extend({
   branchPatternOverrides: BranchPatternOverridesSchema.default(() => ({})),
   defaultCredentials: DefaultCredentialsSchema.default(() => ({})),
 });
 export type RowGroup = z.infer<typeof RowGroupSchema>;
 
-/**
- * A column group: a labelled or unlabelled set of adjacent stages.
- * Column groups carry no overrides: columns cut across providers
- * (spec.md C-14b).
- */
-export const ColumnGroupSchema = z.object({
-  id: z.string().min(1),
-  label: z.string().min(1).optional(),
-  memberIds: z.array(z.string().min(1)).min(1),
-});
+/** A column group carries nothing more: columns cut across providers, so
+ * they are no override level (spec.md C-14b). */
+export const ColumnGroupSchema = GroupSchema;
 export type ColumnGroup = z.infer<typeof ColumnGroupSchema>;
 
-/** The row group a row belongs to, if any. */
-export function rowGroupOf(
-  rowGroups: readonly RowGroup[],
-  rowId: string,
-): RowGroup | undefined {
-  return rowGroups.find((g) => g.memberIds.includes(rowId));
-}
-
-/** The column group a stage belongs to, if any. */
-export function columnGroupOf(
-  columnGroups: readonly ColumnGroup[],
-  stageId: string,
-): ColumnGroup | undefined {
-  return columnGroups.find((g) => g.memberIds.includes(stageId));
+/** The group `id` (a row or stage id) belongs to, if any. */
+export function groupOf<G extends Pick<Group, 'memberIds'>>(
+  groups: readonly G[],
+  id: string,
+): G | undefined {
+  return groups.find((g) => g.memberIds.includes(id));
 }
