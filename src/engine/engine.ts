@@ -27,6 +27,7 @@ import { isOverPollingShare } from '@/lib/github';
 import { amplifyCellViews, refreshAmplifyRow } from './amplifyRow';
 import { budgetTargets, githubCredentialIds } from './budgets';
 import { refreshGithubRepo } from './githubRow';
+import { emptyModel, type RowUpdate, withRows } from './model';
 import {
   createPollScheduler,
   joinInFlight,
@@ -34,9 +35,8 @@ import {
   type Timers,
   type Visibility,
 } from './scheduler';
-import { type CellStaleness, compareOnce, readStaleness } from './staleness';
+import { compareOnce, readStaleness } from './staleness';
 import {
-  type BoardCell,
   type BoardModel,
   cellKey,
   type EngineProviders,
@@ -53,25 +53,11 @@ export interface BoardEngine {
   subscribe(listener: (model: BoardModel) => void): () => void;
 }
 
-/** What a provider refresh yields per cell, before staleness. */
-type CellView = Pick<BoardCell, 'derivation' | 'active'>;
-
 /** The GitHub token a row reads with, and its reader if entered. */
 interface GithubAccess {
   credentialId: string;
   reader: GitHubReader | undefined;
 }
-
-/** A model with nothing loaded yet: a budget slot (unknown so far) for
- * each GitHub token in `credentialIds`, so every battery shows at once. */
-export const emptyModel = (
-  credentialIds: readonly string[] = [],
-): BoardModel => ({
-  cells: {},
-  unmapped: [],
-  budgets: Object.fromEntries(credentialIds.map((id) => [id, undefined])),
-  refreshedAt: {},
-});
 
 /** Create the engine for one dashboard. */
 export function createBoardEngine({
@@ -122,40 +108,18 @@ export function createBoardEngine({
   /** Publish one target's rows, its unmapped runs and the token's budget. */
   const apply = (
     targetId: string,
-    rows: Record<
-      string,
-      {
-        cells: Partial<Record<string, CellView>>;
-        staleness: Record<string, CellStaleness>;
-      }
-    >,
+    rows: Record<string, RowUpdate>,
     unmapped: UnmappedRun[],
     access: GithubAccess | undefined,
   ): void => {
-    const cells = { ...model.cells };
-    const refreshedAt = { ...model.refreshedAt };
-    for (const [rowId, row] of Object.entries(rows)) {
-      for (const stage of stages) {
-        const view = row.cells[stage.id];
-        if (!view) continue;
-        cells[cellKey(rowId, stage.id)] = {
-          rowId,
-          stageId: stage.id,
-          ...view,
-          ...(row.staleness[stage.id] ?? { badge: undefined }),
-        };
-      }
-      refreshedAt[rowId] = now();
-    }
     unmappedByTarget.set(targetId, unmapped);
     publish({
-      cells,
+      ...withRows(model, stages, rows, now()),
       unmapped: unique(
         [...unmappedByTarget.values()].flat(),
         (u) => `${u.repo}#${String(u.runId)}`,
       ),
       budgets: budgetsWith(access),
-      refreshedAt,
     });
   };
 

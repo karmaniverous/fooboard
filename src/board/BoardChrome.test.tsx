@@ -85,13 +85,16 @@ describe('BudgetMeter', () => {
     }
   });
 
-  it('shows a grey, empty battery for a token not read yet', () => {
+  it('shows a grey, empty battery for a token not read yet, as an image not a meter', () => {
     render(<BudgetMeter model={model} />);
-    const unread = screen.getByRole('meter', {
+    const unread = screen.getByRole('img', {
       name: 'GitHub off: requests left not known yet',
     });
     expect(unread).not.toHaveAttribute('aria-valuenow');
     expect(unread.className).toContain('text-muted-foreground');
-    expect(screen.getAllByRole('meter')).toHaveLength(2);
+    // Every meter on the board has a value.
+    for (const m of screen.getAllByRole('meter'))
+      expect(m).toHaveAttribute('aria-valuenow');
+    expect(screen.getAllByRole('meter')).toHaveLength(1);
   });
 });

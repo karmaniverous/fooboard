@@ -18,6 +18,8 @@ import type { StatusColors } from '@/domain/config/colors';
 import type { BoardCell } from '@/engine';
 import { cn } from '@/lib/utils';
 
+import { type Keyed, Lines } from './CellLines';
+import { gapStyle } from './cellStyles';
 import {
   badgeDescription,
   badgeText,
@@ -27,7 +29,7 @@ import {
   shortSha,
   STATUS_META,
 } from './cellView';
-import { ITEM_GAP_EM, type ItemKey, type LineMap, type Rung } from './layout';
+import { type LineMap, type Rung } from './layout';
 import { firstLine } from './layoutContents';
 
 export interface CellProps {
@@ -50,57 +52,6 @@ const EMPTY_CLASS = {
   'needs-credential': 'border-border bg-hatched',
   error: 'border-border bg-hatched',
 } as const;
-
-const gapStyle = { gap: `${String(ITEM_GAP_EM)}em` };
-
-type Keyed = { key: ItemKey; node: React.ReactNode; free?: boolean };
-
-/** Arrange the lead and items by the board's line map (C-13): the lead on
- * line 0, each item on its line. Fixed items keep their width; free text
- * takes what is left and is cut off. */
-function Lines({
-  lineOf,
-  lead,
-  items,
-  center = false,
-}: {
-  /** Centre the content horizontally (rung 0, icons only). */
-  center?: boolean;
-  lineOf: LineMap;
-  lead: React.ReactNode;
-  items: Keyed[];
-}): React.JSX.Element {
-  const line = 'flex min-w-0 items-center overflow-hidden whitespace-nowrap';
-  const lines: React.ReactNode[][] = [[lead]];
-  for (const item of items) {
-    const n = lineOf[item.key] ?? 0;
-    while (lines.length <= n) lines.push([]);
-    lines[n]?.push(
-      <span
-        key={item.key}
-        className={item.free ? 'flex min-w-0 flex-1' : 'flex flex-none'}
-      >
-        {item.node}
-      </span>,
-    );
-  }
-  return (
-    <span className="flex min-w-0 flex-1 flex-col justify-center">
-      {lines.map((content, i) =>
-        content.length === 0 ? null : (
-          // Lines are positional and never reorder.
-          <span
-            key={i}
-            className={cn(line, center && 'justify-center')}
-            style={gapStyle}
-          >
-            {content}
-          </span>
-        ),
-      )}
-    </span>
-  );
-}
 
 /** Free text: cut off with an ellipsis at the column width. */
 const Free = ({ children }: { children: string }) => (

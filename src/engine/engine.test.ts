@@ -207,18 +207,6 @@ describe('board engine credentials and limits', () => {
   });
 });
 
-describe('board engine budgets', () => {
-  it('has a battery slot for every token from the start, then reads it', async () => {
-    const engine = createBoardEngine({
-      dashboard: demoDashboard,
-      providers: demoProviders(() => 0),
-      visibility: visible,
-    });
-    expect(engine.getModel().budgets).toEqual({ 'demo-github': undefined });
-    await engine.refreshAll();
-    expect(engine.getModel().budgets['demo-github']?.remaining).toBe(4870);
-  });
-});
 describe('board engine polling', () => {
   it('refreshes on start and again on the active interval', async () => {
     vi.useFakeTimers();

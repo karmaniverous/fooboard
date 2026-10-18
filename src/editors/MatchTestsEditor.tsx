@@ -64,7 +64,7 @@ export function MatchTestsEditor<F extends MatchField>({
         value={current}
         options={fields.map((f) => ({ value: f, label: FIELD_LABEL[f] }))}
         onValueChange={(v) => {
-          onPick(v as F);
+          onPick(v);
         }}
       />
     ) : (
@@ -81,7 +81,7 @@ export function MatchTestsEditor<F extends MatchField>({
       value={current}
       options={OPERATORS.map((o) => ({ value: o, label: o }))}
       onValueChange={(v) => {
-        onPick(v as MatchOperator);
+        onPick(v);
       }}
     />
   );

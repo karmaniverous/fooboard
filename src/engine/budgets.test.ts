@@ -8,7 +8,7 @@
 import { describe, expect, it, vi } from 'vitest';
 
 import { DashboardSchema } from '@/domain/config/dashboard';
-import type { GitHubReader, RateLimitBudget } from '@/lib/github';
+import type { RateLimitBudget } from '@/lib/github';
 
 import { BUDGET_READ_MS, budgetTargets, githubCredentialIds } from './budgets';
 
@@ -56,10 +56,7 @@ describe('budgetTargets', () => {
     const onBudget = vi.fn();
     const targets = budgetTargets({
       credentialIds: ['main', 'missing'],
-      reader: (id) =>
-        id === 'main'
-          ? ({ readRateLimit } as unknown as GitHubReader)
-          : undefined,
+      reader: (id) => (id === 'main' ? { readRateLimit } : undefined),
       onBudget,
       now: () => clock,
     });

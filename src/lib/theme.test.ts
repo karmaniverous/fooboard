@@ -6,33 +6,15 @@
  */
 import { describe, expect, it } from 'vitest';
 
+import { fakeMedia } from '@/test/fakeMedia';
+
 import { applyTheme } from './theme';
-
-/** A controllable `prefers-color-scheme` query. */
-function fakeMedia(matches: boolean) {
-  const listeners = new Set<(e: MediaQueryListEvent) => void>();
-  return {
-    matches,
-    addEventListener: (_: string, l: (e: MediaQueryListEvent) => void) => {
-      listeners.add(l);
-    },
-    removeEventListener: (_: string, l: (e: MediaQueryListEvent) => void) => {
-      listeners.delete(l);
-    },
-    set(dark: boolean) {
-      for (const l of listeners) l({ matches: dark } as MediaQueryListEvent);
-    },
-  };
-}
-
-const asMedia = (m: ReturnType<typeof fakeMedia>) =>
-  m as unknown as MediaQueryList;
 
 describe('applyTheme', () => {
   it('follows the OS while System, until stopped', () => {
     const root = document.createElement('html');
     const media = fakeMedia(true);
-    const stop = applyTheme('system', root, asMedia(media));
+    const stop = applyTheme('system', root, media.media);
     expect(root.classList.contains('dark')).toBe(true);
     expect(root.style.colorScheme).toBe('dark');
     media.set(false);
@@ -48,7 +30,7 @@ describe('applyTheme', () => {
   ] as const)('keeps %s whatever the OS says', (choice, dark) => {
     const root = document.createElement('html');
     const media = fakeMedia(!dark);
-    applyTheme(choice, root, asMedia(media));
+    applyTheme(choice, root, media.media);
     media.set(!dark);
     expect(root.classList.contains('dark')).toBe(dark);
   });

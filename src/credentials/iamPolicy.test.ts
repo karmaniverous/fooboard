@@ -49,15 +49,16 @@ describe('amplifyPolicy', () => {
     ]);
   });
 
-  it('fills in an account when given one (the README template)', () => {
-    expect(
-      resourceOf(
-        amplifyPolicy([{ region: 'REGION', appId: 'APP_ID' }], 'ACCOUNT_ID'),
-        'amplify:ListBranches',
-      ),
-    ).toEqual(['arn:aws:amplify:REGION:ACCOUNT_ID:apps/APP_ID']);
+  it.each([
+    ['an app id wildcard', { region: 'us-east-1', appId: '*' }],
+    ['an app id with a path', { region: 'us-east-1', appId: 'd1/branches' }],
+    ['an app id with an ARN separator', { region: 'us-east-1', appId: 'd1:x' }],
+    ['an app id not starting with d', { region: 'us-east-1', appId: 'x1' }],
+    ['a region wildcard', { region: '*', appId: 'd1' }],
+    ['a region with a separator', { region: 'us-east-1:*', appId: 'd1' }],
+  ])('refuses %s, which would widen the policy', (_, app) => {
+    expect(() => amplifyPolicy([app])).toThrow();
   });
-
   it('allows only listing apps when there are none yet', () => {
     expect(amplifyPolicy([]).Statement.flatMap((s) => s.Action)).toEqual([
       'amplify:ListApps',
@@ -66,7 +67,7 @@ describe('amplifyPolicy', () => {
 });
 
 describe('dashboardApps', () => {
-  it("collects every Amplify source's region and app, skipping GitHub rows", () => {
+  it('collects each Amplify app once, skipping GitHub rows and invalid sources', () => {
     const dashboard = DashboardSchema.parse({
       id: 'd',
       name: 'd',
@@ -81,14 +82,19 @@ describe('dashboardApps', () => {
           sources: [
             { region: 'us-east-1', appId: 'd1' },
             { region: 'eu-west-1', appId: 'd2', credentialId: 'k' },
+            { region: 'us-east-1', appId: 'd1' },
+            { region: 'us-east-1', appId: '*' },
           ],
         },
       ],
       stages: [{ id: 'dev', name: 'dev', branchPattern: 'dev' }],
     });
-    expect(dashboardApps(dashboard)).toEqual([
-      { region: 'us-east-1', appId: 'd1' },
-      { region: 'eu-west-1', appId: 'd2' },
-    ]);
+    expect(dashboardApps(dashboard)).toEqual({
+      apps: [
+        { region: 'us-east-1', appId: 'd1' },
+        { region: 'eu-west-1', appId: 'd2' },
+      ],
+      skipped: 1,
+    });
   });
 });

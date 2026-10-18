@@ -178,7 +178,7 @@ Amplify rows need an AWS access key for an IAM user that can only read Amplify:
 }
 ```
 
-AWS can't limit listing apps to particular apps, so the key can see the **names** of every Amplify app in the account (that is how the editor offers apps to pick); it reads branches and jobs only for the apps listed. The copied policy uses `*` for the account, because fooboard doesn't know it: that grants nothing more, since a user's policy only reaches its own account's apps. Before a dashboard has Amplify rows, the copied policy only lists apps; copy it again after adding them. A row whose apps span accounts uses one key per account.
+AWS can't limit listing apps to particular apps, so the key can see the **names** of every Amplify app in the account (that is how the editor offers apps to pick); it reads branches and jobs only for the apps listed. The copied policy uses `*` for the account, because fooboard doesn't know it: that grants nothing more, since a user's policy only reaches its own account's apps. Before a dashboard has Amplify rows, the copied policy only lists apps; copy it again after adding them. A source whose region or app ID is not valid (an app ID of `*`, say, would widen the policy) is left out, and the button says so. A row whose apps span accounts uses one key per account.
 
 ### What a leaked credential exposes
 

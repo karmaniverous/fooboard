@@ -114,11 +114,17 @@ export function BudgetMeter({
           <WithTooltip key={id} label={label}>
             <span
               tabIndex={0}
-              role="meter"
               aria-label={label}
-              aria-valuemin={0}
-              aria-valuemax={b?.limit}
-              aria-valuenow={b?.remaining}
+              // A meter needs a value: until the budget is read, the
+              // battery is an image whose name says so.
+              {...(b
+                ? {
+                    role: 'meter',
+                    'aria-valuemin': 0,
+                    'aria-valuemax': b.limit,
+                    'aria-valuenow': b.remaining,
+                  }
+                : { role: 'img' })}
               className={cn(
                 'flex flex-col items-center',
                 b

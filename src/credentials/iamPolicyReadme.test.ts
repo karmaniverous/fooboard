@@ -8,15 +8,11 @@
 import { describe, expect, it } from 'vitest';
 
 import readme from '../../README.md?raw';
-import { amplifyPolicy } from './iamPolicy';
+import { policyTemplate } from './iamPolicy';
 
 describe('README AWS policy template', () => {
-  it('matches the generated policy', () => {
-    const template = JSON.stringify(
-      amplifyPolicy([{ region: 'REGION', appId: 'APP_ID' }], 'ACCOUNT_ID'),
-      null,
-      2,
-    );
+  it('is the generated policy with placeholders', () => {
+    const template = JSON.stringify(policyTemplate(), null, 2);
     expect(readme.replace(/\r\n/g, '\n')).toContain(
       '```json\n' + template + '\n```',
     );

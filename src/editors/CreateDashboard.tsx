@@ -60,7 +60,7 @@ export function CreateDashboard(): React.JSX.Element {
         value={preset}
         options={PRESET_CHOICES.map((p) => ({ value: p.id, label: p.label }))}
         onValueChange={(v) => {
-          setPreset(v as BranchPresetId);
+          setPreset(v);
         }}
       />
       <ActionError error={error} />

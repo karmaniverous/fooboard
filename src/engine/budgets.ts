@@ -32,7 +32,10 @@ export function budgetTargets({
   now,
 }: {
   credentialIds: readonly string[];
-  reader: (credentialId: string) => GitHubReader | undefined;
+  /** The token's reader; only its rate-limit read is used. */
+  reader: (
+    credentialId: string,
+  ) => Pick<GitHubReader, 'readRateLimit'> | undefined;
   onBudget: (credentialId: string, budget: RateLimitBudget) => void;
   now: () => number;
 }): PollTarget[] {

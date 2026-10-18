@@ -14,12 +14,25 @@ import { copyText } from '@/lib/clipboard';
 
 import { amplifyPolicy, dashboardApps } from './iamPolicy';
 
+const nApps = (n: number) => `${String(n)} Amplify ${n === 1 ? 'app' : 'apps'}`;
+
+/** What the button says after copying `count` apps, `skipped` invalid. */
+function copiedMessage(ok: boolean, count: number, skipped: number): string {
+  if (!ok) return "Couldn't copy the policy. The README has it as a template.";
+  const copied = count
+    ? `Copied: read-only access to this dashboard's ${nApps(count)}.`
+    : 'Copied: listing apps only. Copy it again after adding Amplify rows, so the key can read them.';
+  return skipped
+    ? `${copied} Left out ${nApps(skipped)} with an invalid region or app ID: fix them in the editor.`
+    : copied;
+}
+
 export function CopyAwsPolicy({
   dashboard,
 }: {
   dashboard: Dashboard;
 }): React.JSX.Element {
-  const apps = dashboardApps(dashboard);
+  const { apps, skipped } = dashboardApps(dashboard);
   const [said, setSaid] = useState('');
   return (
     <div className="flex flex-wrap items-center gap-2">
@@ -31,13 +44,7 @@ export function CopyAwsPolicy({
         onClick={() => {
           const json = JSON.stringify(amplifyPolicy(apps), null, 2);
           void copyText(json).then((ok) => {
-            setSaid(
-              !ok
-                ? "Couldn't copy the policy. The README has it as a template."
-                : apps.length
-                  ? `Copied: read-only access to this dashboard's ${String(apps.length)} Amplify ${apps.length === 1 ? 'app' : 'apps'}.`
-                  : 'Copied: listing apps only. Copy it again after adding Amplify rows, so the key can read them.',
-            );
+            setSaid(copiedMessage(ok, apps.length, skipped));
           });
         }}
       >

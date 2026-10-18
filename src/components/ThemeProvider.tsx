@@ -7,20 +7,23 @@
 import { useLayoutEffect, useMemo, useState } from 'react';
 
 import type { ThemeChoice } from '@/domain/config/devicePreferences';
-import { applyTheme } from '@/lib/theme';
+import { applyTheme, type ThemeMedia } from '@/lib/theme';
 import { useStores } from '@/storage/storesContext';
 
 import { ThemeContext } from './themeContext';
 
 export function ThemeProvider({
   children,
+  media,
 }: {
   children: React.ReactNode;
+  /** The OS colour-scheme query (the window's by default). */
+  media?: ThemeMedia;
 }): React.JSX.Element {
   const { preferences } = useStores();
   const [theme, setChoice] = useState(() => preferences.getTheme());
   // Before paint, so the page never flashes the other theme.
-  useLayoutEffect(() => applyTheme(theme), [theme]);
+  useLayoutEffect(() => applyTheme(theme, undefined, media), [theme, media]);
   const value = useMemo(
     () => ({
       theme,

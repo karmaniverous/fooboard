@@ -6,36 +6,17 @@
  * @module
  */
 import { act, fireEvent, render, screen } from '@testing-library/react';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it } from 'vitest';
 
 import type { ThemeChoice } from '@/domain/config/devicePreferences';
+import type { ThemeMedia } from '@/lib/theme';
 import { type AppStores, createAppStores } from '@/storage';
 import { memoryStorage } from '@/storage/keyValue';
 import { StoresContext } from '@/storage/storesContext';
+import { fakeMedia } from '@/test/fakeMedia';
 
 import { useTheme } from './themeContext';
 import { ThemeProvider } from './ThemeProvider';
-
-/** The OS setting, with its listeners counted. */
-function fakeOs(dark: boolean) {
-  const listeners = new Set<(e: { matches: boolean }) => void>();
-  vi.spyOn(window, 'matchMedia').mockImplementation(
-    () =>
-      ({
-        matches: dark,
-        addEventListener: (_: string, l: (e: { matches: boolean }) => void) => {
-          listeners.add(l);
-        },
-        removeEventListener: (
-          _: string,
-          l: (e: { matches: boolean }) => void,
-        ) => {
-          listeners.delete(l);
-        },
-      }) as unknown as MediaQueryList,
-  );
-  return listeners;
-}
 
 /** A button per choice, to set it from inside the provider. */
 function Chooser(): React.JSX.Element {
@@ -59,10 +40,10 @@ function Chooser(): React.JSX.Element {
 const choose = (t: ThemeChoice) => {
   fireEvent.click(screen.getByRole('button', { name: t }));
 };
-const mount = (stores: AppStores) =>
+const mount = (stores: AppStores, media: ThemeMedia) =>
   render(
     <StoresContext value={stores}>
-      <ThemeProvider>
+      <ThemeProvider media={media}>
         <Chooser />
       </ThemeProvider>
     </StoresContext>,
@@ -70,7 +51,6 @@ const mount = (stores: AppStores) =>
 const isDark = () => document.documentElement.classList.contains('dark');
 
 afterEach(() => {
-  vi.restoreAllMocks();
   document.documentElement.classList.remove('dark');
 });
 
@@ -81,31 +61,31 @@ describe('ThemeProvider', () => {
   ] as const)(
     'applies a saved %s over the OS, and again after a remount',
     (saved, osDark, dark) => {
-      const listeners = fakeOs(osDark);
+      const os = fakeMedia(osDark);
       const stores = createAppStores(memoryStorage());
       stores.preferences.setTheme(saved);
-      mount(stores).unmount();
+      mount(stores, os.media).unmount();
       document.documentElement.classList.toggle('dark', !dark);
-      mount(stores);
+      mount(stores, os.media);
       expect(isDark()).toBe(dark);
-      expect(listeners.size).toBe(0);
+      expect(os.listeners.size).toBe(0);
     },
   );
 
   it('follows the OS only while System, and stops on change and unmount', () => {
-    const listeners = fakeOs(true);
-    const view = mount(createAppStores(memoryStorage()));
+    const os = fakeMedia(true);
+    const view = mount(createAppStores(memoryStorage()), os.media);
     expect(isDark()).toBe(true);
-    expect(listeners.size).toBe(1);
+    expect(os.listeners.size).toBe(1);
     act(() => {
-      for (const l of listeners) l({ matches: false });
+      os.set(false);
     });
     expect(isDark()).toBe(false);
     choose('dark');
-    expect(listeners.size).toBe(0);
+    expect(os.listeners.size).toBe(0);
     choose('system');
-    expect(listeners.size).toBe(1);
+    expect(os.listeners.size).toBe(1);
     view.unmount();
-    expect(listeners.size).toBe(0);
+    expect(os.listeners.size).toBe(0);
   });
 });

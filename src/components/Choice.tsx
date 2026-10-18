@@ -19,13 +19,15 @@ const NONE = '\u0000none';
 const toItem = (v: string) => (v === '' ? NONE : v);
 const fromItem = (v: string) => (v === NONE ? '' : v);
 
-export interface ChoiceOption {
-  value: string;
+export interface ChoiceOption<T extends string = string> {
+  value: T;
   label: string;
   disabled?: boolean;
 }
 
-export function Choice({
+/** Choose among `options`; `onValueChange` gets the chosen option's own
+ * typed value (looked up, never cast), so callers need no assertion. */
+export function Choice<T extends string>({
   label,
   value,
   options,
@@ -35,9 +37,9 @@ export function Choice({
 }: {
   /** The accessible name. */
   label: string;
-  value: string;
-  options: readonly ChoiceOption[];
-  onValueChange: (value: string) => void;
+  value: T;
+  options: readonly ChoiceOption<T>[];
+  onValueChange: (value: T) => void;
   className?: string;
   disabled?: boolean;
 }): React.JSX.Element {
@@ -47,7 +49,8 @@ export function Choice({
       value={toItem(value)}
       disabled={disabled}
       onValueChange={(v) => {
-        onValueChange(fromItem(v));
+        const picked = options.find((o) => o.value === fromItem(v));
+        if (picked) onValueChange(picked.value);
       }}
     >
       <SelectTrigger
