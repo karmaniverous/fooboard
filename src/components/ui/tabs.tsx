@@ -26,9 +26,16 @@ TabsList.displayName = TabsPrimitive.List.displayName;
 const TabsTrigger = React.forwardRef<
   React.ComponentRef<typeof TabsPrimitive.Trigger>,
   React.ComponentPropsWithoutRef<typeof TabsPrimitive.Trigger>
->(({ className, ...props }, ref) => (
+>(({ className, onMouseDown, ...props }, ref) => (
   <TabsPrimitive.Trigger
     ref={ref}
+    // Radix switches panels on mouse-down, before the browser moves focus:
+    // focus the tab first, so a field in the outgoing panel blurs (and
+    // saves) while it is still mounted.
+    onMouseDown={(e) => {
+      onMouseDown?.(e);
+      if (e.button === 0) e.currentTarget.focus();
+    }}
     className={cn(
       'rounded-md border bg-background px-2 py-1 text-xs transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
       'data-[state=active]:bg-foreground data-[state=active]:text-background',

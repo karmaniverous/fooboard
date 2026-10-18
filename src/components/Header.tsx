@@ -131,6 +131,7 @@ export function Header(): React.JSX.Element {
         <DropdownMenu modal={false}>
           <DropdownMenuTrigger
             aria-label="Menu"
+            data-app-menu-trigger
             className="flex size-8 items-center justify-center rounded-md hover:bg-foreground/10"
           >
             <Menu className="size-5" />

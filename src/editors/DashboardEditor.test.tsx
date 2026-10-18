@@ -188,4 +188,14 @@ describe('Create a dashboard', () => {
         loaded.root.dashboards[0]?.stages.map((s) => s.name),
     ).toEqual(['dev', 'staging', 'prod']);
   });
+
+  it('saves a field being edited when another tab is chosen', () => {
+    const latest = setup();
+    const input = screen.getByLabelText('Dashboard name');
+    input.focus();
+    fireEvent.change(input, { target: { value: 'Platform' } });
+    tab('Rows');
+    expect(latest.current.name).toBe('Platform');
+    expect(screen.getByRole('tab', { name: 'Rows' })).toHaveFocus();
+  });
 });

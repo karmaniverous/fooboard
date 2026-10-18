@@ -29,9 +29,12 @@ const SAID: Record<Outcome, string> = {
 export function ShareDialog({
   open,
   onOpenChange,
+  onCloseAutoFocus,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  /** Where focus goes when it closes (it has no trigger of its own). */
+  onCloseAutoFocus?: (event: Event) => void;
 }): React.JSX.Element {
   const url = demoUrl();
   const [outcome, setOutcome] = useState<Outcome | null>(null);
@@ -44,7 +47,7 @@ export function ShareDialog({
         onOpenChange(next);
       }}
     >
-      <DialogContent>
+      <DialogContent onCloseAutoFocus={onCloseAutoFocus}>
         <DialogTitle>Share {site.name}</DialogTitle>
         <p className="text-sm text-muted-foreground">
           Boards can&apos;t be shared yet, so share the demo.

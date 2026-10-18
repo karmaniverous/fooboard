@@ -5,7 +5,7 @@
  *
  * @module
  */
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
 import { choose, optionsOf } from '@/test/choose';
@@ -54,5 +54,23 @@ describe('Choice', () => {
     );
     choose(screen.getByRole('combobox', { name: 'Group' }), 'No group');
     expect(onValueChange).toHaveBeenLastCalledWith('');
+  });
+
+  it('offers a disabled option but does not choose it', () => {
+    const onValueChange = vi.fn();
+    render(
+      <Choice
+        label="Group"
+        value=""
+        options={[...options, { value: 'x', label: 'Retired', disabled: true }]}
+        onValueChange={onValueChange}
+      />,
+    );
+    const trigger = screen.getByRole('combobox', { name: 'Group' });
+    fireEvent.keyDown(trigger, { key: 'Enter' });
+    const retired = screen.getByRole('option', { name: 'Retired' });
+    expect(retired).toHaveAttribute('aria-disabled', 'true');
+    fireEvent.keyDown(retired, { key: 'Enter' });
+    expect(onValueChange).not.toHaveBeenCalled();
   });
 });

@@ -7,7 +7,7 @@
  *
  * @module
  */
-import { fireEvent, screen, within } from '@testing-library/react';
+import { fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { fakeLayout } from '@/test/layout';
@@ -147,5 +147,57 @@ describe('Header', () => {
     expect(
       screen.getByRole('dialog', { name: 'Share fooboard' }),
     ).toBeInTheDocument();
+  });
+
+  it.each(['Light', 'Dark', 'System'] as const)(
+    'sets Theme: %s from the menu and saves it',
+    (label) => {
+      layOut(300);
+      const stores = renderShell(
+        <Header />,
+        label === 'System' ? 'dark' : undefined,
+      );
+      fireEvent.click(
+        within(openMenu()).getByRole('menuitemradio', {
+          name: `Theme: ${label}`,
+        }),
+      );
+      expect(stores.preferences.getTheme()).toBe(label.toLowerCase());
+      expect(document.documentElement.classList.contains('dark')).toBe(
+        label === 'Dark',
+      );
+    },
+  );
+
+  it.each(['Escape', 'Close'] as const)(
+    'returns focus to the Share / Export button after %s',
+    async (how) => {
+      renderShell(<Header />);
+      const share = screen.getByRole('button', { name: 'Share / Export' });
+      share.focus();
+      fireEvent.click(share);
+      const dialog = screen.getByRole('dialog');
+      if (how === 'Escape') fireEvent.keyDown(dialog, { key: 'Escape' });
+      else
+        fireEvent.click(within(dialog).getByRole('button', { name: 'Close' }));
+      expect(screen.queryByRole('dialog')).toBeNull();
+      // Radix moves focus on close after a tick.
+      await waitFor(() => {
+        expect(share).toHaveFocus();
+      });
+    },
+  );
+
+  it('returns focus to the menu button when Share / Export was opened from the menu', async () => {
+    layOut(300);
+    renderShell(<Header />);
+    fireEvent.click(
+      within(openMenu()).getByRole('menuitem', { name: 'Share / Export' }),
+    );
+    fireEvent.keyDown(screen.getByRole('dialog'), { key: 'Escape' });
+    expect(screen.queryByRole('dialog')).toBeNull();
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'Menu' })).toHaveFocus();
+    });
   });
 });

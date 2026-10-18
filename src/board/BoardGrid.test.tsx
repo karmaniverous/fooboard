@@ -212,4 +212,20 @@ describe('BoardGrid', () => {
     );
     expect(screen.getAllByRole('gridcell')).toHaveLength(320);
   });
+
+  it('shows the full row and stage names in tooltips from the keyboard', async () => {
+    renderBoard();
+    const row = screen.getByRole('rowheader', { name: 'billing' });
+    row.focus();
+    expect(row).toHaveFocus();
+    expect(await screen.findByRole('tooltip')).toHaveTextContent(
+      'billing (acme/billing)',
+    );
+    const stage = screen.getByRole('columnheader', { name: 'Bali' });
+    stage.focus();
+    expect(stage).toHaveFocus();
+    await waitFor(() => {
+      expect(screen.getByRole('tooltip')).toHaveTextContent(/^Bali \(/);
+    });
+  });
 });

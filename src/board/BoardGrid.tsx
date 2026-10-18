@@ -147,6 +147,8 @@ export function BoardGrid({
               >
                 <div
                   role="columnheader"
+                  // Focusable, so the keyboard can show its tooltip.
+                  tabIndex={0}
                   className={cn(
                     'flex items-center justify-center truncate px-[var(--cell-pad-x)] text-center font-semibold',
                     pinTop,
@@ -196,6 +198,7 @@ export function BoardGrid({
                     <WithTooltip label={`${row.displayName} (${row.repo})`}>
                       <div
                         role="rowheader"
+                        tabIndex={0}
                         className={cn(
                           'flex items-center px-[var(--cell-pad-x)] font-medium',
                           pinLeft,
