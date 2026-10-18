@@ -78,6 +78,14 @@ const status = (
   ...extra,
 });
 
+/** The jobs a deploy-and-test set cares about: deploy or test jobs. */
+function deployTestJobs(
+  deployTests: readonly MatchTest[],
+  testTests: readonly MatchTest[],
+): JsonSchema {
+  return { anyOf: [nameMatches(deployTests), nameMatches(testTests)] };
+}
+
 /** Cell statuses for jobs whose names pass the deploy and test phase tests
  * (a job passing both is a test job, as today). */
 function deployTestStatuses(
@@ -162,6 +170,7 @@ export const PRESETS: readonly StatusSet[] = [
     id: 'github-deploy-test',
     name: 'GitHub deploy and test',
     provider: 'github',
+    jobs: deployTestJobs([contains('deploy')], [contains('test')]),
     summary: PRESET_SUMMARY,
     cell: deployTestStatuses([contains('deploy')], [contains('test')]),
   },

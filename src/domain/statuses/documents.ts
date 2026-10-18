@@ -3,8 +3,8 @@
  * own field names, stable across provider API changes.
  *
  * - A GitHub run: its workflow, event, branch and attempt, and the latest
- *   attempt's jobs that pass the row key tests, without `skipped`,
- *   `neutral` and `stale` jobs. Job statuses and conclusions are GitHub's.
+ *   attempt's jobs that pass the row key tests and the status set's job
+ *   test, without `skipped`, `neutral` and `stale` jobs. Job statuses and conclusions are GitHub's.
  * - An Amplify job: its branch, status (Amplify's), commit and times.
  *
  * @module
@@ -17,6 +17,8 @@ import type {
   GithubWorkflowJob,
 } from '@/domain/derivation/types';
 import { matchesAny } from '@/domain/matching/matchTest';
+
+import { passes } from './classify';
 
 interface GithubJobDocument {
   name: string;
@@ -44,14 +46,26 @@ export interface AmplifyJobDocument {
 
 const IGNORED_CONCLUSIONS = new Set(['skipped', 'neutral', 'stale']);
 
-/** The jobs of a run a row sees (each with its document). */
-function rowJobs(
+const jobDocument = (j: GithubWorkflowJob): GithubJobDocument => ({
+  name: j.name,
+  status: j.status,
+  conclusion: j.conclusion,
+  startedAt: j.startedAt,
+  completedAt: j.completedAt,
+});
+
+/** The jobs of a run a row sees that the status set cares about: latest
+ * attempt, not skipped, neutral or stale, passing the row key tests and
+ * the set's job test. */
+function relevantRowJobs(
   { run, jobs }: GithubRunWithJobs,
   rowKeyTests: readonly MatchTest[],
+  jobTest: Record<string, unknown>,
 ): GithubWorkflowJob[] {
   return latestAttemptJobs(jobs).filter(
     (job) =>
       !IGNORED_CONCLUSIONS.has(job.conclusion ?? '') &&
+      passes(jobTest, jobDocument(job)) &&
       (rowKeyTests.length === 0 ||
         matchesAny(
           rowKeyTests,
@@ -61,26 +75,21 @@ function rowJobs(
   );
 }
 
-/** A run's document for a row, or `undefined` when the row sees none of
- * its jobs (the run is not this row's). */
+/** A run's document for a row and status set, or `undefined` when it has
+ * no relevant jobs (the run is not the cell's, A§4.3.6). */
 export function githubRunDocument(
   entry: GithubRunWithJobs,
   rowKeyTests: readonly MatchTest[],
+  jobTest: Record<string, unknown> = {},
 ): GithubRunDocument | undefined {
-  const jobs = rowJobs(entry, rowKeyTests);
+  const jobs = relevantRowJobs(entry, rowKeyTests, jobTest);
   if (jobs.length === 0) return undefined;
   return {
     workflow: entry.run.workflowName,
     event: entry.run.event,
     branch: entry.run.headBranch ?? '',
     attempt: Math.max(...jobs.map((j) => j.runAttempt)),
-    jobs: jobs.map((j) => ({
-      name: j.name,
-      status: j.status,
-      conclusion: j.conclusion,
-      startedAt: j.startedAt,
-      completedAt: j.completedAt,
-    })),
+    jobs: jobs.map(jobDocument),
   };
 }
 

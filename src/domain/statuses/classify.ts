@@ -28,7 +28,7 @@ function validatorFor(test: Record<string, unknown>): Validator | undefined {
 
 /** Does `doc` pass `test`? A test that can't be compiled or run (a bad
  * pattern, say) matches nothing. */
-function passes(test: Record<string, unknown>, doc: unknown): boolean {
+export function passes(test: Record<string, unknown>, doc: unknown): boolean {
   try {
     return validatorFor(test)?.validate(doc).valid ?? false;
   } catch {

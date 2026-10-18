@@ -79,6 +79,27 @@ describe('githubRunDocument', () => {
   });
 });
 
+describe('githubRunDocument with a job test', () => {
+  const deployJobs = {
+    type: 'object',
+    properties: { name: { pattern: '[dD]eploy' } },
+  };
+
+  it('keeps only the jobs the status set cares about', () => {
+    const doc = githubRunDocument(
+      { run, jobs: [job('deploy', 1), job('lint', 1, 'failure')] },
+      [],
+      deployJobs,
+    );
+    expect(doc?.jobs.map((j) => j.name)).toEqual(['deploy']);
+  });
+
+  it("is absent for a run without them, so it isn't the cell's", () => {
+    expect(
+      githubRunDocument({ run, jobs: [job('CodeQL', 1)] }, [], deployJobs),
+    ).toBeUndefined();
+  });
+});
 describe('amplifyJobDocument', () => {
   it('carries the status, commit and times', () => {
     expect(

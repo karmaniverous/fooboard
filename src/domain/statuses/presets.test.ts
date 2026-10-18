@@ -21,6 +21,7 @@ import type {
 } from '@/domain/derivation/types';
 
 import { classify } from './classify';
+import { githubRunDocument } from './documents';
 import { findStatusSet, PRESETS } from './presets';
 
 /** Today's status for each deploy-and-test status. */
@@ -70,6 +71,16 @@ const runs = [
   ...singles.flatMap((a) => singles.map((b) => [a, { ...b, id: 2 }])),
 ];
 
+const run = {
+  id: 1,
+  workflowName: 'CI',
+  headBranch: 'main',
+  headSha: 'abc',
+  createdAt: '2026-10-01T00:00:00Z',
+  event: 'push',
+  htmlUrl: '',
+};
+
 const docOf = (jobs: GithubWorkflowJob[]) => ({
   workflow: 'CI',
   event: 'push',
@@ -95,7 +106,10 @@ describe('GitHub deploy and test', () => {
       const legacy = deriveGithubCellStatus(
         relevantJobs(jobs, 'CI', PHASES, []),
       )?.status;
-      const found = classify(docOf(jobs), set);
+      // Through the real path: runs without deploy or test jobs have no
+      // document (skipped, as today's rules give no status).
+      const doc = githubRunDocument({ run, jobs }, [], set.jobs);
+      const found = doc && classify(doc, set);
       const now = found && LEGACY[found.id];
       return now === legacy
         ? []

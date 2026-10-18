@@ -70,6 +70,10 @@ export const StatusSetSchema = z
     id: z.string().min(1),
     name: z.string().min(1),
     provider: StatusProviderSchema,
+    /** GitHub: which of a run's jobs the set cares about, a JSON Schema over
+     * one job's document. A run with none of them is not the cell's and is
+     * skipped (A§4.3.6, option A). Empty: every job. Amplify ignores it. */
+    jobs: JsonSchemaObjectSchema.default(() => ({})),
     summary: z.array(SummaryStatusSchema).min(1),
     cell: z.array(CellStatusSchema).min(1),
   })
