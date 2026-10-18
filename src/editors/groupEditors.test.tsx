@@ -232,4 +232,25 @@ describe('row groups in the editor', () => {
     });
     expect(latest.current.rows[0]?.branchPatternOverrides).toEqual({});
   });
+
+  it("keeps a row's overrides collapsed, counting them, until opened", () => {
+    setup(
+      DashboardSchema.parse({
+        ...start,
+        rows: [
+          { ...start.rows[0], branchPatternOverrides: { prod: 'release/*' } },
+          start.rows[1],
+        ],
+      }),
+    );
+    const trigger = screen.getByRole('button', {
+      name: 'Branch overrides (1)',
+    });
+    expect(trigger).toHaveAttribute('aria-expanded', 'false');
+    expect(screen.queryByLabelText('prod branch override for api')).toBeNull();
+    fireEvent.click(trigger);
+    expect(screen.getByLabelText('prod branch override for api')).toHaveValue(
+      'release/*',
+    );
+  });
 });

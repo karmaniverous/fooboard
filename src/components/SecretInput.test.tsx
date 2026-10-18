@@ -20,4 +20,10 @@ describe('SecretInput', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Hide' }));
     expect(field).toHaveAttribute('type', 'password');
   });
+
+  it('says what the eye button does in a tooltip', async () => {
+    render(<SecretInput aria-label="Token" defaultValue="ghp_x" />);
+    fireEvent.focus(screen.getByRole('button', { name: 'Show' }));
+    expect(await screen.findByRole('tooltip')).toHaveTextContent('Show');
+  });
 });

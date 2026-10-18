@@ -4,6 +4,11 @@
  * support, README, Demo, Theme, Share / Export, Import, GitHub, Report an
  * issue, then Privacy and Terms (always in the menu, never buttons).
  *
+ * Each item is one of four kinds, and every surface renders a kind the
+ * same way: an outbound `link`, an in-app `route`, an `action`, or a
+ * `choice` among options (a button cycles to the next option; the menu
+ * offers them all as radio items).
+ *
  * @module
  */
 import {
@@ -20,9 +25,11 @@ import {
 } from 'lucide-react';
 import { createContext, useContext } from 'react';
 
-import type { ThemeChoice } from '@/domain/config/devicePreferences';
+import {
+  type ThemeChoice,
+  ThemeChoiceSchema,
+} from '@/domain/config/devicePreferences';
 import { site } from '@/lib/site';
-import { nextTheme } from '@/lib/theme';
 
 import { GithubLogo, XLogo } from './brandIcons';
 import { useTheme } from './themeContext';
@@ -39,23 +46,47 @@ export type NavId =
   | 'privacy'
   | 'terms';
 
-export interface NavItem {
+interface NavOption {
+  value: string;
+  label: string;
+}
+
+export type NavItem = {
   id: NavId;
   /** Text in the menu and footer; also the button's name and tooltip. */
   label: string;
   Icon: React.ComponentType<{ className?: string }>;
-  /** An outbound link. */
-  href?: string;
-  /** An in-app route. */
-  to?: string;
-  onSelect?: () => void;
-  /** Shown but not usable yet (Import until PR E). */
-  disabled?: boolean;
   /** Privacy and Terms: always in the menu, never header buttons. */
   legal?: boolean;
-}
+} & (
+  | { kind: 'link'; href: string }
+  | { kind: 'route'; to: string }
+  | {
+      kind: 'action';
+      onSelect?: () => void;
+      /** Shown but not usable yet (Import until PR E). */
+      disabled?: boolean;
+    }
+  | {
+      kind: 'choice';
+      /** The choice's name (the menu's radio group). */
+      name: string;
+      value: string;
+      options: readonly NavOption[];
+      onChange: (value: string) => void;
+    }
+);
 
-export const THEME_LABEL: Record<ThemeChoice, string> = {
+/** The option after `value`, wrapping round (a choice button's click). */
+export const nextOption = (
+  options: readonly NavOption[],
+  value: string,
+): string => {
+  const at = options.findIndex((o) => o.value === value);
+  return options[(at + 1) % options.length]?.value ?? value;
+};
+
+const THEME_LABEL: Record<ThemeChoice, string> = {
   system: 'System',
   light: 'Light',
   dark: 'Dark',
@@ -71,33 +102,75 @@ export function useNavItems(): NavItem[] {
   if (!nav) throw new Error('useNavItems must be used inside AppNavProvider');
   const { theme, setTheme } = useTheme();
   return [
-    { id: 'news', label: 'News & support', Icon: XLogo, href: site.xUrl },
-    { id: 'readme', label: 'README', Icon: BookOpen, href: site.readmeUrl },
-    { id: 'demo', label: 'Try the demo', Icon: CirclePlay, to: '/demo' },
+    {
+      id: 'news',
+      kind: 'link',
+      label: 'News & support',
+      Icon: XLogo,
+      href: site.xUrl,
+    },
+    {
+      id: 'readme',
+      kind: 'link',
+      label: 'README',
+      Icon: BookOpen,
+      href: site.readmeUrl,
+    },
+    {
+      id: 'demo',
+      kind: 'route',
+      label: 'Try the demo',
+      Icon: CirclePlay,
+      to: '/demo',
+    },
     {
       id: 'theme',
+      kind: 'choice',
+      name: 'Theme',
       label: `Theme: ${THEME_LABEL[theme]}`,
       Icon: THEME_ICON[theme],
-      onSelect: () => {
-        setTheme(nextTheme(theme));
+      value: theme,
+      // System, Light, Dark: the order the button cycles.
+      options: ThemeChoiceSchema.options.map((t) => ({
+        value: t,
+        label: `Theme: ${THEME_LABEL[t]}`,
+      })),
+      onChange: (v) => {
+        const next = ThemeChoiceSchema.safeParse(v);
+        if (next.success) setTheme(next.data);
       },
     },
     {
       id: 'share',
+      kind: 'action',
       label: 'Share / Export',
       Icon: LinkIcon,
       onSelect: nav.openShare,
     },
     {
       id: 'import',
+      kind: 'action',
       label: 'Import (coming soon)',
       Icon: Import,
       disabled: true,
     },
-    { id: 'github', label: 'GitHub', Icon: GithubLogo, href: site.repoUrl },
-    { id: 'issue', label: 'Report an issue', Icon: Bug, href: site.issuesUrl },
+    {
+      id: 'github',
+      kind: 'link',
+      label: 'GitHub',
+      Icon: GithubLogo,
+      href: site.repoUrl,
+    },
+    {
+      id: 'issue',
+      kind: 'link',
+      label: 'Report an issue',
+      Icon: Bug,
+      href: site.issuesUrl,
+    },
     {
       id: 'privacy',
+      kind: 'link',
       label: 'Privacy',
       Icon: Shield,
       href: site.privacyUrl,
@@ -105,6 +178,7 @@ export function useNavItems(): NavItem[] {
     },
     {
       id: 'terms',
+      kind: 'link',
       label: 'Terms',
       Icon: Scale,
       href: site.termsUrl,

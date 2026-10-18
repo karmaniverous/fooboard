@@ -24,6 +24,21 @@ export function measuredWidth(root: HTMLElement, name: string): number {
   return el ? el.getBoundingClientRect().width : 0;
 }
 
+/** The width inside `el`'s horizontal padding: the room its content has. */
+export function contentWidth(el: HTMLElement): number {
+  const style = getComputedStyle(el);
+  return (
+    el.clientWidth -
+    (parseFloat(style.paddingLeft) || 0) -
+    (parseFloat(style.paddingRight) || 0)
+  );
+}
+
+/** `el`'s flex/grid column gap in px, read from its CSS (so the arithmetic
+ * never repeats a Tailwind class's value). */
+export const gapOf = (el: HTMLElement): number =>
+  parseFloat(getComputedStyle(el).columnGap) || 0;
+
 export function useMeasured<T extends HTMLElement, V>(
   measure: (container: T) => V,
   initial: V,

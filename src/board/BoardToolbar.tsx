@@ -169,43 +169,49 @@ export function BoardToolbar({
           data-measure="zoom"
           className="flex items-center gap-0.5 justify-self-end"
         >
-          <Button
-            size="icon"
-            variant="outline"
-            className="size-6"
-            aria-label="Zoom out"
-            disabled={zoom <= range.min}
-            onClick={() => {
-              onStep(-1);
-            }}
-          >
-            <Minus className="size-3.5" />
-          </Button>
+          <WithTooltip label="Zoom out">
+            <Button
+              size="icon"
+              variant="outline"
+              className="size-6"
+              aria-label="Zoom out"
+              disabled={zoom <= range.min}
+              onClick={() => {
+                onStep(-1);
+              }}
+            >
+              <Minus className="size-3.5" />
+            </Button>
+          </WithTooltip>
           <ZoomField zoom={zoom} range={range} onZoom={onZoom} />
-          <Button
-            size="icon"
-            variant="outline"
-            className="size-6"
-            aria-label="Zoom in"
-            disabled={zoom >= range.max}
-            onClick={() => {
-              onStep(1);
-            }}
-          >
-            <Plus className="size-3.5" />
-          </Button>
-          <Button
-            size="icon"
-            variant="outline"
-            className="size-6"
-            aria-label="Zoom to 100%"
-            disabled={zoom === 1}
-            onClick={() => {
-              onZoom(1);
-            }}
-          >
-            <RotateCcw className="size-3.5" />
-          </Button>
+          <WithTooltip label="Zoom in">
+            <Button
+              size="icon"
+              variant="outline"
+              className="size-6"
+              aria-label="Zoom in"
+              disabled={zoom >= range.max}
+              onClick={() => {
+                onStep(1);
+              }}
+            >
+              <Plus className="size-3.5" />
+            </Button>
+          </WithTooltip>
+          <WithTooltip label="Zoom to 100%">
+            <Button
+              size="icon"
+              variant="outline"
+              className="size-6"
+              aria-label="Zoom to 100%"
+              disabled={zoom === 1}
+              onClick={() => {
+                onZoom(1);
+              }}
+            >
+              <RotateCcw className="size-3.5" />
+            </Button>
+          </WithTooltip>
         </div>
       </div>
     </div>

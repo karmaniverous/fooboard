@@ -9,7 +9,12 @@
 import { ExternalLink } from '@/components/ExternalLink';
 import { type FooterForm, footerForm } from '@/lib/footerForm';
 import { site } from '@/lib/site';
-import { measuredWidth, useMeasured } from '@/lib/useMeasured';
+import {
+  contentWidth,
+  gapOf,
+  measuredWidth,
+  useMeasured,
+} from '@/lib/useMeasured';
 import { cn, PINNED_FULL } from '@/lib/utils';
 
 import { NavControl } from './NavControl';
@@ -21,16 +26,14 @@ export function Footer(): React.JSX.Element {
   const [ref, form] = useMeasured<HTMLElement, FooterForm>((el) => {
     // Not laid out (no width yet): the full form.
     if (el.clientWidth === 0) return -1;
-    const style = getComputedStyle(el);
-    const room =
-      el.clientWidth -
-      parseFloat(style.paddingLeft || '0') -
-      parseFloat(style.paddingRight || '0');
+    const row = el.querySelector<HTMLElement>('[data-icon-row]');
+    if (!row) return -1;
+    const left = row.getBoundingClientRect().left;
     return footerForm(
-      room,
-      measuredWidth(el, 'copyright'),
+      contentWidth(el) - measuredWidth(el, 'copyright') - gapOf(el),
       measuredWidth(el, 'text'),
-      items.map((i) => measuredWidth(el, `icon-${i.id}`)),
+      [...row.children].map((c) => c.getBoundingClientRect().left - left),
+      row.getBoundingClientRect().width,
       legalCount,
     );
   }, -1);
@@ -63,11 +66,9 @@ export function Footer(): React.JSX.Element {
             <NavControl key={i.id} item={i} form="text" />
           ))}
         </span>
-        <span className="flex w-max gap-1">
+        <span data-icon-row className="flex w-max gap-1">
           {items.map((i) => (
-            <span key={i.id} data-measure={`icon-${i.id}`}>
-              <NavControl item={i} form="icon" />
-            </span>
+            <NavControl key={i.id} item={i} form="icon" />
           ))}
         </span>
       </div>

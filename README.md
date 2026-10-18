@@ -29,10 +29,12 @@ separately) for the full product spec.
   - a layout that keeps text readable (13 px at 100%) and shows as much as fits: equal columns across the screen, and the most detail every cell can show at the same size; tall boards scroll down;
   - zoom (Ctrl/Cmd + wheel, pinch, the buttons, or `+` `-` `0`): zooming out shrinks text to fit more, zooming in adds detail, then magnifies;
   - Default, Comfortable and Compact density (padding only);
-  - light or dark, following the device's setting;
   - summary counts that filter the board (just a dot or circle and the count when space is short, with the word on hover), and a battery meter of the GitHub requests left.
-- **Follow and Share**: _Follow @fooboarding_ in the page header, and a _Share_ button on every board. For now Share offers the demo link: the device's share menu where there is one, _Copy link_, and _Post on X_.
-- **Try the demo**: `/demo`, or _Try the demo_ on the home page, shows the demo board with no account.
+- **App header**, pinned to the top of the window: the logo, name and tagline, then buttons (each with a tooltip) for _News & support_ (@fooboarding on X), _README_, _Try the demo_, _Theme_, _Share / Export_, _Import_ (coming soon), _GitHub_ and _Report an issue_, then the menu. As the window narrows, buttons move into the menu from the right, then the tagline goes, and _README_ and _News & support_ go last; _Privacy_ and _Terms_ are always in the menu.
+  - **Theme**: System (follows the device's light or dark setting), Light or Dark. The button cycles through them and the menu offers all three; the choice is saved on this device.
+  - **Share / Export**: for now, shares the demo: the device's share menu where there is one, _Copy link_, and _Post on X_.
+- **Footer**: the copyright at the left and every menu item at the right. As the window narrows the items become icons, then drop out from the left; _Privacy_ and _Terms_ always stay.
+- **Try the demo**: `/demo`, or _Try the demo_ on the home page or in the header, shows the demo board with no account.
 - **Local storage** (`src/storage/`), all in this browser:
   - dashboards, saved under a versioned schema; older saves are upgraded when they load (dividers become groups); data that can't be read is reported and never overwritten;
   - zoom and density, saved per dashboard on each device;
@@ -50,7 +52,7 @@ separately) for the full product spec.
     - group rows and stages: start a group from any row or stage, add others to it, label it, or delete it (its members stay); a group disappears with its last member;
     - give a row group its own default credentials and branch overrides, and any row its own overrides (a row's beats its group's, which beats the stage's pattern); _Find branches_ reads the branches in the repos concerned and suggests them as you type in each field (for a group, with how many of its repos have each); a row's credential choices name the credential it inherits and whether it comes from its group or the dashboard;
     - reorder by dragging or with _Move up_ / _Move down_: dropping onto an item puts it in that item's group (or none), and a step at a group's edge first leaves the group, or joins the group next to it; every removal asks first.
-  - **Unmapped (N)**: recent runs with no cell, each with its reason. _Add test_ opens the editor with the fix pre-filled. For a branch no stage matches, _Add override_ opens the run's row, ready to use that branch for a stage on the row or its group.
+  - **Unmapped (N)**: recent runs with no cell, each with its reason. _Add test_ opens the editor with the fix pre-filled. For a branch no stage matches, _Add override_ opens the run's row, ready to use that branch for a stage on any row reading the run's repo, or that row's group.
 - **Credential guide**: `/guide/credentials` covers creating read-only tokens and keys, what a leak exposes, and how to revoke.
 
 ## Dev commands

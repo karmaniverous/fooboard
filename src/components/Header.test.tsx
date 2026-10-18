@@ -1,38 +1,41 @@
 /**
  * Tests for the app header (spec.md C-19): the buttons in their order,
- * Privacy and Terms always in the menu and never buttons, and the theme
- * chosen from the button (cycling) or the menu (three-way), saved on the
- * device.
+ * folding into the menu as it narrows (before the separator, Privacy and
+ * Terms always after it), the theme chosen from the button (cycling) or
+ * the menu (three-way) and saved on the device, the saved theme applied on
+ * load, the header's height published for the board, and Import inert.
  *
  * @module
  */
-import { fireEvent, render, screen, within } from '@testing-library/react';
-import { MemoryRouter } from 'react-router-dom';
-import { describe, expect, it } from 'vitest';
+import { fireEvent, screen, within } from '@testing-library/react';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { createAppStores } from '@/storage';
-import { memoryStorage } from '@/storage/keyValue';
-import { StoresContext } from '@/storage/storesContext';
+import { fakeLayout } from '@/test/layout';
+import { renderShell } from '@/test/renderShell';
 
-import { AppNavProvider } from './AppNavProvider';
 import { Header } from './Header';
-import { ThemeProvider } from './ThemeProvider';
 
-function renderHeader() {
-  const stores = createAppStores(memoryStorage());
-  render(
-    <StoresContext value={stores}>
-      <MemoryRouter>
-        <ThemeProvider>
-          <AppNavProvider>
-            <Header />
-          </AppNavProvider>
-        </ThemeProvider>
-      </MemoryRouter>
-    </StoresContext>,
-  );
-  return stores;
-}
+afterEach(() => {
+  vi.restoreAllMocks();
+  document.documentElement.classList.remove('dark');
+});
+
+const MEASURED: Record<string, number> = { brand: 100, menu: 32, tagline: 200 };
+/** Lay the header out `width` px wide: buttons 32 px, 49 px tall. */
+const layOut = (width: number) => {
+  fakeLayout({ tag: 'HEADER', width }, (el) => {
+    if (el.tagName === 'HEADER') return { height: 49 };
+    const name = el.getAttribute('data-measure');
+    return { width: name ? (MEASURED[name] ?? 32) : 0 };
+  });
+};
+
+const buttonNames = () =>
+  [
+    ...screen
+      .getByRole('navigation', { name: 'App' })
+      .querySelectorAll('a, button'),
+  ].map((e) => e.getAttribute('aria-label'));
 
 const openMenu = () => {
   fireEvent.keyDown(screen.getByRole('button', { name: 'Menu' }), {
@@ -42,13 +45,10 @@ const openMenu = () => {
 };
 
 describe('Header', () => {
-  it('shows the buttons in the C-19 order, Privacy and Terms only in the menu', () => {
-    renderHeader();
-    const nav = screen.getByRole('navigation', { name: 'App' });
-    const names = [...nav.querySelectorAll('a, button')].map((e) =>
-      e.getAttribute('aria-label'),
-    );
-    expect(names).toEqual([
+  it('shows every button in the C-19 order when wide, with only Privacy and Terms in the menu', () => {
+    layOut(1400);
+    renderShell(<Header />);
+    expect(buttonNames()).toEqual([
       'News & support',
       'README',
       'Try the demo',
@@ -59,26 +59,90 @@ describe('Header', () => {
       'Report an issue',
       'Menu',
     ]);
-    const menu = openMenu();
     expect(
-      within(menu)
+      within(openMenu())
         .getAllByRole('menuitem')
         .map((i) => i.textContent),
     ).toEqual(['Privacy', 'Terms']);
   });
 
-  it('cycles the theme from its button and saves it on the device', () => {
-    const stores = renderHeader();
-    fireEvent.click(screen.getByRole('button', { name: 'Theme: System' }));
-    expect(stores.preferences.getTheme()).toBe('light');
-    expect(document.documentElement.classList.contains('dark')).toBe(false);
-    fireEvent.click(screen.getByRole('button', { name: 'Theme: Light' }));
+  it('folds buttons into the menu, before the separator, when narrow', () => {
+    // Room for News and README (196 px with the fixed parts), not the tagline.
+    layOut(300);
+    renderShell(<Header />);
+    expect(buttonNames()).toEqual(['News & support', 'README', 'Menu']);
+    expect(
+      screen.queryByText("Welcome to DevOps hell. Here's your map.", {
+        ignore: '[aria-hidden="true"] *',
+      }),
+    ).toBeNull();
+    const menu = openMenu();
+    expect(
+      [...menu.querySelectorAll('[role^=menuitem]')].map((i) => i.textContent),
+    ).toEqual([
+      'Try the demo',
+      'Theme: System',
+      'Theme: Light',
+      'Theme: Dark',
+      'Share / Export',
+      'Import (coming soon)',
+      'GitHub',
+      'Report an issue',
+      'Privacy',
+      'Terms',
+    ]);
+    const order = [
+      ...menu.querySelectorAll('[role^=menuitem], [role=separator]'),
+    ].map((e) => e.textContent || '---');
+    expect(order.indexOf('---')).toBe(order.indexOf('Privacy') - 1);
+  });
+
+  it('sets the theme from the menu and saves it on the device', () => {
+    layOut(300);
+    const stores = renderShell(<Header />);
+    fireEvent.click(
+      within(openMenu()).getByRole('menuitemradio', { name: 'Theme: Dark' }),
+    );
     expect(stores.preferences.getTheme()).toBe('dark');
     expect(document.documentElement.classList.contains('dark')).toBe(true);
   });
 
-  it('opens the Share / Export dialog', () => {
-    renderHeader();
+  it('cycles the theme from its button: System, Light, Dark, System', () => {
+    const stores = renderShell(<Header />);
+    for (const [from, to] of [
+      ['System', 'light'],
+      ['Light', 'dark'],
+      ['Dark', 'system'],
+    ]) {
+      fireEvent.click(screen.getByRole('button', { name: `Theme: ${from}` }));
+      expect(stores.preferences.getTheme()).toBe(to);
+    }
+  });
+
+  it('applies the theme saved on the device when it loads', () => {
+    renderShell(<Header />, 'dark');
+    expect(document.documentElement.classList.contains('dark')).toBe(true);
+    expect(
+      screen.getByRole('button', { name: 'Theme: Dark' }),
+    ).toBeInTheDocument();
+  });
+
+  it('publishes its height for the board headers that pin below it', () => {
+    layOut(1400);
+    renderShell(<Header />);
+    expect(
+      document.documentElement.style.getPropertyValue('--app-header-h'),
+    ).toBe('49px');
+  });
+
+  it('opens Share / Export, and leaves Import inert until it ships', () => {
+    renderShell(<Header />);
+    const importButton = screen.getByRole('button', {
+      name: 'Import (coming soon)',
+    });
+    expect(importButton).toHaveAttribute('aria-disabled', 'true');
+    fireEvent.click(importButton);
+    expect(screen.queryByRole('dialog')).toBeNull();
     fireEvent.click(screen.getByRole('button', { name: 'Share / Export' }));
     expect(
       screen.getByRole('dialog', { name: 'Share fooboard' }),

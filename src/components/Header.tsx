@@ -15,82 +15,35 @@ import { Link } from 'react-router-dom';
 import {
   DropdownMenu,
   DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuRadioGroup,
-  DropdownMenuRadioItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { ThemeChoiceSchema } from '@/domain/config/devicePreferences';
 import { FOLD_ORDER, foldCount } from '@/lib/headerFold';
 import { site } from '@/lib/site';
-import { measuredWidth, useMeasured } from '@/lib/useMeasured';
+import {
+  contentWidth,
+  gapOf,
+  measuredWidth,
+  useMeasured,
+} from '@/lib/useMeasured';
 import { cn, PINNED_FULL } from '@/lib/utils';
 
-import { ExternalLink } from './ExternalLink';
 import { NavControl } from './NavControl';
-import { type NavItem, THEME_LABEL, useNavItems } from './navItems';
-import { useTheme } from './themeContext';
-
-const logoUrl = `${import.meta.env.BASE_URL}favicon.svg`;
+import { useNavItems } from './navItems';
+import { NavMenuEntry } from './NavMenuEntry';
 
 function Brand(): React.JSX.Element {
   return (
     <Link to="/" className="flex shrink-0 items-center gap-2.5 font-bold">
-      <img src={logoUrl} alt="" width={26} height={26} className="rounded-md" />
+      <img
+        src={site.logoUrl}
+        alt=""
+        width={26}
+        height={26}
+        className="rounded-md"
+      />
       <span>{site.name}</span>
     </Link>
-  );
-}
-
-function MenuEntry({ item }: { item: NavItem }): React.JSX.Element {
-  const { theme, setTheme } = useTheme();
-  if (item.id === 'theme')
-    return (
-      <DropdownMenuRadioGroup
-        aria-label="Theme"
-        value={theme}
-        onValueChange={(v) => {
-          const next = ThemeChoiceSchema.safeParse(v);
-          if (next.success) setTheme(next.data);
-        }}
-      >
-        {ThemeChoiceSchema.options.map((t) => (
-          <DropdownMenuRadioItem key={t} value={t}>
-            Theme: {THEME_LABEL[t]}
-          </DropdownMenuRadioItem>
-        ))}
-      </DropdownMenuRadioGroup>
-    );
-  const body = (
-    <>
-      <item.Icon className="size-4" />
-      {item.label}
-    </>
-  );
-  const look = 'gap-2';
-  if (item.href)
-    return (
-      <DropdownMenuItem asChild className={look}>
-        <ExternalLink unstyled href={item.href}>
-          {body}
-        </ExternalLink>
-      </DropdownMenuItem>
-    );
-  if (item.to)
-    return (
-      <DropdownMenuItem asChild className={look}>
-        <Link to={item.to}>{body}</Link>
-      </DropdownMenuItem>
-    );
-  return (
-    <DropdownMenuItem
-      className={look}
-      disabled={item.disabled}
-      onSelect={item.onSelect}
-    >
-      {body}
-    </DropdownMenuItem>
   );
 }
 
@@ -104,15 +57,11 @@ export function Header(): React.JSX.Element {
     const widths = Object.fromEntries(
       FOLD_ORDER.map((id) => [id, measuredWidth(el, id)]),
     );
-    const style = getComputedStyle(el);
-    const room =
-      el.clientWidth -
-      parseFloat(style.paddingLeft || '0') -
-      parseFloat(style.paddingRight || '0');
     return foldCount(
       widths,
       measuredWidth(el, 'brand') + measuredWidth(el, 'menu'),
-      room,
+      contentWidth(el),
+      gapOf(el),
     );
   }, 0);
   const hidden = new Set(FOLD_ORDER.slice(0, folded));
@@ -188,11 +137,11 @@ export function Header(): React.JSX.Element {
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
             {inMenu.map((item) => (
-              <MenuEntry key={item.id} item={item} />
+              <NavMenuEntry key={item.id} item={item} />
             ))}
             {inMenu.length > 0 && <DropdownMenuSeparator />}
             {legal.map((item) => (
-              <MenuEntry key={item.id} item={item} />
+              <NavMenuEntry key={item.id} item={item} />
             ))}
           </DropdownMenuContent>
         </DropdownMenu>

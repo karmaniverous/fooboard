@@ -19,7 +19,7 @@ export function Home(): React.JSX.Element {
   return (
     <div className="mx-auto flex w-full min-w-0 max-w-xl flex-col items-center gap-4 px-6 py-24 text-center">
       <img
-        src={`${import.meta.env.BASE_URL}favicon.svg`}
+        src={site.logoUrl}
         alt=""
         width={96}
         height={96}

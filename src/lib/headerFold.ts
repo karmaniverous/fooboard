@@ -20,23 +20,22 @@ export const FOLD_ORDER: readonly (NavId | 'tagline')[] = [
   'news',
 ];
 
-/** `gap-2` in px. */
-const GAP_PX = 8;
-
 /**
  * How many of FOLD_ORDER to fold: the fewest that let the row fit `room`,
- * given each part's natural width (`widths[id]`) and the parts that never
- * fold (`fixed`: logo and name, the menu button).
+ * given each part's natural width (`widths[id]`), the parts that never
+ * fold (`fixed`: logo and name, the menu button) and the `gap` between
+ * parts.
  */
 export function foldCount(
   widths: Readonly<Partial<Record<NavId | 'tagline', number>>>,
   fixed: number,
   room: number,
+  gap: number,
 ): number {
   for (let folded = 0; folded < FOLD_ORDER.length; folded++) {
     const shown = FOLD_ORDER.slice(folded).map((id) => widths[id] ?? 0);
     const width =
-      fixed + shown.reduce((a, b) => a + b, 0) + (shown.length + 1) * GAP_PX;
+      fixed + shown.reduce((a, b) => a + b, 0) + (shown.length + 1) * gap;
     if (width <= room) return folded;
   }
   return FOLD_ORDER.length;

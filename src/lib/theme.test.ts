@@ -1,12 +1,12 @@
 /**
  * Tests for the theme (spec.md C-14): System follows the OS until stopped;
- * Light and Dark ignore it; the button cycles System, Light, Dark.
+ * Light and Dark ignore it.
  *
  * @module
  */
 import { describe, expect, it } from 'vitest';
 
-import { applyTheme, nextTheme } from './theme';
+import { applyTheme } from './theme';
 
 /** A controllable `prefers-color-scheme` query. */
 function fakeMedia(matches: boolean) {
@@ -51,13 +51,5 @@ describe('applyTheme', () => {
     applyTheme(choice, root, asMedia(media));
     media.set(!dark);
     expect(root.classList.contains('dark')).toBe(dark);
-  });
-});
-
-describe('nextTheme', () => {
-  it('cycles System, Light, Dark', () => {
-    expect(nextTheme('system')).toBe('light');
-    expect(nextTheme('light')).toBe('dark');
-    expect(nextTheme('dark')).toBe('system');
   });
 });

@@ -19,6 +19,8 @@ export const site = {
   readmeUrl: 'https://github.com/karmaniverous/fooboard#readme',
   privacyUrl: 'https://github.com/karmaniverous/fooboard/blob/main/PRIVACY.md',
   termsUrl: 'https://github.com/karmaniverous/fooboard/blob/main/TERMS.md',
+  /** The app logo, served with the site. */
+  logoUrl: `${import.meta.env.BASE_URL}favicon.svg`,
   ownerName: 'karmaniverous',
   ownerUrl: 'https://github.com/karmaniverous',
 } as const;
