@@ -14,6 +14,7 @@ import {
   DashboardViewPreferencesSchema,
   type DevicePreferences,
   migrateDevicePreferences,
+  type ThemeChoice,
 } from '@/domain/config/devicePreferences';
 
 import { KEY_PREFIX, type KeyValueStore, readJson } from './keyValue';
@@ -30,6 +31,10 @@ export interface PreferencesStore {
   ): DashboardViewPreferences;
   /** Drop a dashboard's settings (e.g. when the dashboard is deleted). */
   forget(dashboardId: string): void;
+  /** The theme choice on this device (System if never chosen). */
+  getTheme(): ThemeChoice;
+  /** Save the theme choice on this device. */
+  setTheme(theme: ThemeChoice): void;
 }
 
 export function createPreferencesStore(store: KeyValueStore): PreferencesStore {
@@ -43,6 +48,7 @@ export function createPreferencesStore(store: KeyValueStore): PreferencesStore {
     return (
       migrateDevicePreferences(raw) ?? {
         schemaVersion: CURRENT_DEVICE_PREFERENCES_VERSION,
+        theme: 'system',
         dashboards: {},
       }
     );
@@ -73,6 +79,10 @@ export function createPreferencesStore(store: KeyValueStore): PreferencesStore {
     forget: (id) => {
       const prefs = load();
       save({ ...prefs, dashboards: omit(prefs.dashboards, [id]) });
+    },
+    getTheme: () => load().theme,
+    setTheme: (theme) => {
+      save({ ...load(), theme });
     },
   };
 }

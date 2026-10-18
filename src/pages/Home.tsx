@@ -5,7 +5,6 @@
  *
  * @module
  */
-import { LayoutGrid } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 import { buttonVariants } from '@/components/ui/buttonVariants';
@@ -19,7 +18,13 @@ export function Home(): React.JSX.Element {
   const dashboards = dashboardsOf(loaded);
   return (
     <div className="mx-auto flex w-full min-w-0 max-w-xl flex-col items-center gap-4 px-6 py-24 text-center">
-      <LayoutGrid className="size-10 text-muted-foreground" aria-hidden />
+      <img
+        src={`${import.meta.env.BASE_URL}favicon.svg`}
+        alt=""
+        width={96}
+        height={96}
+        className="size-24 rounded-2xl"
+      />
       <p className="text-lg font-medium">{site.tagline}</p>
       <h1 className="text-xl font-semibold">
         {dashboards.length === 0 ? 'No dashboards yet' : 'Your dashboards'}

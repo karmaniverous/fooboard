@@ -29,11 +29,16 @@ export type DashboardViewPreferences = z.infer<
   typeof DashboardViewPreferencesSchema
 >;
 
+/** Light or dark (spec.md C-14): System follows the OS; saved per device. */
+export const ThemeChoiceSchema = z.enum(['system', 'light', 'dark']);
+export type ThemeChoice = z.infer<typeof ThemeChoiceSchema>;
+
 export const CURRENT_DEVICE_PREFERENCES_VERSION = 2;
 
 /** All view settings on this device. Never exported or shared. */
 export const DevicePreferencesSchema = z.object({
   schemaVersion: z.literal(CURRENT_DEVICE_PREFERENCES_VERSION),
+  theme: ThemeChoiceSchema.default('system'),
   dashboards: z
     .record(z.string(), DashboardViewPreferencesSchema)
     .default(() => ({})),
@@ -64,6 +69,7 @@ export function migrateDevicePreferences(
   if (!v1.success) return undefined;
   return {
     schemaVersion: CURRENT_DEVICE_PREFERENCES_VERSION,
+    theme: 'system',
     dashboards: Object.fromEntries(
       Object.entries(v1.data.dashboards).map(([id, view]) => [
         id,

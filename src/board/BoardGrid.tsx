@@ -48,7 +48,8 @@ export function BoardGrid({
   filter = null,
 }: BoardGridProps): React.JSX.Element {
   // Headers stay pinned whenever the grid scrolls (C-13).
-  const pinTop = 'sticky top-0 z-20 bg-background';
+  // Below the pinned app header (its height, set by the header).
+  const pinTop = 'sticky top-[var(--app-header-h,0px)] z-20 bg-background';
   const pinLeft = 'sticky left-0 z-20 bg-background';
   const { rows, stages, statusColors } = dashboard;
   const rowSegments = groupSegments(

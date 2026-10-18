@@ -13,6 +13,17 @@ Object.assign(Element.prototype, {
   scrollIntoView: () => undefined,
 });
 
+// jsdom lacks matchMedia (the theme follows prefers-color-scheme).
+Object.defineProperty(window, 'matchMedia', {
+  configurable: true,
+  value: (query: string) => ({
+    matches: false,
+    media: query,
+    addEventListener: () => undefined,
+    removeEventListener: () => undefined,
+  }),
+});
+
 // jsdom lacks ResizeObserver; the board measures cells with it.
 if (!('ResizeObserver' in globalThis)) {
   globalThis.ResizeObserver = class {

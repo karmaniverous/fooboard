@@ -14,5 +14,11 @@ export const site = {
   license: 'BSD-3-Clause',
   xHandle: '@fooboarding',
   xUrl: 'https://x.com/fooboarding',
+  repoUrl: 'https://github.com/karmaniverous/fooboard',
   issuesUrl: 'https://github.com/karmaniverous/fooboard/issues',
+  readmeUrl: 'https://github.com/karmaniverous/fooboard#readme',
+  privacyUrl: 'https://github.com/karmaniverous/fooboard/blob/main/PRIVACY.md',
+  termsUrl: 'https://github.com/karmaniverous/fooboard/blob/main/TERMS.md',
+  ownerName: 'karmaniverous',
+  ownerUrl: 'https://github.com/karmaniverous',
 } as const;

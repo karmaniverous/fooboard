@@ -1,12 +1,12 @@
 /**
- * Tests for following the OS theme (spec.md C-14): the root gets `dark`
- * when the OS is dark, follows changes, and stops when asked.
+ * Tests for the theme (spec.md C-14): System follows the OS until stopped;
+ * Light and Dark ignore it; the button cycles System, Light, Dark.
  *
  * @module
  */
 import { describe, expect, it } from 'vitest';
 
-import { followSystemTheme } from './theme';
+import { applyTheme, nextTheme } from './theme';
 
 /** A controllable `prefers-color-scheme` query. */
 function fakeMedia(matches: boolean) {
@@ -25,11 +25,14 @@ function fakeMedia(matches: boolean) {
   };
 }
 
-describe('followSystemTheme', () => {
-  it('applies the OS theme and follows its changes until stopped', () => {
+const asMedia = (m: ReturnType<typeof fakeMedia>) =>
+  m as unknown as MediaQueryList;
+
+describe('applyTheme', () => {
+  it('follows the OS while System, until stopped', () => {
     const root = document.createElement('html');
     const media = fakeMedia(true);
-    const stop = followSystemTheme(root, media as unknown as MediaQueryList);
+    const stop = applyTheme('system', root, asMedia(media));
     expect(root.classList.contains('dark')).toBe(true);
     expect(root.style.colorScheme).toBe('dark');
     media.set(false);
@@ -37,5 +40,24 @@ describe('followSystemTheme', () => {
     stop();
     media.set(true);
     expect(root.classList.contains('dark')).toBe(false);
+  });
+
+  it.each([
+    ['light', false],
+    ['dark', true],
+  ] as const)('keeps %s whatever the OS says', (choice, dark) => {
+    const root = document.createElement('html');
+    const media = fakeMedia(!dark);
+    applyTheme(choice, root, asMedia(media));
+    media.set(!dark);
+    expect(root.classList.contains('dark')).toBe(dark);
+  });
+});
+
+describe('nextTheme', () => {
+  it('cycles System, Light, Dark', () => {
+    expect(nextTheme('system')).toBe('light');
+    expect(nextTheme('light')).toBe('dark');
+    expect(nextTheme('dark')).toBe('system');
   });
 });
