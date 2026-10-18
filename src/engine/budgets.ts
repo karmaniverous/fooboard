@@ -48,6 +48,8 @@ export function budgetTargets({
           readAt = now();
           onBudget(id, await r.readRateLimit());
         },
+        // Never "active": the scheduler's idle pace is plenty, since
+        // refresh itself reads at most every BUDGET_READ_MS.
         isActive: () => false,
       },
     ];

@@ -177,11 +177,11 @@ describe('BoardGrid', () => {
     expect(needs.length).toBeGreaterThan(0);
     expect(needs[0]).toHaveTextContent('needs credential');
     fireEvent.click(needs[0]);
+    const detail = screen.getByRole('dialog', { name: 'Cell detail' });
+    expect(within(detail).getByText('needs credential')).toBeInTheDocument();
     expect(
-      within(screen.getByRole('dialog', { name: 'Cell detail' })).getByText(
-        'needs credential',
-      ),
-    ).toBeInTheDocument();
+      within(detail).getByRole('link', { name: /How to set up a credential/ }),
+    ).toHaveAttribute('href', expect.stringMatching(/#credentials$/));
   });
 
   it('renders a 40 x 8 board (spec.md step 10 size check)', () => {

@@ -69,7 +69,10 @@ export function BoardSummary({
   );
 }
 
-/** Battery segments, and the colour for each number of lit segments. */
+/** Battery segments, and the colour for each number of lit segments. The
+ * battery shows the share left in quarters, its own scale on purpose: the
+ * budget's `low` status (10% left) and polling back-off (50% used) are
+ * engine thresholds, not what a glance at the board should convey. */
 const SEGMENTS = 4;
 const SEGMENT_COLOR = [
   'text-red-600',

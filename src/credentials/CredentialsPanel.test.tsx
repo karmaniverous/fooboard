@@ -169,6 +169,9 @@ describe('CredentialsPanel failures and form hygiene', () => {
   it('links each kind to its README section', () => {
     setup();
     expect(
+      screen.getByRole('link', { name: /The credentials guide/ }),
+    ).toHaveAttribute('href', expect.stringMatching(/#credentials$/));
+    expect(
       screen.getByRole('link', { name: 'How to create a read-only token' }),
     ).toHaveAttribute('href', expect.stringMatching(/#github-token$/));
     expect(
