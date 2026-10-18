@@ -9,6 +9,7 @@
  */
 import { Fragment, useState } from 'react';
 
+import { WithTooltip } from '@/components/ui/tooltip';
 import type { Dashboard } from '@/domain/config/dashboard';
 import { groupSegments } from '@/domain/groups/segments';
 import { type BoardModel, cellKey } from '@/engine';
@@ -139,19 +140,22 @@ export function BoardGrid({
           />
           {stages.map((stage) => {
             return (
-              <div
+              <WithTooltip
                 key={stage.id}
-                role="columnheader"
-                className={cn(
-                  'flex items-center justify-center truncate px-[var(--cell-pad-x)] text-center font-semibold',
-                  pinTop,
-                  colBoundary.has(stage.id) && BOUNDARY.left,
-                )}
-                style={lineRow}
-                title={`${stage.name} (${stage.branchPattern})`}
+                label={`${stage.name} (${stage.branchPattern})`}
               >
-                <span className="truncate">{capText(stage.name)}</span>
-              </div>
+                <div
+                  role="columnheader"
+                  className={cn(
+                    'flex items-center justify-center truncate px-[var(--cell-pad-x)] text-center font-semibold',
+                    pinTop,
+                    colBoundary.has(stage.id) && BOUNDARY.left,
+                  )}
+                  style={lineRow}
+                >
+                  <span className="truncate">{capText(stage.name)}</span>
+                </div>
+              </WithTooltip>
             );
           })}
         </div>
@@ -188,18 +192,19 @@ export function BoardGrid({
                   lineOnRow && ri === 0 ? BOUNDARY.top : undefined;
                 return (
                   <div key={row.id} role="row" className="contents">
-                    <div
-                      role="rowheader"
-                      className={cn(
-                        'flex items-center px-[var(--cell-pad-x)] font-medium',
-                        pinLeft,
-                        rowLine,
-                      )}
-                      style={cellRow}
-                      title={`${row.displayName} (${row.repo})`}
-                    >
-                      <span className="truncate">{row.displayName}</span>
-                    </div>
+                    <WithTooltip label={`${row.displayName} (${row.repo})`}>
+                      <div
+                        role="rowheader"
+                        className={cn(
+                          'flex items-center px-[var(--cell-pad-x)] font-medium',
+                          pinLeft,
+                          rowLine,
+                        )}
+                        style={cellRow}
+                      >
+                        <span className="truncate">{row.displayName}</span>
+                      </div>
+                    </WithTooltip>
                     {stages.map((stage) => {
                       const key = cellKey(row.id, stage.id);
                       return (

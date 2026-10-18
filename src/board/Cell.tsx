@@ -104,9 +104,7 @@ function Lines({
 
 /** Free text: cut off with an ellipsis at the column width. */
 const Free = ({ children }: { children: string }) => (
-  <span className="min-w-0 truncate" title={children}>
-    {children}
-  </span>
+  <span className="min-w-0 truncate">{children}</span>
 );
 
 export function Cell({
@@ -147,7 +145,6 @@ export function Cell({
           pad,
           EMPTY_CLASS[derivation.state],
         )}
-        title={derivation.reason}
         onClick={onOpenSheet}
         {...inspect}
       >
@@ -155,9 +152,7 @@ export function Cell({
           lineOf={lineOf}
           center={rung === 0}
           lead={
-            <span title={rung === 0 ? label : undefined}>
-              {rung === 0 ? EMPTY_SYMBOL[derivation.state] : label}
-            </span>
+            <span>{rung === 0 ? EMPTY_SYMBOL[derivation.state] : label}</span>
           }
           items={
             rung >= 4 && extra
@@ -179,7 +174,6 @@ export function Cell({
     <ExternalLink
       unstyled
       href={compare?.htmlUrl}
-      title={badgeDescription(badge)}
       aria-label={badgeDescription(badge)}
       className={cn(
         // Coloured fill and solid border in the badge colour; nothing drawn

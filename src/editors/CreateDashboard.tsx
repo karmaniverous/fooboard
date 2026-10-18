@@ -8,7 +8,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 import { ActionError } from '@/components/ActionError';
-import { NativeSelect } from '@/components/NativeSelect';
+import { Choice } from '@/components/Choice';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useActionError } from '@/components/useActionError';
@@ -55,20 +55,14 @@ export function CreateDashboard(): React.JSX.Element {
           setName(e.target.value);
         }}
       />
-      <NativeSelect
-        aria-label="Starting stages"
-        className="h-9 w-full px-2 text-sm"
+      <Choice
+        label="Starting stages"
         value={preset}
-        onChange={(e) => {
-          setPreset(e.target.value as BranchPresetId);
+        options={PRESET_CHOICES.map((p) => ({ value: p.id, label: p.label }))}
+        onValueChange={(v) => {
+          setPreset(v as BranchPresetId);
         }}
-      >
-        {PRESET_CHOICES.map((p) => (
-          <option key={p.id} value={p.id}>
-            {p.label}
-          </option>
-        ))}
-      </NativeSelect>
+      />
       <ActionError error={error} />
       <Button type="submit" disabled={!name.trim()} className="self-start">
         Create a dashboard

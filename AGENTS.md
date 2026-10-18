@@ -48,6 +48,7 @@ These checks **start from the code the PR touched**. That is the point of depart
 - **Every non-test module starts with a TSDoc `@module` comment** saying what it is for.
 - **Tests sit next to the code** (`*.test.ts(x)`). Use fakes for ports. Provider fixtures are recorded from real API responses, then trimmed and anonymised to `acme/*`.
 - **UI** follows the jeeves-server kit: Tailwind v4 tokens and shadcn-style components in `src/components/ui`, outbound links through `ExternalLink`.
+- **Use library controls.** Build UI from the component library (shadcn-style components over Radix primitives in `src/components/ui`; add the library's component when one is missing) rather than hand-rolling a tooltip, dialog, sheet, tabs, toggle group, checkbox, collapsible or similar. Hand-roll only with a compelling reason the library can't meet, and say why in a comment. (Deliberate exception: `ConfirmButton`'s inline confirm.)
 - **Windows-friendly scripts**: write repo scripts in TypeScript, not shell.
 
 ## Security

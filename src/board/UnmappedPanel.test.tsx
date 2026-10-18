@@ -127,8 +127,8 @@ describe('UnmappedPanel', () => {
       </StoresContext>,
     );
     fireEvent.click(screen.getByRole('button', { name: 'Add test' }));
-    expect(screen.getByRole('button', { name: 'Rows' })).toHaveAttribute(
-      'aria-pressed',
+    expect(screen.getByRole('tab', { name: 'Rows' })).toHaveAttribute(
+      'aria-selected',
       'true',
     );
     expect(

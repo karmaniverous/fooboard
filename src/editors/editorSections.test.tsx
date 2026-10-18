@@ -19,6 +19,7 @@ import type { GitHubReader } from '@/lib/github/reader';
 import { createAppStores } from '@/storage';
 import { memoryStorage } from '@/storage/keyValue';
 import { StoresContext } from '@/storage/storesContext';
+import { choose } from '@/test/choose';
 
 import { DashboardEditor } from './DashboardEditor';
 
@@ -77,7 +78,7 @@ function setup(github: Partial<GitHubReader> = {}) {
   return latest;
 }
 const tab = (name: string) => {
-  fireEvent.click(screen.getByRole('button', { name }));
+  fireEvent.mouseDown(screen.getByRole('tab', { name }), { button: 0 });
 };
 
 describe('editor sections', () => {
@@ -108,9 +109,7 @@ describe('editor sections', () => {
   it('creates a labelled column group from a stage', () => {
     const latest = setup();
     tab('Stages');
-    fireEvent.change(screen.getByLabelText('Group of prod'), {
-      target: { value: 'new' },
-    });
+    choose(screen.getByLabelText('Group of prod'), 'New group from prod');
     const label = screen.getByLabelText('Label of the group of prod');
     fireEvent.change(label, { target: { value: 'Production' } });
     fireEvent.blur(label);

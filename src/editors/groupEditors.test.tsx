@@ -18,6 +18,7 @@ import type { GitHubReader } from '@/lib/github/reader';
 import { createAppStores } from '@/storage';
 import { memoryStorage } from '@/storage/keyValue';
 import { StoresContext } from '@/storage/storesContext';
+import { choose, optionsOf } from '@/test/choose';
 
 import { DashboardEditor } from './DashboardEditor';
 import type { EditorDraft } from './draft';
@@ -71,11 +72,22 @@ function setup(initial: Dashboard = start, draft?: EditorDraft) {
       </MemoryRouter>
     </StoresContext>,
   );
-  fireEvent.click(screen.getByRole('button', { name: 'Rows' }));
+  fireEvent.mouseDown(screen.getByRole('tab', { name: 'Rows' }), {
+    button: 0,
+  });
   return latest;
 }
 
+/** Open every closed *Branch overrides* section. */
+const openOverrides = () => {
+  for (const t of screen.queryAllByRole('button', {
+    name: /^Branch overrides/,
+  }))
+    if (t.getAttribute('aria-expanded') !== 'true') fireEvent.click(t);
+};
+
 const commit = (label: string, value: string) => {
+  openOverrides();
   const field = screen.getByLabelText(label);
   fireEvent.change(field, { target: { value } });
   fireEvent.blur(field);
@@ -84,12 +96,8 @@ const commit = (label: string, value: string) => {
 describe('row groups in the editor', () => {
   it("starts a group from a row; members show the group's settings as inherited", () => {
     const latest = setup();
-    fireEvent.change(screen.getByLabelText('Group of api'), {
-      target: { value: 'new' },
-    });
-    fireEvent.change(screen.getByLabelText('GitHub token for this group'), {
-      target: { value: 'team' },
-    });
+    choose(screen.getByLabelText('Group of api'), 'New group from api');
+    choose(screen.getByLabelText('GitHub token for this group'), 'team');
     commit('prod branch override for this group', 'release/*');
     expect(latest.current.rowGroups).toEqual([
       {
@@ -100,9 +108,8 @@ describe('row groups in the editor', () => {
       },
     ]);
     const token = screen.getByLabelText('GitHub token for api');
-    expect(within(token).getAllByRole('option')[0]).toHaveTextContent(
-      "team (the group's default)",
-    );
+    expect(optionsOf(token)[0]).toBe("team (the group's default)");
+    openOverrides();
     expect(
       screen.getByLabelText('prod branch override for api'),
     ).toHaveAttribute('placeholder', 'release/* (inherited)');
@@ -125,6 +132,7 @@ describe('row groups in the editor', () => {
 
   it("finds a row's branches and offers them in its fields, not as a list", async () => {
     setup();
+    openOverrides();
     fireEvent.click(
       screen.getAllByRole('button', {
         name: 'Find branches',
@@ -139,6 +147,7 @@ describe('row groups in the editor', () => {
       'main',
       'rc/1',
     ]);
+    openOverrides();
     expect(
       screen.getByLabelText('dev branch override for api'),
     ).toHaveAttribute('list');
@@ -185,12 +194,8 @@ describe('row groups in the editor', () => {
     const fix = screen.getByRole('group', {
       name: 'Override for preview/release',
     });
-    fireEvent.change(within(fix).getByLabelText('Stage to override'), {
-      target: { value: 'prod' },
-    });
-    fireEvent.change(within(fix).getByLabelText('Override scope'), {
-      target: { value: 'group:g' },
-    });
+    choose(within(fix).getByLabelText('Stage to override'), 'prod');
+    choose(within(fix).getByLabelText('Override scope'), 'group Frontend');
     fireEvent.click(within(fix).getByRole('button', { name: 'Apply' }));
     expect(latest.current.rowGroups[0]?.branchPatternOverrides).toEqual({
       prod: 'preview/release',
@@ -219,12 +224,8 @@ describe('row groups in the editor', () => {
     });
     const fix = screen.getByRole('group', { name: 'Override for hotfix/1' });
     const target = within(fix).getByLabelText('Override scope');
-    expect(
-      within(target)
-        .getAllByRole('option')
-        .map((o) => o.textContent),
-    ).toEqual(['row api', 'row api-jobs']);
-    fireEvent.change(target, { target: { value: 'row:api-jobs' } });
+    expect(optionsOf(target)).toEqual(['row api', 'row api-jobs']);
+    choose(target, 'row api-jobs');
     fireEvent.click(within(fix).getByRole('button', { name: 'Apply' }));
     expect(latest.current.rows[1]?.branchPatternOverrides).toEqual({
       dev: 'hotfix/1',

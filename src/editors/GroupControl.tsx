@@ -5,8 +5,8 @@
  *
  * @module
  */
+import { Choice } from '@/components/Choice';
 import { ConfirmButton } from '@/components/ConfirmButton';
-import { NativeSelect } from '@/components/NativeSelect';
 import type { Dashboard } from '@/domain/config/dashboard';
 import { groupOf } from '@/domain/config/groups';
 
@@ -43,22 +43,22 @@ export function GroupControl({
     rowGroup?.memberIds.length === 1 && carriesSettings(rowGroup);
   return (
     <div className="flex flex-wrap items-center gap-1 text-xs">
-      <NativeSelect
-        aria-label={`Group of ${name}`}
-        className="h-7 px-1"
+      <Choice
+        label={`Group of ${name}`}
+        className="h-7"
         value={current?.id ?? ''}
-        onChange={(e) => {
-          onChange(setGroup(dashboard, axis, itemId, e.target.value || null));
+        options={[
+          { value: '', label: 'No group' },
+          ...groups.map((g) => ({
+            value: g.id,
+            label: `Group: ${g.label ?? '(no label)'}`,
+          })),
+          { value: 'new', label: `New group from ${name}` },
+        ]}
+        onValueChange={(v) => {
+          onChange(setGroup(dashboard, axis, itemId, v || null));
         }}
-      >
-        <option value="">No group</option>
-        {groups.map((g) => (
-          <option key={g.id} value={g.id}>
-            Group: {g.label ?? '(no label)'}
-          </option>
-        ))}
-        <option value="new">New group from {name}</option>
-      </NativeSelect>
+      />
       {current && (
         <>
           <CommitInput

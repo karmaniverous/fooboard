@@ -9,7 +9,7 @@
  */
 import { useState } from 'react';
 
-import { NativeSelect } from '@/components/NativeSelect';
+import { Choice } from '@/components/Choice';
 import { Button } from '@/components/ui/button';
 import type { Dashboard } from '@/domain/config/dashboard';
 import { groupOf, type RowGroup } from '@/domain/config/groups';
@@ -163,35 +163,21 @@ function OverrideFix({
       <span>
         Use <code>{branch}</code> for
       </span>
-      <NativeSelect
-        aria-label="Stage to override"
-        className="h-7 px-1"
+      <Choice
+        label="Stage to override"
+        className="h-7"
         value={stageId}
-        onChange={(e) => {
-          setStageId(e.target.value);
-        }}
-      >
-        {dashboard.stages.map((s) => (
-          <option key={s.id} value={s.id}>
-            {s.name}
-          </option>
-        ))}
-      </NativeSelect>
+        options={dashboard.stages.map((s) => ({ value: s.id, label: s.name }))}
+        onValueChange={setStageId}
+      />
       <span>on</span>
-      <NativeSelect
-        aria-label="Override scope"
-        className="h-7 px-1"
+      <Choice
+        label="Override scope"
+        className="h-7"
         value={target}
-        onChange={(e) => {
-          setTarget(e.target.value);
-        }}
-      >
-        {targets.map((t) => (
-          <option key={t.value} value={t.value}>
-            {t.label}
-          </option>
-        ))}
-      </NativeSelect>
+        options={targets}
+        onValueChange={setTarget}
+      />
       <Button
         size="sm"
         disabled={!stageId}

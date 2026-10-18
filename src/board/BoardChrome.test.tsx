@@ -27,18 +27,18 @@ describe('BoardSummary', () => {
     const { rerender } = render(
       <BoardSummary model={model} filter={null} onFilter={onFilter} />,
     );
-    fireEvent.click(screen.getByRole('button', { name: /failing/ }));
+    fireEvent.click(screen.getByRole('radio', { name: /failing/ }));
     expect(onFilter).toHaveBeenLastCalledWith('failing');
     rerender(
       <BoardSummary model={model} filter="failing" onFilter={onFilter} />,
     );
-    fireEvent.click(screen.getByRole('button', { name: /failing/ }));
+    fireEvent.click(screen.getByRole('radio', { name: /failing/ }));
     expect(onFilter).toHaveBeenLastCalledWith(null);
   });
 });
 
 describe('BoardSummary without words', () => {
-  it('names each chip in a hover title', () => {
+  it('names each chip in a tooltip', async () => {
     render(
       <BoardSummary
         model={model}
@@ -47,10 +47,8 @@ describe('BoardSummary without words', () => {
         words={false}
       />,
     );
-    expect(screen.getByRole('button', { name: '0 failing' })).toHaveAttribute(
-      'title',
-      '0 failing',
-    );
+    fireEvent.focus(screen.getByRole('radio', { name: '0 failing' }));
+    expect(await screen.findByRole('tooltip')).toHaveTextContent('0 failing');
   });
 });
 

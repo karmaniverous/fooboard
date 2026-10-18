@@ -4,7 +4,8 @@
  *
  * @module
  */
-import { ToggleButton } from '@/components/ToggleButton';
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
+import { WithTooltip } from '@/components/ui/tooltip';
 import type { BoardModel } from '@/engine';
 import { cn } from '@/lib/utils';
 
@@ -33,28 +34,38 @@ export function BoardSummary({
 }): React.JSX.Element {
   const counts = summarize(model);
   return (
-    <div
-      role="group"
+    <ToggleGroup
+      type="single"
       aria-label="Filter cells"
-      className="flex flex-wrap gap-1.5"
+      className="flex-wrap gap-1.5"
+      value={filter ?? ''}
+      onValueChange={(v) => {
+        onFilter(FILTERS.find((f) => f === v) ?? null);
+      }}
     >
-      {FILTERS.map((f) => (
-        <ToggleButton
-          key={f}
-          pressed={filter === f}
-          aria-label={`${String(counts[f])} ${f}`}
-          title={words ? undefined : `${String(counts[f])} ${f}`}
-          className="inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5"
-          onClick={() => {
-            onFilter(filter === f ? null : f);
-          }}
-        >
-          <span aria-hidden className={cn('rounded-full', DOT[f])} />
-          {counts[f]}
-          {words && <span>{f}</span>}
-        </ToggleButton>
-      ))}
-    </div>
+      {FILTERS.map((f) => {
+        const chip = (
+          <ToggleGroupItem
+            key={f}
+            value={f}
+            aria-label={`${String(counts[f])} ${f}`}
+            className="inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5"
+          >
+            <span aria-hidden className={cn('rounded-full', DOT[f])} />
+            {counts[f]}
+            {words && <span>{f}</span>}
+          </ToggleGroupItem>
+        );
+        // Without its word, a chip says what it counts on hover (C-14a).
+        return words ? (
+          chip
+        ) : (
+          <WithTooltip key={f} label={`${String(counts[f])} ${f}`}>
+            {chip}
+          </WithTooltip>
+        );
+      })}
+    </ToggleGroup>
   );
 }
 
@@ -90,36 +101,40 @@ export function BudgetMeter({
         const lit = Math.ceil(share * SEGMENTS - 1e-9);
         const label = `GitHub ${b.id}: ${b.remaining.toLocaleString()} of ${b.limit.toLocaleString()} requests left, resets ${new Date(b.reset * 1000).toLocaleTimeString()}`;
         return (
-          <span
-            key={b.id}
-            role="meter"
-            aria-label={label}
-            aria-valuemin={0}
-            aria-valuemax={b.limit}
-            aria-valuenow={b.remaining}
-            title={label}
-            className={cn(
-              'flex flex-col items-center',
-              SEGMENT_COLOR[lit] ?? SEGMENT_COLOR[0],
-            )}
-          >
-            {/* Upright battery: nub on top, segments filled from the bottom. */}
-            <span aria-hidden className="h-0.5 w-1.5 rounded-t-sm bg-current" />
+          <WithTooltip key={b.id} label={label}>
             <span
-              aria-hidden
-              className="flex h-5 w-3.5 flex-col-reverse gap-px rounded-[3px] border-[1.5px] border-current p-px"
+              tabIndex={0}
+              role="meter"
+              aria-label={label}
+              aria-valuemin={0}
+              aria-valuemax={b.limit}
+              aria-valuenow={b.remaining}
+              className={cn(
+                'flex flex-col items-center',
+                SEGMENT_COLOR[lit] ?? SEGMENT_COLOR[0],
+              )}
             >
-              {Array.from({ length: SEGMENTS }, (_, i) => (
-                <span
-                  key={i}
-                  className={cn(
-                    'flex-1 rounded-[1px]',
-                    i < lit && 'bg-current',
-                  )}
-                />
-              ))}
+              {/* Upright battery: nub on top, segments filled from the bottom. */}
+              <span
+                aria-hidden
+                className="h-0.5 w-1.5 rounded-t-sm bg-current"
+              />
+              <span
+                aria-hidden
+                className="flex h-5 w-3.5 flex-col-reverse gap-px rounded-[3px] border-[1.5px] border-current p-px"
+              >
+                {Array.from({ length: SEGMENTS }, (_, i) => (
+                  <span
+                    key={i}
+                    className={cn(
+                      'flex-1 rounded-[1px]',
+                      i < lit && 'bg-current',
+                    )}
+                  />
+                ))}
+              </span>
             </span>
-          </span>
+          </WithTooltip>
         );
       })}
     </div>

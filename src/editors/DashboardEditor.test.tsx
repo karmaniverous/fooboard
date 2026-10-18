@@ -18,6 +18,7 @@ import { Home } from '@/pages/Home';
 import { createAppStores } from '@/storage';
 import { memoryStorage } from '@/storage/keyValue';
 import { StoresContext } from '@/storage/storesContext';
+import { optionsOf } from '@/test/choose';
 
 import { DashboardEditor } from './DashboardEditor';
 
@@ -87,7 +88,7 @@ function setup() {
 }
 
 const tab = (name: string) => {
-  fireEvent.click(screen.getByRole('button', { name }));
+  fireEvent.mouseDown(screen.getByRole('tab', { name }), { button: 0 });
 };
 
 describe('DashboardEditor', () => {
@@ -159,10 +160,7 @@ describe('DashboardEditor', () => {
     setup();
     tab('Stages');
     const source = screen.getByLabelText('Source stage of dev');
-    const options = within(source)
-      .getAllByRole('option')
-      .map((o) => o.textContent);
-    expect(options).toEqual(['No source stage']); // prod already sources from dev
+    expect(optionsOf(source)).toEqual(['No source stage']); // prod already sources from dev
   });
 });
 

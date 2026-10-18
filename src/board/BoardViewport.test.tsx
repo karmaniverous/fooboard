@@ -92,14 +92,14 @@ describe('BoardViewport', () => {
     const stores = setup();
     const field = screen.getByLabelText('Zoom');
     expect(field).toHaveValue('100%');
-    expect(screen.getByTitle('Zoom to 100%')).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Zoom to 100%' })).toBeDisabled();
     fireEvent.click(screen.getByRole('button', { name: 'Zoom in' }));
     expect(stores.preferences.getView('demo')).toMatchObject({
       zoom: 1.1,
       boardSize: '19x6',
     });
     expect(field).toHaveValue('110%');
-    fireEvent.click(screen.getByTitle('Zoom to 100%'));
+    fireEvent.click(screen.getByRole('button', { name: 'Zoom to 100%' }));
     expect(field).toHaveValue('100%');
   });
 
@@ -128,10 +128,10 @@ describe('BoardViewport', () => {
 
   it('saves the density', () => {
     const stores = setup();
-    fireEvent.click(screen.getByRole('button', { name: 'comfortable' }));
+    fireEvent.click(screen.getByRole('radio', { name: 'comfortable' }));
     expect(stores.preferences.getView('demo').density).toBe('comfortable');
-    expect(screen.getByRole('button', { name: 'comfortable' })).toHaveAttribute(
-      'aria-pressed',
+    expect(screen.getByRole('radio', { name: 'comfortable' })).toHaveAttribute(
+      'aria-checked',
       'true',
     );
   });

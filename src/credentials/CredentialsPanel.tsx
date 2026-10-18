@@ -8,15 +8,18 @@
  *
  * @module
  */
-import { useState } from 'react';
+import { useId, useState } from 'react';
 import { Link } from 'react-router-dom';
 
 import { ActionError } from '@/components/ActionError';
+import { Choice } from '@/components/Choice';
 import { ConfirmButton } from '@/components/ConfirmButton';
-import { NativeSelect } from '@/components/NativeSelect';
 import { SecretInput } from '@/components/SecretInput';
 import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { WithTooltip } from '@/components/ui/tooltip';
 import { useActionError } from '@/components/useActionError';
 import type {
   CredentialKind,
@@ -64,6 +67,7 @@ function SecretFields({
   const [keyId, setKeyId] = useState('');
   const [secretKey, setSecretKey] = useState('');
   const [remember, setRemember] = useState(false);
+  const rememberId = useId();
   const secret: CredentialSecret | undefined =
     kind === 'github'
       ? token.trim()
@@ -120,16 +124,18 @@ function SecretFields({
           />
         </>
       )}
-      <label className="flex items-center gap-2 text-xs">
-        <input
-          type="checkbox"
+      <div className="flex items-center gap-2">
+        <Checkbox
+          id={rememberId}
           checked={remember}
-          onChange={(e) => {
-            setRemember(e.target.checked);
+          onCheckedChange={(checked) => {
+            setRemember(checked === true);
           }}
         />
-        Remember on this device (otherwise kept only until this tab closes)
-      </label>
+        <Label htmlFor={rememberId}>
+          Remember on this device (otherwise kept only until this tab closes)
+        </Label>
+      </div>
       <p className="text-xs text-muted-foreground">
         {WORST_CASE[kind]}{' '}
         <Link to={`${GUIDE}#leaks`} className="underline underline-offset-2">
@@ -183,12 +189,13 @@ function CredentialItem({
         )}
         <div className="ml-auto flex gap-1">
           {isDefault ? (
-            <span
-              className="text-xs text-muted-foreground"
-              title={`Rows use this ${KIND_LABEL[kind]} unless they or their group choose another.`}
+            <WithTooltip
+              label={`Rows use this ${KIND_LABEL[kind]} unless they or their group choose another.`}
             >
-              {`Dashboard's default ${KIND_LABEL[kind]}`}
-            </span>
+              <span tabIndex={0} className="text-xs text-muted-foreground">
+                {`Dashboard's default ${KIND_LABEL[kind]}`}
+              </span>
+            </WithTooltip>
           ) : (
             <Button
               size="sm"
@@ -293,17 +300,17 @@ export function CredentialsPanel({
       <section className="flex flex-col gap-2 rounded-md border p-3">
         <h3 className="font-semibold">Add a credential</h3>
         <div className="flex gap-2">
-          <NativeSelect
-            aria-label="Kind"
-            className="px-2 text-sm"
+          <Choice
+            label="Kind"
             value={kind}
-            onChange={(e) => {
-              setKind(e.target.value as CredentialKind);
+            options={(['github', 'aws'] as const).map((k) => ({
+              value: k,
+              label: KIND_LABEL[k],
+            }))}
+            onValueChange={(v) => {
+              setKind(v as CredentialKind);
             }}
-          >
-            <option value="github">{KIND_LABEL.github}</option>
-            <option value="aws">{KIND_LABEL.aws}</option>
-          </NativeSelect>
+          />
           <Input
             aria-label="Name"
             placeholder="Name, e.g. acme-board"

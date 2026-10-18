@@ -10,7 +10,7 @@
  */
 import { useState } from 'react';
 
-import { NativeSelect } from '@/components/NativeSelect';
+import { Choice } from '@/components/Choice';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { wouldCreateCycle } from '@/domain/config/cycle';
@@ -164,26 +164,20 @@ export function StagesEditor({
                 }}
               />
             </div>
-            <NativeSelect
-              aria-label={`Source stage of ${stage.name}`}
-              className="h-8 px-1"
+            <Choice
+              label={`Source stage of ${stage.name}`}
+              className="h-8"
               value={stage.sourceStageId ?? ''}
-              onChange={(e) => {
-                replace({
-                  ...stage,
-                  sourceStageId: e.target.value || undefined,
-                });
+              options={[
+                { value: '', label: 'No source stage' },
+                ...stages
+                  .filter((s) => !wouldCreateCycle(stages, stage.id, s.id))
+                  .map((s) => ({ value: s.id, label: `Source: ${s.name}` })),
+              ]}
+              onValueChange={(v) => {
+                replace({ ...stage, sourceStageId: v || undefined });
               }}
-            >
-              <option value="">No source stage</option>
-              {stages
-                .filter((s) => !wouldCreateCycle(stages, stage.id, s.id))
-                .map((s) => (
-                  <option key={s.id} value={s.id}>
-                    Source: {s.name}
-                  </option>
-                ))}
-            </NativeSelect>
+            />
             <GroupControl
               dashboard={dashboard}
               axis="stages"
