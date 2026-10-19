@@ -1,0 +1,38 @@
+[
+ {
+  "status": "FAILED",
+  "shows": "failed"
+ },
+ {
+  "status": "CANCELLED",
+  "shows": "cancelled"
+ },
+ {
+  "status": "CANCELLING",
+  "shows": "cancelled"
+ },
+ {
+  "status": "RUNNING",
+  "shows": "running"
+ },
+ {
+  "status": "PENDING",
+  "shows": "queued"
+ },
+ {
+  "status": "PROVISIONING",
+  "shows": "queued"
+ },
+ {
+  "status": "CREATED",
+  "shows": "queued"
+ },
+ {
+  "status": "SUCCEED",
+  "shows": "deployed"
+ },
+ {
+  "status": "UNEXPECTED",
+  "shows": "unknown"
+ }
+]

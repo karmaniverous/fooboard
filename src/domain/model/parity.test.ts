@@ -107,25 +107,30 @@ function newStatus(setId: string, entry: unknown): string | undefined {
 }
 
 describe('parity with the PR S presets', () => {
-  it.each(['github-deploy-test', 'github-single-job'])('%s', (id) => {
+  it.each(['github-deploy-test', 'github-single-job'])('%s', async (id) => {
     const preset = presetById(id);
     const cases = mixes();
     expect(cases.length).toBeGreaterThan(400);
-    for (const jobs of cases) {
+    const rows = cases.map((jobs) => {
       const entry = run(jobs);
       const doc = githubRunDocument(entry, [], preset.jobs);
-      const old = doc ? (classifyOld(doc, preset)?.id ?? 'unknown') : undefined;
-      expect({
-        jobs: jobs.map((j) => [j.name, j.status, j.conclusion]),
-        status: newStatus(id, entry),
-      }).toEqual({
-        jobs: jobs.map((j) => [j.name, j.status, j.conclusion]),
-        status: old,
-      });
-    }
+      return {
+        jobs: jobs.map((j) => [j.name, j.status, j.conclusion].join(' ')),
+        status: doc ? (classifyOld(doc, preset)?.id ?? 'unknown') : 'none',
+      };
+    });
+    // The PR S results, frozen; the rules must keep giving them.
+    await expect(JSON.stringify(rows, null, 1)).toMatchFileSnapshot(
+      `./__fixtures__/parity-${id}.json`,
+    );
+    for (const [i, jobs] of cases.entries())
+      expect([i, newStatus(id, run(jobs)) ?? 'none']).toEqual([
+        i,
+        rows[i]?.status,
+      ]);
   });
 
-  it('amplify', () => {
+  it('amplify', async () => {
     const preset = presetById('amplify');
     const statuses = [
       'FAILED',
@@ -136,8 +141,26 @@ describe('parity with the PR S presets', () => {
       'PROVISIONING',
       'CREATED',
       'SUCCEED',
+      'UNEXPECTED',
     ];
-    for (const status of statuses) {
+    const rows = statuses.map((status) => ({
+      status,
+      shows:
+        classifyOld(
+          {
+            branch: 'main',
+            status,
+            commitId: 'abc',
+            startTime: null,
+            endTime: null,
+          },
+          preset,
+        )?.id ?? 'unknown',
+    }));
+    await expect(JSON.stringify(rows, null, 1)).toMatchFileSnapshot(
+      './__fixtures__/parity-amplify.json',
+    );
+    for (const { status, shows } of rows) {
       const raw = {
         source: { region: 'us-east-1', appId: 'a' },
         branch: 'main',
@@ -149,17 +172,7 @@ describe('parity with the PR S presets', () => {
         },
         consoleUrl: 'https://console.aws.amazon.com/amplify',
       };
-      const old = classifyOld(
-        {
-          branch: 'main',
-          status,
-          commitId: 'abc',
-          startTime: null,
-          endTime: null,
-        },
-        preset,
-      )?.id;
-      expect([status, newStatus('amplify', raw)]).toEqual([status, old]);
+      expect([status, newStatus('amplify', raw)]).toEqual([status, shows]);
     }
   });
 });
