@@ -18,6 +18,7 @@ import { sourceRuleFor } from '@/domain/model/sources';
 import { itemsOf, type RecordDoc } from '@/domain/model/translate';
 import { type Problem, targetOf } from '@/domain/problems/problem';
 import { escapeGlob } from '@/domain/rules/glob';
+import { PATH_IDENTIFIER } from '@/domain/rules/path';
 import type { Check } from '@/domain/rules/schema';
 import { statusSetFor } from '@/domain/statuses/resolve';
 import type { UnmappedRun } from '@/engine';
@@ -49,7 +50,7 @@ function draftCheck(doc: RecordDoc, skip?: string): Check | undefined {
       e[0] !== skip &&
       typeof e[1] === 'string' &&
       e[1] !== '' &&
-      /^[A-Za-z_]\w*$/.test(e[0]),
+      PATH_IDENTIFIER.test(e[0]),
   );
   return hit ? is(`$.${hit[0]}`, escapeGlob(hit[1])) : undefined;
 }

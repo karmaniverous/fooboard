@@ -24,6 +24,7 @@ import {
   evaluateCheck,
   evaluateRule,
 } from '@/domain/rules/check';
+import { PATH_IDENTIFIER } from '@/domain/rules/path';
 import { type Check, CheckSchema, type Rule } from '@/domain/rules/schema';
 import { patchAt } from '@/lib/lists';
 
@@ -45,7 +46,7 @@ const COMBINES: { value: Rule['combine']; label: string }[] = [
 const itemKeys = (records: readonly RecordDoc[]): string[] => {
   const keys = samplePaths(records, 'item').map((p) => p.replace(/^\$\./, ''));
   return keys.length > 0
-    ? keys.filter((k) => /^[A-Za-z_]\w*$/.test(k))
+    ? keys.filter((k) => PATH_IDENTIFIER.test(k))
     : ['name', 'state'];
 };
 

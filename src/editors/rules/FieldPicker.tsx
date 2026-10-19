@@ -8,11 +8,12 @@
  */
 import type { JSONValue } from 'json-p3';
 
+import { pathStep } from '@/domain/rules/path';
+
 const MAX_DEPTH = 6;
 const PREVIEW = 40;
 
-const step = (key: string): string =>
-  /^[A-Za-z_]\w*$/.test(key) ? `.${key}` : `['${key.replace(/'/g, "\\'")}']`;
+const step = pathStep;
 
 const preview = (v: JSONValue): string => {
   const text = JSON.stringify(v);

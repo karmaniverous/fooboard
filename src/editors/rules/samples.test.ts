@@ -6,6 +6,8 @@
  */
 import { describe, expect, it } from 'vitest';
 
+import { compilePath, valuesAt } from '@/domain/rules/path';
+
 import { ruleSamples, samplePaths } from './samples';
 
 const record = {
@@ -27,6 +29,16 @@ describe('samplePaths', () => {
         '$.workflow',
       ].sort(),
     );
+  });
+
+  it('offers keys with quotes or backslashes as paths that find them', () => {
+    const odd = { "it's": 1, 'a\\b': 2 };
+    const found = samplePaths([odd]).map((p) => {
+      const path = compilePath(p);
+      return path.ok ? valuesAt(path.query, odd) : path.message;
+    });
+    expect(found).toHaveLength(2);
+    expect(found).toEqual(expect.arrayContaining([[1], [2]]));
   });
 
   it('offers item keys at item scope', () => {

@@ -12,7 +12,7 @@ import { createContext, useContext } from 'react';
 import type { Provider } from '@/domain/config/providers';
 import { UNKNOWN_STATUS_ID } from '@/domain/config/statusSets';
 import type { RecordDoc } from '@/domain/model/translate';
-import { compilePath, valuesAt } from '@/domain/rules/path';
+import { compilePath, pathStep, valuesAt } from '@/domain/rules/path';
 
 export type RuleSamples = Partial<Record<Provider, readonly RecordDoc[]>>;
 
@@ -46,8 +46,7 @@ export function samplePaths(
   scope: 'record' | 'item' = 'record',
 ): string[] {
   const paths = new Set<string>();
-  const name = (k: string) =>
-    /^[A-Za-z_][\w]*$/.test(k) ? `.${k}` : `['${k}']`;
+  const name = pathStep;
   for (const record of records) {
     const items = Array.isArray(record.items) ? record.items : [];
     for (const item of items)
