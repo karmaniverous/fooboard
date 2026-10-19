@@ -24,6 +24,12 @@ export const DEFAULT_SOURCE_RULE_IDS = {
   amplify: 'amplify',
 } as const satisfies Record<Provider, string>;
 
+/** The key each built-in source rule orders records by. */
+export const BUILTIN_ORDER_KEYS = {
+  github: 'created',
+  amplify: 'started',
+} as const satisfies Record<Provider, string>;
+
 const github = SourceRuleSchema.parse({
   id: DEFAULT_SOURCE_RULE_IDS.github,
   name: PROVIDER_LABELS.github,
@@ -39,7 +45,10 @@ const github = SourceRuleSchema.parse({
     },
     { name: 'time', translations: [copy('$.run.createdAt')] },
     { name: 'link', translations: [copy('$.run.htmlUrl')] },
-    { name: 'created', translations: [copy('$.run.createdAt')] },
+    {
+      name: BUILTIN_ORDER_KEYS.github,
+      translations: [copy('$.run.createdAt')],
+    },
   ],
   items: {
     path: '$.jobs[*]',
@@ -76,7 +85,7 @@ const github = SourceRuleSchema.parse({
       { name: 'link', translations: [copy('$.htmlUrl')] },
     ],
   },
-  order: 'created',
+  order: BUILTIN_ORDER_KEYS.github,
 });
 
 const amplify = SourceRuleSchema.parse({
@@ -92,7 +101,10 @@ const amplify = SourceRuleSchema.parse({
       translations: [copy('$.job.endTime'), copy('$.job.startTime'), give('')],
     },
     { name: 'link', translations: [copy('$.consoleUrl')] },
-    { name: 'started', translations: [copy('$.job.startTime')] },
+    {
+      name: BUILTIN_ORDER_KEYS.amplify,
+      translations: [copy('$.job.startTime')],
+    },
     {
       name: 'state',
       translations: [
@@ -107,7 +119,7 @@ const amplify = SourceRuleSchema.parse({
       ],
     },
   ],
-  order: 'started',
+  order: BUILTIN_ORDER_KEYS.amplify,
 });
 
 /** The built-in source rules. */

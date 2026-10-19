@@ -16,12 +16,17 @@ import { PRESETS } from '@/domain/statuses/presets';
 import { UNKNOWN } from '@/domain/statuses/resolved';
 import type { BoardModel } from '@/engine';
 
-import { badgeText, EMPTY_LABEL, EMPTY_SYMBOL } from './cellView';
-import { capText, type Rung } from './layout';
+import {
+  badgeText,
+  EMPTY_LABEL,
+  EMPTY_SYMBOL,
+  SHORT_SHA_LENGTH,
+} from './cellView';
+import { capText, type Rung, RUNG_SHOWS } from './layout';
 import { type Content, type Item } from './packing';
 
 /** Longest forms of the fixed fields. */
-const LONGEST = { time: '59m', commit: '0000000' } as const;
+const LONGEST = { time: '59m', commit: '0'.repeat(SHORT_SHA_LENGTH) } as const;
 
 /** The longest status name any cell could show: across every preset, the
  * dashboard's own sets and Unknown, so polling never reflows the board. */
@@ -81,20 +86,21 @@ export function boardContents(
         out.push({
           lead: rung === 0 ? EMPTY_SYMBOL[d.state] : EMPTY_LABEL[d.state],
           items:
-            rung >= 4 && extra
+            rung >= RUNG_SHOWS.branch && extra
               ? [{ key: 'extra', text: capText(extra), free: true }]
               : [],
         });
         continue;
       }
       const items: Item[] = [];
-      if (rung >= 2) items.push({ key: 'time', text: LONGEST.time });
-      if (rung >= 3) {
+      if (rung >= RUNG_SHOWS.time)
+        items.push({ key: 'time', text: LONGEST.time });
+      if (rung >= RUNG_SHOWS.commit) {
         items.push({ key: 'commit', text: LONGEST.commit, badge: widestBadge });
       }
-      if (rung >= 4 && d.branch)
+      if (rung >= RUNG_SHOWS.branch && d.branch)
         items.push({ key: 'branch', text: capText(d.branch), free: true });
-      if (rung >= 5 && d.message) {
+      if (rung >= RUNG_SHOWS.message && d.message) {
         items.push({
           key: 'message',
           text: capText(firstLine(d.message)),
@@ -103,8 +109,8 @@ export function boardContents(
       }
       out.push({
         lead: rung === 0 ? '\u2298' : `\u2298 ${status}`,
-        // From rung 3 the badge follows the commit it describes.
-        badge: rung < 3 ? widestBadge : undefined,
+        // From the commit rung the badge follows the commit it describes.
+        badge: rung < RUNG_SHOWS.commit ? widestBadge : undefined,
         items,
       });
     }

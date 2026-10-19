@@ -198,7 +198,7 @@ describe('the Sources tab', () => {
         problems: [
           problem(
             { kind: 'cell', rowId: 'web', stageId: 'dev' },
-            'read 100 runs',
+            'a hint fixed on the Sources tab',
             true,
             {
               target: { kind: 'source', provider: 'github' },
@@ -209,7 +209,9 @@ describe('the Sources tab', () => {
       },
     );
     const list = screen.getByRole('list', { name: 'Source problems' });
-    expect(within(list).getByText('read 100 runs')).toBeInTheDocument();
+    expect(
+      within(list).getByText('a hint fixed on the Sources tab'),
+    ).toBeInTheDocument();
     expect(screen.queryByText('elsewhere')).toBeNull();
   });
 });

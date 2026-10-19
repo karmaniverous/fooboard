@@ -8,6 +8,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { DashboardSchema } from '@/domain/config/dashboard';
+import { BUILTIN_ORDER_KEYS } from '@/domain/model/builtinSources';
 import type { CellRules } from '@/domain/model/cell';
 import { asJson } from '@/domain/model/json';
 import { all, is } from '@/domain/model/ruleBuilders';
@@ -31,7 +32,7 @@ const cell = (over: Partial<CellRules> = {}): CellRules => ({
   items: always,
   stage: branchRule('main'),
   set,
-  order: 'created',
+  order: BUILTIN_ORDER_KEYS.github,
   ...over,
 });
 

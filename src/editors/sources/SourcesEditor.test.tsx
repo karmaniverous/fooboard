@@ -11,6 +11,7 @@ import { describe, expect, it } from 'vitest';
 
 import { type Dashboard, DashboardSchema } from '@/domain/config/dashboard';
 import { give } from '@/domain/model/ruleBuilders';
+import { MAX_AMPLIFY_JOBS_PER_BRANCH } from '@/domain/model/sourceRule';
 
 import { customiseSource } from './customSource';
 import { SourcesEditor } from './SourcesEditor';
@@ -79,9 +80,13 @@ describe('SourcesEditor', () => {
     const amplify = () =>
       saved.at(-1)?.customSourceRules.find((r) => r.provider === 'amplify');
     const jobs = screen.getByLabelText('Jobs per branch');
-    fireEvent.change(jobs, { target: { value: '500' } });
+    fireEvent.change(jobs, {
+      target: { value: String(MAX_AMPLIFY_JOBS_PER_BRANCH + 1) },
+    });
     fireEvent.blur(jobs);
-    expect(amplify()?.reader).toMatchObject({ jobsPerBranch: 100 });
+    expect(amplify()?.reader).toMatchObject({
+      jobsPerBranch: MAX_AMPLIFY_JOBS_PER_BRANCH,
+    });
     const section = screen.getByRole('region', {
       name: 'Source rule Amplify (custom)',
     });

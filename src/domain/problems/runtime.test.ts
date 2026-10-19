@@ -15,7 +15,12 @@ import {
   DEFAULT_GITHUB_RUNS,
 } from '@/domain/model/sourceRule';
 
-import { readLimit, translationProblems, windowHint } from './runtime';
+import {
+  readLimit,
+  SAMPLE_LENGTH,
+  translationProblems,
+  windowHint,
+} from './runtime';
 
 const [github] = BUILTIN_SOURCES;
 
@@ -48,6 +53,17 @@ describe('translationProblems', () => {
       provider: 'github',
       key: 'state',
     });
+  });
+});
+
+describe('translation problem samples', () => {
+  it('quote at most SAMPLE_LENGTH characters of the raw data', () => {
+    const long = 'x'.repeat(SAMPLE_LENGTH * 2);
+    const [p] = translationProblems(github, [
+      { key: 'state', scope: 'record', kind: 'untranslated', sample: long },
+    ]);
+    const quoted = JSON.stringify(long).slice(0, SAMPLE_LENGTH);
+    expect(p.message.endsWith(`e.g. ${quoted})`)).toBe(true);
   });
 });
 

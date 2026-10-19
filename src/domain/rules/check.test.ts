@@ -14,6 +14,7 @@ import {
   evaluateRule,
   ruleProblems,
 } from './check';
+import { MAX_REGEX_LENGTH } from './path';
 import { type Check, CheckSchema, RuleSchema } from './schema';
 
 const run = {
@@ -92,16 +93,20 @@ describe('evaluateCheck', () => {
     ],
     [
       'a long regex',
-      { path: '$.workflow', operator: 'regex', value: 'x'.repeat(501) },
-      'longer than 500',
+      {
+        path: '$.workflow',
+        operator: 'regex',
+        value: 'x'.repeat(MAX_REGEX_LENGTH + 1),
+      },
+      `longer than ${String(MAX_REGEX_LENGTH)}`,
     ],
     [
       'a long filter regex',
       {
-        path: `$.items[?match(@.name, '${'x'.repeat(501)}')]`,
+        path: `$.items[?match(@.name, '${'x'.repeat(MAX_REGEX_LENGTH + 1)}')]`,
         operator: 'exists',
       },
-      'filter regex longer than 500',
+      `filter regex longer than ${String(MAX_REGEX_LENGTH)}`,
     ],
   ] as const)(
     'never matches with %s, NOT included, and says why',

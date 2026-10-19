@@ -8,7 +8,7 @@ import { describe, expect, it } from 'vitest';
 
 import { compilePath, valuesAt } from '@/domain/rules/path';
 
-import { ruleSamples, samplePaths } from './samples';
+import { ruleSamples, SAMPLE_LIMIT, samplePaths } from './samples';
 
 const record = {
   workflow: 'CI',
@@ -47,6 +47,21 @@ describe('samplePaths', () => {
 });
 
 describe('ruleSamples', () => {
+  it('keeps at most SAMPLE_LIMIT records per source', () => {
+    const cells = Object.fromEntries(
+      Array.from({ length: SAMPLE_LIMIT + 1 }, (_, i) => [
+        String(i),
+        {
+          rowId: 'web',
+          derivation: { kind: 'ok', document: { n: i } },
+        },
+      ]),
+    );
+    expect(
+      ruleSamples([{ id: 'web', type: 'github' }], cells).github,
+    ).toHaveLength(SAMPLE_LIMIT);
+  });
+
   it("groups ok cells' records by their row's source", () => {
     const doc = { workflow: 'CI' };
     expect(

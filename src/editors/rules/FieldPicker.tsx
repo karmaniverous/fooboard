@@ -11,14 +11,18 @@ import type { JSONValue } from 'json-p3';
 import { isJsonObject } from '@/domain/model/json';
 import { pathStep } from '@/domain/rules/path';
 
-const MAX_DEPTH = 6;
-const PREVIEW = 40;
+/** The deepest the tree opens; deeper values show as a preview. */
+export const MAX_DEPTH = 6;
+/** The most characters of a value the tree previews. */
+export const PREVIEW_LENGTH = 40;
 
 const step = pathStep;
 
 const preview = (v: JSONValue): string => {
   const text = JSON.stringify(v);
-  return text.length > PREVIEW ? `${text.slice(0, PREVIEW)}...` : text;
+  return text.length > PREVIEW_LENGTH
+    ? `${text.slice(0, PREVIEW_LENGTH)}...`
+    : text;
 };
 
 function Node({

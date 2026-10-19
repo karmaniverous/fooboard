@@ -29,7 +29,7 @@ import {
   STATUS_GLYPH,
   statusLook,
 } from './cellView';
-import { type Rung } from './layout';
+import { type Rung, RUNG_SHOWS } from './layout';
 import { firstLine } from './layoutContents';
 import { type LineMap } from './packing';
 
@@ -104,7 +104,7 @@ export function Cell({
             <span>{rung === 0 ? EMPTY_SYMBOL[derivation.state] : label}</span>
           }
           items={
-            rung >= 4 && extra
+            rung >= RUNG_SHOWS.branch && extra
               ? [{ key: 'extra', node: <Free>{extra}</Free>, free: true }]
               : []
           }
@@ -135,13 +135,13 @@ export function Cell({
       {badgeText(badge)}
     </ExternalLink>
   );
-  // From rung 3 the badge follows the commit it describes (C-13).
-  const badgeAfterCommit = rung >= 3 && Boolean(commit);
+  // From the commit rung the badge follows the commit it describes (C-13).
+  const badgeAfterCommit = rung >= RUNG_SHOWS.commit && Boolean(commit);
 
   // Items are hidden from assistive tech (the cover link's name says it
   // all), except the badge link, which stays reachable.
   const items: Keyed[] = [];
-  if (rung >= 2 && time) {
+  if (rung >= RUNG_SHOWS.time && time) {
     items.push({
       key: 'time',
       node: (
@@ -151,7 +151,7 @@ export function Cell({
       ),
     });
   }
-  if (rung >= 3) {
+  if (rung >= RUNG_SHOWS.commit) {
     if (commit) {
       items.push({
         key: 'commit',
@@ -166,14 +166,14 @@ export function Cell({
       });
     }
   }
-  if (rung >= 4 && branch) {
+  if (rung >= RUNG_SHOWS.branch && branch) {
     items.push({
       key: 'branch',
       node: <Free>{branch}</Free>,
       free: true,
     });
   }
-  if (rung >= 5 && message) {
+  if (rung >= RUNG_SHOWS.message && message) {
     items.push({
       key: 'message',
       node: <Free>{firstLine(message)}</Free>,
@@ -235,7 +235,7 @@ export function Cell({
               >
                 {STATUS_GLYPH[status.icon]}
               </span>
-              {rung >= 1 && (
+              {rung >= RUNG_SHOWS.name && (
                 <span aria-hidden className="font-semibold">
                   {status.name}
                 </span>

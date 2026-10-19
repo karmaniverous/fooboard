@@ -30,6 +30,9 @@ import { ReorderList } from './ReorderList';
 import { ProviderRules } from './rules/ProviderRules';
 import { useLoad } from './useLoad';
 
+/** The most matching branches a new stage's preview names. */
+const BRANCHES_PREVIEWED = 8;
+
 function AddStage({
   dashboard,
   providers,
@@ -113,7 +116,7 @@ function AddStage({
         <p aria-live="polite" className="text-muted-foreground">
           Matches {preview.repos.length}/{byRepo?.size ?? 0} repos
           {preview.branches.length > 0 &&
-            `: ${preview.branches.slice(0, 8).join(', ')}${preview.branches.length > 8 ? '…' : ''}`}
+            `: ${preview.branches.slice(0, BRANCHES_PREVIEWED).join(', ')}${preview.branches.length > BRANCHES_PREVIEWED ? '…' : ''}`}
         </p>
       )}
     </section>

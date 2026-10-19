@@ -82,7 +82,8 @@ export function rawSamples(
   };
 }
 
-const SAMPLE_LIMIT = 50;
+/** The most records per source the rule editors preview over. */
+export const SAMPLE_LIMIT = 50;
 
 /** The board's cell records per source, up to `SAMPLE_LIMIT` each,
  * Unknown cells' records first (the field picker shows the first). */

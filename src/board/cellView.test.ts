@@ -6,13 +6,17 @@
  */
 import { describe, expect, it } from 'vitest';
 
-import { badgeText, relativeTime } from './cellView';
+import { BADGE_CAP, badgeText, relativeTime } from './cellView';
 
 describe('badgeText', () => {
-  it('caps large counts at 99+', () => {
-    expect(badgeText({ kind: 'behind', count: 100 })).toBe('99+');
+  it('caps counts above the cap', () => {
+    const capped = `${String(BADGE_CAP)}+`;
+    expect(badgeText({ kind: 'behind', count: BADGE_CAP })).toBe(
+      String(BADGE_CAP),
+    );
+    expect(badgeText({ kind: 'behind', count: BADGE_CAP + 1 })).toBe(capped);
     expect(badgeText({ kind: 'diverged', behind: 10000, ahead: 3 })).toBe(
-      '99+/3',
+      `${capped}/3`,
     );
   });
 

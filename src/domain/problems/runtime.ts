@@ -12,7 +12,8 @@ import type { KeyProblem } from '@/domain/model/translate';
 
 import { type Problem, problem } from './problem';
 
-const SAMPLE_LENGTH = 120;
+/** The most characters of raw data a translation problem quotes. */
+export const SAMPLE_LENGTH = 120;
 
 /** `found` grouped by key, each with how many records hit it and a
  * sample of the raw data it happened on. */

@@ -81,7 +81,8 @@ export function siteProblems(site: RuleSite, source: SourceRule): Problem[] {
   ];
 }
 
-const PLACES_LISTED = 5;
+/** The most places an unused-source note names. */
+export const PLACES_LISTED = 5;
 
 /** Where a site is, briefly. */
 const placeOf = (site: RuleSite): string => {
