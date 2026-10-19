@@ -4,9 +4,8 @@
  * arbitrary stored or imported data up to `CURRENT_SCHEMA_VERSION`, then
  * validates it against `ConfigRootSchema`.
  *
- * Steps so far: v1 to v2, row and column groups replacing dividers
- * (spec.md C-14b); v2 to v3, status sets replacing phase tests and status
- * colours (A§4.3.6).
+ * The chain starts at version 4 (spec.md A§4.3.7 *Data model version*):
+ * earlier development versions are refused, and there are no steps yet.
  *
  * @module
  */
