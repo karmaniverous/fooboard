@@ -151,7 +151,7 @@ export function StagesEditor({
     <div className="flex flex-col gap-3 text-sm">
       <ProviderRules
         title="Default stage rules"
-        target="dashboard:stageRules"
+        target={targetKey({ kind: 'dashboard', part: 'stageRules' })}
         rules={dashboard.stageRules}
         onChange={(p, rule) => {
           onChange({

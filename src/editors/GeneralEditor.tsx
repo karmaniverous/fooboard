@@ -14,6 +14,7 @@ import { Button } from '@/components/ui/button';
 import { useActionError } from '@/components/useActionError';
 import { deleteWithSecrets, saveDuplicate } from '@/credentials/credentialOps';
 import type { Dashboard } from '@/domain/config/dashboard';
+import { targetKey } from '@/editors/editTarget';
 import { useStores } from '@/storage/storesContext';
 
 import { duplicateDashboard } from './edit';
@@ -47,7 +48,7 @@ export function GeneralEditor({
       </label>
       <ProviderRules
         title="Default row rules"
-        target="dashboard:rowRules"
+        target={targetKey({ kind: 'dashboard', part: 'rowRules' })}
         rules={{
           github: dashboard.rowRules.github?.record,
           amplify: dashboard.rowRules.amplify?.record,
@@ -60,7 +61,7 @@ export function GeneralEditor({
         title="Default item rules"
         scope="item"
         newPath="$.name"
-        target="dashboard:itemRules"
+        target={targetKey({ kind: 'dashboard', part: 'itemRules' })}
         providers={withItems}
         rules={{
           github: dashboard.rowRules.github?.items,

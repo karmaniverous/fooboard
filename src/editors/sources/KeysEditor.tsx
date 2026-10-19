@@ -19,6 +19,9 @@ import { useFocused } from '../editTarget';
 import { CommitInput } from '../fields';
 import { RuleEditor } from '../rules/RuleEditor';
 
+/** Where a new path starts: the document's root, ready to extend. */
+const NEW_PATH = '$.';
+
 const MODES = [
   { value: 'value', label: 'gives' },
   { value: 'copy', label: 'copies' },
@@ -58,7 +61,7 @@ function TranslationRow({
       <RuleEditor
         label={`${label} rule`}
         rule={translation.rule}
-        newPath="$."
+        newPath={NEW_PATH}
         documents={samples}
         noun={noun}
         onChange={(rule) => {
@@ -73,7 +76,7 @@ function TranslationRow({
           onValueChange={(next) => {
             onChange(
               next === 'copy'
-                ? { rule: translation.rule, copy: text || '$.' }
+                ? { rule: translation.rule, copy: text || NEW_PATH }
                 : { rule: translation.rule, value: text },
             );
           }}
@@ -85,7 +88,7 @@ function TranslationRow({
           onCommit={(next) => {
             onChange(
               mode === 'copy'
-                ? { rule: translation.rule, copy: next || '$.' }
+                ? { rule: translation.rule, copy: next || NEW_PATH }
                 : { rule: translation.rule, value: next },
             );
           }}
