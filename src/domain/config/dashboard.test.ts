@@ -215,11 +215,14 @@ describe('DashboardSchema', () => {
     expect(result.error?.issues.map((i) => i.message)).toEqual([message]);
   });
 
-  it('rejects a status set that is unknown or for the other provider', () => {
+  it('loads unknown or other-source references (rule problems), but not a set for an unknown stage', () => {
     const bad = (extra: object) =>
       DashboardSchema.safeParse({ id: 'd', name: 'D', ...extra }).success;
-    expect(bad({ statusSets: { github: 'nope' } })).toBe(false);
-    expect(bad({ statusSets: { github: 'amplify' } })).toBe(false);
+    expect(bad({ statusSets: { github: 'nope' } })).toBe(true);
+    expect(bad({ statusSets: { github: 'amplify' } })).toBe(true);
+    expect(bad({ sourceRules: { github: 'nope', amplify: 'github' } })).toBe(
+      true,
+    );
     expect(
       bad({
         stages: [{ id: 'dev', name: 'dev', rules: branchRules('dev') }],

@@ -36,14 +36,24 @@ describe('translationProblems', () => {
     expect(
       problems.every((p) => p.level.kind === 'dashboard' && !p.dismissable),
     ).toBe(true);
+    expect(problems[0].target).toEqual({
+      kind: 'source',
+      provider: 'github',
+      key: 'state',
+    });
   });
 });
 
 describe('windowHint', () => {
-  it('marks the row and can be dismissed', () => {
-    const hint = windowHint('web', '100 runs');
+  it('marks the empty cell, is fixed on the Sources tab and can be dismissed', () => {
+    const hint = windowHint(
+      { rowId: 'web', stageId: 'dev' },
+      'github',
+      '100 runs',
+    );
     expect(hint).toMatchObject({
-      level: { kind: 'row', id: 'web' },
+      level: { kind: 'cell', rowId: 'web', stageId: 'dev' },
+      target: { kind: 'source', provider: 'github' },
       dismissable: true,
     });
     expect(hint.message).toContain('read 100 runs');

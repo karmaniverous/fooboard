@@ -9,7 +9,7 @@
  * @module
  */
 import type { Dashboard } from '@/domain/config/dashboard';
-import type { Problem } from '@/domain/problems/problems';
+import type { Problem } from '@/domain/problems/problem';
 import type { UnmappedRun } from '@/engine';
 
 export type EditorDraft =
@@ -86,6 +86,8 @@ export function problemDraft(problem: Problem): EditorDraft {
     case 'stage':
     case 'columnGroup':
       return { tab: 'Stages' };
+    case 'statusSet':
+      return { tab: 'Statuses' };
     case 'rowGroup':
       return { tab: 'Rows', rowId: '' };
     case 'dashboard':

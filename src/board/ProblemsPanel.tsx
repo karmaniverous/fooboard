@@ -7,7 +7,7 @@
  */
 import { Button } from '@/components/ui/button';
 import type { Dashboard } from '@/domain/config/dashboard';
-import type { Problem } from '@/domain/problems/problems';
+import type { Problem } from '@/domain/problems/problem';
 
 import { levelLabel } from './levelLabel';
 

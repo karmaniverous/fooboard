@@ -20,8 +20,8 @@ import {
   rowGithubCredentialId,
 } from '@/domain/config/inheritance';
 import type { AmplifyRow, GithubRow, Row } from '@/domain/config/row';
-import type { Problem } from '@/domain/problems/problems';
-import { translationProblems, windowHint } from '@/domain/problems/runtime';
+import type { Problem } from '@/domain/problems/problem';
+import { translationProblems } from '@/domain/problems/runtime';
 import type { GitHubReader } from '@/lib/github';
 import { isOverPollingShare } from '@/lib/github';
 
@@ -43,6 +43,7 @@ import {
   type EngineProviders,
   type UnmappedRun,
 } from './types';
+import { windowHints } from './windowHints';
 
 export interface BoardEngine {
   /** Refresh every row now, then keep polling. */
@@ -171,14 +172,7 @@ export function createBoardEngine({
     const runs =
       githubSource.provider === 'github' ? githubSource.reader.runs : 100;
     const hints = result.full
-      ? rows
-          .filter((row) =>
-            stages.some((s) => {
-              const d = result.rows[row.id][s.id].derivation;
-              return d.kind === 'empty' && d.state === 'no-records';
-            }),
-          )
-          .map((row) => windowHint(row.id, `${String(runs)} runs`))
+      ? windowHints(result.rows, 'github', `${String(runs)} runs`)
       : [];
     apply(targetId, applied, result.unmapped, access, [
       ...translationProblems(githubSource, result.keyProblems),

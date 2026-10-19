@@ -1,8 +1,9 @@
 /**
  * Which source rule a dashboard uses per source (spec.md A§4.3.7):
  * built-ins referenced by id, or the dashboard's own customised copies.
- * A dangling id is a bug in the data; the provider's built-in is used and
- * the dashboard schema reports it. Pure.
+ * A dangling id, or another source's rule, never stops a board loading:
+ * the provider's built-in is used and a rule problem reports it (spec.md
+ * A§4.3.7). Pure.
  *
  * @module
  */
@@ -12,7 +13,6 @@ import { BUILTIN_SOURCES } from './builtinSources';
 import type { SourceRule } from './sourceRule';
 
 type Provider = SourceRule['provider'];
-const PROVIDERS: readonly Provider[] = ['github', 'amplify'];
 
 /** The source rule id per source; defaults to the built-ins. */
 export const SourceRefsSchema = z.object({
@@ -51,8 +51,9 @@ export function sourceRuleFor(
   return rule?.provider === provider ? rule : builtinFor(provider);
 }
 
-/** Problems with a dashboard's source rules: ids shadowing a built-in or
- * repeated, and references to unknown rules or another source's. */
+/** Integrity problems with a dashboard's own source rules: ids shadowing
+ * a built-in or repeated (references that don't resolve are rule
+ * problems, not integrity problems). */
 export function sourceRuleReferenceIssues(
   scope: SourceScope,
 ): { message: string; path: (string | number)[] }[] {
@@ -66,16 +67,5 @@ export function sourceRuleReferenceIssues(
       issues.push({ message: `duplicate source rule id: ${s.id}`, path });
     seen.add(s.id);
   });
-  for (const provider of PROVIDERS) {
-    const id = scope.sourceRules[provider];
-    const rule = findSourceRule(id, scope.customSourceRules);
-    const path = ['sourceRules', provider];
-    if (!rule) issues.push({ message: `unknown source rule: ${id}`, path });
-    else if (rule.provider !== provider)
-      issues.push({
-        message: `source rule ${id} is for ${rule.provider}, expected ${provider}`,
-        path,
-      });
-  }
   return issues;
 }

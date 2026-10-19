@@ -4,7 +4,8 @@
  * @module
  */
 import type { Dashboard } from '@/domain/config/dashboard';
-import type { ProblemLevel } from '@/domain/problems/problems';
+import type { ProblemLevel } from '@/domain/problems/problem';
+import { findStatusSet } from '@/domain/statuses/resolve';
 
 const nameOf = (
   items: readonly { id: string; name: string | undefined }[],
@@ -29,5 +30,7 @@ export function levelLabel(dashboard: Dashboard, level: ProblemLevel): string {
       return `Column group ${nameOf(groups(dashboard.columnGroups), level.id)}`;
     case 'cell':
       return `${nameOf(rows, level.rowId)} / ${nameOf(stages, level.stageId)}`;
+    case 'statusSet':
+      return `Status set ${findStatusSet(level.id, dashboard.customStatusSets)?.name ?? level.id}`;
   }
 }

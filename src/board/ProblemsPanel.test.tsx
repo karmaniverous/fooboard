@@ -10,7 +10,7 @@ import { describe, expect, it, vi } from 'vitest';
 
 import { DashboardSchema } from '@/domain/config/dashboard';
 import { branchRules } from '@/domain/config/placement';
-import { problem, type ProblemLevel } from '@/domain/problems/problems';
+import { problem, type ProblemLevel } from '@/domain/problems/problem';
 import { problemDraft } from '@/editors/draft';
 
 import { levelLabel } from './levelLabel';

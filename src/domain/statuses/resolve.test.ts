@@ -87,15 +87,11 @@ describe('statusSetFor', () => {
 });
 
 describe('statusSetReferenceIssues', () => {
-  it('reports each bad reference at its path', () => {
+  it('reports integrity issues at their paths, not dangling references', () => {
     const custom = { ...presetById('amplify'), id: 'mine' };
     const issues = statusSetReferenceIssues({
       ...dashboard,
       customStatusSets: [custom, custom, { ...custom, id: 'amplify' }],
-      statusSets: { github: 'mine', amplify: 'amplify' },
-      rowGroups: [
-        { ...dashboard.rowGroups[0], statusSets: { github: 'nope' } },
-      ],
       rows: [withRow({ cellStatusSets: { qa: 'github-single-job' } })],
     });
     expect(issues).toEqual([
@@ -106,14 +102,6 @@ describe('statusSetReferenceIssues', () => {
       {
         message: "status set id amplify is a preset's",
         path: ['customStatusSets', 2, 'id'],
-      },
-      {
-        message: 'status set mine is for amplify, expected github',
-        path: ['statusSets', 'github'],
-      },
-      {
-        message: 'unknown status set: nope',
-        path: ['rowGroups', 0, 'statusSets', 'github'],
       },
       {
         message: 'status set for unknown stage: qa',

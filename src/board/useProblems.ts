@@ -7,7 +7,8 @@
 import { useMemo, useState } from 'react';
 
 import type { Dashboard } from '@/domain/config/dashboard';
-import { configProblems, type Problem } from '@/domain/problems/problems';
+import type { Problem } from '@/domain/problems/problem';
+import { configProblems } from '@/domain/problems/problems';
 import type { BoardModel } from '@/engine';
 import { useStores } from '@/storage/storesContext';
 

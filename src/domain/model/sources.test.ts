@@ -1,7 +1,8 @@
 /**
  * Tests for source-rule resolution: built-ins by id, custom rules, the
- * built-in fallback for a dangling or wrong-source id, and every reference
- * problem the dashboard schema reports.
+ * built-in fallback for a dangling or wrong-source id, and the integrity
+ * issues the dashboard schema reports (dangling references are rule
+ * problems instead).
  *
  * @module
  */
@@ -28,7 +29,7 @@ describe('sourceRuleFor', () => {
 });
 
 describe('sourceRuleReferenceIssues', () => {
-  it('reports shadowed, duplicate, unknown and wrong-source ids', () => {
+  it('reports shadowed and duplicate ids, not dangling references', () => {
     expect(
       sourceRuleReferenceIssues({
         sourceRules: { github: 'amplify', amplify: 'nope' },
@@ -42,14 +43,6 @@ describe('sourceRuleReferenceIssues', () => {
       {
         message: "source rule id github is a built-in's",
         path: ['customSourceRules', 2, 'id'],
-      },
-      {
-        message: 'source rule amplify is for amplify, expected github',
-        path: ['sourceRules', 'github'],
-      },
-      {
-        message: 'unknown source rule: nope',
-        path: ['sourceRules', 'amplify'],
       },
     ]);
   });

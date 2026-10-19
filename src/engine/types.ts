@@ -12,7 +12,7 @@ import type {
   StalenessBadge,
   UnmappedReason,
 } from '@/domain/derivation';
-import type { Problem } from '@/domain/problems/problems';
+import type { Problem } from '@/domain/problems/problem';
 import type { AmplifyReaderFor } from '@/lib/amplify/rowJobs';
 import type { GitHubReader } from '@/lib/github';
 import type { RateLimitBudget } from '@/lib/github';

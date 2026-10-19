@@ -7,7 +7,7 @@
  * @module
  */
 import type { Dashboard } from '@/domain/config/dashboard';
-import type { Problem } from '@/domain/problems/problems';
+import type { Problem } from '@/domain/problems/problem';
 
 export interface ProblemMarks {
   rows: Map<string, string[]>;
@@ -23,7 +23,8 @@ export function problemMarks(
   const add = (map: Map<string, string[]>, id: string, message: string) => {
     map.set(id, [...(map.get(id) ?? []), message]);
   };
-  for (const { level, message } of problems) {
+  for (const { level, message, severity } of problems) {
+    if (severity === 'note') continue;
     switch (level.kind) {
       case 'row':
         add(rows, level.id, message);
@@ -45,6 +46,7 @@ export function problemMarks(
           add(stages, id, message);
         break;
       case 'dashboard':
+      case 'statusSet':
         break;
     }
   }

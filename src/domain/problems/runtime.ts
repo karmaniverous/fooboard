@@ -2,14 +2,15 @@
  * Problems found while reading (spec.md A§4.3.7): keys a source rule
  * couldn't translate cleanly (with a count and a sample), and the window
  * hint, when a read came back full and a cell on its row has no records,
- * so its last record may be outside what was read. Pure.
+ * so its last record may be outside what was read: on that cell, fixed on
+ * the Sources tab, dismissable. Pure.
  *
  * @module
  */
 import type { SourceRule } from '@/domain/model/sourceRule';
 import type { KeyProblem } from '@/domain/model/translate';
 
-import { type Problem, problem } from './problems';
+import { type Problem, problem } from './problem';
 
 const SAMPLE_LENGTH = 120;
 
@@ -36,14 +37,22 @@ export function translationProblems(
     return problem(
       { kind: 'dashboard' },
       `${source.name} source rule: ${text} (${String(count)}× e.g. ${sample})`,
+      false,
+      { target: { kind: 'source', provider: source.provider, key: first.key } },
     );
   });
 }
 
-/** The hint that row `rowId` may need more read. */
-export const windowHint = (rowId: string, limit: string): Problem =>
+/** The hint that the empty cell at `rowId` and `stageId` may need more
+ * read (`limit`, e.g. "100 runs"). */
+export const windowHint = (
+  cell: { rowId: string; stageId: string },
+  provider: SourceRule['provider'],
+  limit: string,
+): Problem =>
   problem(
-    { kind: 'row', id: rowId },
-    `read ${limit}, the most its source rule reads; a stage with no records may be outside that: read more on the Sources tab`,
+    { kind: 'cell', ...cell },
+    `read ${limit}, the most its source rule reads; this cell's last record may be older: read more on the Sources tab`,
     true,
+    { target: { kind: 'source', provider } },
   );
