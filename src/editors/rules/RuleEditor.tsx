@@ -9,6 +9,7 @@
  */
 import { Choice } from '@/components/Choice';
 import { Button } from '@/components/ui/button';
+import type { RecordDoc } from '@/domain/model/translate';
 import {
   checkProblem,
   evaluateCheck,
@@ -18,6 +19,7 @@ import { type Check, CheckSchema, type Rule } from '@/domain/rules/schema';
 import { patchAt } from '@/lib/lists';
 
 import { CommitInput } from '../fields';
+import { ItemsWhereBuilder } from './ItemsWhereBuilder';
 import { samplePaths, type SampleProvider, useRuleSamples } from './samples';
 
 const OPERATORS: { value: Check['operator']; label: string }[] = [
@@ -126,6 +128,14 @@ function CheckRow({
   );
 }
 
+/** Item keys the board's records have (`name` and `state` without any). */
+const itemKeys = (records: readonly RecordDoc[]): string[] => {
+  const keys = samplePaths(records, 'item').map((p) => p.replace(/^\$\./, ''));
+  return keys.length > 0
+    ? keys.filter((k) => /^[A-Za-z_]\w*$/.test(k))
+    : ['name', 'state'];
+};
+
 export function RuleEditor({
   label,
   rule,
@@ -199,6 +209,15 @@ export function RuleEditor({
         <p className="text-xs text-muted-foreground">
           Rule matches {count((d) => evaluateRule(rule, d))}
         </p>
+      )}
+      {scope === 'record' && provider === 'github' && (
+        <ItemsWhereBuilder
+          label={label}
+          itemKeys={itemKeys(records)}
+          onAdd={(c) => {
+            onChange({ ...rule, checks: [...checks, c] });
+          }}
+        />
       )}
       <Button
         type="button"

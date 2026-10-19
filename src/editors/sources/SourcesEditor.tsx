@@ -23,6 +23,7 @@ import {
   sourceInUse,
   updateSource,
 } from './customSource';
+import { KeysEditor } from './KeysEditor';
 
 const optionsFor = (dashboard: Dashboard, provider: SourceRule['provider']) =>
   [...BUILTIN_SOURCES, ...dashboard.customSourceRules]
@@ -88,6 +89,49 @@ function CustomSourceEditor({
           Remove
         </Button>
       </div>
+      <h4 className="text-xs font-semibold">Records</h4>
+      <KeysEditor
+        title="Record keys"
+        keys={rule.keys}
+        onChange={(keys) => {
+          onChange({ ...rule, keys });
+        }}
+      />
+      {rule.items && (
+        <>
+          <label className="flex items-center gap-2 text-xs">
+            Items from
+            <CommitInput
+              label="Items path"
+              className="h-9 w-56 font-mono"
+              value={rule.items.path}
+              onCommit={(path) => {
+                if (path && rule.items)
+                  onChange({ ...rule, items: { ...rule.items, path } });
+              }}
+            />
+          </label>
+          <KeysEditor
+            title="Item keys"
+            keys={rule.items.keys}
+            onChange={(keys) => {
+              if (rule.items)
+                onChange({ ...rule, items: { ...rule.items, keys } });
+            }}
+          />
+        </>
+      )}
+      <label className="flex items-center gap-2 text-xs">
+        Newest by
+        <Choice
+          label="Order key"
+          value={rule.order}
+          options={rule.keys.map((k) => ({ value: k.name, label: k.name }))}
+          onValueChange={(order) => {
+            onChange({ ...rule, order });
+          }}
+        />
+      </label>
       <h4 className="text-xs font-semibold">Records to keep</h4>
       <RuleEditor
         label={`${rule.name} keep rule`}
