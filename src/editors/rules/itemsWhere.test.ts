@@ -8,6 +8,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { evaluateCheck } from '@/domain/rules/check';
+import { compilePath } from '@/domain/rules/path';
 
 import { itemsWhere, itemsWherePath } from './itemsWhere';
 
@@ -16,9 +17,33 @@ describe('itemsWhere', () => {
     expect(itemsWherePath('name', 'deploy*', false)).toBe(
       "$.items[?match(@.name, 'deploy.*')]",
     );
-    expect(itemsWherePath('name', 'a.b', true)).toBe(
-      "$.items[?match(@.name, '[Aa]\\.[Bb]')]",
+  });
+
+  it('escapes regex characters and backslashes so the path parses and matches literally', () => {
+    const items = (name: string) => ({ items: [{ name }] });
+    const dotted = itemsWhere('name', 'a.b', true);
+    expect(evaluateCheck(dotted, items('A.b'))).toBe(true);
+    expect(evaluateCheck(dotted, items('axb'))).toBe(false);
+    const slashed = itemsWhere('name', 'a\\b', false);
+    expect(evaluateCheck(slashed, items('a\\b'))).toBe(true);
+    expect(evaluateCheck(slashed, items('ab'))).toBe(false);
+    for (const glob of ['(x)', '[x]', 'x+y', 'x|y', '{x}']) {
+      expect(compilePath(itemsWherePath('name', glob, false)).ok).toBe(true);
+      expect(evaluateCheck(itemsWhere('name', glob, false), items(glob))).toBe(
+        true,
+      );
+    }
+  });
+
+  it('quotes an item key that is not an identifier', () => {
+    expect(itemsWherePath('job name', 'x', false)).toBe(
+      "$.items[?match(@['job name'], 'x')]",
     );
+    expect(
+      evaluateCheck(itemsWhere('job name', 'x', false), {
+        items: [{ 'job name': 'x' }],
+      }),
+    ).toBe(true);
   });
 
   it('matches records by their items, ignoring case when asked', () => {

@@ -7,6 +7,7 @@
  * @module
  */
 import { exists } from '@/domain/model/ruleBuilders';
+import { pathStep, quoted } from '@/domain/rules/path';
 import type { Check } from '@/domain/rules/schema';
 
 /** A glob as an I-Regexp body (`*` any run, `?` one character). */
@@ -28,8 +29,7 @@ export function itemsWherePath(
   glob: string,
   ignoreCase: boolean,
 ): string {
-  const pattern = globRegex(glob, ignoreCase).replaceAll("'", "\\'");
-  return `$.items[?match(@.${key}, '${pattern}')]`;
+  return `$.items[?match(@${pathStep(key)}, ${quoted(globRegex(glob, ignoreCase))})]`;
 }
 
 /** A check that some item's `key` matches `glob`. */

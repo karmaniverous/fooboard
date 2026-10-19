@@ -86,12 +86,15 @@ export function compilePath(path: string): CompiledPath {
 /** A key that can follow a dot in a path (`$.state`). */
 export const PATH_IDENTIFIER = /^[A-Za-z_]\w*$/;
 
-/** The path segment selecting `key`: `.key`, or `['key']` with quotes
- * and backslashes escaped when it isn't an identifier. */
+/** `text` as a single-quoted JSONPath string literal, with quotes and
+ * backslashes escaped. */
+export const quoted = (text: string): string =>
+  `'${text.replace(/[\\']/g, (ch) => `\\${ch}`)}'`;
+
+/** The path segment selecting `key`: `.key`, or `['key']` (quoted)
+ * when it isn't an identifier. */
 export const pathStep = (key: string): string =>
-  PATH_IDENTIFIER.test(key)
-    ? `.${key}`
-    : `['${key.replace(/[\\']/g, (ch) => `\\${ch}`)}']`;
+  PATH_IDENTIFIER.test(key) ? `.${key}` : `[${quoted(key)}]`;
 
 /** The values `query` finds in `document`. */
 export const valuesAt = (
