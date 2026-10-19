@@ -230,15 +230,23 @@ async function refreshWith(
     result[row.id] = cells;
   }
 
-  const allRules = input.repoRows.flatMap((row) =>
-    input.stages.map((s) => input.rulesFor(row, s.id)),
-  );
+  const rulesByRow = input.repoRows.map((row) => ({
+    rowId: row.id,
+    cells: input.stages.map((s) => input.rulesFor(row, s.id)),
+  }));
   const unmapped: UnmappedRun[] = [];
   for (const c of candidates) {
     const pending = fetched.get(c.run.id);
     const record = pending ? await pending : c.shallow;
-    const reason = unmappedReason(record, allRules, pending !== undefined);
-    if (!reason) continue;
+    const rows = rulesByRow.map(({ rowId, cells }) => ({
+      rowId,
+      reason: unmappedReason(record, cells, pending !== undefined),
+    }));
+    if (rows.some((r) => r.reason === undefined)) continue;
+    const reasons = rows.flatMap(({ rowId, reason }) =>
+      reason ? [{ rowId, reason }] : [],
+    );
+    const [{ reason }] = reasons;
     unmapped.push({
       repo,
       runId: c.run.id,
@@ -246,6 +254,7 @@ async function refreshWith(
       branch: c.mapped.headBranch,
       htmlUrl: c.mapped.htmlUrl,
       reason,
+      rows: reasons,
     });
   }
   return {

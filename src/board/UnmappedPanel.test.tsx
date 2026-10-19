@@ -1,6 +1,6 @@
 /**
  * Tests for the unmapped runs flow: the panel lists each run with its
- * reason, and *Add test* opens the editor on the right row with the test
+ * reason, and *Add rule* opens the editor on the right row with the rule
  * pre-filled; adding it saves the dashboard.
  *
  * @module
@@ -33,6 +33,7 @@ const runs: UnmappedRun[] = [
     branch: 'main',
     htmlUrl: 'https://github.com/acme/api/actions/runs/7',
     reason: { kind: 'no-row-matches' },
+    rows: [{ rowId: 'api', reason: { kind: 'no-row-matches' } }],
   },
   {
     repo: 'acme/gone',
@@ -41,11 +42,12 @@ const runs: UnmappedRun[] = [
     branch: 'main',
     htmlUrl: 'https://github.com/acme/gone/actions/runs/8',
     reason: { kind: 'no-row-matches' },
+    rows: [],
   },
 ];
 
 describe('UnmappedPanel', () => {
-  it('lists runs with their reasons, offering Add test only where it can help', () => {
+  it('lists runs with their reasons, offering Add rule only where it can help', () => {
     render(
       <UnmappedPanel
         runs={runs}
@@ -57,7 +59,7 @@ describe('UnmappedPanel', () => {
       'target',
       '_blank',
     );
-    expect(screen.getAllByRole('button', { name: 'Add test' })).toHaveLength(1);
+    expect(screen.getAllByRole('button', { name: 'Add rule' })).toHaveLength(1);
   });
 
   it('offers Add override only for a branch no stage matches, on a known repo', () => {
@@ -66,11 +68,20 @@ describe('UnmappedPanel', () => {
         ...runs[0],
         runId: 9,
         reason: { kind: 'no-stage-matches', branch: 'hotfix/1' },
+        rows: [
+          {
+            rowId: 'api',
+            reason: { kind: 'no-stage-matches', branch: 'hotfix/1' },
+          },
+        ],
       },
       {
         ...runs[1],
         runId: 10,
         reason: { kind: 'no-stage-matches', branch: 'x' },
+        rows: [
+          { rowId: 'api', reason: { kind: 'no-stage-matches', branch: 'x' } },
+        ],
       },
       ...runs,
     ];
@@ -126,7 +137,7 @@ describe('UnmappedPanel', () => {
         </MemoryRouter>
       </StoresContext>,
     );
-    fireEvent.click(screen.getByRole('button', { name: 'Add test' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Add rule' }));
     expect(screen.getByRole('tab', { name: 'Rows' })).toHaveAttribute(
       'aria-selected',
       'true',

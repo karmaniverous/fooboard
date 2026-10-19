@@ -48,7 +48,10 @@ export interface UnmappedRun {
   workflowName: string;
   branch: string | null;
   htmlUrl: string;
+  /** The first row's reason (one row reads most repos). */
   reason: UnmappedReason;
+  /** Why each row reading the repo didn't place it (spec.md A§4.3.7). */
+  rows: { rowId: string; reason: UnmappedReason }[];
 }
 
 /** Everything the board renders for one dashboard. */

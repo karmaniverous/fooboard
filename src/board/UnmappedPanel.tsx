@@ -1,7 +1,7 @@
 /**
  * Unmapped runs (spec.md C-15): recent runs the board could not place,
- * with why, a link to each run, and *Add test* to open the editor on the
- * fix, pre-filled.
+ * with why (per row, when several read its repo), a link to each run,
+ * and *Add rule* to open the editor on the fix.
  *
  * @module
  */
@@ -14,8 +14,11 @@ export function UnmappedPanel({
   runs,
   onAddTest,
   onAddOverride,
+  rowNames,
 }: {
   runs: readonly UnmappedRun[];
+  /** Row display names by id, for per-row reasons. */
+  rowNames?: Readonly<Record<string, string>>;
   /** Absent when there's no fix to pre-fill for this run. */
   onAddTest: (run: UnmappedRun) => (() => void) | undefined;
   /** For a branch no stage matches: a branch-pattern override instead of
@@ -54,7 +57,7 @@ export function UnmappedPanel({
                   className="ml-auto"
                   onClick={add}
                 >
-                  Add test
+                  Add rule
                 </Button>
               )}
               {override && (
@@ -68,9 +71,20 @@ export function UnmappedPanel({
                 </Button>
               )}
             </div>
-            <span className="text-xs">
-              {describeUnmappedReason(run.reason)}
-            </span>
+            {run.rows.length > 1 ? (
+              <ul className="text-xs">
+                {run.rows.map(({ rowId, reason }) => (
+                  <li key={rowId}>
+                    {rowNames?.[rowId] ?? rowId}:{' '}
+                    {describeUnmappedReason(reason)}
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <span className="text-xs">
+                {describeUnmappedReason(run.reason)}
+              </span>
+            )}
           </li>
         );
       })}

@@ -101,6 +101,9 @@ function SavedDashboard({
             >
               <UnmappedPanel
                 runs={model.unmapped}
+                rowNames={Object.fromEntries(
+                  dashboard.rows.map((r) => [r.id, r.displayName]),
+                )}
                 onAddTest={(run) => fixWith(draftFor(run, dashboard))}
                 onAddOverride={(run) =>
                   fixWith(overrideDraftFor(run, dashboard))

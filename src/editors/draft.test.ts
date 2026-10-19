@@ -1,5 +1,5 @@
 /**
- * Tests for *Add test* drafts: each unmapped reason leads to its fix, and
+ * Tests for *Add rule* drafts: each unmapped reason leads to its fix, and
  * a run whose repo has no GitHub row offers none.
  *
  * @module
@@ -30,6 +30,7 @@ const run = (
   repo = 'acme/api',
 ): UnmappedRun => ({
   repo,
+  rows: repo === 'acme/api' ? [{ rowId: 'api', reason }] : [],
   runId: 1,
   workflowName: 'Deploy API',
   branch: 'hotfix/1',

@@ -37,8 +37,15 @@ export function draftFor(
     case 'no-item-counts':
       return { tab: 'Statuses' };
     case 'no-row-matches': {
-      const row = githubRowFor(run, dashboard);
-      return row ? { tab: 'Rows', rowId: row.id } : undefined;
+      const fallback = githubRowFor(run, dashboard)?.id;
+      const named = run.rows.find(
+        (r) => r.reason.kind === 'no-row-matches',
+      )?.rowId;
+      const rowId =
+        named !== undefined && dashboard.rows.some((r) => r.id === named)
+          ? named
+          : fallback;
+      return rowId ? { tab: 'Rows', rowId } : undefined;
     }
     case 'no-order-key':
       return undefined;
