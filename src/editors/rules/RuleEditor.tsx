@@ -18,6 +18,7 @@ import { Choice } from '@/components/Choice';
 import { Button } from '@/components/ui/button';
 import type { Provider } from '@/domain/config/providers';
 import type { RecordDoc } from '@/domain/model/translate';
+import { isAlways } from '@/domain/rules/always';
 import {
   checkProblem,
   evaluateCheck,
@@ -113,7 +114,7 @@ export function RuleEditor({
       aria-label={label}
       data-edit-target={target}
     >
-      {checks.length === 0 ? (
+      {isAlways(rule) ? (
         <p className="text-xs text-muted-foreground">Matches everything.</p>
       ) : (
         checks.length > 1 && (

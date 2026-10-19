@@ -8,7 +8,8 @@
 import { describe, expect, it } from 'vitest';
 
 import type { CellStatus } from '@/domain/config/statusSets';
-import { all, always, check, is } from '@/domain/model/ruleBuilders';
+import { all, check, is } from '@/domain/model/ruleBuilders';
+import { always } from '@/domain/rules/always';
 import type { Rule } from '@/domain/rules/schema';
 
 import { classify } from './classify';

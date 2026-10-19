@@ -12,6 +12,7 @@ import {
   PROVIDER_LABELS,
   PROVIDERS,
 } from '@/domain/config/providers';
+import { always, unlessAlways } from '@/domain/rules/always';
 import type { Rule } from '@/domain/rules/schema';
 
 import { useFocused } from '../editTarget';
@@ -58,9 +59,9 @@ export function ProviderRules({
               scope={scope}
               newPath={newPath}
               target={target === undefined ? undefined : `${target}:${p}`}
-              rule={rules[p] ?? { combine: 'and', checks: [] }}
+              rule={rules[p] ?? always}
               onChange={(rule) => {
-                onChange(p, rule.checks.length > 0 ? rule : undefined);
+                onChange(p, unlessAlways(rule));
               }}
             />
           </div>

@@ -15,6 +15,7 @@ import { ConfirmButton } from '@/components/ConfirmButton';
 import type { Dashboard } from '@/domain/config/dashboard';
 import { inheritedCredential } from '@/domain/config/inheritance';
 import type { Row } from '@/domain/config/row';
+import { always, unlessAlways } from '@/domain/rules/always';
 import type { EngineProviders } from '@/engine';
 
 import { CredentialSelect } from './CredentialSelect';
@@ -96,13 +97,13 @@ export function RowsEditor({
               <span className="font-semibold">Records for this row</span>
               <RuleEditor
                 label={`Record rule for ${row.displayName}`}
-                rule={row.recordRule ?? { combine: 'and', checks: [] }}
+                rule={row.recordRule ?? always}
                 provider={row.type}
                 target={`row:${row.id}:record`}
                 onChange={(rule) => {
                   replaceRow({
                     ...row,
-                    recordRule: rule.checks.length > 0 ? rule : undefined,
+                    recordRule: unlessAlways(rule),
                   });
                 }}
               />
@@ -112,7 +113,7 @@ export function RowsEditor({
                 <span className="font-semibold">Items for this row</span>
                 <RuleEditor
                   label={`Item rule for ${row.displayName}`}
-                  rule={row.itemRule ?? { combine: 'and', checks: [] }}
+                  rule={row.itemRule ?? always}
                   newPath="$.name"
                   provider={row.type}
                   scope="item"
@@ -120,7 +121,7 @@ export function RowsEditor({
                   onChange={(rule) => {
                     replaceRow({
                       ...row,
-                      itemRule: rule.checks.length > 0 ? rule : undefined,
+                      itemRule: unlessAlways(rule),
                     });
                   }}
                 />

@@ -14,12 +14,12 @@ import type {
   GithubRunWithJobs,
   GithubWorkflowJob,
 } from '@/domain/derivation/types';
+import { always } from '@/domain/rules/always';
 import { presetById } from '@/domain/statuses/presets';
 
 import { BUILTIN_SOURCES } from './builtinSources';
 import { type CellRules, placeCell } from './cell';
 import { asJson } from './json';
-import { always } from './ruleBuilders';
 import { translate } from './translate';
 
 /** The PR S results, frozen (formatting aside). */

@@ -11,8 +11,9 @@ import { sourceFor } from '@/domain/config/cellRules';
 import { DashboardSchema } from '@/domain/config/dashboard';
 import type { CellRules } from '@/domain/model/cell';
 import { asJson } from '@/domain/model/json';
-import { all, always, is } from '@/domain/model/ruleBuilders';
+import { all, is } from '@/domain/model/ruleBuilders';
 import { translate } from '@/domain/model/translate';
+import { always } from '@/domain/rules/always';
 import { branchRule } from '@/domain/rules/branch';
 import { presetById } from '@/domain/statuses/presets';
 

@@ -10,6 +10,7 @@
  */
 import { z } from 'zod';
 
+import { always } from '@/domain/rules/always';
 import { RuleSchema } from '@/domain/rules/schema';
 
 /** One translation: a rule and the value it gives, or a path to copy. */
@@ -35,7 +36,7 @@ const base = {
     .object({ path: z.string().min(1), keys: z.array(KeySchema) })
     .optional(),
   /** Records failing this are dropped before placement. */
-  keep: RuleSchema.default({ combine: 'and', checks: [] }),
+  keep: RuleSchema.default(always),
   /** The key that orders records, newest last. */
   order: z.string().min(1),
 };
@@ -51,7 +52,7 @@ const GithubReaderSchema = z.object({
 const AmplifyReaderSchema = z.object({
   jobsPerBranch: z.number().int().min(1).max(100).default(20),
   /** Over one entry of Amplify's branch list; empty: every branch. */
-  branches: RuleSchema.default({ combine: 'and', checks: [] }),
+  branches: RuleSchema.default(always),
 });
 
 export const SourceRuleSchema = z.discriminatedUnion('provider', [
@@ -68,7 +69,7 @@ export const SourceRuleSchema = z.discriminatedUnion('provider', [
     provider: z.literal('amplify'),
     reader: AmplifyReaderSchema.default({
       jobsPerBranch: 20,
-      branches: { combine: 'and', checks: [] },
+      branches: always,
     }),
   }),
 ]);

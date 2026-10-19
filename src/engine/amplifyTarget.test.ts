@@ -12,7 +12,7 @@ import type { AmplifyRow } from '@/domain/config/row';
 import { amplifySet } from '@/domain/derivation/testFixtures';
 import { BUILTIN_SOURCES } from '@/domain/model/builtinSources';
 import type { CellRules } from '@/domain/model/cell';
-import { always } from '@/domain/model/ruleBuilders';
+import { always } from '@/domain/rules/always';
 import { amplifyBranch, amplifyJobSummary } from '@/lib/amplify/sdkShapes';
 import { fakeAmplifyReader } from '@/test/fakeReaders';
 

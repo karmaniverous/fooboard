@@ -15,8 +15,8 @@ import { groupOf, type RowGroup } from '@/domain/config/groups';
 import { ownOverride } from '@/domain/config/ownOverride';
 import type { Row } from '@/domain/config/row';
 import type { Stage } from '@/domain/config/stage';
+import { always } from '@/domain/rules/always';
 import { branchOf } from '@/domain/rules/branch';
-import type { Rule } from '@/domain/rules/schema';
 import type { EngineProviders } from '@/engine';
 
 import { discoverBranches } from './branches';
@@ -77,8 +77,6 @@ const customStages = (
 ): Set<string> =>
   new Set(stages.filter((s) => patternOf(s.id) === undefined).map((s) => s.id));
 
-const EMPTY: Rule = { combine: 'and', checks: [] };
-
 export function RowGrouping({
   row,
   override,
@@ -121,7 +119,7 @@ export function RowGrouping({
           <RuleEditor
             label={`${stageId} stage rule for ${row.displayName}`}
             provider={row.type}
-            rule={ownOverride(row.stageRules, stageId) ?? EMPTY}
+            rule={ownOverride(row.stageRules, stageId) ?? always}
             onChange={(rule) => {
               onChange(setRowStageRule(dashboard, row.id, stageId, rule));
             }}

@@ -13,6 +13,7 @@ import type { RowGroup } from '@/domain/config/groups';
 import { ownOverride } from '@/domain/config/ownOverride';
 import { branchRules, type ProviderRules } from '@/domain/config/placement';
 import type { Provider } from '@/domain/config/providers';
+import { unlessAlways } from '@/domain/rules/always';
 import { branchOf, branchRule } from '@/domain/rules/branch';
 import type { Rule } from '@/domain/rules/schema';
 
@@ -43,13 +44,7 @@ export const setRowStageRule = (
   rowId: string,
   stageId: string,
   rule: Rule | undefined,
-): Dashboard =>
-  writeRowStageRule(
-    d,
-    rowId,
-    stageId,
-    rule && rule.checks.length > 0 ? rule : undefined,
-  );
+): Dashboard => writeRowStageRule(d, rowId, stageId, unlessAlways(rule));
 
 const writeRowStageRule = (
   d: Dashboard,
@@ -122,9 +117,10 @@ export const setRowGroupStageRule = (
 ): Dashboard => {
   const group = d.rowGroups.find((g) => g.id === groupId);
   const current = group ? ownOverride(group.stageRules, stageId) : undefined;
+  const kept = unlessAlways(rule);
   const next: ProviderRules = {
     ...omit(current ?? {}, [provider]),
-    ...(rule && rule.checks.length > 0 ? { [provider]: rule } : {}),
+    ...(kept && { [provider]: kept }),
   };
   return setRowGroupStageRules(
     d,

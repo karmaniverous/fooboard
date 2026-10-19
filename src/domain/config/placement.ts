@@ -10,6 +10,7 @@
  */
 import { z } from 'zod';
 
+import { always } from '@/domain/rules/always';
 import { branchRule } from '@/domain/rules/branch';
 import { type Rule, RuleSchema } from '@/domain/rules/schema';
 
@@ -50,8 +51,6 @@ export const branchRules = (pattern: string): ProviderRules => ({
   github: branchRule(pattern),
   amplify: branchRule(pattern),
 });
-
-const ALWAYS: Rule = { combine: 'and', checks: [] };
 
 interface PlacementScope {
   stageRules: ProviderRules;
@@ -107,11 +106,11 @@ export function rowRulesFor(
       row.recordRule ??
       group?.rowRules[p]?.record ??
       scope.rowRules[p]?.record ??
-      ALWAYS,
+      always,
     items:
       row.itemRule ??
       group?.rowRules[p]?.items ??
       scope.rowRules[p]?.items ??
-      ALWAYS,
+      always,
   };
 }

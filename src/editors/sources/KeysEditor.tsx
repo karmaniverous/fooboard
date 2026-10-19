@@ -11,6 +11,7 @@ import type { JSONValue } from 'json-p3';
 
 import { Choice } from '@/components/Choice';
 import { Button } from '@/components/ui/button';
+import { give } from '@/domain/model/ruleBuilders';
 import type { KeyDef, Translation } from '@/domain/model/sourceRule';
 import { patchAt } from '@/lib/lists';
 
@@ -184,10 +185,7 @@ export function KeysEditor({
               onClick={() => {
                 onChange(
                   patchAt(keys, i, {
-                    translations: [
-                      ...key.translations,
-                      { rule: { combine: 'and', checks: [] }, value: '' },
-                    ],
+                    translations: [...key.translations, give('')],
                   }),
                 );
               }}

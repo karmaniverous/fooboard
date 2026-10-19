@@ -9,6 +9,7 @@
  */
 import type { JSONValue } from 'json-p3';
 
+import { isAlways } from './always';
 import { globToRegExp } from './glob';
 import { compilePath, MAX_REGEX_LENGTH, valuesAt } from './path';
 import type { Check, Rule } from './schema';
@@ -92,7 +93,7 @@ export function evaluateCheck(check: Check, document: JSONValue): boolean {
 
 /** Does `document` pass `rule`? No checks: always. */
 export function evaluateRule(rule: Rule, document: JSONValue): boolean {
-  if (rule.checks.length === 0) return true;
+  if (isAlways(rule)) return true;
   const pass = (c: Check) => evaluateCheck(c, document);
   return rule.combine === 'and'
     ? rule.checks.every(pass)

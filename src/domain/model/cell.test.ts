@@ -8,10 +8,11 @@
  */
 import { describe, expect, it } from 'vitest';
 
+import { always } from '@/domain/rules/always';
 import { PRESETS } from '@/domain/statuses/presets';
 
 import { type CellRules, placeCell } from './cell';
-import { all, always, copy, give, is } from './ruleBuilders';
+import { all, copy, give, is } from './ruleBuilders';
 import { SourceRuleSchema } from './sourceRule';
 import { compareOrder, translate } from './translate';
 

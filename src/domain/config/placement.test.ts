@@ -9,6 +9,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { all, is } from '@/domain/model/ruleBuilders';
+import { always } from '@/domain/rules/always';
 import { branchRule } from '@/domain/rules/branch';
 
 import { DashboardSchema } from './dashboard';
@@ -99,8 +100,8 @@ describe('rowRulesFor', () => {
       checks: [],
     });
     expect(rowRulesFor(d, row('site'))).toEqual({
-      record: { combine: 'and', checks: [] },
-      items: { combine: 'and', checks: [] },
+      record: always,
+      items: always,
     });
   });
 });

@@ -13,6 +13,7 @@
 import { PROVIDER_LABELS, PROVIDERS } from '@/domain/config/providers';
 import type { Row } from '@/domain/config/row';
 import type { KeyDef, SourceRule } from '@/domain/model/sourceRule';
+import { isAlways, unlessAlways } from '@/domain/rules/always';
 import { ruleProblems } from '@/domain/rules/check';
 import { type NamedKey, pathRefs } from '@/domain/rules/pathKeys';
 
@@ -43,7 +44,7 @@ const copies = (key: KeyDef | undefined): boolean =>
 /** Problems and notes for one rule. */
 export function siteProblems(site: RuleSite, source: SourceRule): Problem[] {
   const { rule, level, target, what } = site;
-  if (!rule || rule.checks.length === 0) return [];
+  if (!rule || isAlways(rule)) return [];
   const at = (message: string) =>
     problem(level, `${what}: ${message}`, false, { target });
   const out = ruleProblems(rule).map(at);
@@ -112,8 +113,7 @@ export function unusedSourceNotes(
 ): Problem[] {
   const unused = sites.filter(
     ({ rule, sharedBy, provider }) =>
-      rule !== undefined &&
-      rule.checks.length > 0 &&
+      unlessAlways(rule) !== undefined &&
       sharedBy !== undefined &&
       !rows.some((r) => r.type === provider && sharedBy.includes(r.id)),
   );

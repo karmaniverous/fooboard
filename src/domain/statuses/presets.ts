@@ -15,14 +15,8 @@ import {
   StatusSetSchema,
   type SummaryStatus,
 } from '@/domain/config/statusSets';
-import {
-  all,
-  always,
-  check,
-  exists,
-  is,
-  not,
-} from '@/domain/model/ruleBuilders';
+import { all, check, exists, is, not } from '@/domain/model/ruleBuilders';
+import { always } from '@/domain/rules/always';
 import type { Rule } from '@/domain/rules/schema';
 
 /** The summary statuses every preset uses. */

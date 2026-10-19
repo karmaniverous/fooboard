@@ -13,6 +13,7 @@ import type { App, Branch, JobSummary } from '@aws-sdk/client-amplify';
 import type { AmplifySource } from '@/domain/config/row';
 import type { AmplifyJobWithBranch } from '@/domain/derivation/types';
 import { asJson } from '@/domain/model/json';
+import { always } from '@/domain/rules/always';
 import { evaluateRule } from '@/domain/rules/check';
 import type { Rule } from '@/domain/rules/schema';
 
@@ -79,7 +80,7 @@ export interface AmplifyReadOptions {
 
 const ALL_BRANCHES: AmplifyReadOptions = {
   jobsPerBranch: 20,
-  branches: { combine: 'and', checks: [] },
+  branches: always,
 };
 
 /** One app's read: the jobs of the branches the branch rule chose, the

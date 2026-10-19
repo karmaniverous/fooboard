@@ -7,6 +7,7 @@
  */
 import { describe, expect, it } from 'vitest';
 
+import { always } from './always';
 import { branchOf, branchRule } from './branch';
 import { evaluateRule } from './check';
 
@@ -40,7 +41,7 @@ describe('branchOf', () => {
   it('reads nothing back from any other rule', () => {
     const [check] = branchRule('main').checks;
     expect(branchOf(undefined)).toBeUndefined();
-    expect(branchOf({ combine: 'and', checks: [] })).toBeUndefined();
+    expect(branchOf(always)).toBeUndefined();
     expect(
       branchOf({ combine: 'and', checks: [{ ...check, not: true }] }),
     ).toBeUndefined();

@@ -4,6 +4,7 @@
  *
  * @module
  */
+import { always } from '@/domain/rules/always';
 import { type Check, CheckSchema, type Rule } from '@/domain/rules/schema';
 
 import type { Translation } from './sourceRule';
@@ -25,9 +26,6 @@ export const all = (...checks: Check[]): Rule => ({ combine: 'and', checks });
 
 /** Checks joined by OR. */
 export const any = (...checks: Check[]): Rule => ({ combine: 'or', checks });
-
-/** Matches everything. */
-export const always: Rule = { combine: 'and', checks: [] };
 
 /** Give `value` when `rule` matches. */
 export const give = (value: string, rule: Rule = always): Translation => ({

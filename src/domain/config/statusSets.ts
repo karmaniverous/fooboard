@@ -8,6 +8,7 @@
  */
 import { z } from 'zod';
 
+import { always } from '@/domain/rules/always';
 import { RuleSchema } from '@/domain/rules/schema';
 
 import { HexColorSchema } from './colors';
@@ -94,7 +95,7 @@ export const StatusSetSchema = z
     /** GitHub: which of a run's jobs the set cares about, a JSON Schema over
      * one job's document. A run with none of them is not the cell's and is
      * skipped (A§4.3.6, option A). Empty: every job. Amplify ignores it. */
-    items: RuleSchema.default({ combine: 'and', checks: [] }),
+    items: RuleSchema.default(always),
     summary: z.array(SummaryStatusSchema).min(1),
     cell: z.array(CellStatusSchema).min(1),
   })

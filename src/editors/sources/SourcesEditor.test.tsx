@@ -10,6 +10,7 @@ import { useState } from 'react';
 import { describe, expect, it } from 'vitest';
 
 import { type Dashboard, DashboardSchema } from '@/domain/config/dashboard';
+import { give } from '@/domain/model/ruleBuilders';
 
 import { customiseSource } from './customSource';
 import { SourcesEditor } from './SourcesEditor';
@@ -45,9 +46,7 @@ describe('SourcesEditor', () => {
     fireEvent.click(
       screen.getAllByRole('button', { name: 'Add translation' })[before],
     );
-    expect(custom(saved)?.keys[before]?.translations).toEqual([
-      { rule: { combine: 'and', checks: [] }, value: '' },
-    ]);
+    expect(custom(saved)?.keys[before]?.translations).toEqual([give('')]);
     const value = screen.getByLabelText(`${name} translation 1 value`);
     fireEvent.change(value, { target: { value: 'x' } });
     fireEvent.blur(value);
