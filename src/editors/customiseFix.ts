@@ -7,6 +7,7 @@
  * @module
  */
 import type { Dashboard } from '@/domain/config/dashboard';
+import type { Provider } from '@/domain/config/providers';
 import { BUILTIN_SOURCES } from '@/domain/model/builtinSources';
 import { sourceRuleFor } from '@/domain/model/sources';
 import { type Problem, targetOf } from '@/domain/problems/problem';
@@ -22,7 +23,7 @@ function builtinOf(
   dashboard: Dashboard,
   problem: Problem,
 ):
-  | { kind: 'source'; provider: 'github' | 'amplify'; id: string }
+  | { kind: 'source'; provider: Provider; id: string }
   | { kind: 'statusSet'; id: string }
   | undefined {
   const target = targetOf(problem);

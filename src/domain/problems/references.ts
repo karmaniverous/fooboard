@@ -8,13 +8,12 @@
  * @module
  */
 import type { Dashboard } from '@/domain/config/dashboard';
-import type { Row } from '@/domain/config/row';
 import {
-  DEFAULT_STATUS_SET_IDS,
+  type Provider,
   PROVIDER_LABELS,
-  STATUS_PROVIDERS,
-  type StatusProvider,
-} from '@/domain/config/statusSets';
+  PROVIDERS,
+} from '@/domain/config/providers';
+import { DEFAULT_STATUS_SET_IDS } from '@/domain/config/statusSets';
 import { BUILTIN_SOURCES } from '@/domain/model/builtinSources';
 import { findSourceRule } from '@/domain/model/sources';
 import { presetById } from '@/domain/statuses/presets';
@@ -30,8 +29,8 @@ import {
 /** Why `found` can't serve `provider`, or `undefined` when it can. */
 function mismatch(
   id: string,
-  found: { provider: StatusProvider } | undefined,
-  provider: StatusProvider,
+  found: { provider: Provider } | undefined,
+  provider: Provider,
   noun: string,
 ): string | undefined {
   if (!found) return `unknown ${noun} ${id}`;
@@ -43,7 +42,7 @@ function mismatch(
 /** Source rules the dashboard names that are unknown or another
  * source's. */
 function sourceRefProblems(d: Dashboard): Problem[] {
-  return STATUS_PROVIDERS.flatMap((p) => {
+  return PROVIDERS.flatMap((p) => {
     const id = d.sourceRules[p];
     const why = mismatch(
       id,
@@ -71,7 +70,7 @@ function statusSetRefProblems(d: Dashboard): Problem[] {
   const out: Problem[] = [];
   const check = (
     id: string | undefined,
-    provider: StatusProvider,
+    provider: Provider,
     level: ProblemLevel,
     target: EditTarget,
   ) => {
@@ -92,7 +91,7 @@ function statusSetRefProblems(d: Dashboard): Problem[] {
         ),
       );
   };
-  for (const p of STATUS_PROVIDERS)
+  for (const p of PROVIDERS)
     check(
       d.statusSets[p],
       p,
@@ -104,11 +103,11 @@ function statusSetRefProblems(d: Dashboard): Problem[] {
     );
   for (const g of d.rowGroups) {
     const level = { kind: 'rowGroup', id: g.id } as const;
-    for (const p of STATUS_PROVIDERS) check(g.statusSets[p], p, level, level);
+    for (const p of PROVIDERS) check(g.statusSets[p], p, level, level);
   }
   const stageIds = new Set(d.stages.map((s) => s.id));
   for (const row of d.rows) {
-    const p: Row['type'] = row.type;
+    const p: Provider = row.type;
     const level = { kind: 'row', id: row.id } as const;
     check(row.statusSet, p, level, level);
     for (const [stageId, id] of Object.entries(row.cellStatusSets))

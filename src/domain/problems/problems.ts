@@ -12,7 +12,7 @@
 import type { Dashboard } from '@/domain/config/dashboard';
 import { rowGithubCredentialId } from '@/domain/config/inheritance';
 import { ownOverride } from '@/domain/config/ownOverride';
-import { PROVIDER_LABELS, STATUS_PROVIDERS } from '@/domain/config/statusSets';
+import { PROVIDER_LABELS, PROVIDERS } from '@/domain/config/providers';
 import { sourceRuleFor } from '@/domain/model/sources';
 
 import { siteProblems, unusedSourceNotes } from './consistency';
@@ -25,7 +25,7 @@ import { sourceRuleProblems } from './sourceProblems';
  * level gives them a stage rule for that source. */
 function uncoveredStages(d: Dashboard): Problem[] {
   return d.stages.flatMap((s) =>
-    STATUS_PROVIDERS.filter((p) => {
+    PROVIDERS.filter((p) => {
       const shared =
         s.rules[p] ??
         d.columnGroups.find((g) => g.memberIds.includes(s.id))?.stageRules[p] ??

@@ -7,10 +7,9 @@
  * @module
  */
 import type { Dashboard } from '@/domain/config/dashboard';
+import type { Provider } from '@/domain/config/providers';
 import type { SourceRule } from '@/domain/model/sourceRule';
 import { findSourceRule } from '@/domain/model/sources';
-
-type Provider = SourceRule['provider'];
 
 /** `base`, or `base-2`, `base-3`... whichever `taken` lacks. */
 function freshId(base: string, taken: readonly string[]): string {

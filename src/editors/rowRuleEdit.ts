@@ -8,10 +8,10 @@ import type { z } from 'zod';
 
 import type { Dashboard } from '@/domain/config/dashboard';
 import type { ProviderRowRulesSchema } from '@/domain/config/placement';
+import type { Provider } from '@/domain/config/providers';
 import type { Rule } from '@/domain/rules/schema';
 
 type ProviderRowRules = z.infer<typeof ProviderRowRulesSchema>;
-type Provider = 'github' | 'amplify';
 type Part = 'record' | 'items';
 
 function withRule(

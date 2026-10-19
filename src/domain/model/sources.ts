@@ -9,10 +9,10 @@
  */
 import { z } from 'zod';
 
+import type { Provider } from '@/domain/config/providers';
+
 import { BUILTIN_SOURCES } from './builtinSources';
 import type { SourceRule } from './sourceRule';
-
-type Provider = SourceRule['provider'];
 
 /** The source rule id per source; defaults to the built-ins. */
 export const SourceRefsSchema = z.object({

@@ -5,6 +5,7 @@
  *
  * @module
  */
+import type { Provider } from '@/domain/config/providers';
 import type { CellDerivation } from '@/domain/derivation';
 import type { Problem } from '@/domain/problems/problem';
 import { windowHint } from '@/domain/problems/runtime';
@@ -14,7 +15,7 @@ export function windowHints(
   rows: Readonly<
     Record<string, Readonly<Record<string, { derivation: CellDerivation }>>>
   >,
-  provider: 'github' | 'amplify',
+  provider: Provider,
   limit: string,
 ): Problem[] {
   return Object.entries(rows).flatMap(([rowId, cells]) =>

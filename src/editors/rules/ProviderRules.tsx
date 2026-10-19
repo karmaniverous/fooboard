@@ -7,13 +7,15 @@
  *
  * @module
  */
-import { PROVIDER_LABELS, STATUS_PROVIDERS } from '@/domain/config/statusSets';
+import {
+  type Provider,
+  PROVIDER_LABELS,
+  PROVIDERS,
+} from '@/domain/config/providers';
 import type { Rule } from '@/domain/rules/schema';
 
 import { useFocused } from '../editTarget';
 import { RuleEditor } from './RuleEditor';
-
-type Provider = (typeof STATUS_PROVIDERS)[number];
 
 export function ProviderRules({
   title,
@@ -21,7 +23,7 @@ export function ProviderRules({
   onChange,
   scope = 'record',
   newPath,
-  providers = STATUS_PROVIDERS,
+  providers = PROVIDERS,
   target,
 }: {
   title: string;

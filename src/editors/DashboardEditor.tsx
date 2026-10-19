@@ -13,7 +13,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { type Dashboard, DashboardSchema } from '@/domain/config/dashboard';
-import { STATUS_PROVIDERS } from '@/domain/config/statusSets';
+import { PROVIDERS } from '@/domain/config/providers';
 import { sourceRuleFor } from '@/domain/model/sources';
 import type { Problem } from '@/domain/problems/problem';
 import type { EngineProviders } from '@/engine';
@@ -87,7 +87,7 @@ export function DashboardEditor({
   useEffect(() => {
     if (root.current && draft?.focus) focusItem(root.current, draft.focus);
   }, [draft]);
-  const withItems = STATUS_PROVIDERS.filter(
+  const withItems = PROVIDERS.filter(
     (p) => sourceRuleFor(dashboard, p).items !== undefined,
   );
   const update = (next: Dashboard) => {

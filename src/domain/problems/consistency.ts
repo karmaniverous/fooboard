@@ -10,8 +10,8 @@
  *
  * @module
  */
+import { PROVIDER_LABELS, PROVIDERS } from '@/domain/config/providers';
 import type { Row } from '@/domain/config/row';
-import { PROVIDER_LABELS } from '@/domain/config/statusSets';
 import type { KeyDef, SourceRule } from '@/domain/model/sourceRule';
 import { ruleProblems } from '@/domain/rules/check';
 import { type NamedKey, pathRefs } from '@/domain/rules/pathKeys';
@@ -117,7 +117,7 @@ export function unusedSourceNotes(
       sharedBy !== undefined &&
       !rows.some((r) => r.type === provider && sharedBy.includes(r.id)),
   );
-  return (['github', 'amplify'] as const).flatMap((p) => {
+  return PROVIDERS.flatMap((p) => {
     const places = [
       ...new Set(unused.filter((s) => s.provider === p).map(placeOf)),
     ];

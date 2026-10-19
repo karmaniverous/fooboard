@@ -8,10 +8,10 @@
  * @module
  */
 import { groupOf, type RowGroup } from '@/domain/config/groups';
+import { type Provider } from '@/domain/config/providers';
 import type { Row } from '@/domain/config/row';
 import {
   DEFAULT_STATUS_SET_IDS,
-  type StatusProvider,
   type StatusSet,
 } from '@/domain/config/statusSets';
 
@@ -19,12 +19,12 @@ import { presetById, PRESETS } from './presets';
 
 /** What resolution needs of a dashboard. */
 export interface StatusSetScope {
-  statusSets: Record<StatusProvider, string>;
+  statusSets: Record<Provider, string>;
   customStatusSets: readonly StatusSet[];
   rowGroups: readonly RowGroup[];
 }
 
-const providerOf = (row: Pick<Row, 'type'>): StatusProvider => row.type;
+const providerOf = (row: Pick<Row, 'type'>): Provider => row.type;
 
 /** The set with `id`: a bundled preset, or one of `custom`. */
 export const findStatusSet = (

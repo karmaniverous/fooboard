@@ -7,15 +7,17 @@
  * @module
  */
 import type { Dashboard } from '@/domain/config/dashboard';
-import { PROVIDER_LABELS, STATUS_PROVIDERS } from '@/domain/config/statusSets';
+import {
+  type Provider,
+  PROVIDER_LABELS,
+  PROVIDERS,
+} from '@/domain/config/providers';
 import type { NamedKey } from '@/domain/rules/pathKeys';
 import type { Rule } from '@/domain/rules/schema';
 import { PRESETS } from '@/domain/statuses/presets';
 import { statusSetFor } from '@/domain/statuses/resolve';
 
 import type { EditTarget, ProblemLevel } from './problem';
-
-type Provider = (typeof STATUS_PROVIDERS)[number];
 
 export interface RuleSite {
   level: ProblemLevel;
@@ -46,7 +48,7 @@ export function ruleSites(d: Dashboard): RuleSite[] {
   const sites: RuleSite[] = [];
   const all = d.rows.map((r) => r.id);
   const dash: ProblemLevel = { kind: 'dashboard' };
-  for (const p of STATUS_PROVIDERS) {
+  for (const p of PROVIDERS) {
     const label = PROVIDER_LABELS[p];
     const shared = (
       level: ProblemLevel,

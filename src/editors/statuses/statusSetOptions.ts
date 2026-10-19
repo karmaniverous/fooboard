@@ -5,13 +5,13 @@
  * @module
  */
 import type { Dashboard } from '@/domain/config/dashboard';
-import type { StatusProvider } from '@/domain/config/statusSets';
+import { type Provider } from '@/domain/config/providers';
 import { PRESETS } from '@/domain/statuses/presets';
 
 /** The sets a provider's cells can use. */
 export const setOptions = (
   dashboard: Pick<Dashboard, 'customStatusSets'>,
-  provider: StatusProvider,
+  provider: Provider,
 ): { value: string; label: string }[] =>
   [...PRESETS, ...dashboard.customStatusSets]
     .filter((s) => s.provider === provider)

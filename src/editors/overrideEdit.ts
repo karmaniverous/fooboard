@@ -12,6 +12,7 @@ import type { Dashboard } from '@/domain/config/dashboard';
 import type { RowGroup } from '@/domain/config/groups';
 import { ownOverride } from '@/domain/config/ownOverride';
 import { branchRules, type ProviderRules } from '@/domain/config/placement';
+import type { Provider } from '@/domain/config/providers';
 import { branchOf, branchRule } from '@/domain/rules/branch';
 import type { Rule } from '@/domain/rules/schema';
 
@@ -116,7 +117,7 @@ export const setRowGroupStageRule = (
   d: Dashboard,
   groupId: string,
   stageId: string,
-  provider: keyof ProviderRules,
+  provider: Provider,
   rule: Rule | undefined,
 ): Dashboard => {
   const group = d.rowGroups.find((g) => g.id === groupId);

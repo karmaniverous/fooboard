@@ -11,9 +11,12 @@
 import { Choice } from '@/components/Choice';
 import { Button } from '@/components/ui/button';
 import type { Dashboard } from '@/domain/config/dashboard';
-import { PROVIDER_LABELS, STATUS_PROVIDERS } from '@/domain/config/statusSets';
+import {
+  type Provider,
+  PROVIDER_LABELS,
+  PROVIDERS,
+} from '@/domain/config/providers';
 import { BUILTIN_SOURCES } from '@/domain/model/builtinSources';
-import type { SourceRule } from '@/domain/model/sourceRule';
 import type { Problem } from '@/domain/problems/problem';
 
 import {
@@ -25,7 +28,7 @@ import {
 } from './customSource';
 import { CustomSourceEditor } from './CustomSourceEditor';
 
-const optionsFor = (dashboard: Dashboard, provider: SourceRule['provider']) =>
+const optionsFor = (dashboard: Dashboard, provider: Provider) =>
   [...BUILTIN_SOURCES, ...dashboard.customSourceRules]
     .filter((s) => s.provider === provider)
     .map((s) => ({ value: s.id, label: s.name }));
@@ -56,7 +59,7 @@ export function SourcesEditor({
           ))}
         </ul>
       )}
-      {STATUS_PROVIDERS.map((provider) => {
+      {PROVIDERS.map((provider) => {
         const label = PROVIDER_LABELS[provider];
         return (
           <label

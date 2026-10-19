@@ -8,6 +8,7 @@
 import type { JSONValue } from 'json-p3';
 import { z } from 'zod';
 
+import type { Provider } from '@/domain/config/providers';
 import type {
   CellDerivation,
   StalenessBadge,
@@ -45,7 +46,7 @@ export interface BoardCell {
 /** A record the board couldn't place, for the Unmapped panel (C-15,
  * spec.md A§4.3.7): a GitHub run or an Amplify job. */
 export interface UnmappedRun {
-  provider: 'github' | 'amplify';
+  provider: Provider;
   /** Unique on the board; a record is listed once per repo or app, not
    * per row. */
   id: string;

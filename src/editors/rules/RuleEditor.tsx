@@ -16,6 +16,7 @@ import { useContext } from 'react';
 
 import { Choice } from '@/components/Choice';
 import { Button } from '@/components/ui/button';
+import type { Provider } from '@/domain/config/providers';
 import type { RecordDoc } from '@/domain/model/translate';
 import {
   checkProblem,
@@ -30,7 +31,6 @@ import { CheckRow } from './CheckRow';
 import { ItemsWhereBuilder } from './ItemsWhereBuilder';
 import {
   samplePaths,
-  type SampleProvider,
   SourcesWithItemsContext,
   useRuleSamples,
 } from './samples';
@@ -68,7 +68,7 @@ export function RuleEditor({
   /** The path a new check starts with. */
   newPath?: string;
   /** The source whose board records the preview and picker use. */
-  provider?: SampleProvider;
+  provider?: Provider;
   /** What `$` is: a record, or one of its items. */
   scope?: 'record' | 'item';
   /** This rule's editor-item key (to be opened on, with a drafted check). */

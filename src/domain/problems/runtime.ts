@@ -7,6 +7,7 @@
  *
  * @module
  */
+import type { Provider } from '@/domain/config/providers';
 import type { SourceRule } from '@/domain/model/sourceRule';
 import type { KeyProblem } from '@/domain/model/translate';
 
@@ -47,7 +48,7 @@ export function translationProblems(
  * read (`limit`, e.g. "100 runs"). */
 export const windowHint = (
   cell: { rowId: string; stageId: string },
-  provider: SourceRule['provider'],
+  provider: Provider,
   limit: string,
 ): Problem =>
   problem(

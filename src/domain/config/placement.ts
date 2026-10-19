@@ -14,6 +14,7 @@ import { branchRule } from '@/domain/rules/branch';
 import { type Rule, RuleSchema } from '@/domain/rules/schema';
 
 import { ownOverride } from './ownOverride';
+import type { Provider } from './providers';
 
 /** A rule per source, at a level several sources share. */
 export const ProviderRulesSchema = z.object({
@@ -49,8 +50,6 @@ export const branchRules = (pattern: string): ProviderRules => ({
   github: branchRule(pattern),
   amplify: branchRule(pattern),
 });
-
-type Provider = keyof ProviderRules;
 
 const ALWAYS: Rule = { combine: 'and', checks: [] };
 

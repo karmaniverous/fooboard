@@ -11,24 +11,13 @@ import { z } from 'zod';
 import { RuleSchema } from '@/domain/rules/schema';
 
 import { HexColorSchema } from './colors';
-
-const StatusProviderSchema = z.enum(['github', 'amplify']);
-export type StatusProvider = z.infer<typeof StatusProviderSchema>;
-
-/** Every provider a status set can be for. */
-export const STATUS_PROVIDERS = StatusProviderSchema.options;
-
-/** Each provider's name in the editor. */
-export const PROVIDER_LABELS = {
-  github: 'GitHub',
-  amplify: 'Amplify',
-} as const satisfies Record<StatusProvider, string>;
+import { type Provider, ProviderSchema } from './providers';
 
 /** The set each provider uses unless a level overrides it: bundled presets. */
 export const DEFAULT_STATUS_SET_IDS = {
   github: 'github-deploy-test',
   amplify: 'amplify',
-} as const satisfies Record<StatusProvider, string>;
+} as const satisfies Record<Provider, string>;
 
 /** A status set per provider, either unset (inherit), for a row group. */
 export const StatusSetRefsSchema = z.object({
@@ -101,7 +90,7 @@ export const StatusSetSchema = z
   .object({
     id: z.string().min(1),
     name: z.string().min(1),
-    provider: StatusProviderSchema,
+    provider: ProviderSchema,
     /** GitHub: which of a run's jobs the set cares about, a JSON Schema over
      * one job's document. A run with none of them is not the cell's and is
      * skipped (A§4.3.6, option A). Empty: every job. Amplify ignores it. */

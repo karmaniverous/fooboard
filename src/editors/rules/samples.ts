@@ -9,28 +9,27 @@
 import type { JSONValue } from 'json-p3';
 import { createContext, useContext } from 'react';
 
+import type { Provider } from '@/domain/config/providers';
 import { UNKNOWN_STATUS_ID } from '@/domain/config/statusSets';
 import type { RecordDoc } from '@/domain/model/translate';
 import { compilePath, valuesAt } from '@/domain/rules/path';
 
-export type SampleProvider = 'github' | 'amplify';
-
-export type RuleSamples = Partial<Record<SampleProvider, readonly RecordDoc[]>>;
+export type RuleSamples = Partial<Record<Provider, readonly RecordDoc[]>>;
 
 export const RuleSamplesContext = createContext<RuleSamples>({});
 
 /** The sources whose source rule reads items (spec.md A§4.3.7: item
  * rules and *Only items where* are offered only for those). */
-export const SourcesWithItemsContext = createContext<readonly SampleProvider[]>(
-  ['github'],
-);
+export const SourcesWithItemsContext = createContext<readonly Provider[]>([
+  'github',
+]);
 
 /** Entries of the Amplify branch lists read, for the branch rule. */
 export const BranchSamplesContext = createContext<readonly JSONValue[]>([]);
 
 /** The board's records for `provider` (none outside a board). */
 export const useRuleSamples = (
-  provider: SampleProvider | undefined,
+  provider: Provider | undefined,
 ): readonly RecordDoc[] => {
   const samples = useContext(RuleSamplesContext);
   return provider ? (samples[provider] ?? []) : [];
@@ -91,7 +90,7 @@ const SAMPLE_LIMIT = 50;
 /** The board's cell records per source, up to `SAMPLE_LIMIT` each,
  * Unknown cells' records first (the field picker shows the first). */
 export function ruleSamples(
-  rows: readonly { id: string; type: SampleProvider }[],
+  rows: readonly { id: string; type: Provider }[],
   cells: Readonly<
     Partial<
       Record<
@@ -109,7 +108,7 @@ export function ruleSamples(
   >,
 ): RuleSamples {
   const typeOf = new Map(rows.map((r) => [r.id, r.type]));
-  const out: Record<SampleProvider, RecordDoc[]> = { github: [], amplify: [] };
+  const out: Record<Provider, RecordDoc[]> = { github: [], amplify: [] };
   const known = Object.values(cells).filter(
     (c) => c?.derivation.kind === 'ok' && c.derivation.document,
   );

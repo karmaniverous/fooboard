@@ -7,7 +7,7 @@
  *
  * @module
  */
-type Provider = 'github' | 'amplify';
+import type { Provider } from '@/domain/config/providers';
 
 /** Where a problem is marked. */
 export type ProblemLevel =
