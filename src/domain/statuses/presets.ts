@@ -1,36 +1,32 @@
 /**
- * The bundled status sets (spec.md A§4.3.6), referenced by id so a board
- * using one picks up fixes in new releases, and the built-in Unknown
- * status. *GitHub deploy and test* reproduces today's rules (A§4.3.3) over
- * jobs named *deploy* and *test*: a failed, cancelled or running relevant
+ * The bundled status sets (spec.md A§4.3.7), referenced by id so a board
+ * using one picks up fixes in new releases. Their rules read the conformed
+ * keys of the built-in source rules: GitHub items' `name` and `state`, an
+ * Amplify record's `state`. Job names (*deploy*, *test*) live only here,
+ * as data. *GitHub deploy and test*: a failed, cancelled or running counted
  * job decides first; then success in the final phase (test if there are
  * test jobs); then partial success; then queued.
  *
  * @module
  */
-import type { MatchTest } from '@/domain/config/matchTest';
 import {
   type CellStatus,
   type StatusSet,
   StatusSetSchema,
   type SummaryStatus,
 } from '@/domain/config/statusSets';
-
 import {
   all,
-  anyJob,
-  everyJob,
-  FAILED,
-  type JsonSchema,
-  nameMatches,
+  always,
+  check,
+  exists,
+  is,
   not,
-  oneOf,
-  running,
-  waiting,
-} from './schemaBuilders';
+} from '@/domain/model/ruleBuilders';
+import type { Rule } from '@/domain/rules/schema';
 
 /** The summary statuses every preset uses. */
-export const PRESET_SUMMARY: SummaryStatus[] = [
+const PRESET_SUMMARY: SummaryStatus[] = [
   {
     id: 'failing',
     name: 'Failing',
@@ -66,174 +62,205 @@ const status = (
   name: string,
   color: string,
   summary: string,
-  test: JsonSchema,
+  rule: Rule,
   extra: Partial<CellStatus> = {},
 ): CellStatus => ({
   id,
   name,
   color,
   summary,
-  test,
+  rule,
   outlined: false,
   ...extra,
 });
 
-/** The jobs a deploy-and-test set cares about: deploy or test jobs. */
-export function deployTestJobs(
-  deployTests: readonly MatchTest[],
-  testTests: readonly MatchTest[],
-): JsonSchema {
-  return { anyOf: [nameMatches(deployTests), nameMatches(testTests)] };
-}
+/** Case-insensitive `search()` source for `word` (RFC 9535 is
+ * case-sensitive, so each letter becomes a class). */
+const caseless = (word: string): string =>
+  word.replace(/[a-z]/gi, (c) => `[${c.toUpperCase()}${c.toLowerCase()}]`);
 
-/** Cell statuses for jobs whose names pass the deploy and test phase tests
- * (a job passing both is a test job, as today). */
-export function deployTestStatuses(
-  deployTests: readonly MatchTest[],
-  testTests: readonly MatchTest[],
-): CellStatus[] {
-  const isTest = nameMatches(testTests);
-  const isDeploy = all(nameMatches(deployTests), not(isTest));
-  const relevant = { anyOf: [isDeploy, isTest] };
-  const failed = oneOf('conclusion', FAILED);
-  const succeeded = oneOf('conclusion', ['success']);
-  return [
+const TEST = `search(@.name, '${caseless('test')}')`;
+const DEPLOY = `search(@.name, '${caseless('deploy')}') && !${TEST}`;
+/** Some item where `filter` holds. */
+const some = (filter: string) => all(exists(`$.items[?${filter}]`));
+const state = (s: string) => `@.state == '${s}'`;
+
+const notSkipped = not(is('$.state', 'skipped'));
+
+const deployTest = {
+  id: 'github-deploy-test',
+  name: 'GitHub deploy and test',
+  provider: 'github',
+  items: all(
+    check({ path: '$.name', operator: 'regex', value: 'deploy|test' }),
+    notSkipped,
+  ),
+  summary: PRESET_SUMMARY,
+  cell: [
     status(
       'testFailed',
       'Tests failed',
       '#b91c1c',
       'failing',
-      anyJob(all(isTest, failed)),
+      some(`${TEST} && ${state('failed')}`),
     ),
     status(
       'deployFailed',
       'Deploy failed',
       '#dc2626',
       'failing',
-      anyJob(all(isDeploy, failed)),
+      some(`${DEPLOY} && ${state('failed')}`),
     ),
     status(
       'cancelled',
       'Cancelled',
       '#475569',
       'cancelled',
-      anyJob(all(relevant, oneOf('conclusion', ['cancelled']))),
+      some(state('cancelled')),
     ),
     status(
       'testing',
       'Testing',
       '#4f46e5',
       'running',
-      anyJob(all(isTest, running)),
+      some(`${TEST} && ${state('running')}`),
     ),
     status(
       'deploying',
       'Deploying',
       '#2563eb',
       'running',
-      anyJob(all(isDeploy, running)),
+      some(`${DEPLOY} && ${state('running')}`),
     ),
-    status('passed', 'Passed', '#15803d', 'ok', anyJob(all(isTest, succeeded))),
+    status(
+      'passed',
+      'Passed',
+      '#15803d',
+      'ok',
+      some(`${TEST} && ${state('succeeded')}`),
+    ),
     status(
       'deployed',
       'Deployed',
       '#0f766e',
       'ok',
-      all(not(anyJob(isTest)), anyJob(all(isDeploy, succeeded))),
+      all(
+        not(exists(`$.items[?${TEST}]`)),
+        exists(`$.items[?${DEPLOY} && ${state('succeeded')}]`),
+      ),
     ),
     status(
       'partial',
       'Partial',
       '#0e7490',
       'running',
-      anyJob(all(relevant, succeeded)),
+      some(state('succeeded')),
       { icon: 'partial' },
     ),
-    status('queued', 'Queued', '#e2e8f0', 'running', anyJob(relevant), {
+    status(
+      'queued',
+      'Queued',
+      '#e2e8f0',
+      'running',
+      all(exists('$.items[*]')),
+      {
+        icon: 'queued',
+        outlined: true,
+      },
+    ),
+  ],
+};
+
+const singleJob = {
+  id: 'github-single-job',
+  name: 'GitHub single job',
+  provider: 'github',
+  items: all(notSkipped),
+  summary: PRESET_SUMMARY,
+  cell: [
+    status('failed', 'Failed', '#dc2626', 'failing', some(state('failed'))),
+    status(
+      'cancelled',
+      'Cancelled',
+      '#475569',
+      'cancelled',
+      some(state('cancelled')),
+    ),
+    status('running', 'Running', '#2563eb', 'running', some(state('running'))),
+    status('queued', 'Queued', '#e2e8f0', 'running', some(state('queued')), {
       icon: 'queued',
       outlined: true,
     }),
-  ];
-}
-
-const contains = (value: string): MatchTest => ({
-  field: 'jobName',
-  operator: 'contains',
-  value,
-});
-
-const amplify = (statuses: readonly string[]): JsonSchema =>
-  oneOf('status', statuses);
-
-export const PRESETS: readonly StatusSet[] = [
-  {
-    id: 'github-deploy-test',
-    name: 'GitHub deploy and test',
-    provider: 'github',
-    jobs: deployTestJobs([contains('deploy')], [contains('test')]),
-    summary: PRESET_SUMMARY,
-    cell: deployTestStatuses([contains('deploy')], [contains('test')]),
-  },
-  {
-    id: 'github-single-job',
-    name: 'GitHub single job',
-    provider: 'github',
-    summary: PRESET_SUMMARY,
-    cell: [
-      status(
-        'failed',
-        'Failed',
-        '#dc2626',
-        'failing',
-        anyJob(oneOf('conclusion', FAILED)),
+    status(
+      'succeeded',
+      'Succeeded',
+      '#15803d',
+      'ok',
+      all(
+        check({
+          path: '$.items[*].state',
+          value: 'succeeded',
+          quantifier: 'every',
+        }),
       ),
-      status(
-        'cancelled',
-        'Cancelled',
-        '#475569',
-        'cancelled',
-        anyJob(oneOf('conclusion', ['cancelled'])),
-      ),
-      status('running', 'Running', '#2563eb', 'running', anyJob(running)),
-      status('queued', 'Queued', '#e2e8f0', 'running', anyJob(waiting), {
+    ),
+  ],
+};
+
+const amplify = {
+  id: 'amplify',
+  name: 'Amplify',
+  provider: 'amplify',
+  items: always,
+  summary: PRESET_SUMMARY,
+  cell: [
+    status(
+      'failed',
+      'Failed',
+      '#dc2626',
+      'failing',
+      all(is('$.state', 'failed')),
+    ),
+    status(
+      'cancelled',
+      'Cancelled',
+      '#475569',
+      'cancelled',
+      all(is('$.state', 'cancelled')),
+    ),
+    status(
+      'running',
+      'Running',
+      '#2563eb',
+      'running',
+      all(is('$.state', 'running')),
+    ),
+    status(
+      'queued',
+      'Queued',
+      '#e2e8f0',
+      'running',
+      all(is('$.state', 'queued')),
+      {
         icon: 'queued',
         outlined: true,
-      }),
-      status(
-        'succeeded',
-        'Succeeded',
-        '#15803d',
-        'ok',
-        everyJob(oneOf('conclusion', ['success'])),
-      ),
-    ],
-  },
-  {
-    id: 'amplify',
-    name: 'Amplify',
-    provider: 'amplify',
-    summary: PRESET_SUMMARY,
-    cell: [
-      status('failed', 'Failed', '#dc2626', 'failing', amplify(['FAILED'])),
-      status(
-        'cancelled',
-        'Cancelled',
-        '#475569',
-        'cancelled',
-        amplify(['CANCELLED', 'CANCELLING']),
-      ),
-      status('running', 'Running', '#2563eb', 'running', amplify(['RUNNING'])),
-      status(
-        'queued',
-        'Queued',
-        '#e2e8f0',
-        'running',
-        amplify(['PENDING', 'PROVISIONING', 'CREATED']),
-        { icon: 'queued', outlined: true },
-      ),
-      status('deployed', 'Deployed', '#15803d', 'ok', amplify(['SUCCEED'])),
-    ],
-  },
+      },
+    ),
+    status(
+      'deployed',
+      'Deployed',
+      '#15803d',
+      'ok',
+      all(is('$.state', 'succeeded')),
+    ),
+  ],
+};
+
+/** The built-in status sets. */
+export const PRESETS: readonly StatusSet[] = [
+  deployTest,
+  singleJob,
+  amplify,
 ].map((p) => StatusSetSchema.parse(p));
 
 /** The bundled preset `id`; a missing one is a bug. */

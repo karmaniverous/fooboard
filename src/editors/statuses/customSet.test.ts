@@ -73,7 +73,7 @@ describe('addCellStatus', () => {
     expect(next.cell[0]).toMatchObject({
       name: 'New status',
       summary: set.summary[0]?.id,
-      test: { not: {} },
+      rule: { checks: [{ path: '$', operator: 'exists', not: true }] },
     });
     expect(next.cell).toHaveLength(set.cell.length + 1);
   });

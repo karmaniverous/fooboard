@@ -1,11 +1,9 @@
 /**
- * The normalised documents a status test sees (spec.md A§4.3.6): fooboard's
- * own field names, stable across provider API changes.
- *
- * - A GitHub run: its workflow, event, branch and attempt, and the latest
- *   attempt's jobs that pass the row key tests and the status set's job
- *   test, without `skipped`, `neutral` and `stale` jobs. Job statuses and conclusions are GitHub's.
- * - An Amplify job: its branch, status (Amplify's), commit and times.
+ * The records status rules see (spec.md A§4.3.7), built from raw provider
+ * data by the built-in source rules: a GitHub run with its latest
+ * attempt's jobs (those the row's keys take) as items, an Amplify job with
+ * its console link. A GitHub record keeps only the items its set's item
+ * rule counts, and is `undefined` when none count (not the cell's).
  *
  * @module
  */
@@ -14,100 +12,57 @@ import { latestAttemptJobs } from '@/domain/derivation/latestAttempt';
 import type {
   AmplifyJobWithBranch,
   GithubRunWithJobs,
-  GithubWorkflowJob,
 } from '@/domain/derivation/types';
 import { matchesAny } from '@/domain/matching/matchTest';
+import { BUILTIN_SOURCES } from '@/domain/model/builtinSources';
+import { asJson } from '@/domain/model/json';
+import { itemsOf, type RecordDoc, translate } from '@/domain/model/translate';
+import { evaluateRule } from '@/domain/rules/check';
+import type { Rule } from '@/domain/rules/schema';
+import { buildAmplifyConsoleLink } from '@/lib/amplify/consoleLink';
 
-import { passes } from './classify';
+const source = (id: string) => {
+  const rule = BUILTIN_SOURCES.find((s) => s.id === id);
+  if (!rule) throw new Error(`no source rule ${id}`);
+  return rule;
+};
 
-interface GithubJobDocument {
-  name: string;
-  status: string;
-  conclusion: string | null;
-  startedAt: string | null;
-  completedAt: string | null;
-}
-
-export interface GithubRunDocument {
-  workflow: string;
-  event: string;
-  branch: string;
-  attempt: number;
-  jobs: GithubJobDocument[];
-}
-
-export interface AmplifyJobDocument {
-  branch: string;
-  status: string | null;
-  commitId: string | null;
-  startTime: string | null;
-  endTime: string | null;
-}
-
-const IGNORED_CONCLUSIONS = new Set(['skipped', 'neutral', 'stale']);
-
-const jobDocument = (j: GithubWorkflowJob): GithubJobDocument => ({
-  name: j.name,
-  status: j.status,
-  conclusion: j.conclusion,
-  startedAt: j.startedAt,
-  completedAt: j.completedAt,
-});
-
-/** The jobs of a run a row sees that the status set cares about: latest
- * attempt, not skipped, neutral or stale, passing the row key tests and
- * the set's job test. */
-export function relevantRowJobs(
-  { run, jobs }: GithubRunWithJobs,
+/** A run's record for a row (its keys) and set (its item rule), or
+ * `undefined` when no item counts. */
+export function githubRecord(
+  entry: GithubRunWithJobs,
   rowKeyTests: readonly MatchTest[],
-  jobTest: Record<string, unknown>,
-): GithubWorkflowJob[] {
-  return latestAttemptJobs(jobs).filter(
+  items: Rule,
+): RecordDoc | undefined {
+  const jobs = latestAttemptJobs(entry.jobs).filter(
     (job) =>
-      !IGNORED_CONCLUSIONS.has(job.conclusion ?? '') &&
-      passes(jobTest, jobDocument(job)) &&
-      (rowKeyTests.length === 0 ||
-        matchesAny(
-          rowKeyTests,
-          { jobName: job.name, workflowName: run.workflowName },
-          false,
-        )),
+      rowKeyTests.length === 0 ||
+      matchesAny(
+        rowKeyTests,
+        { jobName: job.name, workflowName: entry.run.workflowName },
+        false,
+      ),
   );
+  const { record } = translate(
+    source('github'),
+    asJson({ run: entry.run, jobs }),
+  );
+  const counted = itemsOf(record).filter((i) => evaluateRule(items, i));
+  return counted.length > 0 ? { ...record, items: counted } : undefined;
 }
 
-/** A run's document from its relevant jobs, or `undefined` when there are
- * none (the run is not the cell's, A§4.3.6). */
-export function runDocument(
-  entry: GithubRunWithJobs,
-  jobs: readonly GithubWorkflowJob[],
-): GithubRunDocument | undefined {
-  if (jobs.length === 0) return undefined;
-  return {
-    workflow: entry.run.workflowName,
-    event: entry.run.event,
-    branch: entry.run.headBranch ?? '',
-    attempt: Math.max(...jobs.map((j) => j.runAttempt)),
-    jobs: jobs.map(jobDocument),
-  };
-}
-
-/** A run's document for a row and status set (see `runDocument`). */
-export const githubRunDocument = (
-  entry: GithubRunWithJobs,
-  rowKeyTests: readonly MatchTest[],
-  jobTest: Record<string, unknown> = {},
-): GithubRunDocument | undefined =>
-  runDocument(entry, relevantRowJobs(entry, rowKeyTests, jobTest));
-
-export function amplifyJobDocument({
+/** An Amplify job's record. */
+export function amplifyRecord({
+  source: app,
   branch,
   job,
-}: AmplifyJobWithBranch): AmplifyJobDocument {
-  return {
-    branch,
-    status: job.status ?? null,
-    commitId: job.commitId ?? null,
-    startTime: job.startTime?.toISOString() ?? null,
-    endTime: job.endTime?.toISOString() ?? null,
-  };
+}: AmplifyJobWithBranch): RecordDoc {
+  const consoleUrl =
+    job.jobId === undefined
+      ? null
+      : buildAmplifyConsoleLink({ ...app, branch, jobId: job.jobId });
+  return translate(
+    source('amplify'),
+    asJson({ source: app, branch, job, consoleUrl }),
+  ).record;
 }

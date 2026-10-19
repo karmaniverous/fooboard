@@ -8,6 +8,7 @@
  */
 import type { Dashboard } from '@/domain/config/dashboard';
 import type { CellStatus, StatusSet } from '@/domain/config/statusSets';
+import { CheckSchema } from '@/domain/rules/schema';
 import { findStatusSet } from '@/domain/statuses/resolve';
 
 import { setDashboardStatusSet } from './overrideSets';
@@ -92,7 +93,7 @@ export function removeSet(dashboard: Dashboard, id: string): Dashboard {
 }
 
 /** A new cell status at the top (first match wins), counting toward the
- * set's first summary status, with a test that matches nothing until it is
+ * set's first summary status, with a rule that matches nothing until it is
  * written. */
 export function addCellStatus(set: StatusSet, name = 'New status'): StatusSet {
   const status: CellStatus = {
@@ -104,7 +105,10 @@ export function addCellStatus(set: StatusSet, name = 'New status'): StatusSet {
     color: '#64748b',
     summary: set.summary[0]?.id ?? '',
     outlined: false,
-    test: { not: {} },
+    rule: {
+      combine: 'and',
+      checks: [CheckSchema.parse({ path: '$', operator: 'exists', not: true })],
+    },
   };
   return { ...set, cell: [status, ...set.cell] };
 }

@@ -10,7 +10,8 @@
  */
 import type { MappingSettings } from '@/domain/config/mappingSettings';
 import type { MatchTest } from '@/domain/config/matchTest';
-import { githubRunDocument } from '@/domain/statuses/documents';
+import type { Rule } from '@/domain/rules/schema';
+import { githubRecord } from '@/domain/statuses/documents';
 
 import { isCandidateRun, isExcludedEvent } from './candidateRuns';
 import type { GithubRunWithJobs } from './types';
@@ -39,7 +40,8 @@ export interface RowKeyInput {
   /** The row's effective branch patterns, one per stage (C-14c). */
   branchPatterns: readonly string[];
   /** The job test of the status set those cells use (A§4.3.6). */
-  jobTest: Record<string, unknown>;
+  /** The cell's status set's item rule. */
+  items: Rule;
 }
 
 /**
@@ -68,7 +70,7 @@ export function classifyUnmappedRun(
   // Placed when a row whose patterns take the branch sees a job its status
   // set covers (A§4.3.6).
   const sees = (row: RowKeyInput, keys: readonly MatchTest[]) =>
-    githubRunDocument(entry, keys, row.jobTest) !== undefined;
+    githubRecord(entry, keys, row.items) !== undefined;
   if (!branchRows.some((row) => sees(row, [])))
     return { kind: 'no-relevant-job' };
   if (branchRows.some((row) => sees(row, row.rowKeyTests))) return undefined;

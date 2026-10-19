@@ -5,6 +5,8 @@
  *
  * @module
  */
+import type { JSONValue } from 'json-p3';
+
 import {
   type CellStatus,
   type StatusIcon,
@@ -72,5 +74,5 @@ export const inProgress = (
 ): boolean => derivation.kind === 'ok' && derivation.status.summary.inProgress;
 
 /** Classify `doc` against `set` and resolve the result. */
-export const statusOf = (doc: unknown, set: StatusSet): ResolvedStatus =>
-  resolveStatus(set, classify(doc, set));
+export const statusOf = (record: JSONValue, set: StatusSet): ResolvedStatus =>
+  resolveStatus(set, classify(record, set));

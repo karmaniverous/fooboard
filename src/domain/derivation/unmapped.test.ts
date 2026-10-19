@@ -16,11 +16,11 @@ import {
 import { classifyUnmappedRun, describeUnmappedReason } from './unmapped';
 
 const patterns = ['main', 'release/**'];
-const jobTest = githubSet.jobs;
-const keyless = { rowKeyTests: [], branchPatterns: patterns, jobTest };
+const items = githubSet.items;
+const keyless = { rowKeyTests: [], branchPatterns: patterns, items };
 const keyed = (value: string) => ({
   branchPatterns: patterns,
-  jobTest,
+  items,
   rowKeyTests: [
     { field: 'jobName' as const, operator: 'contains' as const, value },
   ],
@@ -87,7 +87,10 @@ describe('classifyUnmappedRun', () => {
   });
 
   it("uses each row's status set: a run its set covers is placed", () => {
-    const anyJob = { ...keyless, jobTest: {} };
+    const anyJob = {
+      ...keyless,
+      items: { combine: 'and' as const, checks: [] },
+    };
     expect(
       classifyUnmappedRun(run('main', 'lint'), [anyJob], defaultMapping),
     ).toBeUndefined();

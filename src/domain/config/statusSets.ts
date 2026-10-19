@@ -8,6 +8,8 @@
  */
 import { z } from 'zod';
 
+import { RuleSchema } from '@/domain/rules/schema';
+
 import { HexColorSchema } from './colors';
 
 const StatusProviderSchema = z.enum(['github', 'amplify']);
@@ -77,9 +79,6 @@ const SummaryStatusSchema = z.object({
 });
 export type SummaryStatus = z.infer<typeof SummaryStatusSchema>;
 
-/** A JSON Schema object (validated as JSON Schema when it is used). */
-const JsonSchemaObjectSchema = z.record(z.string(), z.unknown());
-
 /** A cell status: shown when its `test` is the first in the set to match. */
 const CellStatusSchema = z.object({
   id: StatusIdSchema,
@@ -91,7 +90,7 @@ const CellStatusSchema = z.object({
   icon: StatusIconSchema.optional(),
   /** Drawn with a dashed outline (today's Queued look). */
   outlined: z.boolean().default(false),
-  test: JsonSchemaObjectSchema,
+  rule: RuleSchema,
 });
 export type CellStatus = z.infer<typeof CellStatusSchema>;
 
@@ -106,7 +105,7 @@ export const StatusSetSchema = z
     /** GitHub: which of a run's jobs the set cares about, a JSON Schema over
      * one job's document. A run with none of them is not the cell's and is
      * skipped (A§4.3.6, option A). Empty: every job. Amplify ignores it. */
-    jobs: JsonSchemaObjectSchema.default(() => ({})),
+    items: RuleSchema.default({ combine: 'and', checks: [] }),
     summary: z.array(SummaryStatusSchema).min(1),
     cell: z.array(CellStatusSchema).min(1),
   })

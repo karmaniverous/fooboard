@@ -253,7 +253,7 @@ function unmappedRuns(
     stagesFor(row).map((s) => ({
       rowKeyTests: row.rowKeyTests,
       branchPatterns: [s.branchPattern],
-      jobTest: setFor(row, s.id).jobs,
+      items: setFor(row, s.id).items,
     })),
   );
   return runs.flatMap((entry) => {

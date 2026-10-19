@@ -1,7 +1,7 @@
 /**
  * One of the dashboard's own status sets (spec.md A§4.3.6): its name, its
- * job test (GitHub), its summary statuses and its cell statuses in order
- * (the first whose test matches wins). Changes go to the dashboard, which
+ * item rule (GitHub), its summary statuses and its cell statuses in order
+ * (the first whose rule matches wins). Changes go to the dashboard, which
  * the editor validates before saving.
  *
  * @module
@@ -13,8 +13,8 @@ import { STATUS_ICONS, type StatusSet } from '@/domain/config/statusSets';
 import { move, patchAt } from '@/lib/lists';
 
 import { CommitInput } from '../fields';
+import { RuleEditor } from '../rules/RuleEditor';
 import { addCellStatus } from './customSet';
-import { TestEditor } from './TestEditor';
 
 const iconOptions = STATUS_ICONS.map((icon) => ({
   value: icon,
@@ -63,12 +63,11 @@ export function CustomSetEditor({
       {jobs && (
         <div className="flex flex-col gap-1">
           <h4 className="text-xs font-semibold">Jobs that count</h4>
-          <TestEditor
-            label="Job test"
-            jobsScope={false}
-            test={set.jobs}
-            onChange={(test) => {
-              onChange({ ...set, jobs: test });
+          <RuleEditor
+            label="Item rule"
+            rule={set.items}
+            onChange={(items) => {
+              onChange({ ...set, items });
             }}
           />
         </div>
@@ -242,12 +241,11 @@ export function CustomSetEditor({
                   ×
                 </Button>
               </div>
-              <TestEditor
-                label={`${c.name} test`}
-                jobsScope={jobs}
-                test={c.test}
-                onChange={(test) => {
-                  update({ test });
+              <RuleEditor
+                label={`${c.name} rule`}
+                rule={c.rule}
+                onChange={(rule) => {
+                  update({ rule });
                 }}
               />
             </div>

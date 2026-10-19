@@ -173,12 +173,16 @@ describe('deriveGithubCell', () => {
     expect(result.status.summary.id).toBe('unknown');
   });
 
-  it('takes time and link from a running job before the latest finished one', () => {
+  it('takes time and link from the counted job with the latest time (a running job, when it started)', () => {
     const run = makeRun({ headBranch: 'main' });
     const result = deriveGithubCell({
       runs: [
         entry(run, [
-          makeJob({ name: 'deploy', completedAt: '2026-10-01T00:09:00Z' }),
+          makeJob({
+            name: 'deploy',
+            completedAt: '2026-10-01T00:01:00Z',
+            htmlUrl: 'deploy-job',
+          }),
           makeJob({
             name: 'test',
             status: 'in_progress',

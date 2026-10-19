@@ -9,28 +9,20 @@
 import { describe, expect, it } from 'vitest';
 
 import { DashboardSchema } from '@/domain/config/dashboard';
+import { all, exists, not } from '@/domain/model/ruleBuilders';
+import type { RecordDoc } from '@/domain/model/translate';
 import { classify } from '@/domain/statuses/classify';
-import type { GithubRunDocument } from '@/domain/statuses/documents';
 import { statusSetFor } from '@/domain/statuses/resolve';
 import { UNKNOWN } from '@/domain/statuses/resolved';
 import { type BoardCell, cellKey } from '@/engine';
 
 import { addStatusFor, unknownCells } from './unknownRuns';
 
-const run: GithubRunDocument = {
+const run: RecordDoc = {
   workflow: 'Release',
   event: 'push',
   branch: 'main',
-  attempt: 1,
-  jobs: [
-    {
-      name: 'publish',
-      status: 'completed',
-      conclusion: 'skipped',
-      startedAt: null,
-      completedAt: null,
-    },
-  ],
+  items: [{ name: 'publish', state: 'skipped', time: '', link: '' }],
 };
 
 const base = DashboardSchema.parse({
@@ -159,13 +151,7 @@ describe('addStatusFor', () => {
   });
 
   it("drafts from an Amplify job's status, or matches nothing for an unreadable document", () => {
-    const job = {
-      branch: 'main',
-      status: 'CANCELLING',
-      commitId: 'a',
-      startTime: null,
-      endTime: null,
-    };
+    const job = { branch: 'main', state: 'cancelled', commit: 'a' };
     const amplify = addStatusFor(base, {
       rowId: 'web',
       stageId: 'dev',
@@ -178,7 +164,9 @@ describe('addStatusFor', () => {
       stageId: 'dev',
       document: 42,
     });
-    expect(odd.customStatusSets[0]?.cell[0]?.test).toEqual({ not: {} });
+    expect(odd.customStatusSets[0]?.cell[0]?.rule).toEqual(
+      all(not(exists('$'))),
+    );
   });
 
   it('leaves the dashboard alone for a row it does not have', () => {
@@ -193,19 +181,13 @@ describe('addStatusFor', () => {
       'github',
       {
         ...run,
-        jobs: [{ ...run.jobs[0], status: 'in_progress', conclusion: null }],
+        items: [{ name: 'publish', state: null, time: '', link: '' }],
       },
     ],
     [
       'an Amplify job with no status',
       'amplify',
-      {
-        branch: 'main',
-        status: null,
-        commitId: null,
-        startTime: null,
-        endTime: null,
-      },
+      { branch: 'main', state: null },
     ],
   ])('drafts a status that matches %s', (_, kind, document) => {
     const next = addStatusFor(base, { rowId: 'web', stageId: 'dev', document });

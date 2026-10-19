@@ -66,6 +66,10 @@ function braces(
   }
 }
 
+/** A glob matching exactly `text` (wildcard characters as sets). */
+export const escapeGlob = (text: string): string =>
+  text.replace(/[*?[\]{}]/g, (c) => `[${c}]`);
+
 /** The anchored regex for `glob`. */
 export function globToRegExp(glob: string, ignoreCase: boolean): RegExp {
   const { source } = translate(glob.match(/./gsu) ?? [], 0, []);

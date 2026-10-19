@@ -118,7 +118,7 @@ describe('deriveAmplifyCell', () => {
     expect(result).toMatchObject({
       kind: 'ok',
       status: { id: 'failed', summary: { id: 'failing' } },
-      document: { branch: 'main', status: 'FAILED' },
+      document: { branch: 'main', state: 'failed' },
     });
   });
 

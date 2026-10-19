@@ -8,7 +8,8 @@
  */
 import { describe, expect, it } from 'vitest';
 
-import { BUILTIN_SETS } from './builtinSets';
+import { PRESETS } from '@/domain/statuses/presets';
+
 import { type CellRules, placeCell } from './cell';
 import { all, always, copy, give, is } from './ruleBuilders';
 import { SourceRuleSchema } from './sourceRule';
@@ -77,7 +78,7 @@ describe('placeCell', () => {
     size = 'L',
   ) => translate(rule, { size, n, parts }).record;
   const set = {
-    ...BUILTIN_SETS[0],
+    ...PRESETS[0],
     id: 't',
     items: all(is('$.name', 'keep*')),
     cell: [

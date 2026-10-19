@@ -1,29 +1,31 @@
 /**
- * Tests for classification: the first status whose test passes wins, none
- * passing gives `undefined`, and a test that can't run matches nothing
- * instead of throwing.
+ * Tests for classification: the first status whose rule matches wins,
+ * none matching gives `undefined`, and a rule that can't run matches
+ * nothing instead of throwing.
  *
  * @module
  */
 import { describe, expect, it } from 'vitest';
 
 import type { CellStatus } from '@/domain/config/statusSets';
+import { all, always, check, is } from '@/domain/model/ruleBuilders';
+import type { Rule } from '@/domain/rules/schema';
 
 import { classify } from './classify';
 
-const status = (id: string, test: Record<string, unknown>): CellStatus => ({
+const status = (id: string, rule: Rule): CellStatus => ({
   id,
   name: id,
   color: '#000000',
   summary: 's',
   outlined: false,
-  test,
+  rule,
 });
-const failed = { properties: { status: { const: 'FAILED' } } };
+const failed = all(is('$.status', 'FAILED'));
 
 describe('classify', () => {
-  it('returns the first status whose test passes', () => {
-    const set = { cell: [status('a', failed), status('b', {})] };
+  it('returns the first status whose rule matches', () => {
+    const set = { cell: [status('a', failed), status('b', always)] };
     expect(classify({ status: 'FAILED' }, set)?.id).toBe('a');
     expect(classify({ status: 'OK' }, set)?.id).toBe('b');
     expect(
@@ -31,12 +33,13 @@ describe('classify', () => {
     ).toBeUndefined();
   });
 
-  it('treats a test that cannot run as matching nothing', () => {
-    const bad = status('bad', {
-      properties: { status: { type: 'string', pattern: '(' } },
-    });
+  it('treats a rule that cannot run as matching nothing', () => {
+    const bad = status(
+      'bad',
+      all(check({ path: '$.status', operator: 'regex', value: '(' })),
+    );
     expect(
-      classify({ status: 'x' }, { cell: [bad, status('ok', {})] })?.id,
+      classify({ status: 'x' }, { cell: [bad, status('ok', always)] })?.id,
     ).toBe('ok');
   });
 });

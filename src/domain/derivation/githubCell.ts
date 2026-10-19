@@ -10,11 +10,9 @@
 import type { MappingSettings } from '@/domain/config/mappingSettings';
 import type { MatchTest } from '@/domain/config/matchTest';
 import type { StatusSet } from '@/domain/config/statusSets';
-import {
-  type GithubRunDocument,
-  relevantRowJobs,
-  runDocument,
-} from '@/domain/statuses/documents';
+import { timeAndLink } from '@/domain/model/cell';
+import type { RecordDoc } from '@/domain/model/translate';
+import { githubRecord } from '@/domain/statuses/documents';
 import { type ResolvedStatus, statusOf } from '@/domain/statuses/resolved';
 
 import { selectCandidateRuns } from './candidateRuns';
@@ -24,7 +22,7 @@ import type {
   ProviderFailure,
 } from './emptyStates';
 import { resolveEmptyState } from './emptyStates';
-import type { GithubRunWithJobs, GithubWorkflowJob } from './types';
+import type { GithubRunWithJobs } from './types';
 
 /** A successfully derived GitHub cell. */
 export interface GithubCellResult {
@@ -40,39 +38,12 @@ export interface GithubCellResult {
   /** Where the cell links (spec.md C-13a). */
   linkUrl: string;
   /** The run's document, for the detail and *Add status* (A§4.3.6). */
-  document: GithubRunDocument;
+  /** The record its status rules saw (counted items only). */
+  document: RecordDoc;
 }
 
 export type GithubCellDerivation = GithubCellResult | EmptyCellResult;
 
-const at = (time: string | null): number => (time ? Date.parse(time) : 0);
-
-/** The cell's time and link come from the relevant job most recently
- * active: a running job first (latest started), then the latest completed;
- * the run's own link and time otherwise (A§4.3.6). */
-export function timeAndLink(
-  entry: GithubRunWithJobs,
-  jobs: readonly GithubWorkflowJob[],
-): { time: string | undefined; linkUrl: string } {
-  const latest = (pick: (j: GithubWorkflowJob) => string | null) =>
-    jobs
-      .filter((j) => pick(j) !== null)
-      .reduce<GithubWorkflowJob | undefined>(
-        (a, j) => (!a || at(pick(j)) > at(pick(a)) ? j : a),
-        undefined,
-      );
-  const running = latest((j) =>
-    j.status === 'in_progress' ? j.startedAt : null,
-  );
-  if (running)
-    return { time: running.startedAt ?? undefined, linkUrl: running.htmlUrl };
-  const done = latest((j) => j.completedAt);
-  if (done)
-    return { time: done.completedAt ?? undefined, linkUrl: done.htmlUrl };
-  return { time: entry.run.createdAt, linkUrl: entry.run.htmlUrl };
-}
-
-/** Derive one GitHub row/stage cell. */
 export function deriveGithubCell(input: {
   runs: readonly GithubRunWithJobs[];
   mapping: MappingSettings;
@@ -89,18 +60,11 @@ export function deriveGithubCell(input: {
     input.branchPattern,
   );
 
-  let matched:
-    | {
-        entry: GithubRunWithJobs;
-        doc: GithubRunDocument;
-        jobs: GithubWorkflowJob[];
-      }
-    | undefined;
+  let matched: { entry: GithubRunWithJobs; doc: RecordDoc } | undefined;
   for (const entry of candidates) {
-    const jobs = relevantRowJobs(entry, input.rowKeyTests, input.set.jobs);
-    const doc = runDocument(entry, jobs);
+    const doc = githubRecord(entry, input.rowKeyTests, input.set.items);
     if (doc) {
-      matched = { entry, doc, jobs };
+      matched = { entry, doc };
       break;
     }
   }
@@ -115,14 +79,16 @@ export function deriveGithubCell(input: {
   if (emptyState) return emptyState;
   if (!matched) return { kind: 'empty', state: 'no-recent-runs' };
 
-  const { entry, doc, jobs } = matched;
+  const { entry, doc } = matched;
+  const { time, link } = timeAndLink(doc);
   return {
     kind: 'ok',
     status: statusOf(doc, input.set),
     branch: entry.run.headBranch ?? '',
     commit: entry.run.headSha,
     message: entry.run.headCommitMessage,
-    ...timeAndLink(entry, jobs),
+    time: typeof time === 'string' && time !== '' ? time : undefined,
+    linkUrl: typeof link === 'string' ? link : entry.run.htmlUrl,
     document: doc,
   };
 }

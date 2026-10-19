@@ -1,8 +1,8 @@
 /**
  * Parity (spec.md A§4.3.7 *Demo and parity*): the built-in rules give the
- * same status as the PR S presets on every run in a generated set of job
- * mixes (names, statuses, conclusions) and every Amplify job status,
- * including runs with no job either counts.
+ * statuses the PR S presets gave, frozen in `__fixtures__`, on 640 job
+ * mixes (names, statuses, conclusions) per GitHub set and every Amplify
+ * job status, including runs where no job counts.
  *
  * @module
  */
@@ -14,24 +14,27 @@ import type {
   GithubRunWithJobs,
   GithubWorkflowJob,
 } from '@/domain/derivation/types';
-import { classify as classifyOld } from '@/domain/statuses/classify';
-import { githubRunDocument } from '@/domain/statuses/documents';
 import { presetById } from '@/domain/statuses/presets';
 
-import { BUILTIN_SETS } from './builtinSets';
 import { BUILTIN_SOURCES } from './builtinSources';
 import { type CellRules, placeCell } from './cell';
 import { asJson } from './json';
 import { always } from './ruleBuilders';
 import { translate } from './translate';
 
+/** The PR S results, frozen (formatting aside). */
+const FIXTURES: Record<string, unknown> = import.meta.glob(
+  './__fixtures__/*.json',
+  {
+    eager: true,
+    import: 'default',
+  },
+);
+const frozen = (name: string): unknown =>
+  FIXTURES[`./__fixtures__/parity-${name}.json`];
+
 const source = (id: string) => {
   const s = BUILTIN_SOURCES.find((x) => x.id === id);
-  if (!s) throw new Error(id);
-  return s;
-};
-const set = (id: string) => {
-  const s = BUILTIN_SETS.find((x) => x.id === id);
   if (!s) throw new Error(id);
   return s;
 };
@@ -92,47 +95,34 @@ const run = (jobs: GithubWorkflowJob[]): GithubRunWithJobs => ({
   jobs,
 });
 
-function newStatus(setId: string, entry: unknown): string | undefined {
-  const sourceRule = source(set(setId).provider);
-  const { record } = translate(sourceRule, asJson(entry));
+/** The status the rules give `raw` under set `setId`, or `none` when
+ * the record has no counted item. */
+function statusOf(setId: string, raw: unknown): string {
+  const set = presetById(setId);
+  const sourceRule = source(set.provider);
   const rules: CellRules = {
     record: always,
     items: always,
     stage: always,
-    set: set(setId),
+    set,
     order: sourceRule.order,
   };
-  const placed = placeCell([record], rules);
-  return placed ? (placed.status?.id ?? 'unknown') : undefined;
+  const placed = placeCell([translate(sourceRule, asJson(raw)).record], rules);
+  return placed ? (placed.status?.id ?? 'unknown') : 'none';
 }
 
 describe('parity with the PR S presets', () => {
-  it.each(['github-deploy-test', 'github-single-job'])('%s', async (id) => {
-    const preset = presetById(id);
-    const cases = mixes();
-    expect(cases.length).toBeGreaterThan(400);
-    const rows = cases.map((jobs) => {
-      const entry = run(jobs);
-      const doc = githubRunDocument(entry, [], preset.jobs);
-      return {
-        jobs: jobs.map((j) => [j.name, j.status, j.conclusion].join(' ')),
-        status: doc ? (classifyOld(doc, preset)?.id ?? 'unknown') : 'none',
-      };
-    });
-    // The PR S results, frozen; the rules must keep giving them.
-    await expect(JSON.stringify(rows, null, 1)).toMatchFileSnapshot(
-      `./__fixtures__/parity-${id}.json`,
-    );
-    for (const [i, jobs] of cases.entries())
-      expect([i, newStatus(id, run(jobs)) ?? 'none']).toEqual([
-        i,
-        rows[i]?.status,
-      ]);
+  it.each(['github-deploy-test', 'github-single-job'])('%s', (id) => {
+    const rows = mixes().map((jobs) => ({
+      jobs: jobs.map((j) => [j.name, j.status, j.conclusion].join(' ')),
+      status: statusOf(id, run(jobs)),
+    }));
+    expect(rows.length).toBe(640);
+    expect(rows).toEqual(frozen(id));
   });
 
-  it('amplify', async () => {
-    const preset = presetById('amplify');
-    const statuses = [
+  it('amplify', () => {
+    const rows = [
       'FAILED',
       'CANCELLED',
       'CANCELLING',
@@ -142,26 +132,9 @@ describe('parity with the PR S presets', () => {
       'CREATED',
       'SUCCEED',
       'UNEXPECTED',
-    ];
-    const rows = statuses.map((status) => ({
+    ].map((status) => ({
       status,
-      shows:
-        classifyOld(
-          {
-            branch: 'main',
-            status,
-            commitId: 'abc',
-            startTime: null,
-            endTime: null,
-          },
-          preset,
-        )?.id ?? 'unknown',
-    }));
-    await expect(JSON.stringify(rows, null, 1)).toMatchFileSnapshot(
-      './__fixtures__/parity-amplify.json',
-    );
-    for (const { status, shows } of rows) {
-      const raw = {
+      shows: statusOf('amplify', {
         source: { region: 'us-east-1', appId: 'a' },
         branch: 'main',
         job: {
@@ -171,8 +144,8 @@ describe('parity with the PR S presets', () => {
           startTime: '2026-10-19T00:00:00Z',
         },
         consoleUrl: 'https://console.aws.amazon.com/amplify',
-      };
-      expect([status, newStatus('amplify', raw)]).toEqual([status, shows]);
-    }
+      }),
+    }));
+    expect(rows).toEqual(frozen('amplify'));
   });
 });

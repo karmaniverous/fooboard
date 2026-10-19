@@ -1,7 +1,7 @@
 /**
  * Runs that matched no status (spec.md A§4.3.6): the board's Unknown
  * cells, and *Add status*, which puts a new status on top of the set the
- * cell uses, drafted to match the cell's run. A preset is copied into the
+ * cell uses, with a rule drafted to match the cell's record. A preset is copied into the
  * dashboard first, and the copy chosen at the level that chose the preset
  * (cell, row, row group or dashboard), so only cells that already shared
  * the set move to the copy. Pure.
@@ -13,9 +13,10 @@ import { z } from 'zod';
 import type { Dashboard } from '@/domain/config/dashboard';
 import type { Row } from '@/domain/config/row';
 import { UNKNOWN_STATUS_ID } from '@/domain/config/statusSets';
+import { all, exists, is, not } from '@/domain/model/ruleBuilders';
+import { escapeGlob } from '@/domain/rules/glob';
+import type { Rule } from '@/domain/rules/schema';
 import { statusSetFor, statusSetSource } from '@/domain/statuses/resolve';
-import { oneOf } from '@/domain/statuses/schemaBuilders';
-import { type Condition, toSchema } from '@/domain/statuses/testForm';
 import { type BoardModel, cellKey } from '@/engine';
 
 import { addCellStatus, copySet, updateSet } from './customSet';
@@ -32,7 +33,7 @@ export interface UnknownCell {
   stageId: string;
   stageName: string;
   setName: string;
-  /** The run (or Amplify job) document the set's tests saw. */
+  /** The record the set's rules saw. */
   document: unknown;
 }
 
@@ -79,46 +80,31 @@ function chooseAt(
   }
 }
 
-/** What a first test needs of a document: an Amplify job's status, or a
- * GitHub run's workflow and first job. */
+/** What a first rule needs of a record: a GitHub run's workflow and
+ * items' states, or an Amplify job's state. */
 const DraftSourceSchema = z.union([
-  z.object({ status: z.string().nullable() }),
   z.object({
     workflow: z.string(),
-    jobs: z.array(
-      z.object({ status: z.string(), conclusion: z.string().nullable() }),
-    ),
+    items: z.array(z.object({ state: z.string().nullable() })),
   }),
+  z.object({ state: z.string().nullable() }),
 ]);
 
-/** A first test for the run in `document`: its Amplify status, or its
- * workflow and first job's conclusion. Edited from there; a document of
- * neither shape gets a test matching nothing. */
-function draftTest(document: unknown): Record<string, unknown> {
-  const parsed = DraftSourceSchema.safeParse(document);
-  if (!parsed.success) return { not: {} };
+const stateIs = (path: string, state: string | null | undefined) =>
+  state ? is(path, escapeGlob(state)) : not(exists(path));
+
+/** A first rule for `record`: its workflow and first item's state, or its
+ * state. Edited from there; a record of neither shape gets a rule matching
+ * nothing. */
+function draftRule(record: unknown): Rule {
+  const parsed = DraftSourceSchema.safeParse(record);
+  if (!parsed.success) return all(not(exists('$')));
   const doc = parsed.data;
-  // Exact, so a job with no status yet (null) is matched too.
-  if ('status' in doc) return oneOf('status', [doc.status]);
-  // A job that hasn't finished has no conclusion: test its status.
-  const job = doc.jobs.at(0);
-  const jobCondition: Condition = job?.conclusion
-    ? {
-        scope: 'anyJob',
-        field: 'conclusion',
-        operator: 'is',
-        value: job.conclusion,
-      }
-    : {
-        scope: 'anyJob',
-        field: 'status',
-        operator: 'is',
-        value: job?.status ?? '',
-      };
-  return toSchema([
-    { scope: 'value', field: 'workflow', operator: 'is', value: doc.workflow },
-    jobCondition,
-  ]);
+  if ('state' in doc) return all(stateIs('$.state', doc.state));
+  return all(
+    is('$.workflow', escapeGlob(doc.workflow)),
+    stateIs('$.items[*].state', doc.items.at(0)?.state),
+  );
 }
 
 /** Add a status for `cell`'s run on top of the set its cell uses. */
@@ -139,7 +125,7 @@ export function addStatusFor(
     const [first, ...rest] = added.cell;
     return {
       ...added,
-      cell: [{ ...first, test: draftTest(cell.document) }, ...rest],
+      cell: [{ ...first, rule: draftRule(cell.document) }, ...rest],
     };
   });
 }

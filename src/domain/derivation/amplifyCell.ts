@@ -8,10 +8,8 @@
  * @module
  */
 import type { StatusSet } from '@/domain/config/statusSets';
-import {
-  type AmplifyJobDocument,
-  amplifyJobDocument,
-} from '@/domain/statuses/documents';
+import type { RecordDoc } from '@/domain/model/translate';
+import { amplifyRecord } from '@/domain/statuses/documents';
 import { type ResolvedStatus, statusOf } from '@/domain/statuses/resolved';
 import { buildAmplifyConsoleLink } from '@/lib/amplify/consoleLink';
 import { newestJob } from '@/lib/amplify/newestJob';
@@ -38,7 +36,8 @@ export interface AmplifyCellResult {
   jobId: string | undefined;
   linkUrl: string | undefined;
   /** The job's document, for the detail and *Add status* (A§4.3.6). */
-  document: AmplifyJobDocument;
+  /** The record its status rules saw. */
+  document: RecordDoc;
 }
 
 export type AmplifyCellDerivation = AmplifyCellResult | EmptyCellResult;
@@ -66,7 +65,7 @@ export function deriveAmplifyCell(input: {
   if (!bestEntry) return { kind: 'empty', state: 'no-recent-runs' };
 
   const { source, branch, job } = bestEntry;
-  const document = amplifyJobDocument(bestEntry);
+  const document = amplifyRecord(bestEntry);
   return {
     kind: 'ok',
     status: statusOf(document, input.set),

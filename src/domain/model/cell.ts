@@ -11,10 +11,10 @@
  */
 import type { JSONValue } from 'json-p3';
 
+import type { CellStatus, StatusSet } from '@/domain/config/statusSets';
 import { evaluateRule } from '@/domain/rules/check';
 import type { Rule } from '@/domain/rules/schema';
 
-import type { RuleCellStatus, RuleStatusSet } from './builtinSets';
 import { compareOrder, hasItems, itemsOf, type RecordDoc } from './translate';
 
 export interface CellRules {
@@ -23,7 +23,7 @@ export interface CellRules {
   items: Rule;
   /** `undefined`: no level set one, so nothing matches. */
   stage: Rule | undefined;
-  set: RuleStatusSet;
+  set: StatusSet;
   order: string;
 }
 
@@ -31,7 +31,7 @@ export interface PlacedRecord {
   /** The record with only its counted items. */
   record: RecordDoc;
   /** The matched cell status; `undefined` is Unknown. */
-  status: RuleCellStatus | undefined;
+  status: CellStatus | undefined;
   time: JSONValue;
   link: JSONValue;
 }
@@ -59,13 +59,15 @@ const placed = (record: RecordDoc, rules: CellRules): boolean =>
 /** The first cell status whose rule matches `record`. */
 const classify = (
   record: RecordDoc,
-  set: Pick<RuleStatusSet, 'cell'>,
-): RuleCellStatus | undefined =>
-  set.cell.find((c) => evaluateRule(c.rule, record));
+  set: Pick<StatusSet, 'cell'>,
+): CellStatus | undefined => set.cell.find((c) => evaluateRule(c.rule, record));
 
 /** Time and link: the counted item with the latest `time`, else the
  * record's own. */
-function timeAndLink(record: RecordDoc): { time: JSONValue; link: JSONValue } {
+export function timeAndLink(record: RecordDoc): {
+  time: JSONValue;
+  link: JSONValue;
+} {
   const latest = itemsOf(record)
     .filter((i) => (i.time ?? null) !== null && i.time !== '')
     .reduce<RecordDoc | undefined>(
