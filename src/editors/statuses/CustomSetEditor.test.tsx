@@ -10,6 +10,7 @@ import { useState } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 
 import type { StatusSet } from '@/domain/config/statusSets';
+import { PRESET_IDS } from '@/domain/config/statusSets';
 import { presetById } from '@/domain/statuses/presets';
 import { choose } from '@/test/choose';
 
@@ -28,7 +29,7 @@ function setup(initial: StatusSet, onRemove?: () => void) {
 
 describe('CustomSetEditor', () => {
   it('edits summary statuses and a cell status in place', () => {
-    const latest = setup(presetById('github-single-job'));
+    const latest = setup(presetById(PRESET_IDS.githubSingleJob));
     const name = screen.getByLabelText('Summary status 1 name');
     fireEvent.change(name, { target: { value: 'Broken' } });
     fireEvent.blur(name);
@@ -54,7 +55,7 @@ describe('CustomSetEditor', () => {
   });
 
   it('sets icons, in-progress, the set name and status order', () => {
-    const latest = setup(presetById('github-single-job'));
+    const latest = setup(presetById(PRESET_IDS.githubSingleJob));
     const [summary] = latest.current.summary;
     choose(screen.getByLabelText(`${summary.name} icon`), '\u2298 cancelled');
     fireEvent.click(
@@ -84,7 +85,7 @@ describe('CustomSetEditor', () => {
 
   it('deletes statuses down to the last, and removes only when allowed', () => {
     const onRemove = vi.fn();
-    const amplify = presetById('amplify');
+    const amplify = presetById(PRESET_IDS.amplify);
     const latest = setup(
       { ...amplify, cell: amplify.cell.slice(0, 2) },
       onRemove,
@@ -101,7 +102,7 @@ describe('CustomSetEditor', () => {
   });
 
   it("can't remove a set in use", () => {
-    setup(presetById('amplify'));
+    setup(presetById(PRESET_IDS.amplify));
     expect(screen.getByRole('button', { name: 'Remove' })).toBeDisabled();
   });
 });

@@ -10,6 +10,7 @@ import { describe, expect, it } from 'vitest';
 import { branchRules } from '@/domain/config/placement';
 
 import { DashboardSchema } from './dashboard';
+import { PRESET_IDS } from './statusSets';
 
 describe('DashboardSchema', () => {
   it('applies source rule, status set, group and credential defaults', () => {
@@ -20,7 +21,7 @@ describe('DashboardSchema', () => {
     });
     expect(dashboard.customSourceRules).toEqual([]);
     expect(dashboard.statusSets).toEqual({
-      github: 'github-deploy-test',
+      github: PRESET_IDS.githubDeployTest,
       amplify: 'amplify',
     });
     expect(dashboard.customStatusSets).toEqual([]);
@@ -232,11 +233,13 @@ describe('DashboardSchema', () => {
             id: 'a',
             repo: 'acme/a',
             displayName: 'a',
-            cellStatusSets: { prod: 'github-single-job' },
+            cellStatusSets: { prod: PRESET_IDS.githubSingleJob },
           },
         ],
       }),
     ).toBe(false);
-    expect(bad({ statusSets: { github: 'github-single-job' } })).toBe(true);
+    expect(bad({ statusSets: { github: PRESET_IDS.githubSingleJob } })).toBe(
+      true,
+    );
   });
 });

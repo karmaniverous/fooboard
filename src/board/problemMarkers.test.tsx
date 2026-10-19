@@ -8,6 +8,7 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
+import { EMPTY_STATES } from '@/domain/derivation/index';
 import { problem } from '@/domain/problems/problem';
 import type { BoardCell } from '@/engine';
 
@@ -59,7 +60,7 @@ describe('CellDetail', () => {
     const cell: BoardCell = {
       rowId: 'web',
       stageId: 'dev',
-      derivation: { kind: 'empty', state: 'no-records' },
+      derivation: { kind: 'empty', state: EMPTY_STATES.noRecords },
       active: false,
       badge: undefined,
     };

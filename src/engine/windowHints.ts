@@ -6,6 +6,7 @@
  * @module
  */
 import type { CellDerivation } from '@/domain/derivation';
+import { EMPTY_STATES } from '@/domain/derivation/index';
 import type { SourceRule } from '@/domain/model/sourceRule';
 import type { Problem } from '@/domain/problems/problem';
 import { windowHint } from '@/domain/problems/runtime';
@@ -22,7 +23,7 @@ export function windowHints(
     Object.entries(cells)
       .filter(
         ([, { derivation: d }]) =>
-          d.kind === 'empty' && d.state === 'no-records',
+          d.kind === 'empty' && d.state === EMPTY_STATES.noRecords,
       )
       .map(([stageId]) => windowHint({ rowId, stageId }, source)),
   );

@@ -12,6 +12,7 @@
  */
 
 import type { Dashboard } from '@/domain/config/dashboard';
+import { UNMAPPED } from '@/domain/derivation/index';
 import { textOf } from '@/domain/model/json';
 import { is } from '@/domain/model/ruleBuilders';
 import { sourceRuleFor } from '@/domain/model/sources';
@@ -79,14 +80,14 @@ export function draftFor(
 ): EditorDraft | undefined {
   const { reason, record } = run;
   switch (reason.kind) {
-    case 'no-stage-matches': {
+    case UNMAPPED.noStageMatches: {
       const branch = reason.branch ?? textOf(record.branch);
       return branch === undefined
         ? undefined
         : { tab: 'Stages', pattern: branch, focus: [NEW_STAGE_KEY] };
     }
-    case 'no-row-matches': {
-      const row = rowsFor(run, dashboard, 'no-row-matches').at(0);
+    case UNMAPPED.noRowMatches: {
+      const row = rowsFor(run, dashboard, UNMAPPED.noRowMatches).at(0);
       if (!row) return undefined;
       const order = sourceRuleFor(dashboard, row.type).order;
       return {
@@ -95,8 +96,8 @@ export function draftFor(
         check: draftCheck(record, order),
       };
     }
-    case 'no-item-counts': {
-      const row = rowsFor(run, dashboard, 'no-item-counts').at(0);
+    case UNMAPPED.noItemCounts: {
+      const row = rowsFor(run, dashboard, UNMAPPED.noItemCounts).at(0);
       if (!row) return { tab: 'Statuses' };
       const set = statusSetFor(dashboard, row);
       const item = itemsOf(record).at(0);
@@ -109,7 +110,7 @@ export function draftFor(
         check: item ? draftCheck(item) : undefined,
       };
     }
-    case 'no-order-key': {
+    case UNMAPPED.noOrderKey: {
       const order = sourceRuleFor(dashboard, run.provider).order;
       return {
         tab: 'Sources',
@@ -130,7 +131,7 @@ export function overrideDraftFor(
   run: UnmappedRun,
   dashboard: Pick<Dashboard, 'rows'>,
 ): EditorDraft | undefined {
-  if (run.reason.kind !== 'no-stage-matches') return undefined;
+  if (run.reason.kind !== UNMAPPED.noStageMatches) return undefined;
   const branch = run.reason.branch ?? textOf(run.record.branch);
   const rows = rowsFor(run, dashboard);
   const first = rows.at(0);

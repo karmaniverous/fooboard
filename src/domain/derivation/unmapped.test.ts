@@ -8,6 +8,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { DashboardSchema } from '@/domain/config/dashboard';
+import { PRESET_IDS } from '@/domain/config/statusSets';
 import { BUILTIN_ORDER_KEYS } from '@/domain/model/builtinSources';
 import type { CellRules } from '@/domain/model/cell';
 import { asJson } from '@/domain/model/json';
@@ -19,9 +20,14 @@ import { branchRule } from '@/domain/rules/branch';
 import { presetById } from '@/domain/statuses/presets';
 
 import { makeJob, makeRunWithJobs } from './testFixtures';
-import { describeUnmappedReason, rowReasons, unmappedReason } from './unmapped';
+import {
+  describeUnmappedReason,
+  rowReasons,
+  UNMAPPED,
+  unmappedReason,
+} from './unmapped';
 
-const set = presetById('github-deploy-test');
+const set = presetById(PRESET_IDS.githubDeployTest);
 const record = (headBranch: string, job: string) =>
   translate(
     sourceRuleFor(DashboardSchema.parse({ id: 'd', name: 'd' }), 'github'),
@@ -42,31 +48,31 @@ describe('unmappedReason', () => {
       'no stage rule matches',
       record('feature/x', 'deploy'),
       [cell()],
-      { kind: 'no-stage-matches', branch: 'feature/x' },
+      { kind: UNMAPPED.noStageMatches, branch: 'feature/x' },
     ],
     [
       'no stage rule at all',
       record('main', 'deploy'),
       [cell({ stage: undefined })],
-      { kind: 'no-stage-matches', branch: 'main' },
+      { kind: UNMAPPED.noStageMatches, branch: 'main' },
     ],
     [
       'no row rule matches',
       record('main', 'deploy'),
       [cell({ record: all(is('$.workflow', 'Nope')) })],
-      { kind: 'no-row-matches' },
+      { kind: UNMAPPED.noRowMatches },
     ],
     [
       'no item counts',
       record('main', 'lint'),
       [cell()],
-      { kind: 'no-item-counts' },
+      { kind: UNMAPPED.noItemCounts },
     ],
     [
       'no item the row takes',
       record('main', 'deploy (billing)'),
       [cell({ items: all(is('$.name', '*invoicing*')) })],
-      { kind: 'no-item-counts' },
+      { kind: UNMAPPED.noItemCounts },
     ],
     ['placed', record('main', 'deploy'), [cell()], undefined],
     [
@@ -86,7 +92,7 @@ describe('unmappedReason', () => {
         [cell()],
         true,
       ),
-    ).toEqual({ kind: 'no-order-key' });
+    ).toEqual({ kind: UNMAPPED.noOrderKey });
   });
 
   it('leaves items undecided when they were not read', () => {
@@ -114,8 +120,14 @@ describe('rowReasons', () => {
         true,
       ),
     ).toEqual([
-      { rowId: 'a', reason: { kind: 'no-stage-matches', branch: 'feature/x' } },
-      { rowId: 'b', reason: { kind: 'no-stage-matches', branch: 'feature/x' } },
+      {
+        rowId: 'a',
+        reason: { kind: UNMAPPED.noStageMatches, branch: 'feature/x' },
+      },
+      {
+        rowId: 'b',
+        reason: { kind: UNMAPPED.noStageMatches, branch: 'feature/x' },
+      },
     ]);
   });
 
@@ -131,18 +143,21 @@ describe('rowReasons', () => {
 describe('describeUnmappedReason', () => {
   it('renders each reason as the C-15 message text', () => {
     expect(
-      describeUnmappedReason({ kind: 'no-stage-matches', branch: 'feature/x' }),
+      describeUnmappedReason({
+        kind: UNMAPPED.noStageMatches,
+        branch: 'feature/x',
+      }),
     ).toBe('no stage rule matches branch "feature/x"');
-    expect(describeUnmappedReason({ kind: 'no-stage-matches' })).toBe(
+    expect(describeUnmappedReason({ kind: UNMAPPED.noStageMatches })).toBe(
       'no stage rule matches',
     );
-    expect(describeUnmappedReason({ kind: 'no-row-matches' })).toBe(
+    expect(describeUnmappedReason({ kind: UNMAPPED.noRowMatches })).toBe(
       'no row rule matches',
     );
-    expect(describeUnmappedReason({ kind: 'no-item-counts' })).toBe(
+    expect(describeUnmappedReason({ kind: UNMAPPED.noItemCounts })).toBe(
       'no item counts',
     );
-    expect(describeUnmappedReason({ kind: 'no-order-key' })).toBe(
+    expect(describeUnmappedReason({ kind: UNMAPPED.noOrderKey })).toBe(
       'no order key',
     );
   });

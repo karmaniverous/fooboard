@@ -9,6 +9,7 @@ import { describe, expect, it, vi } from 'vitest';
 
 import { branchRules } from '@/domain/config/placement';
 import type { AmplifyRow } from '@/domain/config/row';
+import { UNMAPPED } from '@/domain/derivation/index';
 import { amplifySet } from '@/domain/derivation/testFixtures';
 import { builtinSourceFor } from '@/domain/model/builtinSources';
 import type { CellRules } from '@/domain/model/cell';
@@ -119,10 +120,10 @@ describe('refreshAmplifyTarget', () => {
       where: 'x',
       title: 'Amplify job 1',
       branch: 'feature/x',
-      reason: { kind: 'no-stage-matches', branch: 'feature/x' },
+      reason: { kind: UNMAPPED.noStageMatches, branch: 'feature/x' },
       rows: [
-        { rowId: 'a', reason: { kind: 'no-stage-matches' } },
-        { rowId: 'b', reason: { kind: 'no-stage-matches' } },
+        { rowId: 'a', reason: { kind: UNMAPPED.noStageMatches } },
+        { rowId: 'b', reason: { kind: UNMAPPED.noStageMatches } },
       ],
     });
   });

@@ -14,6 +14,7 @@ import { describe, expect, it } from 'vitest';
 import { demoDashboard } from '@/demo/board';
 import { DashboardSchema } from '@/domain/config/dashboard';
 import { branchRules } from '@/domain/config/placement';
+import { PRESET_IDS } from '@/domain/config/statusSets';
 import { BUILTIN_SOURCES } from '@/domain/model/builtinSources';
 import { all, check, exists, is } from '@/domain/model/ruleBuilders';
 
@@ -218,8 +219,8 @@ describe('consistency notes and checks', () => {
     }).filter((p) => p.level.kind === 'statusSet');
     expect(problems.length).toBeGreaterThan(0);
     expect(problems[0]).toMatchObject({
-      level: { kind: 'statusSet', id: 'github-deploy-test' },
-      target: { kind: 'statusSet', id: 'github-deploy-test' },
+      level: { kind: 'statusSet', id: PRESET_IDS.githubDeployTest },
+      target: { kind: 'statusSet', id: PRESET_IDS.githubDeployTest },
       message: 'GitHub deploy and test item rule: Mine gives no item key state',
     });
   });

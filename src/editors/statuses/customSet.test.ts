@@ -9,6 +9,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { DashboardSchema } from '@/domain/config/dashboard';
+import { PRESET_IDS } from '@/domain/config/statusSets';
 
 import {
   addCellStatus,
@@ -22,8 +23,8 @@ const base = DashboardSchema.parse({ id: 'd', name: 'D' });
 
 describe('customise', () => {
   it('copies a preset under a fresh id and chooses it for its provider', () => {
-    const once = customise(base, 'github-deploy-test');
-    const twice = customise(once, 'github-deploy-test');
+    const once = customise(base, PRESET_IDS.githubDeployTest);
+    const twice = customise(once, PRESET_IDS.githubDeployTest);
     expect(twice.customStatusSets.map((s) => s.id)).toEqual([
       'custom-github',
       'custom-github-2',

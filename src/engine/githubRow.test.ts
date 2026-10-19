@@ -12,6 +12,7 @@ import { describe, expect, it } from 'vitest';
 import { demoDashboard } from '@/demo/board';
 import { createDemoGitHubReader } from '@/demo/github';
 import { cellRulesFor } from '@/domain/config/cellRules';
+import { EMPTY_STATES } from '@/domain/derivation/index';
 import { all, exists, is, not } from '@/domain/model/ruleBuilders';
 import type { SourceRuleOf } from '@/domain/model/sourceRule';
 import { sourceRuleFor } from '@/domain/model/sources';
@@ -95,7 +96,7 @@ describe('refreshGithubRepo', () => {
     );
     expect(noDev.rows['api-core'].dev.derivation).toMatchObject({
       kind: 'empty',
-      state: 'no-records',
+      state: EMPTY_STATES.noRecords,
     });
     const noItems = await refresh(
       { ...builtin, keep: all(exists("$.items[?@.name == 'nothing']")) },
@@ -103,7 +104,7 @@ describe('refreshGithubRepo', () => {
     );
     expect(noItems.rows['api-core'].dev.derivation).toMatchObject({
       kind: 'empty',
-      state: 'no-records',
+      state: EMPTY_STATES.noRecords,
     });
     expect(plain.full).toBe(false);
   });

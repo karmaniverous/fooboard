@@ -22,6 +22,7 @@ import {
   SheetContent,
   SheetTitle,
 } from '@/components/ui/sheet';
+import { EMPTY_STATES } from '@/domain/derivation/index';
 import type { Problem } from '@/domain/problems/problem';
 import type { BoardCell } from '@/engine';
 import { readmeSection } from '@/lib/site';
@@ -55,7 +56,7 @@ export function CellDetail({
           {derivation.reason && (
             <div className="text-muted-foreground">{derivation.reason}</div>
           )}
-          {interactive && derivation.state === 'needs-credential' && (
+          {interactive && derivation.state === EMPTY_STATES.needsCredential && (
             <ExternalLink
               unstyled
               href={readmeSection('credentials')}

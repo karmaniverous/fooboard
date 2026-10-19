@@ -8,6 +8,7 @@ import { describe, expect, it } from 'vitest';
 
 import { DashboardSchema } from '@/domain/config/dashboard';
 import { branchRules } from '@/domain/config/placement';
+import { PRESET_IDS } from '@/domain/config/statusSets';
 import { branchRule } from '@/domain/rules/branch';
 
 import {
@@ -62,11 +63,16 @@ describe('removing rows and stages', () => {
       ...d,
       rows: d.rows.map((r) => ({
         ...r,
-        cellStatusSets: { a: 'github-single-job', b: 'github-single-job' },
+        cellStatusSets: {
+          a: PRESET_IDS.githubSingleJob,
+          b: PRESET_IDS.githubSingleJob,
+        },
       })),
     });
     const s = DashboardSchema.parse(removeStage(chosen, 'a'));
-    expect(s.rows[0]?.cellStatusSets).toEqual({ b: 'github-single-job' });
+    expect(s.rows[0]?.cellStatusSets).toEqual({
+      b: PRESET_IDS.githubSingleJob,
+    });
   });
 });
 

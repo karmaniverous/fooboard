@@ -14,10 +14,17 @@ import { RuleSchema } from '@/domain/rules/schema';
 import { HexColorSchema } from './colors';
 import { type Provider, ProviderSchema } from './providers';
 
+/** The ids of the bundled preset status sets. */
+export const PRESET_IDS = {
+  githubDeployTest: 'github-deploy-test',
+  githubSingleJob: 'github-single-job',
+  amplify: 'amplify',
+} as const;
+
 /** The set each provider uses unless a level overrides it: bundled presets. */
 export const DEFAULT_STATUS_SET_IDS = {
-  github: 'github-deploy-test',
-  amplify: 'amplify',
+  github: PRESET_IDS.githubDeployTest,
+  amplify: PRESET_IDS.amplify,
 } as const satisfies Record<Provider, string>;
 
 /** A status set per provider, either unset (inherit), for a row group. */

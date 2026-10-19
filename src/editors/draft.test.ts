@@ -10,6 +10,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { DashboardSchema } from '@/domain/config/dashboard';
+import { UNMAPPED } from '@/domain/derivation/index';
 import { is } from '@/domain/model/ruleBuilders';
 import { problem } from '@/domain/problems/problem';
 import type { UnmappedRun } from '@/engine';
@@ -52,7 +53,7 @@ const run = (
 
 describe('draftFor', () => {
   it('opens the row rule with a check drafted from the record', () => {
-    expect(draftFor(run({ kind: 'no-row-matches' }), dashboard)).toEqual({
+    expect(draftFor(run({ kind: UNMAPPED.noRowMatches }), dashboard)).toEqual({
       tab: 'Rows',
       focus: ['row:api:record', 'row:api'],
       check: is('$.workflow', 'Deploy [[]api[]]'),
@@ -62,14 +63,14 @@ describe('draftFor', () => {
   it('opens a new stage for a branch no stage rule matches', () => {
     expect(
       draftFor(
-        run({ kind: 'no-stage-matches', branch: 'hotfix/1' }),
+        run({ kind: UNMAPPED.noStageMatches, branch: 'hotfix/1' }),
         dashboard,
       ),
     ).toEqual({ tab: 'Stages', pattern: 'hotfix/1', focus: ['stage-new'] });
   });
 
   it("opens the item rule of the row's status set, drafted from an item", () => {
-    expect(draftFor(run({ kind: 'no-item-counts' }), dashboard)).toEqual({
+    expect(draftFor(run({ kind: UNMAPPED.noItemCounts }), dashboard)).toEqual({
       tab: 'Statuses',
       focus: [
         'statusSet:github-deploy-test:items',
@@ -81,7 +82,7 @@ describe('draftFor', () => {
   });
 
   it("opens the source rule's order key for a record without one", () => {
-    expect(draftFor(run({ kind: 'no-order-key' }), dashboard)).toEqual({
+    expect(draftFor(run({ kind: UNMAPPED.noOrderKey }), dashboard)).toEqual({
       tab: 'Sources',
       focus: [
         'source:github:key:created',
@@ -92,24 +93,24 @@ describe('draftFor', () => {
   });
 
   it('offers an override on the rows reading the record, for an unmatched branch only', () => {
-    const branch = run({ kind: 'no-stage-matches', branch: 'hotfix/1' });
+    const branch = run({ kind: UNMAPPED.noStageMatches, branch: 'hotfix/1' });
     expect(overrideDraftFor(branch, dashboard)).toEqual({
       tab: 'Rows',
       focus: ['row:api:override', 'row:api'],
       override: { branch: 'hotfix/1', rowIds: ['api'] },
     });
     expect(
-      overrideDraftFor(run({ kind: 'no-item-counts' }), dashboard),
+      overrideDraftFor(run({ kind: UNMAPPED.noItemCounts }), dashboard),
     ).toBeUndefined();
   });
 
   it('offers nothing when no row on the board reads the record', () => {
     expect(
-      draftFor(run({ kind: 'no-row-matches' }, 'acme/other'), dashboard),
+      draftFor(run({ kind: UNMAPPED.noRowMatches }, 'acme/other'), dashboard),
     ).toBeUndefined();
     expect(
       overrideDraftFor(
-        run({ kind: 'no-stage-matches', branch: 'x' }, 'acme/other'),
+        run({ kind: UNMAPPED.noStageMatches, branch: 'x' }, 'acme/other'),
         dashboard,
       ),
     ).toBeUndefined();

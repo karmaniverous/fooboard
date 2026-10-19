@@ -21,7 +21,13 @@ export interface ProviderFailure {
   isRateLimit: boolean;
 }
 
-export type EmptyCellState = 'no-records' | 'needs-credential' | 'error';
+/** Why a cell is empty. */
+export const EMPTY_STATES = {
+  noRecords: 'no-records',
+  needsCredential: 'needs-credential',
+  error: 'error',
+} as const;
+export type EmptyCellState = (typeof EMPTY_STATES)[keyof typeof EMPTY_STATES];
 
 export interface EmptyCellResult {
   kind: 'empty';
@@ -51,7 +57,7 @@ export function deriveCell(input: {
   providerFailure?: ProviderFailure;
 }): CellDerivation {
   if (input.credentialStatus !== 'ok')
-    return { kind: 'empty', state: 'needs-credential' };
+    return { kind: 'empty', state: EMPTY_STATES.needsCredential };
   if (input.providerFailure && !input.providerFailure.isRateLimit)
     return {
       kind: 'empty',
@@ -59,7 +65,7 @@ export function deriveCell(input: {
       reason: input.providerFailure.message,
     };
   const { placed } = input;
-  if (!placed) return { kind: 'empty', state: 'no-records' };
+  if (!placed) return { kind: 'empty', state: EMPTY_STATES.noRecords };
   const { record } = placed;
   return {
     kind: 'ok',

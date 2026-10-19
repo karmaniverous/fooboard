@@ -9,6 +9,7 @@
  * @module
  */
 import type { StatusSet } from '@/domain/config/statusSets';
+import { PRESET_IDS } from '@/domain/config/statusSets';
 import { findStatusSet } from '@/domain/statuses/resolve';
 
 import type {
@@ -71,5 +72,5 @@ const preset = (id: string): StatusSet => {
 };
 
 /** The bundled *GitHub deploy and test* and *Amplify* sets (A§4.3.6). */
-export const githubSet = preset('github-deploy-test');
+export const githubSet = preset(PRESET_IDS.githubDeployTest);
 export const amplifySet = preset('amplify');

@@ -10,6 +10,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { demoDashboard } from '@/demo/board';
 import { createDemoGitHubReader } from '@/demo/github';
 import { RowGroupSchema } from '@/domain/config/groups';
+import { EMPTY_STATES } from '@/domain/derivation/index';
 import { all, is } from '@/domain/model/ruleBuilders';
 import { RateLimitedError } from '@/lib/github';
 
@@ -112,7 +113,7 @@ describe('board engine credentials and limits', () => {
     await engine.refreshAll();
     const model = engine.getModel();
     expect(cell(model, 'api-core', 'dev')?.derivation).toMatchObject({
-      state: 'needs-credential',
+      state: EMPTY_STATES.needsCredential,
     });
     expect(cell(model, 'web-app', 'dev')?.derivation).toMatchObject({
       kind: 'ok',
@@ -130,7 +131,7 @@ describe('board engine credentials and limits', () => {
       cell(engine.getModel(), 'api-core', 'dev')?.derivation,
     ).toMatchObject({
       kind: 'empty',
-      state: 'needs-credential',
+      state: EMPTY_STATES.needsCredential,
     });
   });
 
@@ -172,7 +173,7 @@ describe('board engine credentials and limits', () => {
       branch: 'release/24.3',
     });
     expect(cell(model, 'api-core', 'dev')?.derivation).toMatchObject({
-      state: 'needs-credential',
+      state: EMPTY_STATES.needsCredential,
     });
   });
 

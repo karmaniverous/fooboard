@@ -12,6 +12,7 @@ import type { DefaultCredentials } from '@/domain/config/credentialRefs';
 import { branchRules } from '@/domain/config/placement';
 import type { AmplifyRow } from '@/domain/config/row';
 import type { Stage } from '@/domain/config/stage';
+import { EMPTY_STATES } from '@/domain/derivation/index';
 import { amplifySet } from '@/domain/derivation/testFixtures';
 import { builtinSourceFor } from '@/domain/model/builtinSources';
 import type { CellRules } from '@/domain/model/cell';
@@ -90,7 +91,7 @@ describe('refreshAmplifyRow', () => {
       () => failing(new Error('never called')),
     );
     expect(result).toMatchObject({
-      cells: { prod: { state: 'needs-credential' } },
+      cells: { prod: { state: EMPTY_STATES.needsCredential } },
     });
   });
 
@@ -104,7 +105,7 @@ describe('refreshAmplifyRow', () => {
     );
     expect(result).toMatchObject({
       kind: 'refreshed',
-      cells: { prod: { kind: 'empty', state: 'needs-credential' } },
+      cells: { prod: { kind: 'empty', state: EMPTY_STATES.needsCredential } },
     });
   });
 
@@ -117,7 +118,7 @@ describe('refreshAmplifyRow', () => {
       () => failing(new AmplifyAuthError('denied', 'ListBranches')),
     );
     expect(result).toMatchObject({
-      cells: { prod: { state: 'needs-credential' } },
+      cells: { prod: { state: EMPTY_STATES.needsCredential } },
     });
   });
 
@@ -205,7 +206,7 @@ describe('refreshAmplifyRow keep', () => {
       });
     expect(await refresh()).toMatchObject({ cells: { prod: { kind: 'ok' } } });
     expect(await refresh(all(not(is('$.branch', 'main'))))).toMatchObject({
-      cells: { prod: { kind: 'empty', state: 'no-records' } },
+      cells: { prod: { kind: 'empty', state: EMPTY_STATES.noRecords } },
     });
   });
 });

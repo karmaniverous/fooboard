@@ -9,6 +9,7 @@
 import { fireEvent, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
+import { PRESET_IDS } from '@/domain/config/statusSets';
 import { choose } from '@/test/choose';
 
 import { setup, tab } from './editorSectionsHarness';
@@ -85,6 +86,6 @@ describe('editor sections', () => {
 
     tab('Statuses');
     choose(screen.getByLabelText('GitHub status set'), 'GitHub single job');
-    expect(latest.current.statusSets.github).toBe('github-single-job');
+    expect(latest.current.statusSets.github).toBe(PRESET_IDS.githubSingleJob);
   });
 });

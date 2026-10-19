@@ -8,6 +8,7 @@
  */
 import { describe, expect, it } from 'vitest';
 
+import { PRESET_IDS } from '@/domain/config/statusSets';
 import type {
   GithubJobConclusion,
   GithubJobStatus,
@@ -112,14 +113,17 @@ function statusOf(setId: string, raw: unknown): string {
 }
 
 describe('parity with the PR S presets', () => {
-  it.each(['github-deploy-test', 'github-single-job'])('%s', (id) => {
-    const rows = mixes().map((jobs) => ({
-      jobs: jobs.map((j) => [j.name, j.status, j.conclusion].join(' ')),
-      status: statusOf(id, run(jobs)),
-    }));
-    expect(rows.length).toBe(640);
-    expect(rows).toEqual(frozen(id));
-  });
+  it.each([PRESET_IDS.githubDeployTest, PRESET_IDS.githubSingleJob])(
+    '%s',
+    (id) => {
+      const rows = mixes().map((jobs) => ({
+        jobs: jobs.map((j) => [j.name, j.status, j.conclusion].join(' ')),
+        status: statusOf(id, run(jobs)),
+      }));
+      expect(rows.length).toBe(640);
+      expect(rows).toEqual(frozen(id));
+    },
+  );
 
   it('amplify', () => {
     const rows = [

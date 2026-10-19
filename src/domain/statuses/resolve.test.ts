@@ -10,6 +10,7 @@ import { describe, expect, it } from 'vitest';
 import { DashboardSchema } from '@/domain/config/dashboard';
 import { branchRules } from '@/domain/config/placement';
 import type { Row } from '@/domain/config/row';
+import { PRESET_IDS } from '@/domain/config/statusSets';
 
 import { presetById } from './presets';
 import {
@@ -33,33 +34,36 @@ const withRow = (
 const grouped = {
   ...dashboard,
   rowGroups: [
-    { ...dashboard.rowGroups[0], statusSets: { github: 'github-single-job' } },
+    {
+      ...dashboard.rowGroups[0],
+      statusSets: { github: PRESET_IDS.githubSingleJob },
+    },
   ],
 };
 
 describe('statusSetSource', () => {
   it('names the level that chose the set', () => {
     expect(statusSetSource(dashboard, web, 'dev')).toEqual({
-      id: 'github-deploy-test',
+      id: PRESET_IDS.githubDeployTest,
       from: 'dashboard',
     });
     expect(statusSetSource(grouped, web, 'dev')).toEqual({
-      id: 'github-single-job',
+      id: PRESET_IDS.githubSingleJob,
       from: 'rowGroup',
       groupId: 'g',
     });
     expect(
       statusSetSource(
         grouped,
-        withRow({ statusSet: 'github-deploy-test' }),
+        withRow({ statusSet: PRESET_IDS.githubDeployTest }),
         'dev',
       ),
-    ).toEqual({ id: 'github-deploy-test', from: 'row' });
+    ).toEqual({ id: PRESET_IDS.githubDeployTest, from: 'row' });
     expect(
       statusSetSource(
         grouped,
         withRow({
-          statusSet: 'github-deploy-test',
+          statusSet: PRESET_IDS.githubDeployTest,
           cellStatusSets: { dev: 'x' },
         }),
         'dev',
@@ -71,28 +75,30 @@ describe('statusSetSource', () => {
     expect(
       inheritedStatusSetId(
         grouped,
-        withRow({ statusSet: 'github-deploy-test' }),
+        withRow({ statusSet: PRESET_IDS.githubDeployTest }),
       ),
-    ).toBe('github-single-job');
-    expect(inheritedStatusSetId(dashboard, web)).toBe('github-deploy-test');
+    ).toBe(PRESET_IDS.githubSingleJob);
+    expect(inheritedStatusSetId(dashboard, web)).toBe(
+      PRESET_IDS.githubDeployTest,
+    );
   });
 });
 
 describe('statusSetFor', () => {
   it("falls back to the provider's default preset for a dangling id", () => {
     expect(statusSetFor(dashboard, withRow({ statusSet: 'gone' }), 'dev')).toBe(
-      presetById('github-deploy-test'),
+      presetById(PRESET_IDS.githubDeployTest),
     );
   });
 });
 
 describe('statusSetReferenceIssues', () => {
   it('reports integrity issues at their paths, not dangling references', () => {
-    const custom = { ...presetById('amplify'), id: 'mine' };
+    const custom = { ...presetById(PRESET_IDS.amplify), id: 'mine' };
     const issues = statusSetReferenceIssues({
       ...dashboard,
       customStatusSets: [custom, custom, { ...custom, id: 'amplify' }],
-      rows: [withRow({ cellStatusSets: { qa: 'github-single-job' } })],
+      rows: [withRow({ cellStatusSets: { qa: PRESET_IDS.githubSingleJob } })],
     });
     expect(issues).toEqual([
       {

@@ -10,6 +10,7 @@ import { describe, expect, it } from 'vitest';
 
 import { DashboardSchema } from '@/domain/config/dashboard';
 import { branchRules } from '@/domain/config/placement';
+import { PRESET_IDS } from '@/domain/config/statusSets';
 import { all, exists, not } from '@/domain/model/ruleBuilders';
 import type { RecordDoc } from '@/domain/model/translate';
 import { classify } from '@/domain/statuses/classify';
@@ -40,7 +41,7 @@ const base = DashboardSchema.parse({
       id: 'api',
       repo: 'acme/api',
       displayName: 'api',
-      cellStatusSets: { prod: 'github-single-job' },
+      cellStatusSets: { prod: PRESET_IDS.githubSingleJob },
     },
   ],
 });
@@ -91,7 +92,7 @@ describe('addStatusFor', () => {
     const api = next.rows[1];
     expect(api.cellStatusSets.prod).toBe('custom-github');
     // Other cells and the dashboard keep their sets.
-    expect(next.statusSets.github).toBe('github-deploy-test');
+    expect(next.statusSets.github).toBe(PRESET_IDS.githubDeployTest);
     const set = statusSetFor(next, api, 'prod');
     expect(classify(run, set)?.id).toBe(set.cell[0]?.id);
     expect(set.cell[0]?.name).toBe('New status');
@@ -120,7 +121,7 @@ describe('addStatusFor', () => {
       'row',
       {
         rows: [
-          { ...base.rows[0], statusSet: 'github-single-job' },
+          { ...base.rows[0], statusSet: PRESET_IDS.githubSingleJob },
           base.rows[1],
         ],
       },
@@ -132,7 +133,7 @@ describe('addStatusFor', () => {
           {
             id: 'g',
             memberIds: ['web'],
-            statusSets: { github: 'github-single-job' },
+            statusSets: { github: PRESET_IDS.githubSingleJob },
           },
         ],
       },
@@ -144,10 +145,10 @@ describe('addStatusFor', () => {
       stageId: 'dev',
       document: run,
     });
-    expect(next.statusSets.github).toBe('github-deploy-test');
+    expect(next.statusSets.github).toBe(PRESET_IDS.githubDeployTest);
     expect(statusSetFor(next, next.rows[0], 'dev').id).toBe('custom-github');
     expect(statusSetFor(next, next.rows[1], 'dev').id).toBe(
-      'github-deploy-test',
+      PRESET_IDS.githubDeployTest,
     );
   });
 
@@ -179,21 +180,15 @@ describe('addStatusFor', () => {
   it.each([
     [
       'a GitHub job still running (no conclusion)',
-      'github',
       {
         ...run,
         items: [{ name: 'publish', state: null, time: '', link: '' }],
       },
     ],
-    [
-      'an Amplify job with no status',
-      'amplify',
-      { branch: 'main', state: null },
-    ],
-  ])('drafts a status that matches %s', (_, kind, document) => {
+    ['an Amplify job with no status', { branch: 'main', state: null }],
+  ])('drafts a status that matches %s', (_, document) => {
     const next = addStatusFor(base, { rowId: 'web', stageId: 'dev', document });
     const [added] = next.customStatusSets[0]?.cell ?? [];
     expect(classify(document, { cell: [added] })?.id).toBe(added.id);
-    expect(kind).toBeTruthy();
   });
 });

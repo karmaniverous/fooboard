@@ -6,12 +6,13 @@
  */
 import { describe, expect, it } from 'vitest';
 
-import { deriveCell } from '@/domain/derivation';
+import { PRESET_IDS } from '@/domain/config/statusSets';
+import { deriveCell, EMPTY_STATES } from '@/domain/derivation';
 import { presetById } from '@/domain/statuses/presets';
 
 import { cellView, cellViews, emptyCells } from './cells';
 
-const set = presetById('amplify');
+const set = presetById(PRESET_IDS.amplify);
 const running = set.cell.find((c) => c.summary === 'running');
 const done = set.cell.find((c) => c.summary === 'ok');
 
@@ -38,8 +39,8 @@ describe('emptyCells', () => {
 
   it('gives every stage a cell saying why it is empty', () => {
     expect(emptyCells(stages, () => set, 'missing')).toEqual({
-      dev: { kind: 'empty', state: 'needs-credential' },
-      prod: { kind: 'empty', state: 'needs-credential' },
+      dev: { kind: 'empty', state: EMPTY_STATES.needsCredential },
+      prod: { kind: 'empty', state: EMPTY_STATES.needsCredential },
     });
     expect(
       emptyCells(stages, () => set, 'ok', {

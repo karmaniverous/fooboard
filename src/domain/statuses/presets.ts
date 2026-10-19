@@ -11,6 +11,7 @@
  */
 import {
   type CellStatus,
+  PRESET_IDS,
   type StatusSet,
   StatusSetSchema,
   type SummaryStatus,
@@ -82,7 +83,7 @@ const state = (s: string) => `@.state == '${s}'`;
 const notSkipped = not(is('$.state', 'skipped'));
 
 const deployTest = {
-  id: 'github-deploy-test',
+  id: PRESET_IDS.githubDeployTest,
   name: 'GitHub deploy and test',
   provider: 'github',
   items: all(
@@ -166,7 +167,7 @@ const deployTest = {
 };
 
 const singleJob = {
-  id: 'github-single-job',
+  id: PRESET_IDS.githubSingleJob,
   name: 'GitHub single job',
   provider: 'github',
   items: all(notSkipped),
@@ -202,7 +203,7 @@ const singleJob = {
 };
 
 const amplify = {
-  id: 'amplify',
+  id: PRESET_IDS.amplify,
   name: 'Amplify',
   provider: 'amplify',
   items: always,

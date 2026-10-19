@@ -11,6 +11,7 @@ import { MemoryRouter } from 'react-router-dom';
 import { describe, expect, it, vi } from 'vitest';
 
 import { type Dashboard, DashboardSchema } from '@/domain/config/dashboard';
+import { UNMAPPED } from '@/domain/derivation/index';
 import { DashboardEditor } from '@/editors/DashboardEditor';
 import { draftFor, type EditorDraft, overrideDraftFor } from '@/editors/draft';
 import type { UnmappedRun } from '@/engine';
@@ -34,8 +35,8 @@ const runs: UnmappedRun[] = [
     record: { workflow: 'Deploy API', branch: 'main' },
     branch: 'main',
     htmlUrl: 'https://github.com/acme/api/actions/runs/7',
-    reason: { kind: 'no-row-matches' },
-    rows: [{ rowId: 'api', reason: { kind: 'no-row-matches' } }],
+    reason: { kind: UNMAPPED.noRowMatches },
+    rows: [{ rowId: 'api', reason: { kind: UNMAPPED.noRowMatches } }],
   },
   {
     provider: 'github',
@@ -45,7 +46,7 @@ const runs: UnmappedRun[] = [
     record: { workflow: 'Nightly', branch: 'main' },
     branch: 'main',
     htmlUrl: 'https://github.com/acme/gone/actions/runs/8',
-    reason: { kind: 'no-row-matches' },
+    reason: { kind: UNMAPPED.noRowMatches },
     rows: [],
   },
 ];
@@ -71,21 +72,24 @@ describe('UnmappedPanel', () => {
       {
         ...runs[0],
         id: 'github:acme/api#9',
-        reason: { kind: 'no-stage-matches', branch: 'hotfix/1' },
+        reason: { kind: UNMAPPED.noStageMatches, branch: 'hotfix/1' },
         rows: [
           {
             rowId: 'api',
-            reason: { kind: 'no-stage-matches', branch: 'hotfix/1' },
+            reason: { kind: UNMAPPED.noStageMatches, branch: 'hotfix/1' },
           },
         ],
       },
       {
         ...runs[1],
         id: 'github:acme/gone#10',
-        reason: { kind: 'no-stage-matches', branch: 'x' },
+        reason: { kind: UNMAPPED.noStageMatches, branch: 'x' },
         // No row on the board reads it any more.
         rows: [
-          { rowId: 'gone', reason: { kind: 'no-stage-matches', branch: 'x' } },
+          {
+            rowId: 'gone',
+            reason: { kind: UNMAPPED.noStageMatches, branch: 'x' },
+          },
         ],
       },
       ...runs,

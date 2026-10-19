@@ -11,11 +11,19 @@ import { textOf } from '@/domain/model/json';
 import type { RecordDoc } from '@/domain/model/translate';
 import { evaluateRule } from '@/domain/rules/check';
 
+/** Why a record is unmapped. */
+export const UNMAPPED = {
+  noStageMatches: 'no-stage-matches',
+  noRowMatches: 'no-row-matches',
+  noItemCounts: 'no-item-counts',
+  noOrderKey: 'no-order-key',
+} as const;
+
 export type UnmappedReason =
-  | { kind: 'no-stage-matches'; branch?: string }
-  | { kind: 'no-row-matches' }
-  | { kind: 'no-item-counts' }
-  | { kind: 'no-order-key' };
+  | { kind: typeof UNMAPPED.noStageMatches; branch?: string }
+  | { kind: typeof UNMAPPED.noRowMatches }
+  | { kind: typeof UNMAPPED.noItemCounts }
+  | { kind: typeof UNMAPPED.noOrderKey };
 
 /** Text for the Unmapped panel. */
 export function describeUnmappedReason(reason: UnmappedReason): string {

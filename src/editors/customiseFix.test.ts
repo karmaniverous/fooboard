@@ -9,6 +9,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { DashboardSchema } from '@/domain/config/dashboard';
+import { PRESET_IDS } from '@/domain/config/statusSets';
 import { problem } from '@/domain/problems/problem';
 
 import { customiseFor, offersCustomise } from './customiseFix';
@@ -22,21 +23,24 @@ const dashboard = DashboardSchema.parse({
       id: 'web',
       repo: 'a/web',
       displayName: 'web',
-      statusSet: 'github-deploy-test',
+      statusSet: PRESET_IDS.githubDeployTest,
     },
   ],
   rowGroups: [
     {
       id: 'g',
       memberIds: ['web'],
-      statusSets: { github: 'github-deploy-test' },
+      statusSets: { github: PRESET_IDS.githubDeployTest },
     },
   ],
 });
 const inSource = problem({ kind: 'dashboard' }, 'x', false, {
   target: { kind: 'source', provider: 'github', key: 'state' },
 });
-const inPreset = problem({ kind: 'statusSet', id: 'github-deploy-test' }, 'y');
+const inPreset = problem(
+  { kind: 'statusSet', id: PRESET_IDS.githubDeployTest },
+  'y',
+);
 
 describe('customiseFor', () => {
   it('copies a built-in source rule and opens the editor on it', () => {
@@ -60,7 +64,8 @@ describe('customiseFor', () => {
   it('copies a preset and uses the copy wherever the preset was chosen', () => {
     const fix = customiseFor(dashboard, inPreset);
     const copy = fix?.dashboard.customStatusSets[0];
-    expect(copy?.id).toBeDefined();
+    expect(copy?.id).toEqual(expect.any(String));
+    expect(copy?.id).not.toBe(PRESET_IDS.githubDeployTest);
     expect(fix?.dashboard.statusSets.github).toBe(copy?.id);
     expect(fix?.dashboard.rowGroups[0]?.statusSets.github).toBe(copy?.id);
     expect(fix?.dashboard.rows[0]?.statusSet).toBe(copy?.id);

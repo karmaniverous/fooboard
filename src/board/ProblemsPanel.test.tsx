@@ -12,6 +12,7 @@ import { describe, expect, it, vi } from 'vitest';
 
 import { DashboardSchema } from '@/domain/config/dashboard';
 import { branchRules } from '@/domain/config/placement';
+import { PRESET_IDS } from '@/domain/config/statusSets';
 import {
   note,
   type Problem,
@@ -116,7 +117,7 @@ describe('problemMarks', () => {
 
   it('marks the cells using a status set, or the dashboard when none does', () => {
     const marks = problemMarks(dashboard, [
-      problem({ kind: 'statusSet', id: 'github-deploy-test' }, 'used'),
+      problem({ kind: 'statusSet', id: PRESET_IDS.githubDeployTest }, 'used'),
       problem({ kind: 'statusSet', id: 'amplify' }, 'unused'),
     ]);
     expect(marks.rows.get('web')?.map((p) => p.message)).toEqual(['used']);
