@@ -80,10 +80,10 @@ function setup(initial: Dashboard = start, draft?: EditorDraft) {
   return latest;
 }
 
-/** Open every closed *Branch overrides* section. */
+/** Open every closed *Stage overrides* section. */
 const openOverrides = () => {
   for (const t of screen.queryAllByRole('button', {
-    name: /^Branch overrides/,
+    name: /^Stage overrides/,
   }))
     if (t.getAttribute('aria-expanded') !== 'true') fireEvent.click(t);
 };
@@ -192,8 +192,7 @@ describe('row groups in the editor', () => {
     });
     const latest = setup(grouped, {
       tab: 'Rows',
-      rowId: 'api',
-      overrideBranch: 'preview/release',
+      override: { branch: 'preview/release', rowIds: ['api'] },
     });
     const fix = screen.getByRole('group', {
       name: 'Override for preview/release',
@@ -207,7 +206,7 @@ describe('row groups in the editor', () => {
     expect(latest.current.rows[0]?.stageRules).toEqual({});
   });
 
-  it("offers every GitHub row reading the run's repo as the override target", () => {
+  it('offers every row reading the record as the override target', () => {
     const twoRows = DashboardSchema.parse({
       ...start,
       rows: [
@@ -223,8 +222,7 @@ describe('row groups in the editor', () => {
     });
     const latest = setup(twoRows, {
       tab: 'Rows',
-      rowId: 'api',
-      overrideBranch: 'hotfix/1',
+      override: { branch: 'hotfix/1', rowIds: ['api', 'api-jobs'] },
     });
     const fix = screen.getByRole('group', { name: 'Override for hotfix/1' });
     const target = within(fix).getByLabelText('Override scope');
@@ -248,7 +246,7 @@ describe('row groups in the editor', () => {
       }),
     );
     const trigger = screen.getByRole('button', {
-      name: 'Branch overrides (1)',
+      name: 'Stage overrides (1)',
     });
     expect(trigger).toHaveAttribute('aria-expanded', 'false');
     expect(screen.queryByLabelText('prod branch override for api')).toBeNull();

@@ -1,98 +1,145 @@
 /**
- * *Add test* from an unmapped run (spec.md C-15): where in the editors
- * the fix belongs, pre-filled from the run. A run no row key matches gets
- * a row key test on its workflow name; a run on a branch no stage matches
- * gets a new stage for that branch, or (`overrideDraftFor`) a
- * branch-pattern override on that repo's row or its group (C-14c); a run
- * with no counted item opens the status sets. Pure.
+ * Where the editor opens for a fix (spec.md C-15, A§4.3.7): *Add rule*
+ * and *Add override* from an unmapped record, and *Fix* from a problem.
+ * *Add rule* opens the rule to change with a check drafted from the
+ * record: for a branch no stage rule matches, a new stage for that branch
+ * (or, with *Add override*, a stage-rule override on a row reading the
+ * record's repo or app, or its group); for no row rule, the row's record
+ * rule; for no item counting, the item rule of the status set the row
+ * uses; for an empty order key, the source rule's order key. Pure.
  *
  * @module
  */
+import type { JSONValue } from 'json-p3';
+
 import type { Dashboard } from '@/domain/config/dashboard';
-import type { Problem } from '@/domain/problems/problem';
+import { is } from '@/domain/model/ruleBuilders';
+import { sourceRuleFor } from '@/domain/model/sources';
+import { itemsOf, type RecordDoc } from '@/domain/model/translate';
+import { type Problem, targetOf } from '@/domain/problems/problem';
+import { escapeGlob } from '@/domain/rules/glob';
+import type { Check } from '@/domain/rules/schema';
+import { statusSetFor } from '@/domain/statuses/resolve';
 import type { UnmappedRun } from '@/engine';
 
-export type EditorDraft =
-  | { tab: 'Rows'; rowId: string }
-  | { tab: 'Rows'; rowId: string; overrideBranch: string }
-  | { tab: 'Stages'; pattern?: string }
-  | { tab: 'Sources' }
-  | { tab: 'General' }
-  | { tab: 'Statuses' };
+import { type EditorTab, focusKeys, tabFor } from './editTarget';
 
-/** The first row reading the record's repo or app that the dashboard
- * still has. */
-const githubRowFor = (run: UnmappedRun, dashboard: Pick<Dashboard, 'rows'>) =>
-  dashboard.rows.find((r) => run.rows.some((x) => x.rowId === r.id));
+export interface EditorDraft {
+  tab: EditorTab;
+  /** Editor items to open and scroll to, most specific first. */
+  focus?: readonly string[];
+  /** Rows: offer `branch` as a stage-rule override on these rows (and
+   * their groups). */
+  override?: { branch: string; rowIds: readonly string[] };
+  /** Stages: a new stage for this branch. */
+  pattern?: string;
+  /** A check drafted from a record, offered on the focused rule. */
+  check?: Check;
+}
+
+/** Keys the board shows rather than tests by (a poor first check). */
+const SHOWN = new Set(['time', 'link', 'message', 'commit', 'items', '_raw']);
+
+/** A first check matching `doc`: its first key with a text value that
+ * isn't one the board only shows (nor `skip`). */
+function draftCheck(doc: RecordDoc, skip?: string): Check | undefined {
+  const hit = Object.entries(doc).find(
+    (e): e is [string, string] =>
+      !SHOWN.has(e[0]) &&
+      e[0] !== skip &&
+      typeof e[1] === 'string' &&
+      e[1] !== '' &&
+      /^[A-Za-z_]\w*$/.test(e[0]),
+  );
+  return hit ? is(`$.${hit[0]}`, escapeGlob(hit[1])) : undefined;
+}
+
+/** The rows of the dashboard that `run` names for `kind`. */
+const rowsFor = (
+  run: UnmappedRun,
+  dashboard: Pick<Dashboard, 'rows'>,
+  kind?: UnmappedRun['reason']['kind'],
+) =>
+  dashboard.rows.filter((r) =>
+    run.rows.some(
+      (x) => x.rowId === r.id && (kind === undefined || x.reason.kind === kind),
+    ),
+  );
+
+const text = (v: JSONValue | undefined): string | undefined =>
+  typeof v === 'string' && v !== '' ? v : undefined;
 
 export function draftFor(
   run: UnmappedRun,
-  dashboard: Pick<Dashboard, 'rows'>,
+  dashboard: Dashboard,
 ): EditorDraft | undefined {
-  switch (run.reason.kind) {
-    case 'no-stage-matches':
-      return run.reason.branch === undefined
+  const { reason, record } = run;
+  switch (reason.kind) {
+    case 'no-stage-matches': {
+      const branch = reason.branch ?? text(record.branch);
+      return branch === undefined
         ? undefined
-        : { tab: 'Stages', pattern: run.reason.branch };
-    case 'no-item-counts':
-      return { tab: 'Statuses' };
-    case 'no-row-matches': {
-      const fallback = githubRowFor(run, dashboard)?.id;
-      const named = run.rows.find(
-        (r) => r.reason.kind === 'no-row-matches',
-      )?.rowId;
-      const rowId =
-        named !== undefined && dashboard.rows.some((r) => r.id === named)
-          ? named
-          : fallback;
-      return rowId ? { tab: 'Rows', rowId } : undefined;
+        : { tab: 'Stages', pattern: branch, focus: ['stage-new'] };
     }
-    case 'no-order-key':
-      return undefined;
+    case 'no-row-matches': {
+      const row = rowsFor(run, dashboard, 'no-row-matches').at(0);
+      if (!row) return undefined;
+      const order = sourceRuleFor(dashboard, row.type).order;
+      return {
+        tab: 'Rows',
+        focus: focusKeys({ kind: 'row', id: row.id, part: 'record' }),
+        check: draftCheck(record, order),
+      };
+    }
+    case 'no-item-counts': {
+      const row = rowsFor(run, dashboard, 'no-item-counts').at(0);
+      if (!row) return { tab: 'Statuses' };
+      const set = statusSetFor(dashboard, row);
+      const item = itemsOf(record).at(0);
+      return {
+        tab: 'Statuses',
+        focus: [
+          `statusSet:${set.id}:items`,
+          ...focusKeys({ kind: 'statusSet', id: set.id }),
+        ],
+        check: item ? draftCheck(item) : undefined,
+      };
+    }
+    case 'no-order-key': {
+      const order = sourceRuleFor(dashboard, run.provider).order;
+      return {
+        tab: 'Sources',
+        focus: focusKeys({
+          kind: 'source',
+          provider: run.provider,
+          key: order,
+        }),
+      };
+    }
   }
 }
 
-/** The second fix for a branch no stage matches: an override on the
- * GitHub row that reads the run's repo (or its group). Undefined for other
- * reasons or when no GitHub row reads the repo. */
+/** The second fix for a branch no stage rule matches: a stage-rule
+ * override on a row reading the record's repo or app (or its group).
+ * Undefined for other reasons or when no row on the board reads it. */
 export function overrideDraftFor(
   run: UnmappedRun,
   dashboard: Pick<Dashboard, 'rows'>,
 ): EditorDraft | undefined {
-  if (run.reason.kind !== 'no-stage-matches' || run.reason.branch === undefined)
-    return undefined;
-  const row = githubRowFor(run, dashboard);
-  return row
-    ? { tab: 'Rows', rowId: row.id, overrideBranch: run.reason.branch }
-    : undefined;
+  if (run.reason.kind !== 'no-stage-matches') return undefined;
+  const branch = run.reason.branch ?? text(run.record.branch);
+  const rows = rowsFor(run, dashboard);
+  const first = rows.at(0);
+  if (branch === undefined || !first) return undefined;
+  return {
+    tab: 'Rows',
+    focus: [`row:${first.id}:override`, `row:${first.id}`],
+    override: { branch, rowIds: rows.map((r) => r.id) },
+  };
 }
 
-/** The editor tab where `problem` is fixed. */
+/** The editor opened at the item that fixes `problem`. */
 export function problemDraft(problem: Problem): EditorDraft {
-  const { level, message } = problem;
-  if (
-    /source rule/.test(message) ||
-    / gives no /.test(message) ||
-    /read .* the most/.test(message)
-  )
-    return { tab: 'Sources' };
-  switch (level.kind) {
-    case 'row':
-    case 'cell':
-      return {
-        tab: 'Rows',
-        rowId: level.kind === 'row' ? level.id : level.rowId,
-      };
-    case 'stage':
-    case 'columnGroup':
-      return { tab: 'Stages' };
-    case 'statusSet':
-      return { tab: 'Statuses' };
-    case 'rowGroup':
-      return { tab: 'Rows', rowId: '' };
-    case 'dashboard':
-      return /status|item rule/.test(message)
-        ? { tab: 'Statuses' }
-        : { tab: 'General' };
-  }
+  const target = targetOf(problem);
+  return { tab: tabFor(target), focus: focusKeys(target) };
 }

@@ -1,21 +1,22 @@
 /**
  * A row's group and overrides in the row editor (spec.md C-14b, C-14c,
  * C-1a, C-15, A§4.3.6): its group; its group's default credentials,
- * status sets and branch-pattern overrides (shown on each member, since a group has no
- * editor of its own); *Add override* from an unmapped run; and the row's
- * own overrides.
+ * status sets and stage-rule overrides (shown on each member, since a
+ * group has no editor of its own); *Add override* from an unmapped
+ * record; and the row's own overrides, as branch patterns or general
+ * rules (A§4.3.7).
  *
  * @module
  */
-import { useState } from 'react';
+import { useContext } from 'react';
 
-import { Choice } from '@/components/Choice';
-import { Button } from '@/components/ui/button';
 import type { Dashboard } from '@/domain/config/dashboard';
 import { groupOf, type RowGroup } from '@/domain/config/groups';
+import { ownOverride } from '@/domain/config/ownOverride';
 import type { Row } from '@/domain/config/row';
 import type { Stage } from '@/domain/config/stage';
 import { branchOf } from '@/domain/rules/branch';
+import type { Rule } from '@/domain/rules/schema';
 import type { EngineProviders } from '@/engine';
 
 import { discoverBranches } from './branches';
@@ -26,11 +27,16 @@ import {
   rowOverridePattern,
   setRowGroupCredential,
   setRowGroupOverride,
+  setRowGroupStageRule,
   setRowOverride,
+  setRowStageRule,
 } from './overrideEdit';
 import { OverrideFields } from './OverrideFields';
+import { OverrideFix } from './OverrideFix';
 import { setGroupRowRule } from './rowRuleEdit';
 import { ProviderRules } from './rules/ProviderRules';
+import { RuleEditor } from './rules/RuleEditor';
+import { SourcesWithItemsContext } from './rules/samples';
 import { GroupStatusSets, RowStatusSets } from './statuses/StatusSetOverrides';
 
 interface Props {
@@ -52,8 +58,7 @@ const inheritedStages = (d: Dashboard, group: RowGroup | undefined) =>
     inherited: (group && groupOverridePattern(group, s.id)) || stagePattern(s),
   }));
 
-/** The overrides a level holds, by stage id, as branch patterns (`''`
- * for one that is not a branch rule). */
+/** The overrides a level holds that are branch patterns, by stage id. */
 const patterns = (
   stages: readonly Stage[],
   patternOf: (stageId: string) => string | undefined,
@@ -61,18 +66,28 @@ const patterns = (
   Object.fromEntries(
     stages.flatMap((s) => {
       const pattern = patternOf(s.id);
-      return pattern === '' ? [] : [[s.id, pattern ?? '']];
+      return pattern === '' || pattern === undefined ? [] : [[s.id, pattern]];
     }),
   );
 
+/** Stages whose override is a rule no branch pattern says. */
+const customStages = (
+  stages: readonly Stage[],
+  patternOf: (stageId: string) => string | undefined,
+): Set<string> =>
+  new Set(stages.filter((s) => patternOf(s.id) === undefined).map((s) => s.id));
+
+const EMPTY: Rule = { combine: 'and', checks: [] };
+
 export function RowGrouping({
   row,
-  overrideBranch,
+  override,
   ...props
 }: Props & {
   row: Row;
-  /** A branch from an unmapped run to offer as an override. */
-  overrideBranch?: string;
+  /** A branch from an unmapped record to offer as an override, on the
+   * rows reading its repo or app (shown on the first). */
+  override?: { branch: string; rowIds: readonly string[] };
 }): React.JSX.Element {
   const { dashboard, providers, onChange } = props;
   const group = groupOf(dashboard.rowGroups, row.id);
@@ -86,13 +101,32 @@ export function RowGrouping({
         onChange={onChange}
       />
       {group && <RowGroupSettings {...props} group={group} />}
-      {overrideBranch !== undefined && (
-        <OverrideFix {...props} row={row} branch={overrideBranch} />
+      {override?.rowIds[0] === row.id && (
+        <OverrideFix
+          dashboard={dashboard}
+          onChange={onChange}
+          rowIds={override.rowIds}
+          branch={override.branch}
+        />
       )}
       <OverrideFields
         name={row.displayName}
+        target={`row:${row.id}`}
         stages={inheritedStages(dashboard, group)}
         own={patterns(dashboard.stages, (id) => rowOverridePattern(row, id))}
+        custom={customStages(dashboard.stages, (id) =>
+          rowOverridePattern(row, id),
+        )}
+        renderRule={(stageId) => (
+          <RuleEditor
+            label={`${stageId} stage rule for ${row.displayName}`}
+            provider={row.type}
+            rule={ownOverride(row.stageRules, stageId) ?? EMPTY}
+            onChange={(rule) => {
+              onChange(setRowStageRule(dashboard, row.id, stageId, rule));
+            }}
+          />
+        )}
         loadBranches={() => discoverBranches(dashboard, providers, [row])}
         onChange={(stageId, pattern) => {
           onChange(setRowOverride(dashboard, row.id, stageId, pattern));
@@ -110,8 +144,12 @@ function RowGroupSettings({
   group,
 }: Props & { group: RowGroup }): React.JSX.Element {
   const name = group.label ?? 'this group';
+  const withItems = useContext(SourcesWithItemsContext);
   return (
-    <div className="flex flex-col gap-1 rounded border border-dashed p-1 text-xs">
+    <div
+      className="flex flex-col gap-1 rounded border border-dashed p-1 text-xs"
+      data-edit-target={`rowGroup:${group.id}`}
+    >
       <span className="font-semibold">Group settings: {name}</span>
       <div className="flex flex-wrap items-center gap-1">
         {(
@@ -134,6 +172,7 @@ function RowGroupSettings({
       </div>
       <ProviderRules
         title={`Row rules of ${name}`}
+        target={`rowGroup:${group.id}:record`}
         rules={{
           github: group.rowRules.github?.record,
           amplify: group.rowRules.amplify?.record,
@@ -146,8 +185,12 @@ function RowGroupSettings({
         title={`Item rules of ${name}`}
         scope="item"
         newPath="$.name"
-        providers={['github']}
-        rules={{ github: group.rowRules.github?.items }}
+        target={`rowGroup:${group.id}:items`}
+        providers={withItems}
+        rules={{
+          github: group.rowRules.github?.items,
+          amplify: group.rowRules.amplify?.items,
+        }}
         onChange={(p, items) => {
           onChange(setGroupRowRule(dashboard, group.id, p, 'items', items));
         }}
@@ -160,10 +203,28 @@ function RowGroupSettings({
       />
       <OverrideFields
         name={name}
+        target={`rowGroup:${group.id}`}
         stages={inheritedStages(dashboard, undefined)}
         own={patterns(dashboard.stages, (id) =>
           groupOverridePattern(group, id),
         )}
+        custom={customStages(dashboard.stages, (id) =>
+          groupOverridePattern(group, id),
+        )}
+        renderRule={(stageId) => {
+          const rules = ownOverride(group.stageRules, stageId);
+          return (
+            <ProviderRules
+              title={`${stageId} stage rules of ${name}`}
+              rules={{ github: rules?.github, amplify: rules?.amplify }}
+              onChange={(p, rule) => {
+                onChange(
+                  setRowGroupStageRule(dashboard, group.id, stageId, p, rule),
+                );
+              }}
+            />
+          );
+        }}
         loadBranches={() =>
           discoverBranches(
             dashboard,
@@ -175,75 +236,6 @@ function RowGroupSettings({
           onChange(setRowGroupOverride(dashboard, group.id, stageId, pattern));
         }}
       />
-    </div>
-  );
-}
-
-/** *Add override* from an unmapped run (C-15): use the run's branch as a
- * stage's pattern for a row or row group. Every GitHub row reading the
- * run's repo is offered (with its group), since the one the editor opened
- * on may not be the row whose key tests pick the run's jobs. */
-function OverrideFix({
-  dashboard,
-  onChange,
-  row,
-  branch,
-}: Props & {
-  row: Row;
-  branch: string;
-}): React.JSX.Element {
-  const [stageId, setStageId] = useState(dashboard.stages[0]?.id ?? '');
-  const targets = dashboard.rows
-    .filter((r) => r.type === 'github' && r.repo === row.repo)
-    .flatMap((r) => {
-      const g = groupOf(dashboard.rowGroups, r.id);
-      return [
-        { value: `row:${r.id}`, label: `row ${r.displayName}` },
-        ...(g
-          ? [{ value: `group:${g.id}`, label: `group ${g.label ?? g.id}` }]
-          : []),
-      ];
-    })
-    .filter((t, i, all) => all.findIndex((u) => u.value === t.value) === i);
-  const [target, setTarget] = useState(`row:${row.id}`);
-  return (
-    <div
-      role="group"
-      aria-label={`Override for ${branch}`}
-      className="flex flex-wrap items-center gap-1 rounded border border-status-started p-1 text-xs"
-    >
-      <span>
-        Use <code>{branch}</code> for
-      </span>
-      <Choice
-        label="Stage to override"
-        className="h-7"
-        value={stageId}
-        options={dashboard.stages.map((s) => ({ value: s.id, label: s.name }))}
-        onValueChange={setStageId}
-      />
-      <span>on</span>
-      <Choice
-        label="Override scope"
-        className="h-7"
-        value={target}
-        options={targets}
-        onValueChange={setTarget}
-      />
-      <Button
-        size="sm"
-        disabled={!stageId}
-        onClick={() => {
-          const [kind, id = ''] = target.split(/:(.*)/s);
-          onChange(
-            kind === 'group'
-              ? setRowGroupOverride(dashboard, id, stageId, branch)
-              : setRowOverride(dashboard, id, stageId, branch),
-          );
-        }}
-      >
-        Apply
-      </Button>
     </div>
   );
 }

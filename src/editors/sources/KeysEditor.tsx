@@ -2,15 +2,19 @@
  * A source rule's keys (spec.md A§4.3.7): each key is the first of its
  * translations whose rule matches the raw data, giving a fixed value or
  * copying one from a path. Translation rules test the raw entry (`$` is
- * the raw run or job), so they get no record preview.
+ * the raw run or job, or the raw item), so they preview over the raw data
+ * of the board's records (A§4.3.7 *Editing rules*).
  *
  * @module
  */
+import type { JSONValue } from 'json-p3';
+
 import { Choice } from '@/components/Choice';
 import { Button } from '@/components/ui/button';
 import type { KeyDef, Translation } from '@/domain/model/sourceRule';
 import { patchAt } from '@/lib/lists';
 
+import { useFocused } from '../editTarget';
 import { CommitInput } from '../fields';
 import { RuleEditor } from '../rules/RuleEditor';
 
@@ -24,8 +28,12 @@ function TranslationRow({
   translation,
   onChange,
   onRemove,
+  samples,
+  noun,
 }: {
   label: string;
+  samples: readonly JSONValue[];
+  noun: string;
   translation: Translation;
   onChange: (t: Translation) => void;
   onRemove: () => void;
@@ -49,7 +57,9 @@ function TranslationRow({
       <RuleEditor
         label={`${label} rule`}
         rule={translation.rule}
-        newPath="$.run."
+        newPath="$."
+        documents={samples}
+        noun={noun}
         onChange={(rule) => {
           onChange({ ...translation, rule });
         }}
@@ -88,13 +98,27 @@ export function KeysEditor({
   title,
   keys,
   onChange,
+  samples = [],
+  noun = 'raw entries',
+  target,
 }: {
   title: string;
   keys: readonly KeyDef[];
   onChange: (keys: KeyDef[]) => void;
+  /** Raw data to preview translation rules over. */
+  samples?: readonly JSONValue[];
+  noun?: string;
+  /** The source rule's editor-item key; each key is `<target>:key:<name>`. */
+  target?: string;
 }): React.JSX.Element {
+  const focused = useFocused(
+    target === undefined ? undefined : `${target}:key`,
+  );
   return (
-    <details className="rounded-md border px-2 py-1 text-xs">
+    <details
+      className="rounded-md border px-2 py-1 text-xs"
+      open={focused || undefined}
+    >
       <summary className="cursor-pointer select-none">
         {title} ({keys.length})
       </summary>
@@ -103,6 +127,9 @@ export function KeysEditor({
           <section
             key={i}
             aria-label={`${title}: ${key.name}`}
+            data-edit-target={
+              target === undefined ? undefined : `${target}:key:${key.name}`
+            }
             className="flex flex-col gap-1"
           >
             <div className="flex items-center gap-2">
@@ -130,6 +157,8 @@ export function KeysEditor({
                 key={j}
                 label={`${key.name} translation ${String(j + 1)}`}
                 translation={t}
+                samples={samples}
+                noun={noun}
                 onChange={(next) => {
                   onChange(
                     patchAt(keys, i, {

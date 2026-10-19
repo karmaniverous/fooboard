@@ -35,8 +35,22 @@ const updateRowGroup = (
   rowGroups: d.rowGroups.map((g) => (g.id === groupId ? change(g) : g)),
 });
 
-/** A row's own stage-rule override (cleared with `undefined`). */
-const setRowStageRule = (
+/** A row's own stage-rule override, as a general rule (cleared with
+ * `undefined` or an empty rule). */
+export const setRowStageRule = (
+  d: Dashboard,
+  rowId: string,
+  stageId: string,
+  rule: Rule | undefined,
+): Dashboard =>
+  writeRowStageRule(
+    d,
+    rowId,
+    stageId,
+    rule && rule.checks.length > 0 ? rule : undefined,
+  );
+
+const writeRowStageRule = (
   d: Dashboard,
   rowId: string,
   stageId: string,
@@ -71,7 +85,7 @@ export const setRowOverride = (
   pattern: string,
 ): Dashboard => {
   const text = pattern.trim();
-  return setRowStageRule(
+  return writeRowStageRule(
     d,
     rowId,
     stageId,
@@ -92,6 +106,30 @@ export const setRowGroupOverride = (
     groupId,
     stageId,
     text ? branchRules(text) : undefined,
+  );
+};
+
+/** One source's rule in a row group's stage-rule override, as a general
+ * rule (an empty rule clears that source; no source left clears the
+ * override). */
+export const setRowGroupStageRule = (
+  d: Dashboard,
+  groupId: string,
+  stageId: string,
+  provider: keyof ProviderRules,
+  rule: Rule | undefined,
+): Dashboard => {
+  const group = d.rowGroups.find((g) => g.id === groupId);
+  const current = group ? ownOverride(group.stageRules, stageId) : undefined;
+  const next: ProviderRules = {
+    ...omit(current ?? {}, [provider]),
+    ...(rule && rule.checks.length > 0 ? { [provider]: rule } : {}),
+  };
+  return setRowGroupStageRules(
+    d,
+    groupId,
+    stageId,
+    Object.keys(next).length > 0 ? next : undefined,
   );
 };
 

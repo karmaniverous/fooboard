@@ -9,13 +9,24 @@
 import type { JSONValue } from 'json-p3';
 import { createContext, useContext } from 'react';
 
+import { UNKNOWN_STATUS_ID } from '@/domain/config/statusSets';
 import type { RecordDoc } from '@/domain/model/translate';
+import { compilePath, valuesAt } from '@/domain/rules/path';
 
 export type SampleProvider = 'github' | 'amplify';
 
 export type RuleSamples = Partial<Record<SampleProvider, readonly RecordDoc[]>>;
 
 export const RuleSamplesContext = createContext<RuleSamples>({});
+
+/** The sources whose source rule reads items (spec.md A§4.3.7: item
+ * rules and *Only items where* are offered only for those). */
+export const SourcesWithItemsContext = createContext<readonly SampleProvider[]>(
+  ['github'],
+);
+
+/** Entries of the Amplify branch lists read, for the branch rule. */
+export const BranchSamplesContext = createContext<readonly JSONValue[]>([]);
 
 /** The board's records for `provider` (none outside a board). */
 export const useRuleSamples = (
@@ -60,28 +71,56 @@ export function samplePaths(
   return [...paths].sort();
 }
 
+/** The raw data behind `records` (each record's `_raw`), and the raw
+ * items `itemsPath` finds in it: what a source rule's translation rules
+ * test. */
+export function rawSamples(
+  records: readonly RecordDoc[],
+  itemsPath?: string,
+): { records: JSONValue[]; items: JSONValue[] } {
+  const raws = records.flatMap((r) => (r._raw === undefined ? [] : [r._raw]));
+  const path = itemsPath === undefined ? undefined : compilePath(itemsPath);
+  return {
+    records: raws,
+    items: path?.ok ? raws.flatMap((raw) => valuesAt(path.query, raw)) : [],
+  };
+}
+
 const SAMPLE_LIMIT = 50;
 
-/** The board's cell records per source, up to `SAMPLE_LIMIT` each. */
+/** The board's cell records per source, up to `SAMPLE_LIMIT` each,
+ * Unknown cells' records first (the field picker shows the first). */
 export function ruleSamples(
   rows: readonly { id: string; type: SampleProvider }[],
   cells: Readonly<
     Partial<
       Record<
         string,
-        { rowId: string; derivation: { kind: string; document?: RecordDoc } }
+        {
+          rowId: string;
+          derivation: {
+            kind: string;
+            document?: RecordDoc;
+            status?: { id: string };
+          };
+        }
       >
     >
   >,
 ): RuleSamples {
   const typeOf = new Map(rows.map((r) => [r.id, r.type]));
   const out: Record<SampleProvider, RecordDoc[]> = { github: [], amplify: [] };
-  for (const cell of Object.values(cells)) {
-    if (!cell || cell.derivation.kind !== 'ok' || !cell.derivation.document)
-      continue;
-    const type = typeOf.get(cell.rowId);
-    if (type && out[type].length < SAMPLE_LIMIT)
-      out[type].push(cell.derivation.document);
+  const known = Object.values(cells).filter(
+    (c) => c?.derivation.kind === 'ok' && c.derivation.document,
+  );
+  const unknownFirst = [
+    ...known.filter((c) => c?.derivation.status?.id === UNKNOWN_STATUS_ID),
+    ...known.filter((c) => c?.derivation.status?.id !== UNKNOWN_STATUS_ID),
+  ];
+  for (const cell of unknownFirst) {
+    const type = cell ? typeOf.get(cell.rowId) : undefined;
+    const doc = cell?.derivation.document;
+    if (type && doc && out[type].length < SAMPLE_LIMIT) out[type].push(doc);
   }
   return out;
 }

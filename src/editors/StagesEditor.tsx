@@ -61,7 +61,10 @@ function AddStage({
     setName('');
   };
   return (
-    <section className="flex flex-col gap-2 rounded-md border p-2 text-xs">
+    <section
+      className="flex flex-col gap-2 rounded-md border p-2 text-xs"
+      data-edit-target="stage-new"
+    >
       <h3 className="text-sm font-semibold">Add a stage</h3>
       <BranchFinder
         found={found}
@@ -144,6 +147,7 @@ export function StagesEditor({
     <div className="flex flex-col gap-3 text-sm">
       <ProviderRules
         title="Default stage rules"
+        target="dashboard:stageRules"
         rules={dashboard.stageRules}
         onChange={(p, rule) => {
           onChange({
@@ -156,6 +160,7 @@ export function StagesEditor({
         items={stages}
         keyOf={(s) => s.id}
         nameOf={(s) => s.name}
+        targetOf={(s) => `stage:${s.id}`}
         {...listHandlers(dashboard, 'stages', onChange)}
         onRemove={(s) => {
           onChange(removeStage(dashboard, s.id));
@@ -183,6 +188,7 @@ export function StagesEditor({
             </div>
             <ProviderRules
               title={`Stage rules of ${stage.name}`}
+              target={`stage:${stage.id}:rules`}
               rules={stage.rules}
               onChange={(p, rule) => {
                 replace({ ...stage, rules: { ...stage.rules, [p]: rule } });
@@ -216,6 +222,7 @@ export function StagesEditor({
         <ProviderRules
           key={g.id}
           title={`Stage rules of group ${g.label ?? g.id}`}
+          target={`columnGroup:${g.id}:rules`}
           rules={g.stageRules}
           onChange={(p, rule) => {
             onChange({

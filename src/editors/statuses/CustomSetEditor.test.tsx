@@ -50,7 +50,7 @@ describe('CustomSetEditor', () => {
       outlined: true,
       summary: 'ok',
     });
-    expect(screen.getByText('Jobs that count')).toBeInTheDocument();
+    expect(screen.getByText('Items that count')).toBeInTheDocument();
   });
 
   it('sets icons, in-progress, the set name and status order', () => {
@@ -89,7 +89,7 @@ describe('CustomSetEditor', () => {
       { ...amplify, cell: amplify.cell.slice(0, 2) },
       onRemove,
     );
-    expect(screen.queryByText('Jobs that count')).toBeNull();
+    expect(screen.queryByText('Items that count')).toBeNull();
     const [a, b] = latest.current.cell;
     fireEvent.click(screen.getByRole('button', { name: `Delete ${a.name}` }));
     expect(latest.current.cell.map((c) => c.id)).toEqual([b.id]);

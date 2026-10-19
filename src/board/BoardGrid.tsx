@@ -85,7 +85,12 @@ export function BoardGrid({
   const detail = (key: string, interactive: boolean) => {
     const cell = model.cells[key];
     return cell ? (
-      <CellDetail cell={cell} interactive={interactive} {...names(key)} />
+      <CellDetail
+        cell={cell}
+        interactive={interactive}
+        problems={marks.cells.get(key)}
+        {...names(key)}
+      />
     ) : null;
   };
 
@@ -149,7 +154,7 @@ export function BoardGrid({
                   style={lineRow}
                 >
                   <span className="truncate">{capText(stage.name)}</span>
-                  <ProblemMark messages={marks.stages.get(stage.id)} />
+                  <ProblemMark problems={marks.stages.get(stage.id)} />
                 </div>
               </WithTooltip>
             );
@@ -200,7 +205,7 @@ export function BoardGrid({
                         style={cellRow}
                       >
                         <span className="truncate">{row.displayName}</span>
-                        <ProblemMark messages={marks.rows.get(row.id)} />
+                        <ProblemMark problems={marks.rows.get(row.id)} />
                       </div>
                     </WithTooltip>
                     {stages.map((stage) => {

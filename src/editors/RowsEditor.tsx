@@ -3,11 +3,13 @@
  * token can see (display name defaults to the repo without its owner), or
  * an Amplify row by choosing credential, region and app (listed via
  * `ListApps`); rename, reorder, remove; per-row token override, row key
- * tests, extra Amplify sources, the row's group, its branch-pattern
- * overrides, and its group's overrides and default credentials.
+ * and item rules (item rules when its source rule reads items), extra
+ * Amplify sources, the row's group, its stage-rule overrides, and its
+ * group's overrides and default credentials.
  *
  * @module
  */
+import { useContext } from 'react';
 
 import { ConfirmButton } from '@/components/ConfirmButton';
 import type { Dashboard } from '@/domain/config/dashboard';
@@ -23,18 +25,21 @@ import { ReorderList } from './ReorderList';
 import { RowGrouping } from './RowGrouping';
 import { AddSource, AmplifyPicker, RepoPicker } from './rowPickers';
 import { RuleEditor } from './rules/RuleEditor';
+import { SourcesWithItemsContext } from './rules/samples';
+
 export function RowsEditor({
   dashboard,
   providers,
   onChange,
-  draft,
+  override,
 }: {
   dashboard: Dashboard;
   providers: EngineProviders;
   onChange: (dashboard: Dashboard) => void;
-  /** A row key test or a branch override to pre-fill on one row. */
-  draft?: { rowId: string } | { rowId: string; overrideBranch: string };
+  /** *Add override*: a branch to offer on the rows reading a record. */
+  override?: { branch: string; rowIds: readonly string[] };
 }): React.JSX.Element {
+  const withItems = useContext(SourcesWithItemsContext);
   const replaceRow = (row: Row) => {
     onChange({
       ...dashboard,
@@ -47,6 +52,7 @@ export function RowsEditor({
         items={dashboard.rows}
         keyOf={(r) => r.id}
         nameOf={(r) => r.displayName}
+        targetOf={(r) => `row:${r.id}`}
         {...listHandlers(dashboard, 'rows', onChange)}
         onRemove={(r) => {
           onChange(removeRow(dashboard, r.id));
@@ -92,6 +98,7 @@ export function RowsEditor({
                 label={`Record rule for ${row.displayName}`}
                 rule={row.recordRule ?? { combine: 'and', checks: [] }}
                 provider={row.type}
+                target={`row:${row.id}:record`}
                 onChange={(rule) => {
                   replaceRow({
                     ...row,
@@ -100,15 +107,16 @@ export function RowsEditor({
                 }}
               />
             </div>
-            {row.type === 'github' ? (
+            {withItems.includes(row.type) && (
               <div className="flex flex-col gap-1">
-                <span className="font-semibold">Jobs for this row</span>
+                <span className="font-semibold">Items for this row</span>
                 <RuleEditor
                   label={`Item rule for ${row.displayName}`}
                   rule={row.itemRule ?? { combine: 'and', checks: [] }}
                   newPath="$.name"
-                  provider="github"
+                  provider={row.type}
                   scope="item"
+                  target={`row:${row.id}:items`}
                   onChange={(rule) => {
                     replaceRow({
                       ...row,
@@ -117,7 +125,8 @@ export function RowsEditor({
                   }}
                 />
               </div>
-            ) : (
+            )}
+            {row.type === 'amplify' && (
               <div className="flex flex-col gap-1">
                 <span className="font-semibold">Sources</span>
                 {row.sources.map((s, i) => (
@@ -157,11 +166,7 @@ export function RowsEditor({
               dashboard={dashboard}
               providers={providers}
               row={row}
-              overrideBranch={
-                draft?.rowId === row.id && 'overrideBranch' in draft
-                  ? draft.overrideBranch
-                  : undefined
-              }
+              override={override}
               onChange={onChange}
             />
           </div>

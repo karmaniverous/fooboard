@@ -40,7 +40,11 @@ export function StatusSetsEditor({
         first status whose test matches.
       </p>
       {PROVIDERS.map(({ provider, label }) => (
-        <label key={provider} className="flex items-center gap-2">
+        <label
+          key={provider}
+          className="flex items-center gap-2"
+          data-edit-target="dashboard:statusSets"
+        >
           <span className="w-20">{label}</span>
           <Choice
             label={`${label} status set`}

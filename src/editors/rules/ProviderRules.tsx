@@ -10,6 +10,7 @@
 import { PROVIDER_LABELS, STATUS_PROVIDERS } from '@/domain/config/statusSets';
 import type { Rule } from '@/domain/rules/schema';
 
+import { useFocused } from '../editTarget';
 import { RuleEditor } from './RuleEditor';
 
 type Provider = (typeof STATUS_PROVIDERS)[number];
@@ -21,6 +22,7 @@ export function ProviderRules({
   scope = 'record',
   newPath,
   providers = STATUS_PROVIDERS,
+  target,
 }: {
   title: string;
   rules: Partial<Record<Provider, Rule | undefined>>;
@@ -29,10 +31,17 @@ export function ProviderRules({
   newPath?: string;
   /** The sources to offer (item rules: only sources with items). */
   providers?: readonly Provider[];
+  /** Its editor-item key; each source's rule is `<target>:<source>`. */
+  target?: string;
 }): React.JSX.Element {
   const set = providers.filter((p) => rules[p] !== undefined).length;
+  const focused = useFocused(target);
   return (
-    <details className="rounded-md border px-2 py-1 text-xs">
+    <details
+      className="rounded-md border px-2 py-1 text-xs"
+      open={focused || undefined}
+      data-edit-target={target}
+    >
       <summary className="cursor-pointer select-none">
         {title}
         {set > 0 ? ` (${String(set)})` : ''}
@@ -46,6 +55,7 @@ export function ProviderRules({
               provider={p}
               scope={scope}
               newPath={newPath}
+              target={target === undefined ? undefined : `${target}:${p}`}
               rule={rules[p] ?? { combine: 'and', checks: [] }}
               onChange={(rule) => {
                 onChange(p, rule.checks.length > 0 ? rule : undefined);
