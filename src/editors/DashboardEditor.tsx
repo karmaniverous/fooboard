@@ -24,6 +24,7 @@ import type { EditorDraft } from './draft';
 import { duplicateDashboard } from './edit';
 import { CommitInput } from './fields';
 import { RowsEditor } from './RowsEditor';
+import { type RuleSamples, RuleSamplesContext } from './rules/samples';
 import { SourcesEditor } from './sources/SourcesEditor';
 import { StagesEditor } from './StagesEditor';
 import { StatusSetsEditor } from './statuses/StatusSetsEditor';
@@ -108,6 +109,7 @@ export function DashboardEditor({
   onChange,
   draft,
   unknown,
+  samples = {},
 }: {
   dashboard: Dashboard;
   providers: EngineProviders;
@@ -116,6 +118,8 @@ export function DashboardEditor({
   draft?: EditorDraft;
   /** The board's cells whose run matched no status (A§4.3.6). */
   unknown?: readonly UnknownCell[];
+  /** The board's records per source, for rule previews. */
+  samples?: RuleSamples;
 }): React.JSX.Element {
   const [tab, setTab] = useState<Tab>(draft?.tab ?? 'General');
   const [error, setError] = useState<string | null>(null);
@@ -134,48 +138,50 @@ export function DashboardEditor({
   };
   const props = { dashboard, providers, onChange: update };
   return (
-    <Tabs
-      className="flex flex-col gap-3"
-      value={tab}
-      onValueChange={(v) => {
-        const next = TABS.find((t) => t === v);
-        if (next) setTab(next);
-      }}
-    >
-      <TabsList aria-label="Editor section">
-        {TABS.map((t) => (
-          <TabsTrigger key={t} value={t}>
-            {t}
-          </TabsTrigger>
-        ))}
-      </TabsList>
-      {error && (
-        <p role="alert" className="text-xs text-status-failure">
-          Not saved: {error}
-        </p>
-      )}
-      {/* Only the open tab's panel is mounted (Radix's default). */}
-      <TabsContent value="General">
-        <GeneralEditor {...props} />
-      </TabsContent>
-      <TabsContent value="Rows">
-        <RowsEditor
-          {...props}
-          draft={draft?.tab === 'Rows' ? draft : undefined}
-        />
-      </TabsContent>
-      <TabsContent value="Stages">
-        <StagesEditor
-          {...props}
-          draftPattern={draft?.tab === 'Stages' ? draft.pattern : undefined}
-        />
-      </TabsContent>
-      <TabsContent value="Sources">
-        <SourcesEditor {...props} />
-      </TabsContent>
-      <TabsContent value="Statuses">
-        <StatusSetsEditor {...props} unknown={unknown} />
-      </TabsContent>
-    </Tabs>
+    <RuleSamplesContext value={samples}>
+      <Tabs
+        className="flex flex-col gap-3"
+        value={tab}
+        onValueChange={(v) => {
+          const next = TABS.find((t) => t === v);
+          if (next) setTab(next);
+        }}
+      >
+        <TabsList aria-label="Editor section">
+          {TABS.map((t) => (
+            <TabsTrigger key={t} value={t}>
+              {t}
+            </TabsTrigger>
+          ))}
+        </TabsList>
+        {error && (
+          <p role="alert" className="text-xs text-status-failure">
+            Not saved: {error}
+          </p>
+        )}
+        {/* Only the open tab's panel is mounted (Radix's default). */}
+        <TabsContent value="General">
+          <GeneralEditor {...props} />
+        </TabsContent>
+        <TabsContent value="Rows">
+          <RowsEditor
+            {...props}
+            draft={draft?.tab === 'Rows' ? draft : undefined}
+          />
+        </TabsContent>
+        <TabsContent value="Stages">
+          <StagesEditor
+            {...props}
+            draftPattern={draft?.tab === 'Stages' ? draft.pattern : undefined}
+          />
+        </TabsContent>
+        <TabsContent value="Sources">
+          <SourcesEditor {...props} />
+        </TabsContent>
+        <TabsContent value="Statuses">
+          <StatusSetsEditor {...props} unknown={unknown} />
+        </TabsContent>
+      </Tabs>
+    </RuleSamplesContext>
   );
 }

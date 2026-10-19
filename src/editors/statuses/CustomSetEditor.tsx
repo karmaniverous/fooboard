@@ -64,6 +64,8 @@ export function CustomSetEditor({
         <div className="flex flex-col gap-1">
           <h4 className="text-xs font-semibold">Jobs that count</h4>
           <RuleEditor
+            provider={set.provider}
+            scope="item"
             label="Item rule"
             rule={set.items}
             onChange={(items) => {
@@ -242,6 +244,7 @@ export function CustomSetEditor({
                 </Button>
               </div>
               <RuleEditor
+                provider={set.provider}
                 label={`${c.name} rule`}
                 rule={c.rule}
                 onChange={(rule) => {

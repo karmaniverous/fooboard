@@ -24,6 +24,7 @@ import {
   overrideDraftFor,
   problemDraft,
 } from '@/editors/draft';
+import { ruleSamples } from '@/editors/rules/samples';
 import { unknownCells } from '@/editors/statuses/unknownRuns';
 import { credentialProviders } from '@/engine/credentialProviders';
 import { dashboardsOf } from '@/storage/configStore';
@@ -131,6 +132,7 @@ function SavedDashboard({
               providers={providers}
               onChange={save}
               unknown={unknownCells(dashboard, model)}
+              samples={ruleSamples(dashboard.rows, model.cells)}
             />
           </SidePanel>
           <SidePanel

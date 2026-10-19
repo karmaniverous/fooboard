@@ -93,6 +93,8 @@ export function RowsEditor({
                   label={`Item rule for ${row.displayName}`}
                   rule={row.itemRule ?? { combine: 'and', checks: [] }}
                   newPath="$.name"
+                  provider="github"
+                  scope="item"
                   onChange={(rule) => {
                     replaceRow({
                       ...row,

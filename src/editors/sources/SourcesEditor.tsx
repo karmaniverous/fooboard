@@ -92,6 +92,7 @@ function CustomSourceEditor({
       <RuleEditor
         label={`${rule.name} keep rule`}
         rule={rule.keep}
+        provider={rule.provider}
         onChange={(keep) => {
           onChange({ ...rule, keep });
         }}

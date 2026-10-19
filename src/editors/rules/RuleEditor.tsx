@@ -1,17 +1,24 @@
 /**
  * A rule (spec.md A§4.3.7): rows of checks (path, operator, value, any or
  * every value, ignore case, NOT) joined by AND or OR. A check that can't
- * run (a bad path or regex) says why under its row.
+ * run (a bad path or regex) says why under its row. With the board's
+ * records for its source, each check and the rule show how many records
+ * (or items) they match, and the path field suggests the records' paths.
  *
  * @module
  */
 import { Choice } from '@/components/Choice';
 import { Button } from '@/components/ui/button';
-import { checkProblem } from '@/domain/rules/check';
+import {
+  checkProblem,
+  evaluateCheck,
+  evaluateRule,
+} from '@/domain/rules/check';
 import { type Check, CheckSchema, type Rule } from '@/domain/rules/schema';
 import { patchAt } from '@/lib/lists';
 
 import { CommitInput } from '../fields';
+import { samplePaths, type SampleProvider, useRuleSamples } from './samples';
 
 const OPERATORS: { value: Check['operator']; label: string }[] = [
   { value: 'glob', label: 'matches glob' },
@@ -32,9 +39,14 @@ function CheckRow({
   check,
   onChange,
   onRemove,
+  listId,
+  matched,
 }: {
   label: string;
   check: Check;
+  listId: string | undefined;
+  /** "n of m" when there are records to test. */
+  matched: string | undefined;
   onChange: (change: Partial<Check>) => void;
   onRemove: () => void;
 }): React.JSX.Element {
@@ -57,6 +69,7 @@ function CheckRow({
         <CommitInput
           label={`${label} path`}
           className="h-9 w-56 font-mono"
+          list={listId}
           value={check.path}
           onCommit={(path) => {
             onChange({ path });
@@ -100,6 +113,9 @@ function CheckRow({
         >
           ×
         </Button>
+        {matched && !problem && (
+          <span className="text-xs text-muted-foreground">{matched}</span>
+        )}
       </div>
       {problem && (
         <p role="alert" className="text-xs text-status-failure">
@@ -115,14 +131,32 @@ export function RuleEditor({
   rule,
   onChange,
   newPath = '$.',
+  provider,
+  scope = 'record',
 }: {
   label: string;
   rule: Rule;
   onChange: (rule: Rule) => void;
   /** The path a new check starts with. */
   newPath?: string;
+  /** The source whose board records the preview and picker use. */
+  provider?: SampleProvider;
+  /** What \`$\` is: a record, or one of its items. */
+  scope?: 'record' | 'item';
 }): React.JSX.Element {
   const checks = rule.checks;
+  const records = useRuleSamples(provider);
+  const docs =
+    scope === 'item'
+      ? records.flatMap((r) => (Array.isArray(r.items) ? r.items : []))
+      : records;
+  const noun = scope === 'item' ? 'items' : 'records';
+  const count = (test: (d: (typeof docs)[number]) => boolean) =>
+    docs.length === 0
+      ? undefined
+      : `${String(docs.filter(test).length)} of ${String(docs.length)} ${noun}`;
+  const listId = records.length > 0 ? `${label}-paths` : undefined;
+  const ruleOk = rule.checks.every((c) => !checkProblem(c));
   return (
     <div className="flex flex-col gap-1" role="group" aria-label={label}>
       {checks.length === 0 ? (
@@ -144,6 +178,8 @@ export function RuleEditor({
           key={i}
           label={`${label} check ${String(i + 1)}`}
           check={c}
+          listId={listId}
+          matched={count((d) => evaluateCheck(c, d))}
           onChange={(change) => {
             onChange({ ...rule, checks: patchAt(checks, i, change) });
           }}
@@ -152,6 +188,18 @@ export function RuleEditor({
           }}
         />
       ))}
+      {listId && (
+        <datalist id={listId}>
+          {samplePaths(records, scope).map((p) => (
+            <option key={p} value={p} />
+          ))}
+        </datalist>
+      )}
+      {checks.length > 0 && ruleOk && docs.length > 0 && (
+        <p className="text-xs text-muted-foreground">
+          Rule matches {count((d) => evaluateRule(rule, d))}
+        </p>
+      )}
       <Button
         type="button"
         size="sm"
