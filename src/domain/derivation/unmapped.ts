@@ -5,9 +5,9 @@
  *
  * @module
  */
-import type { JSONValue } from 'json-p3';
 
 import { type CellRules, counted } from '@/domain/model/cell';
+import { textOf } from '@/domain/model/json';
 import type { RecordDoc } from '@/domain/model/translate';
 import { evaluateRule } from '@/domain/rules/check';
 
@@ -33,9 +33,6 @@ export function describeUnmappedReason(reason: UnmappedReason): string {
   }
 }
 
-const text = (v: JSONValue | undefined): string | undefined =>
-  typeof v === 'string' && v !== '' ? v : undefined;
-
 /** Why `record` lands in none of `cells`, or `undefined` when it lands in
  * one. Without its items read (`itemsKnown` false) only the stage and
  * row rules can say. */
@@ -50,7 +47,7 @@ export function unmappedReason(
     (c) => c.stage !== undefined && evaluateRule(c.stage, record),
   );
   if (staged.length === 0)
-    return { kind: 'no-stage-matches', branch: text(record.branch) };
+    return { kind: 'no-stage-matches', branch: textOf(record.branch) };
   const rowed = staged.filter((c) => evaluateRule(c.record, record));
   if (rowed.length === 0) return { kind: 'no-row-matches' };
   if (!itemsKnown) return undefined;

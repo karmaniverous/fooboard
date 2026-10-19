@@ -11,6 +11,7 @@ import { createContext, useContext } from 'react';
 
 import type { Provider } from '@/domain/config/providers';
 import { UNKNOWN_STATUS_ID } from '@/domain/config/statusSets';
+import { isJsonObject as isObject } from '@/domain/model/json';
 import type { RecordDoc } from '@/domain/model/translate';
 import { compilePath, pathStep, valuesAt } from '@/domain/rules/path';
 
@@ -34,9 +35,6 @@ export const useRuleSamples = (
   const samples = useContext(RuleSamplesContext);
   return provider ? (samples[provider] ?? []) : [];
 };
-
-const isObject = (v: JSONValue | undefined): v is Record<string, JSONValue> =>
-  typeof v === 'object' && v !== null && !Array.isArray(v);
 
 /** Paths a field picker offers for `records`: each record key, each item
  * key under `$.items[*]`, and `_raw` leaves (two levels deep). For

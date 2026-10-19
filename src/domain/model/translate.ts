@@ -12,6 +12,7 @@ import type { JSONValue } from 'json-p3';
 import { evaluateRule } from '@/domain/rules/check';
 import { compilePath, valuesAt } from '@/domain/rules/path';
 
+import { isJsonObject } from './json';
 import type { KeyDef, SourceRule } from './sourceRule';
 
 /** A translated record or item: its keys (and, for records, `items` and
@@ -86,11 +87,7 @@ export function translate(
 /** The items of a translated record (none when its source has none). */
 export const itemsOf = (record: RecordDoc): RecordDoc[] => {
   const items = record.items;
-  return Array.isArray(items)
-    ? items.flatMap((i) =>
-        typeof i === 'object' && i !== null && !Array.isArray(i) ? [i] : [],
-      )
-    : [];
+  return Array.isArray(items) ? items.filter(isJsonObject) : [];
 };
 
 /** Does `record`'s source have items? */

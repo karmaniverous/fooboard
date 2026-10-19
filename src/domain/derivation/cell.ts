@@ -6,10 +6,10 @@
  *
  * @module
  */
-import type { JSONValue } from 'json-p3';
 
 import type { StatusSet } from '@/domain/config/statusSets';
 import type { PlacedRecord } from '@/domain/model/cell';
+import { textOf } from '@/domain/model/json';
 import type { RecordDoc } from '@/domain/model/translate';
 import { type ResolvedStatus, resolveStatus } from '@/domain/statuses/resolved';
 
@@ -43,10 +43,6 @@ export interface CellResult {
 
 export type CellDerivation = CellResult | EmptyCellResult;
 
-/** A reserved key's value as text, if it has one. */
-const text = (value: JSONValue | undefined): string | undefined =>
-  typeof value === 'string' && value !== '' ? value : undefined;
-
 /** The derivation for a cell given what placement put there. */
 export function deriveCell(input: {
   placed: PlacedRecord | undefined;
@@ -68,11 +64,11 @@ export function deriveCell(input: {
   return {
     kind: 'ok',
     status: resolveStatus(input.set, placed.status),
-    branch: text(record.branch),
-    commit: text(record.commit),
-    message: text(record.message),
-    time: text(placed.time),
-    linkUrl: text(placed.link),
+    branch: textOf(record.branch),
+    commit: textOf(record.commit),
+    message: textOf(record.message),
+    time: textOf(placed.time),
+    linkUrl: textOf(placed.link),
     document: record,
   };
 }

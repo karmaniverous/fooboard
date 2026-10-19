@@ -8,14 +8,12 @@
  */
 import type { AmplifyRow } from '@/domain/config/row';
 import { rowReasons } from '@/domain/derivation';
+import { isJsonObject, textOf } from '@/domain/model/json';
 import type { RecordDoc } from '@/domain/model/translate';
 import { appKey, type ResolvedAmplifySource } from '@/lib/amplify/rowJobs';
 
 import type { AmplifyRowsInput } from './amplifyRow';
 import type { UnmappedRun } from './types';
-
-const text = (v: unknown): string | undefined =>
-  typeof v === 'string' && v !== '' ? v : undefined;
 
 /** Job id, app and branch of an Amplify record, from its raw data. */
 function rawJob(record: RecordDoc): {
@@ -24,19 +22,12 @@ function rawJob(record: RecordDoc): {
   branch?: string;
 } {
   const raw = record._raw;
-  if (typeof raw !== 'object' || raw === null || Array.isArray(raw)) return {};
-  const job = raw.job;
-  const app = raw.source;
+  if (!isJsonObject(raw)) return {};
+  const { job, source: app } = raw;
   return {
-    jobId:
-      typeof job === 'object' && job !== null && !Array.isArray(job)
-        ? text(job.jobId)
-        : undefined,
-    appId:
-      typeof app === 'object' && app !== null && !Array.isArray(app)
-        ? text(app.appId)
-        : undefined,
-    branch: text(raw.branch),
+    jobId: isJsonObject(job) ? textOf(job.jobId) : undefined,
+    appId: isJsonObject(app) ? textOf(app.appId) : undefined,
+    branch: textOf(raw.branch),
   };
 }
 
@@ -58,14 +49,14 @@ export function amplifyUnmapped(
       if (!reasons) continue;
       const [first] = reasons;
       const job = rawJob(record);
-      const branch = text(record.branch) ?? job.branch ?? null;
+      const branch = textOf(record.branch) ?? job.branch ?? null;
       out.push({
         provider: 'amplify',
         id: `amplify:${key}:${branch ?? ''}#${job.jobId ?? ''}`,
         where: job.appId ?? 'Amplify',
         title: `Amplify job ${job.jobId ?? '?'}`,
         branch,
-        htmlUrl: text(record.link) ?? '',
+        htmlUrl: textOf(record.link) ?? '',
         record,
         reason: first.reason,
         rows: reasons,

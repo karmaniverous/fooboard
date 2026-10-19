@@ -17,6 +17,7 @@ import { useContext } from 'react';
 import { Choice } from '@/components/Choice';
 import { Button } from '@/components/ui/button';
 import type { Provider } from '@/domain/config/providers';
+import { isJsonObject } from '@/domain/model/json';
 import type { RecordDoc } from '@/domain/model/translate';
 import { isAlways } from '@/domain/rules/always';
 import {
@@ -96,7 +97,7 @@ export function RuleEditor({
       ? undefined
       : `${String(docs.filter(test).length)} of ${String(docs.length)} ${noun}`;
   const paths = documents
-    ? samplePaths(docs.filter(isRecordDoc), 'record')
+    ? samplePaths(docs.filter(isJsonObject), 'record')
     : samplePaths(records, scope);
   const listId = paths.length > 0 ? `${label}-paths` : undefined;
   const ruleOk = rule.checks.every((c) => !checkProblem(c));
@@ -200,8 +201,4 @@ export function RuleEditor({
       </Button>
     </div>
   );
-}
-
-function isRecordDoc(v: JSONValue): v is RecordDoc {
-  return typeof v === 'object' && v !== null && !Array.isArray(v);
 }

@@ -10,9 +10,9 @@
  *
  * @module
  */
-import type { JSONValue } from 'json-p3';
 
 import type { Dashboard } from '@/domain/config/dashboard';
+import { textOf } from '@/domain/model/json';
 import { is } from '@/domain/model/ruleBuilders';
 import { sourceRuleFor } from '@/domain/model/sources';
 import { itemsOf, type RecordDoc } from '@/domain/model/translate';
@@ -67,9 +67,6 @@ const rowsFor = (
     ),
   );
 
-const text = (v: JSONValue | undefined): string | undefined =>
-  typeof v === 'string' && v !== '' ? v : undefined;
-
 export function draftFor(
   run: UnmappedRun,
   dashboard: Dashboard,
@@ -77,7 +74,7 @@ export function draftFor(
   const { reason, record } = run;
   switch (reason.kind) {
     case 'no-stage-matches': {
-      const branch = reason.branch ?? text(record.branch);
+      const branch = reason.branch ?? textOf(record.branch);
       return branch === undefined
         ? undefined
         : { tab: 'Stages', pattern: branch, focus: ['stage-new'] };
@@ -128,7 +125,7 @@ export function overrideDraftFor(
   dashboard: Pick<Dashboard, 'rows'>,
 ): EditorDraft | undefined {
   if (run.reason.kind !== 'no-stage-matches') return undefined;
-  const branch = run.reason.branch ?? text(run.record.branch);
+  const branch = run.reason.branch ?? textOf(run.record.branch);
   const rows = rowsFor(run, dashboard);
   const first = rows.at(0);
   if (branch === undefined || !first) return undefined;

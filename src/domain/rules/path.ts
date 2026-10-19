@@ -12,6 +12,8 @@ import {
   type JSONValue,
 } from 'json-p3';
 
+import { AST, astChildren, isAstNode } from './jsonPathAst';
+
 /** Longest regex a rule may hold, filter functions included (a bound on
  * what an imported board can make the page do). */
 export const MAX_REGEX_LENGTH = 500;
@@ -22,36 +24,29 @@ const environment = new JSONPathEnvironment({ strict: true });
 export type CompiledPath =
   { ok: true; query: JSONPathQuery } | { ok: false; message: string };
 
-const isRecord = (v: unknown): v is Record<string, unknown> =>
-  typeof v === 'object' && v !== null;
-
-/** The JSONPath AST kinds this module reads (json-p3 `ast.d.ts`). */
-const FUNCTION_EXPRESSION = 17;
-const STRING_EXPRESSION = 27;
+/** The filter functions that take a regex. */
 const REGEX_FUNCTIONS = ['match', 'search'];
 
 /** Every regex literal passed to `match()`/`search()` in a parsed path. */
 export function filterRegexes(node: unknown): string[] {
   if (Array.isArray(node)) return node.flatMap(filterRegexes);
-  if (!isRecord(node)) return [];
+  if (!isAstNode(node)) return [];
   const own: string[] = [];
   if (
-    node.kind === FUNCTION_EXPRESSION &&
+    node.kind === AST.FUNCTION_EXPRESSION &&
     typeof node.name === 'string' &&
     REGEX_FUNCTIONS.includes(node.name) &&
     Array.isArray(node.arguments)
   ) {
     const pattern: unknown = node.arguments[1];
     if (
-      isRecord(pattern) &&
-      pattern.kind === STRING_EXPRESSION &&
+      isAstNode(pattern) &&
+      pattern.kind === AST.STRING_EXPRESSION &&
       typeof pattern.value === 'string'
     )
       own.push(pattern.value);
   }
-  const children = Object.entries(node)
-    .filter(([key]) => key !== 'token')
-    .flatMap(([, value]) => filterRegexes(value));
+  const children = astChildren(node).flatMap(filterRegexes);
   return [...own, ...children];
 }
 

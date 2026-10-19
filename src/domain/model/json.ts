@@ -14,6 +14,16 @@ function isJson(value: unknown): value is JSONValue {
   return typeof value === 'object' && Object.values(value).every(isJson);
 }
 
+/** A JSON object (not an array or null). */
+export const isJsonObject = (
+  v: JSONValue | undefined,
+): v is Record<string, JSONValue> =>
+  typeof v === 'object' && v !== null && !Array.isArray(v);
+
+/** `v` when it is non-empty text. */
+export const textOf = (v: JSONValue | undefined): string | undefined =>
+  typeof v === 'string' && v !== '' ? v : undefined;
+
 /** `value` as JSON, through a JSON round trip (`Date`s to ISO strings). */
 export function asJson(value: unknown): JSONValue {
   if (value === undefined) return null;

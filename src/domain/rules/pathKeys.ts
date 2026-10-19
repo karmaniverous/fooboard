@@ -10,19 +10,21 @@
  *
  * @module
  */
+import { AST, astChildren, isAstNode as isRecord } from './jsonPathAst';
 import { compilePath } from './path';
 
-/** json-p3 AST kinds (its `ast.d.ts`). */
-const CHILD = 1;
-const FILTER = 3;
-const INDEX = 4;
-const NAME = 8;
-const SLICE = 9;
-const WILDCARD = 10;
-const ABSOLUTE_QUERY = 11;
-const RELATIVE_QUERY = 26;
+const {
+  CHILD_SEGMENT: CHILD,
+  FILTER_SELECTOR: FILTER,
+  INDEX_SELECTOR: INDEX,
+  NAME_SELECTOR: NAME,
+  SLICE_SELECTOR: SLICE,
+  WILDCARD_SELECTOR: WILDCARD,
+  ABSOLUTE_QUERY,
+  RELATIVE_QUERY,
+} = AST;
 /** Selectors that step into an array's elements. */
-const ELEMENTS = [FILTER, INDEX, SLICE, WILDCARD];
+const ELEMENTS: readonly number[] = [FILTER, INDEX, SLICE, WILDCARD];
 
 export interface NamedKey {
   scope: 'record' | 'item';
@@ -37,9 +39,6 @@ export interface PathRefs {
   /** Why parts of the path can't be checked. */
   unchecked: string[];
 }
-
-const isRecord = (v: unknown): v is Record<string, unknown> =>
-  typeof v === 'object' && v !== null;
 
 /** The single selector of a child segment, if it is one. */
 function only(segment: unknown): Record<string, unknown> | undefined {
@@ -74,9 +73,7 @@ function queries(node: unknown): { relative: boolean; segments: unknown[] }[] {
     return [
       { relative: node.kind === RELATIVE_QUERY, segments: node.segments },
     ];
-  return Object.entries(node)
-    .filter(([k]) => k !== 'token')
-    .flatMap(([, v]) => queries(v));
+  return astChildren(node).flatMap(queries);
 }
 
 function walk(

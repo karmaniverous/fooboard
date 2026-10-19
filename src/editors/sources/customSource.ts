@@ -10,14 +10,7 @@ import type { Dashboard } from '@/domain/config/dashboard';
 import type { Provider } from '@/domain/config/providers';
 import type { SourceRule } from '@/domain/model/sourceRule';
 import { findSourceRule } from '@/domain/model/sources';
-
-/** `base`, or `base-2`, `base-3`... whichever `taken` lacks. */
-function freshId(base: string, taken: readonly string[]): string {
-  if (!taken.includes(base)) return base;
-  let n = 2;
-  while (taken.includes(`${base}-${String(n)}`)) n++;
-  return `${base}-${String(n)}`;
-}
+import { freshId } from '@/lib/ids';
 
 /** Choose source rule `id` for `provider`. */
 export const chooseSource = (

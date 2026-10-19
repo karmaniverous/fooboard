@@ -9,6 +9,7 @@ import { omit } from 'radash';
 import { mapCredentialRefs } from '@/credentials/dashboardCredentials';
 import type { Dashboard } from '@/domain/config/dashboard';
 import type { GithubRow } from '@/domain/config/row';
+import { freshId } from '@/lib/ids';
 
 import { tidyGroups } from './groupEdit';
 
@@ -19,11 +20,7 @@ export function uniqueId(base: string, taken: Iterable<string>): string {
       .toLowerCase()
       .replace(/[^a-z0-9]+/g, '-')
       .replace(/^-|-$/g, '') || 'item';
-  const used = new Set(taken);
-  if (!used.has(slug)) return slug;
-  let n = 2;
-  while (used.has(`${slug}-${String(n)}`)) n++;
-  return `${slug}-${String(n)}`;
+  return freshId(slug, taken);
 }
 
 /** A GitHub row for a picked repo: the display name defaults to the repo

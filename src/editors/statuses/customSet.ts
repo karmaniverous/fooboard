@@ -10,16 +10,9 @@ import type { Dashboard } from '@/domain/config/dashboard';
 import type { CellStatus, StatusSet } from '@/domain/config/statusSets';
 import { CheckSchema } from '@/domain/rules/schema';
 import { findStatusSet } from '@/domain/statuses/resolve';
+import { freshId } from '@/lib/ids';
 
 import { setDashboardStatusSet } from './overrideSets';
-
-/** A fresh id: `base`, then `base-2`, `base-3`... not in `taken`. */
-function freshId(base: string, taken: readonly string[]): string {
-  if (!taken.includes(base)) return base;
-  let n = 2;
-  while (taken.includes(`${base}-${String(n)}`)) n += 1;
-  return `${base}-${String(n)}`;
-}
 
 /** The dashboard with a copy of set `id` it owns (not yet chosen
  * anywhere), and the copy; `undefined` for an unknown set. */

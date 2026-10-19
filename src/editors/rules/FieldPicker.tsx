@@ -8,6 +8,7 @@
  */
 import type { JSONValue } from 'json-p3';
 
+import { isJsonObject } from '@/domain/model/json';
 import { pathStep } from '@/domain/rules/path';
 
 const MAX_DEPTH = 6;
@@ -97,10 +98,7 @@ export function FieldPicker({
   doc: JSONValue;
   onPick: (path: string) => void;
 }): React.JSX.Element {
-  const entries =
-    typeof doc === 'object' && doc !== null && !Array.isArray(doc)
-      ? Object.entries(doc)
-      : [];
+  const entries = isJsonObject(doc) ? Object.entries(doc) : [];
   return (
     <details className="text-xs" aria-label={`${label} field picker`}>
       <summary className="cursor-pointer select-none text-muted-foreground">
