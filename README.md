@@ -83,7 +83,7 @@ _Edit_ (on the board) opens the editor, with these tabs:
 - **General**: rename, duplicate or delete the dashboard.
 - **Rows**: add GitHub rows from your repos, or Amplify rows from the apps your AWS key lists. A row can use its own credentials, its own row rule (e.g. one deployable unit in a repo), and its own rule for any stage (an **override**).
 - **Stages**: add stages, each with a rule saying which records belong in it (the presets test the branch); set each stage's source (for the behind/diverged badges).
-- **Sources**: the source rules for GitHub and Amplify; see [Rules](#rules).
+- **Sources**: the source rules for GitHub and Amplify, including what to read (GitHub: skip pull-request runs, how many runs per repo); see [Rules](#rules).
 - **Statuses**: the status set GitHub rows and Amplify rows use; see [Rules](#rules).
 
 **Groups**: start a group from any row or stage, add others to it, label it, or delete it (its members stay). A row group can have its own default credentials, row rule, status sets and stage overrides; a row's own override beats its group's, which beats the stage's rule, and each choice names what it inherits.
@@ -101,7 +101,7 @@ Everything fooboard knows about GitHub, Amplify or your pipeline is a rule you c
 - **exists**: the path finds a value that isn't null;
 - **ignore case** (default on), **any** or **every** value the path finds, and **NOT**.
 
-A **rule** is one or more checks joined by **AND** (default) or **OR**. Null counts as missing; numbers are tested as text.
+A **rule** is one or more checks joined by **AND** (default) or **OR**. Null counts as missing; numbers are tested as text. The branch presets test the branch with regexes, so `preview/*` still stops at `/`. Regexes are limited to 500 characters; a badly written one in a board you import can still slow the page.
 
 **Three kinds of rule.**
 
@@ -111,11 +111,11 @@ A **rule** is one or more checks joined by **AND** (default) or **OR**. Null cou
 
 **Which set a cell uses**: a single cell's choice, else its row's, else its row group's, else the dashboard's; each choice offers _Inherit_, naming the set it would get. **Built-in rules** (source rules, the branch presets as stage rules, and status sets) are referenced by id, so a board picks up fixes in new releases. **Customise** copies one into the dashboard to edit; built-ins can't be edited in place, and a rule still in use can't be removed.
 
-**Time and link**: a cell's `time` and `link`. The built-in GitHub rule takes them from the counted job that started or finished last (a running job shows when it started).
+**Time and link**: a cell shows the `time` and `link` of its counted item with the latest time (else the record's own). The built-in GitHub rule gives each job its completion time, else its start time, so a running job shows when it started.
 
 **Editing a rule**: rows of checks under an AND/OR switch. Pick a field from a real record shown as a tree; build _only items where_ filters without writing JSONPath; a live preview shows what each check finds and whether it passes.
 
-**Problems**: a key no translation matched, a source rule with no order key, a path that doesn't parse, or a rule that uses a key its source rule doesn't produce is reported where it happens, with a warning marker on the board. Some (an Amplify row without a GitHub credential, so no badges) can be dismissed. The editor lists every problem with the runs no status matches; _Add status_ drafts a status for an Unknown record at the top of its set (a built-in set is first copied into the dashboard).
+**Problems**: a key no translation matched, a source rule with no order key, a path that doesn't parse, or a rule that uses a key its source rule doesn't produce is reported where it happens, with a warning marker on the board. Some (an Amplify row without a GitHub credential, so no badges) can be dismissed; dismissals stay in this browser. The editor lists every problem with the runs no status matches; _Add status_ drafts a status for an Unknown record at the top of its set (a built-in set is first copied into the dashboard).
 
 ## Unmapped runs
 
