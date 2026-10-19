@@ -94,7 +94,7 @@ _Edit_ (on the board) opens the editor, with these tabs:
 
 Everything fooboard knows about GitHub, Amplify or your pipeline is a rule you can edit; the app ships built-in rules for both sources.
 
-**Checks and rules.** A **check** tests a value in a record: a [JSONPath](https://www.rfc-editor.org/rfc/rfc9535) (filters allowed, e.g. `$.items[?search(@.name, 'test')].state`), an operator, and options:
+**Checks and rules.** A **check** tests a value in a record: a [JSONPath](https://www.rfc-editor.org/rfc/rfc9535) (filters allowed, e.g. `$.items[?search(@.name, '[Tt]est')].state`; filter functions are case-sensitive, so the _only items where_ builder writes them for you), an operator, and options:
 
 - **glob** (default): the whole value; `*` any characters, `?` one, `[abc]` one of, `{a,b}` either;
 - **regex**: JavaScript syntax, anywhere in the value unless anchored;
@@ -105,15 +105,17 @@ A **rule** is one or more checks joined by **AND** (default) or **OR**. Null cou
 
 **Three kinds of rule.**
 
-- **Source rules** (the _Sources_ tab, one per source) turn each source's raw data into **records** with keys you name: each key is an ordered list of translations (the first whose rule matches gives the value), so GitHub's `failure` and Amplify's `FAILED` can both become `status: failed`. A source rule also says where the items are (GitHub: the run's jobs) and their keys, which records to keep (the built-in GitHub rule's workflow filter), and which key orders records. Every record keeps its raw data under `_raw`. The board shows `time`, `link`, `message`, `commit` and `branch` when a record has them.
-- **Placement rules** say which records belong where: a **row rule** (on the dashboard, a row group or a row) and a **stage rule** (on the dashboard, a column group or a stage, overridable for a row group or a row). A record belongs in a cell when it passes both; the cell shows the newest.
-- **Status sets** decide what a cell shows: an **item rule** (which items count; a record with items but none that count isn't the cell's), **summary statuses** (the summary chips: name, colour, icon, in progress) and **cell statuses** in order, each with a rule: a cell shows the first whose rule its record matches, or Unknown.
+- **Source rules** (the _Sources_ tab, one per source) turn each source's raw data into **records** with keys you name: each key is an ordered list of translations (the first whose rule matches gives the value), so GitHub's `failure` and Amplify's `FAILED` can both become `status: failed`. A source rule also says where the items are (GitHub: the run's jobs) and their keys, which records to keep (the built-in GitHub rule's workflow filter), which key orders records (required), and, for Amplify, which branches to read (default: all). Every record keeps its raw data under `_raw`. The board shows `time`, `link`, `message`, `commit` and `branch` when a record has them.
+- **Placement rules**, one per source, say which records belong where: on the dashboard, a row group or a row, a **row rule** for the record and an **item rule** for its items (e.g. only the `deploy (billing)` job on a billing row); on the dashboard, a column group or a stage, a **stage rule**, overridable for a row group or a row. The most specific level wins. A record belongs in a cell when it passes the row and stage rules; the cell shows the newest by the order key.
+- **Status sets** decide what a cell shows: an **item rule** (an item counts when it passes this and the row's item rule; a record with items but none that count isn't the cell's), **summary statuses** (the summary chips: name, colour, icon, in progress) and **cell statuses** in order, each with a rule: a cell shows the first whose rule its record matches, or Unknown.
 
-**Which set a cell uses**: a single cell's choice, else its row's, else its row group's, else the dashboard's; each choice offers _Inherit_, naming the set it would get. **Customise** copies a built-in set into one the dashboard owns; the built-in sets can't be edited, and a set still chosen somewhere can't be removed.
+**Which set a cell uses**: a single cell's choice, else its row's, else its row group's, else the dashboard's; each choice offers _Inherit_, naming the set it would get. **Built-in rules** (source rules, the branch presets as stage rules, and status sets) are referenced by id, so a board picks up fixes in new releases. **Customise** copies one into the dashboard to edit; built-ins can't be edited in place, and a rule still in use can't be removed.
+
+**Time and link**: a cell's `time` and `link`. The built-in GitHub rule takes them from the counted job that started or finished last (a running job shows when it started).
 
 **Editing a rule**: rows of checks under an AND/OR switch. Pick a field from a real record shown as a tree; build _only items where_ filters without writing JSONPath; a live preview shows what each check finds and whether it passes.
 
-**Problems**: a key no translation matched, a source rule with no order key, or a path that doesn't parse is reported where it happens, with a warning marker on the board. The editor lists every problem with the runs no status matches; _Add status_ drafts a status for an Unknown record at the top of its set (a built-in set is first copied into the dashboard).
+**Problems**: a key no translation matched, a source rule with no order key, a path that doesn't parse, or a rule that uses a key its source rule doesn't produce is reported where it happens, with a warning marker on the board. Some (an Amplify row without a GitHub credential, so no badges) can be dismissed. The editor lists every problem with the runs no status matches; _Add status_ drafts a status for an Unknown record at the top of its set (a built-in set is first copied into the dashboard).
 
 ## Unmapped runs
 
