@@ -23,7 +23,9 @@ import { useStores } from '@/storage/storesContext';
 import type { EditorDraft } from './draft';
 import { duplicateDashboard } from './edit';
 import { CommitInput } from './fields';
+import { setDashboardRowRule } from './rowRuleEdit';
 import { RowsEditor } from './RowsEditor';
+import { ProviderRules } from './rules/ProviderRules';
 import { type RuleSamples, RuleSamplesContext } from './rules/samples';
 import { SourcesEditor } from './sources/SourcesEditor';
 import { StagesEditor } from './StagesEditor';
@@ -55,6 +57,26 @@ function GeneralEditor({
           }}
         />
       </label>
+      <ProviderRules
+        title="Default row rules"
+        rules={{
+          github: dashboard.rowRules.github?.record,
+          amplify: dashboard.rowRules.amplify?.record,
+        }}
+        onChange={(p, record) => {
+          onChange(setDashboardRowRule(dashboard, p, 'record', record));
+        }}
+      />
+      <ProviderRules
+        title="Default item rules"
+        scope="item"
+        newPath="$.name"
+        providers={['github']}
+        rules={{ github: dashboard.rowRules.github?.items }}
+        onChange={(p, items) => {
+          onChange(setDashboardRowRule(dashboard, p, 'items', items));
+        }}
+      />
       <ActionError error={error} />
       <div className="flex flex-wrap gap-2">
         <Button

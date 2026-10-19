@@ -86,6 +86,20 @@ export function RowsEditor({
                 );
               }}
             />
+            <div className="flex flex-col gap-1">
+              <span className="font-semibold">Records for this row</span>
+              <RuleEditor
+                label={`Record rule for ${row.displayName}`}
+                rule={row.recordRule ?? { combine: 'and', checks: [] }}
+                provider={row.type}
+                onChange={(rule) => {
+                  replaceRow({
+                    ...row,
+                    recordRule: rule.checks.length > 0 ? rule : undefined,
+                  });
+                }}
+              />
+            </div>
             {row.type === 'github' ? (
               <div className="flex flex-col gap-1">
                 <span className="font-semibold">Jobs for this row</span>

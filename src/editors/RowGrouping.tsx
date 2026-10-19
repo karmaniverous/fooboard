@@ -29,6 +29,8 @@ import {
   setRowOverride,
 } from './overrideEdit';
 import { OverrideFields } from './OverrideFields';
+import { setGroupRowRule } from './rowRuleEdit';
+import { ProviderRules } from './rules/ProviderRules';
 import { GroupStatusSets, RowStatusSets } from './statuses/StatusSetOverrides';
 
 interface Props {
@@ -130,6 +132,26 @@ function RowGroupSettings({
           />
         ))}
       </div>
+      <ProviderRules
+        title={`Row rules of ${name}`}
+        rules={{
+          github: group.rowRules.github?.record,
+          amplify: group.rowRules.amplify?.record,
+        }}
+        onChange={(p, record) => {
+          onChange(setGroupRowRule(dashboard, group.id, p, 'record', record));
+        }}
+      />
+      <ProviderRules
+        title={`Item rules of ${name}`}
+        scope="item"
+        newPath="$.name"
+        providers={['github']}
+        rules={{ github: group.rowRules.github?.items }}
+        onChange={(p, items) => {
+          onChange(setGroupRowRule(dashboard, group.id, p, 'items', items));
+        }}
+      />
       <GroupStatusSets
         dashboard={dashboard}
         group={group}

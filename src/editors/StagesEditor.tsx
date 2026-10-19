@@ -27,6 +27,7 @@ import { CommitInput } from './fields';
 import { GroupControl } from './GroupControl';
 import { listHandlers } from './groupEdit';
 import { ReorderList } from './ReorderList';
+import { ProviderRules } from './rules/ProviderRules';
 import { useLoad } from './useLoad';
 
 function AddStage({
@@ -141,6 +142,16 @@ export function StagesEditor({
   };
   return (
     <div className="flex flex-col gap-3 text-sm">
+      <ProviderRules
+        title="Default stage rules"
+        rules={dashboard.stageRules}
+        onChange={(p, rule) => {
+          onChange({
+            ...dashboard,
+            stageRules: { ...dashboard.stageRules, [p]: rule },
+          });
+        }}
+      />
       <ReorderList
         items={stages}
         keyOf={(s) => s.id}
@@ -170,6 +181,13 @@ export function StagesEditor({
                 }}
               />
             </div>
+            <ProviderRules
+              title={`Stage rules of ${stage.name}`}
+              rules={stage.rules}
+              onChange={(p, rule) => {
+                replace({ ...stage, rules: { ...stage.rules, [p]: rule } });
+              }}
+            />
             <Choice
               label={`Source stage of ${stage.name}`}
               className="h-8"
@@ -194,6 +212,23 @@ export function StagesEditor({
           </div>
         )}
       </ReorderList>
+      {dashboard.columnGroups.map((g) => (
+        <ProviderRules
+          key={g.id}
+          title={`Stage rules of group ${g.label ?? g.id}`}
+          rules={g.stageRules}
+          onChange={(p, rule) => {
+            onChange({
+              ...dashboard,
+              columnGroups: dashboard.columnGroups.map((x) =>
+                x.id === g.id
+                  ? { ...x, stageRules: { ...x.stageRules, [p]: rule } }
+                  : x,
+              ),
+            });
+          }}
+        />
+      ))}
       <AddStage
         dashboard={dashboard}
         providers={providers}
