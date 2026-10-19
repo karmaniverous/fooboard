@@ -23,6 +23,7 @@ import { BUILTIN_SOURCES } from '@/domain/model/builtinSources';
 import { type CellRules, placeCell } from '@/domain/model/cell';
 import type { SourceRule } from '@/domain/model/sourceRule';
 import type { KeyProblem } from '@/domain/model/translate';
+import { evaluateRule } from '@/domain/rules/check';
 import { amplifyTranslate } from '@/domain/statuses/documents';
 import { inProgress } from '@/domain/statuses/resolved';
 import { AmplifyAuthError, AmplifyThrottledError } from '@/lib/amplify/errors';
@@ -112,7 +113,9 @@ export async function refreshAmplifyRow(
     const translated = (await collectRowJobs(sources, readerFor, options)).map(
       (j) => amplifyTranslate(j, source),
     );
-    const records = translated.map((t) => t.record);
+    const records = translated
+      .map((t) => t.record)
+      .filter((r) => evaluateRule(source.keep, r));
     const keyProblems = translated.flatMap((t) => t.problems);
     const cells: Record<string, CellDerivation> = {};
     for (const stage of stages) {

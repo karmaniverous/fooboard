@@ -10,9 +10,10 @@ import { describe, expect, it, vi } from 'vitest';
 
 import { DashboardSchema } from '@/domain/config/dashboard';
 import { branchRules } from '@/domain/config/placement';
-import { problem } from '@/domain/problems/problems';
+import { problem, type ProblemLevel } from '@/domain/problems/problems';
 import { problemDraft } from '@/editors/draft';
 
+import { levelLabel } from './levelLabel';
 import { problemMarks } from './problemMarks';
 import { ProblemsPanel } from './ProblemsPanel';
 
@@ -87,5 +88,31 @@ describe('problemDraft', () => {
         problem({ kind: 'row', id: 'web' }, 'row rule: GitHub gives no key x'),
       ),
     ).toEqual({ tab: 'Sources' });
+  });
+});
+
+describe('levelLabel', () => {
+  it('names every level, falling back to ids', () => {
+    expect(
+      (
+        [
+          { kind: 'dashboard' },
+          { kind: 'row', id: 'web' },
+          { kind: 'stage', id: 'dev' },
+          { kind: 'rowGroup', id: 'g' },
+          { kind: 'columnGroup', id: 'cg' },
+          { kind: 'cell', rowId: 'web', stageId: 'dev' },
+          { kind: 'row', id: 'gone' },
+        ] satisfies ProblemLevel[]
+      ).map((l) => levelLabel(dashboard, l)),
+    ).toEqual([
+      'Dashboard',
+      'Row Web',
+      'Stage Dev',
+      'Row group Front',
+      'Column group cg',
+      'Web / Dev',
+      'Row gone',
+    ]);
   });
 });

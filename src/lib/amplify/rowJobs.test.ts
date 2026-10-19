@@ -69,6 +69,37 @@ describe('collectRowJobs', () => {
     expect(result[3]?.source.region).toBe('eu-west-1');
   });
 
+  it('reads only branches the branch rule keeps, and jobs per branch', async () => {
+    const app = reader({ branches: ['main', 'preview/bali', 'feature/x'] });
+    const result = await collectRowJobs([source('web')], () => app, {
+      jobsPerBranch: 7,
+      branches: {
+        combine: 'or',
+        checks: [
+          {
+            path: '$.branchName',
+            operator: 'glob',
+            value: 'main',
+            ignoreCase: true,
+            quantifier: 'any',
+            not: false,
+          },
+          {
+            path: '$.branchName',
+            operator: 'glob',
+            value: 'preview/*',
+            ignoreCase: true,
+            quantifier: 'any',
+            not: false,
+          },
+        ],
+      },
+    });
+    expect(result.map((j) => j.branch)).toEqual(['main', 'preview/bali']);
+    expect(app.listJobs).toHaveBeenCalledWith('web', 'main', 7);
+    expect(app.listJobs).not.toHaveBeenCalledWith('web', 'feature/x', 7);
+  });
+
   it('reads nothing from an app without branches', async () => {
     const result = await collectRowJobs([source('web')], () =>
       reader({ branches: [] }),

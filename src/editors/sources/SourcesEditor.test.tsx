@@ -72,4 +72,46 @@ describe('SourcesEditor', () => {
       operator: 'exists',
     });
   });
+
+  it("edits Amplify's reader, the order key and a translation's mode, and removes an unused copy", () => {
+    const saved: Dashboard[] = [];
+    render(<Harness saved={saved} />);
+    fireEvent.click(screen.getAllByRole('button', { name: 'Customise' })[1]);
+    const amplify = () =>
+      saved.at(-1)?.customSourceRules.find((r) => r.provider === 'amplify');
+    const jobs = screen.getByLabelText('Jobs per branch');
+    fireEvent.change(jobs, { target: { value: '500' } });
+    fireEvent.blur(jobs);
+    expect(amplify()?.reader).toMatchObject({ jobsPerBranch: 100 });
+    const section = screen.getByRole('region', {
+      name: 'Source rule Amplify (custom)',
+    });
+    fireEvent.click(within(section).getByRole('button', { name: 'Add key' }));
+    const added = amplify()?.keys.at(-1)?.name ?? '';
+    const addTranslation = within(section).getAllByRole('button', {
+      name: 'Add translation',
+    });
+    fireEvent.click(addTranslation[addTranslation.length - 1]);
+    const mode = within(section).getByLabelText(
+      `${added} translation 1 path`.replace('path', 'value'),
+    );
+    expect(mode).toBeInTheDocument();
+    fireEvent.click(
+      within(section).getByRole('button', {
+        name: `Delete ${added} translation 1`,
+      }),
+    );
+    expect(amplify()?.keys.at(-1)?.translations).toEqual([]);
+    fireEvent.click(
+      within(section).getByRole('button', { name: `Delete key ${added}` }),
+    );
+    expect(amplify()?.keys.some((k) => k.name === added)).toBe(false);
+    // The first copy (GitHub) is still chosen, so it can't be removed.
+    const github = screen.getByRole('region', {
+      name: 'Source rule GitHub (custom)',
+    });
+    expect(
+      within(github).getByRole('button', { name: 'Remove' }),
+    ).toBeDisabled();
+  });
 });

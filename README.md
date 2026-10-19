@@ -65,7 +65,7 @@ A record that matches no status shows **Unknown** (purple, ?), so a gap in the r
 
 A cell can carry a **badge**: _behind_ (amber, with a count) when its branch is missing commits from the stage it is promoted from, or _diverged_ (with `behind/ahead`) when it also has commits the source lacks. A badge links to GitHub's compare page. Badges need git: they show on rows linked to a GitHub repo (a GitHub row's own repo; an Amplify row's repo) when the cell's record has a commit and a branch.
 
-An **empty cell** says why: _no records_, _needs credential_ (with a link to [Credentials](#credentials)) or _error_. A **warning marker** on a cell, row, group, stage or the dashboard header means a rule there has a problem; click it to open the editor at the problem.
+An **empty cell** says why: _no records_, _needs credential_ (with a link to [Credentials](#credentials)) or _error_. A **warning marker** (!) on a row or stage header means a rule there has a problem (a group's problems mark its members); hover it to read them. _Problems (N)_ in the toolbar lists every problem, board-wide ones included, with _Fix_ to open the editor where it is fixed.
 
 - **Details**: hover a cell (or focus it from the keyboard) for its status, branch, commit and time; on a touch screen, tap for a detail sheet. Clicking a cell opens the job on GitHub (or the Amplify console).
 - **Groups**: rows and stages can be grouped, with a line at each group's edges. A column group is framed, its name at its left; group names stay in view as the board scrolls.
@@ -83,7 +83,7 @@ _Edit_ (on the board) opens the editor, with these tabs:
 - **General**: rename, duplicate or delete the dashboard.
 - **Rows**: add GitHub rows from your repos, or Amplify rows from the apps your AWS key lists. A row can use its own credentials, its own row rule (e.g. one deployable unit in a repo), and its own rule for any stage (an **override**).
 - **Stages**: add stages, each with a rule saying which records belong in it (the presets test the branch); set each stage's source (for the behind/diverged badges).
-- **Sources**: the source rules for GitHub and Amplify, including what to read (GitHub: skip pull-request runs, which still count toward what is read, and runs per repo, up to 500; Amplify: jobs per branch, which branches). If a busy repo pushes a stage's last run out of what is read, the empty cell suggests reading more. Amplify reads every branch by default, which makes more AWS calls than reading only stage branches; narrow it with the branch rule; see [Rules](#rules).
+- **Sources**: the source rules for GitHub and Amplify, including what to read (GitHub: skip pull-request runs, which still count toward what is read, and runs per repo, up to 500; Amplify: jobs per branch, which branches). If a busy repo pushes a stage's last run out of what is read, the row gets a hint to read more. Amplify reads every branch by default, which makes more AWS calls than reading only stage branches; narrow it with the branch rule; see [Rules](#rules).
 - **Statuses**: the status set GitHub rows and Amplify rows use; see [Rules](#rules).
 
 **Groups**: start a group from any row or stage, add others to it, label it, or delete it (its members stay). A row group can have its own default credentials, row rule, status sets and stage overrides; a row's own override beats its group's, which beats the stage's rule, and each choice names what it inherits.
@@ -113,15 +113,15 @@ A **rule** is one or more checks joined by **AND** (default) or **OR**. Null cou
 
 **Time and link**: a cell shows the `time` and `link` of its counted item with the latest time (else the record's own). The built-in GitHub rule gives each job its completion time, else its start time, so a running job shows when it started.
 
-**Editing a rule**: rows of checks under an AND/OR switch. Pick a field from a real record shown as a tree; build _only items where_ filters without writing JSONPath; a live preview shows what each check finds and whether it passes.
+**Editing a rule**: rows of checks under an AND/OR switch. The path field suggests the paths the board's current records have (their keys, their items' keys and their raw data); _only items where_ (pick an item key, type a glob) writes the filter for you, case folded; a live preview says how many of the board's records (or items) each check and the whole rule match. A source rule's keys are edited on the _Sources_ tab as lists of translations, each a rule over the raw data that gives a value or copies one.
 
-**Problems**: a key no translation matched, a source rule with no order key, a path that doesn't parse, or a rule that uses a key its source rule doesn't produce is reported where it happens, with a warning marker on the board. A problem in a built-in rule offers _Customise_, since built-ins can't be edited in place. Some (an Amplify row without a GitHub credential, so no badges) can be dismissed; dismissals stay in this browser. The editor lists every problem with the runs no status matches; _Add status_ drafts a status for an Unknown record at the top of its set (a built-in set is first copied into the dashboard).
+**Problems**: a path that doesn't parse, a rule that uses a key (or item key) its source rule doesn't produce, an item rule on a source without items, a stage with no stage rule for a source its rows use, and a key no translation matched while reading (with how often and a sample) are reported where they happen. _Fix_ on a problem in a source rule opens the _Sources_ tab, where _Customise_ makes an editable copy, since built-ins can't be edited in place. Hints (an Amplify row without a GitHub credential, so no badges; a row that may need more read) can be dismissed; dismissals stay in this browser. The _Statuses_ tab lists the records no status matches; _Add status_ drafts a status for an Unknown record at the top of its set (a built-in set is first copied into the dashboard).
 
 **Versions**: a board records the version of fooboard's data model that saved it; newer releases migrate older boards and share links automatically, and a board from a newer release asks you to reload.
 
 ## Unmapped runs
 
-_Unmapped (N)_ lists recent records that have no cell, with the reason: no stage rule matches, no row rule matches, or no item counts. _Add rule_ opens the editor at the rule to change, with a check drafted from the record; _Add override_ does the same for a stage rule on the record's row or its group.
+_Unmapped (N)_ lists recent records that have no cell, with the reason for each row that reads their repo: no stage rule matches (naming the branch), no row rule matches, no item counts, or no order key. _Add rule_ opens the editor where the fix goes (the stage rules, pre-filled with the branch; the row whose rule missed it; or the status sets); _Add override_ opens a stage-rule override for the branch on the record's row or its group.
 
 ## Credentials
 

@@ -9,29 +9,8 @@
 import { describe, expect, it } from 'vitest';
 
 import { GitHubValidationError } from './errors';
-import type { FetchLike } from './httpClient';
 import { createGitHubReader } from './reader';
-
-function jsonResponse(
-  body: unknown,
-  headers: Record<string, string> = {},
-): Response {
-  return new Response(JSON.stringify(body), { status: 200, headers });
-}
-
-function fakeFetch(handlers: Record<string, () => Response>): {
-  fetchImpl: FetchLike;
-  calls: string[];
-} {
-  const calls: string[] = [];
-  const fetchImpl: FetchLike = (url) => {
-    calls.push(url);
-    const handler = handlers[url] as (() => Response) | undefined;
-    if (!handler) throw new Error(`unexpected URL: ${url}`);
-    return Promise.resolve(handler());
-  };
-  return { fetchImpl, calls };
-}
+import { fakeFetch, jsonResponse } from './testFetch';
 
 const repo = { owner: 'acme', repo: 'api-core' };
 
