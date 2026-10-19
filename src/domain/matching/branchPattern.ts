@@ -1,7 +1,9 @@
 /**
  * Branch pattern matching (spec.md §3, §4.3.5): a literal branch (`main`)
- * or a glob (`release/**`, `preview/*`), where `*` matches within one path
- * segment and `**` matches across segments. Pure; no network.
+ * or a glob (`release/**`, `preview/*`), where `*` matches one or more
+ * characters within one path segment and `**` one or more across segments
+ * (the same meaning as the stage rules the patterns write, spec.md
+ * A§4.3.7). Pure; no network.
  *
  * @module
  */
@@ -23,7 +25,7 @@ function patternToRegExp(pattern: string): RegExp {
   // `release/**` matches `release/24.3` but not the bare `release/`.
   const doubleStarParts = pattern.split('**');
   const source = doubleStarParts
-    .map((part) => part.split('*').map(escapeRegExp).join('[^/]*'))
+    .map((part) => part.split('*').map(escapeRegExp).join('[^/]+'))
     .join('.+');
   return new RegExp(`^${source}$`);
 }

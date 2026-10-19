@@ -1,9 +1,9 @@
 /**
  * Branch rules (spec.md A§4.3.7): the branch presets and the editors'
  * *Branch* field write a stage rule testing `$.branch` with an anchored,
- * case-sensitive regex that keeps branch-pattern meaning (`*` stops at
- * `/`, `**` crosses it), and read a pattern back from a rule that is only
- * that. Pure.
+ * case-sensitive regex that keeps branch-pattern meaning (`*` is one or
+ * more characters other than `/`, `**` one or more of any), and read a
+ * pattern back from a rule that is only that. Pure.
  *
  * @module
  */
@@ -16,7 +16,7 @@ const escape = (text: string): string =>
 function branchRegex(pattern: string): string {
   const source = pattern
     .split('**')
-    .map((part) => part.split('*').map(escape).join('[^/]*'))
+    .map((part) => part.split('*').map(escape).join('[^/]+'))
     .join('.+');
   return `^${source}$`;
 }
@@ -52,7 +52,7 @@ export function branchOf(rule: Rule | undefined): string | undefined {
     .replace(/^\^/, '')
     .replace(/\$$/, '')
     .replace(/\.\+/g, '**')
-    .replace(/\[\^\/\]\*/g, '*')
+    .replace(/\[\^\/\]\+/g, '*')
     .replace(/\\(.)/g, '$1');
   return pattern !== '' && branchRegex(pattern) === only.value
     ? pattern

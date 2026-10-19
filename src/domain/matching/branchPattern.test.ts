@@ -33,6 +33,7 @@ describe('matchesBranchPattern', () => {
   it('matches `*` within one segment only', () => {
     expect(matchesBranchPattern('preview/*', 'preview/bali')).toBe(true);
     expect(matchesBranchPattern('preview/*', 'preview/bali/extra')).toBe(false);
+    expect(matchesBranchPattern('preview/*', 'preview/')).toBe(false);
   });
 
   it('matches `**` across segments', () => {

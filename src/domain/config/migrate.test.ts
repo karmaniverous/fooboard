@@ -19,7 +19,7 @@ describe('migrate', () => {
   });
 
   it.each([
-    [99, /newer/],
+    [99, /^made with a newer fooboard; reload to update$/],
     [3, /early development build/],
     [1, /early development build/],
   ])('refuses schema version %i', (schemaVersion, message) => {

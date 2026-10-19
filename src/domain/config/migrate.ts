@@ -15,6 +15,10 @@ import { z } from 'zod';
 import type { ConfigRoot } from './root';
 import { ConfigRootSchema, CURRENT_SCHEMA_VERSION } from './root';
 
+/** The refusal for a configuration from a newer data model (spec.md
+ * A§4.3.7): never guessed at. */
+const NEWER_VERSION_MESSAGE = 'made with a newer fooboard; reload to update';
+
 type Migration = (input: Record<string, unknown>) => Record<string, unknown>;
 
 /** The first version the chain starts from (spec.md A§4.3.7): earlier
@@ -54,9 +58,7 @@ export function migrate(
     .parse(input);
 
   if (version > CURRENT_SCHEMA_VERSION) {
-    throw new Error(
-      `schema version ${String(version)} is newer than ${String(CURRENT_SCHEMA_VERSION)}; update fooboard to import this file`,
-    );
+    throw new Error(NEWER_VERSION_MESSAGE);
   }
 
   if (version < first) {

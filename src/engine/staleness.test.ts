@@ -73,4 +73,21 @@ describe('rowStaleness', () => {
     expect(result.test.badge).toEqual({ kind: 'behind', count: 1 });
     expect(compare).toHaveBeenCalledTimes(2);
   });
+
+  it('gives no badge to a record without a commit, or on its source branch', async () => {
+    const compare = vi.fn(() => Promise.resolve(behindByOne));
+    const result = await rowStaleness(
+      stages,
+      {
+        ...cells,
+        test: { ...cells.test, commit: undefined },
+        prod: { ...cells.prod, branch: 'stg' },
+      },
+      compare,
+    );
+    expect(result.test.badge).toBeUndefined();
+    expect(result.prod.badge).toBeUndefined();
+    expect(result.stg.badge).toEqual({ kind: 'behind', count: 1 });
+    expect(compare).toHaveBeenCalledTimes(1);
+  });
 });

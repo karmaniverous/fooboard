@@ -30,12 +30,19 @@ export interface CellStaleness {
   compare?: CompareDetail;
 }
 
-/** The branch a cell is judged by: its run's, else the confirmed fallback. */
+/** The branch a cell's record is on, if it has one. */
 function cellBranch(
   derivation: CellDerivation | undefined,
 ): string | undefined {
   return derivation?.kind === 'ok' ? derivation.branch : undefined;
 }
+
+/** A cell can carry a badge only when its record has both `commit` and
+ * `branch` (spec.md A§4.3.7 *Git link and badges*). */
+const badgeable = (derivation: CellDerivation | undefined): boolean =>
+  derivation?.kind === 'ok' &&
+  derivation.commit !== undefined &&
+  derivation.branch !== undefined;
 
 /** Compute every stage's staleness for one row. */
 export async function rowStaleness(
@@ -55,7 +62,7 @@ export async function rowStaleness(
     const source = stage.sourceStageId
       ? branchOf[stage.sourceStageId]
       : undefined;
-    if (!own || !source || own === source) {
+    if (!badgeable(cells[stage.id]) || !own || !source || own === source) {
       result[stage.id] = { badge: undefined };
       continue;
     }
