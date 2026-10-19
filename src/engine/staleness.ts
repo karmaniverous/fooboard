@@ -11,20 +11,17 @@ import { objectify } from 'radash';
 
 import type { Stage } from '@/domain/config/stage';
 import {
-  type AmplifyCellDerivation,
+  type CellDerivation,
   deriveStalenessBadge,
-  type GithubCellDerivation,
-  resolveStalenessBranch,
   type StalenessBadge,
 } from '@/domain/derivation';
-import { matchesBranchPattern } from '@/domain/matching/branchPattern';
 import {
   type CompareResult,
   type GitHubReader,
   RateLimitedError,
 } from '@/lib/github';
 
-import { type DatedBranch, repoRef } from './githubRow';
+import { repoRef } from './githubRow';
 import type { CompareDetail } from './types';
 
 /** A cell's badge and the compare behind it, if any. */
@@ -35,35 +32,21 @@ export interface CellStaleness {
 
 /** The branch a cell is judged by: its run's, else the confirmed fallback. */
 function cellBranch(
-  stage: Stage,
-  derivation: GithubCellDerivation | AmplifyCellDerivation | undefined,
-  branches: readonly DatedBranch[],
+  derivation: CellDerivation | undefined,
 ): string | undefined {
-  const runBranch =
-    derivation?.kind === 'ok' ? derivation.branch : derivation?.branch;
-  return resolveStalenessBranch({
-    runBranch,
-    pattern: stage.branchPattern,
-    literalBranchExists: branches.some((b) => b.name === stage.branchPattern),
-    matchingBranches: branches.filter((b) =>
-      matchesBranchPattern(stage.branchPattern, b.name),
-    ),
-  });
+  return derivation?.kind === 'ok' ? derivation.branch : undefined;
 }
 
 /** Compute every stage's staleness for one row. */
 export async function rowStaleness(
   stages: readonly Stage[],
-  cells: Readonly<
-    Record<string, GithubCellDerivation | AmplifyCellDerivation | undefined>
-  >,
-  branches: readonly DatedBranch[],
+  cells: Readonly<Record<string, CellDerivation | undefined>>,
   compare: (base: string, head: string) => Promise<CompareResult>,
 ): Promise<Record<string, CellStaleness>> {
   const branchOf = objectify(
     stages,
     (s) => s.id,
-    (s) => cellBranch(s, cells[s.id], branches),
+    (s) => cellBranch(cells[s.id]),
   );
   const result: Record<string, CellStaleness> = {};
 
@@ -126,26 +109,15 @@ export function compareOnce(
 export async function readStaleness(
   stages: readonly Stage[],
   reader: GitHubReader | undefined,
-  repo: string,
-  cells: Record<
-    string,
-    { derivation: GithubCellDerivation | AmplifyCellDerivation }
-  >,
-  branches: readonly DatedBranch[] | undefined,
+  cells: Record<string, { derivation: CellDerivation }>,
   compare: (base: string, head: string) => Promise<CompareResult>,
 ): Promise<Record<string, CellStaleness>> {
   if (!reader) return {};
   try {
-    const dated =
-      branches ??
-      (await reader.listBranches(repoRef(repo))).map((b) => ({
-        name: b.name,
-        updatedAt: new Date(0).toISOString(),
-      }));
     const derivations = Object.fromEntries(
       Object.entries(cells).map(([id, c]) => [id, c.derivation]),
     );
-    return await rowStaleness(stages, derivations, dated, compare);
+    return await rowStaleness(stages, derivations, compare);
   } catch {
     return {};
   }

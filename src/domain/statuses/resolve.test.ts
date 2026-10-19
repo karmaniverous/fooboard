@@ -8,6 +8,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { DashboardSchema } from '@/domain/config/dashboard';
+import { branchRules } from '@/domain/config/placement';
 import type { Row } from '@/domain/config/row';
 
 import { presetById } from './presets';
@@ -21,7 +22,7 @@ import {
 const dashboard = DashboardSchema.parse({
   id: 'd',
   name: 'D',
-  stages: [{ id: 'dev', name: 'Dev', branchPattern: 'dev' }],
+  stages: [{ id: 'dev', name: 'Dev', rules: branchRules('dev') }],
   rows: [{ type: 'github', id: 'web', repo: 'acme/web', displayName: 'web' }],
   rowGroups: [{ id: 'g', memberIds: ['web'] }],
 });

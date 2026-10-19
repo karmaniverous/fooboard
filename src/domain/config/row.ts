@@ -8,8 +8,9 @@
  */
 import { z } from 'zod';
 
-import { BranchPatternOverridesSchema } from './groups';
-import { MatchTestSchema } from './matchTest';
+import { RuleSchema } from '@/domain/rules/schema';
+
+import { RowStageRulesSchema } from './placement';
 
 /** A row's status-set overrides (A§4.3.6): its own set, and one per
  * stage for single cells. Cell beats row beats row group beats dashboard. */
@@ -34,11 +35,14 @@ export const GithubRowSchema = z.object({
   id: z.string().min(1),
   repo: RepoSchema,
   displayName: z.string().min(1),
-  rowKeyTests: z.array(MatchTestSchema).default(() => []),
   /** Overrides the dashboard's default GitHub token for this row. */
   credentialId: z.string().min(1).optional(),
   /** Per-stage branch-pattern overrides for this row (spec.md C-14c). */
-  branchPatternOverrides: BranchPatternOverridesSchema.default(() => ({})),
+  stageRules: RowStageRulesSchema.default(() => ({})),
+  /** Which records belong to this row (spec.md A§4.3.7). */
+  recordRule: RuleSchema.optional(),
+  /** Which of a record's items belong to this row. */
+  itemRule: RuleSchema.optional(),
   ...rowStatusSets,
 });
 export type GithubRow = z.infer<typeof GithubRowSchema>;
@@ -69,7 +73,11 @@ export const AmplifyRowSchema = z.object({
   /** Overrides the dashboard's default GitHub token for `repo`. */
   githubCredentialId: z.string().min(1).optional(),
   /** Per-stage branch-pattern overrides for this row (spec.md C-14c). */
-  branchPatternOverrides: BranchPatternOverridesSchema.default(() => ({})),
+  stageRules: RowStageRulesSchema.default(() => ({})),
+  /** Which records belong to this row (spec.md A§4.3.7). */
+  recordRule: RuleSchema.optional(),
+  /** Which of a record's items belong to this row. */
+  itemRule: RuleSchema.optional(),
   ...rowStatusSets,
 });
 export type AmplifyRow = z.infer<typeof AmplifyRowSchema>;

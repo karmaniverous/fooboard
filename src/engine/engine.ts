@@ -13,15 +13,13 @@
  */
 import { group, unique } from 'radash';
 
+import { cellRulesFor, sourceFor } from '@/domain/config/cellRules';
 import type { Dashboard } from '@/domain/config/dashboard';
 import {
-  effectiveStages,
   inheritedCredentials,
   rowGithubCredentialId,
 } from '@/domain/config/inheritance';
 import type { AmplifyRow, GithubRow, Row } from '@/domain/config/row';
-import type { Stage } from '@/domain/config/stage';
-import { statusSetFor } from '@/domain/statuses/resolve';
 import type { GitHubReader } from '@/lib/github';
 import { isOverPollingShare } from '@/lib/github';
 
@@ -78,12 +76,8 @@ export function createBoardEngine({
 }): BoardEngine {
   const { stages, mapping } = dashboard;
 
-  /** The stages as `row` sees them: effective branch patterns (C-14c). */
-  const stagesByRow = new Map<string, readonly Stage[]>(
-    dashboard.rows.map((r) => [r.id, effectiveStages(dashboard, r)]),
-  );
-  const stagesFor = (row: Row): readonly Stage[] =>
-    stagesByRow.get(row.id) ?? stages;
+  const rulesFor = (row: Row, stageId: string) =>
+    cellRulesFor(dashboard, row, stageId);
 
   /** The token a row reads GitHub with (C-1a), and its reader. */
   const githubAccess = (row: Row): GithubAccess | undefined => {
@@ -142,11 +136,14 @@ export function createBoardEngine({
     if (!first) return;
     const access = githubAccess(first);
     const result = await refreshGithubRepo(
-      rows,
-      rowsByRepo[first.repo] ?? rows,
-      stagesFor,
-      (row, stageId) => statusSetFor(dashboard, row, stageId),
-      mapping,
+      {
+        rows,
+        repoRows: rowsByRepo[first.repo] ?? rows,
+        stages,
+        rulesFor,
+        source: sourceFor('github'),
+        mapping,
+      },
       access?.reader,
     );
     if (result.kind === 'rate-limited') {
@@ -160,17 +157,9 @@ export function createBoardEngine({
       const cells = result.rows[row.id] ?? {};
       applied[row.id] = {
         cells,
-        staleness:
-          compare && result.branches.length > 0
-            ? await readStaleness(
-                stagesFor(row),
-                reader,
-                row.repo,
-                cells,
-                result.branches,
-                compare,
-              )
-            : {},
+        staleness: compare
+          ? await readStaleness(stages, reader, cells, compare)
+          : {},
       };
     }
     apply(targetId, applied, result.unmapped, access);
@@ -179,8 +168,8 @@ export function createBoardEngine({
   const refreshAmplify = async (row: AmplifyRow): Promise<void> => {
     const result = await refreshAmplifyRow(
       row,
-      stagesFor(row),
-      (stageId) => statusSetFor(dashboard, row, stageId),
+      stages,
+      (stageId) => rulesFor(row, stageId),
       inheritedCredentials(dashboard, row.id),
       (id) => providers.amplify(id),
     );
@@ -193,11 +182,9 @@ export function createBoardEngine({
     const reader = access?.reader;
     const staleness = reader
       ? await readStaleness(
-          stagesFor(row),
+          stages,
           reader,
-          row.repo,
           cells,
-          undefined,
           compareOnce(reader, row.repo),
         )
       : {};

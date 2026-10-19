@@ -15,7 +15,9 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { wouldCreateCycle } from '@/domain/config/cycle';
 import type { Dashboard } from '@/domain/config/dashboard';
+import { branchRules } from '@/domain/config/placement';
 import type { Stage } from '@/domain/config/stage';
+import { branchOf } from '@/domain/rules/branch';
 import type { EngineProviders } from '@/engine';
 
 import { discoverBranches, patternPreview } from './branches';
@@ -52,7 +54,7 @@ function AddStage({
         dashboard.stages.map((s) => s.id),
       ),
       name: n,
-      branchPattern: p,
+      rules: branchRules(p),
     });
     setPattern('');
     setName('');
@@ -114,6 +116,10 @@ function AddStage({
   );
 }
 
+/** A stage's branch pattern, when its rules are a branch rule. */
+const stagePattern = (stage: Stage): string =>
+  branchOf(stage.rules.github) ?? branchOf(stage.rules.amplify) ?? '';
+
 export function StagesEditor({
   dashboard,
   providers,
@@ -158,9 +164,9 @@ export function StagesEditor({
               <CommitInput
                 label={`Branch pattern of ${stage.name}`}
                 className="h-8 font-mono text-xs"
-                value={stage.branchPattern}
-                onCommit={(branchPattern) => {
-                  replace({ ...stage, branchPattern });
+                value={stagePattern(stage)}
+                onCommit={(pattern) => {
+                  replace({ ...stage, rules: branchRules(pattern) });
                 }}
               />
             </div>

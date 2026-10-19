@@ -38,7 +38,7 @@ export interface PlacedRecord {
 
 /** `record` with only the items both item rules count, or `undefined`
  * when it has items and none count. */
-function counted(
+export function counted(
   record: RecordDoc,
   rowItems: Rule,
   setItems: Rule,
@@ -51,10 +51,19 @@ function counted(
 }
 
 /** Does `record` belong in the cell, before items are counted? */
-const placed = (record: RecordDoc, rules: CellRules): boolean =>
+export const placed = (record: RecordDoc, rules: CellRules): boolean =>
   rules.stage !== undefined &&
   evaluateRule(rules.record, record) &&
   evaluateRule(rules.stage, record);
+
+/** Do the cell's record or stage rules test items (or raw data), so a
+ * record can't be judged before its items are read? */
+export const needsItems = (
+  rules: Pick<CellRules, 'record' | 'stage'>,
+): boolean =>
+  [rules.record, rules.stage].some((rule) =>
+    (rule?.checks ?? []).some((c) => /items|_raw|\.\./.test(c.path)),
+  );
 
 /** The first cell status whose rule matches `record`. */
 const classify = (
@@ -64,7 +73,7 @@ const classify = (
 
 /** Time and link: the counted item with the latest `time`, else the
  * record's own. */
-export function timeAndLink(record: RecordDoc): {
+function timeAndLink(record: RecordDoc): {
   time: JSONValue;
   link: JSONValue;
 } {

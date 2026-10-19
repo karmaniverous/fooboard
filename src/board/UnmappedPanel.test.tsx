@@ -32,7 +32,7 @@ const runs: UnmappedRun[] = [
     workflowName: 'Deploy API',
     branch: 'main',
     htmlUrl: 'https://github.com/acme/api/actions/runs/7',
-    reason: { kind: 'no-row-key-matches' },
+    reason: { kind: 'no-row-matches' },
   },
   {
     repo: 'acme/gone',
@@ -40,7 +40,7 @@ const runs: UnmappedRun[] = [
     workflowName: 'Nightly',
     branch: 'main',
     htmlUrl: 'https://github.com/acme/gone/actions/runs/8',
-    reason: { kind: 'no-row-key-matches' },
+    reason: { kind: 'no-row-matches' },
   },
 ];
 
@@ -52,7 +52,7 @@ describe('UnmappedPanel', () => {
         onAddTest={(r) => (draftFor(r, dashboard) ? vi.fn() : undefined)}
       />,
     );
-    expect(screen.getAllByText('no row key matches')).toHaveLength(2);
+    expect(screen.getAllByText('no row rule matches')).toHaveLength(2);
     expect(screen.getByRole('link', { name: 'Deploy API' })).toHaveAttribute(
       'target',
       '_blank',
@@ -65,12 +65,12 @@ describe('UnmappedPanel', () => {
       {
         ...runs[0],
         runId: 9,
-        reason: { kind: 'no-stage-matches-branch', branch: 'hotfix/1' },
+        reason: { kind: 'no-stage-matches', branch: 'hotfix/1' },
       },
       {
         ...runs[1],
         runId: 10,
-        reason: { kind: 'no-stage-matches-branch', branch: 'x' },
+        reason: { kind: 'no-stage-matches', branch: 'x' },
       },
       ...runs,
     ];
@@ -132,13 +132,7 @@ describe('UnmappedPanel', () => {
       'true',
     );
     expect(
-      screen.getByLabelText('New Row key tests for api value'),
-    ).toHaveValue('Deploy API');
-    fireEvent.click(screen.getByRole('button', { name: 'Add' }));
-    expect(saved.current.rows[0]).toMatchObject({
-      rowKeyTests: [
-        { field: 'workflowName', operator: 'is', value: 'Deploy API' },
-      ],
-    });
+      screen.getByRole('group', { name: 'Item rule for api' }),
+    ).toBeInTheDocument();
   });
 });

@@ -12,6 +12,7 @@ import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { describe, expect, it } from 'vitest';
 
 import { type Dashboard, DashboardSchema } from '@/domain/config/dashboard';
+import { branchRules } from '@/domain/config/placement';
 import type { EngineProviders } from '@/engine';
 import { Home } from '@/pages/Home';
 import { createAppStores } from '@/storage';
@@ -49,8 +50,13 @@ const start = DashboardSchema.parse({
     { type: 'github', id: 'web', repo: 'acme/web', displayName: 'web' },
   ],
   stages: [
-    { id: 'dev', name: 'dev', branchPattern: 'dev' },
-    { id: 'prod', name: 'prod', branchPattern: 'main', sourceStageId: 'dev' },
+    { id: 'dev', name: 'dev', rules: branchRules('dev') },
+    {
+      id: 'prod',
+      name: 'prod',
+      rules: branchRules('main'),
+      sourceStageId: 'dev',
+    },
   ],
 });
 
@@ -144,7 +150,7 @@ describe('DashboardEditor', () => {
     expect(latest.current.stages.at(-1)).toEqual({
       id: 'release',
       name: 'Release',
-      branchPattern: 'release/**',
+      rules: branchRules('release/**'),
     });
   });
 

@@ -7,6 +7,8 @@
  */
 import { describe, expect, it } from 'vitest';
 
+import { branchRules } from '@/domain/config/placement';
+
 import { DashboardSchema } from './dashboard';
 
 describe('DashboardSchema', () => {
@@ -94,11 +96,16 @@ describe('DashboardSchema', () => {
         id: 'd1',
         name: 'Dashboard 1',
         stages: [
-          { id: 's1', name: 'dev', branchPattern: 'dev', sourceStageId: 's2' },
+          {
+            id: 's1',
+            name: 'dev',
+            rules: branchRules('dev'),
+            sourceStageId: 's2',
+          },
           {
             id: 's2',
             name: 'prod',
-            branchPattern: 'main',
+            rules: branchRules('main'),
             sourceStageId: 's1',
           },
         ],
@@ -111,8 +118,13 @@ describe('DashboardSchema', () => {
       id: 'd1',
       name: 'Dashboard 1',
       stages: [
-        { id: 's1', name: 'dev', branchPattern: 'dev', sourceStageId: 's1' },
-        { id: 's1', name: 'prod', branchPattern: 'main' },
+        {
+          id: 's1',
+          name: 'dev',
+          rules: branchRules('dev'),
+          sourceStageId: 's1',
+        },
+        { id: 's1', name: 'prod', rules: branchRules('main') },
       ],
     });
     expect(parsed.success).toBe(false);
@@ -124,8 +136,13 @@ describe('DashboardSchema', () => {
       id: 'd1',
       name: 'Dashboard 1',
       stages: [
-        { id: 's1', name: 'dev', branchPattern: 'dev' },
-        { id: 's2', name: 'prod', branchPattern: 'main', sourceStageId: 's1' },
+        { id: 's1', name: 'dev', rules: branchRules('dev') },
+        {
+          id: 's2',
+          name: 'prod',
+          rules: branchRules('main'),
+          sourceStageId: 's1',
+        },
       ],
     });
     expect(dashboard.stages).toHaveLength(2);
@@ -190,7 +207,7 @@ describe('DashboardSchema', () => {
       stages: ['s', 's2', 's3'].map((id) => ({
         id,
         name: id,
-        branchPattern: id,
+        rules: branchRules(id),
       })),
       ...groups,
     });
@@ -204,7 +221,7 @@ describe('DashboardSchema', () => {
     expect(bad({ statusSets: { github: 'amplify' } })).toBe(false);
     expect(
       bad({
-        stages: [{ id: 'dev', name: 'dev', branchPattern: 'dev' }],
+        stages: [{ id: 'dev', name: 'dev', rules: branchRules('dev') }],
         rows: [
           {
             type: 'github',

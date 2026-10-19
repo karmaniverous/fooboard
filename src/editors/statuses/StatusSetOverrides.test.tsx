@@ -10,6 +10,7 @@ import { useState } from 'react';
 import { describe, expect, it } from 'vitest';
 
 import { type Dashboard, DashboardSchema } from '@/domain/config/dashboard';
+import { branchRules } from '@/domain/config/placement';
 import { choose, optionsOf } from '@/test/choose';
 
 import { GroupStatusSets, RowStatusSets } from './StatusSetOverrides';
@@ -17,7 +18,7 @@ import { GroupStatusSets, RowStatusSets } from './StatusSetOverrides';
 const base = DashboardSchema.parse({
   id: 'd',
   name: 'D',
-  stages: [{ id: 'dev', name: 'Dev', branchPattern: 'dev' }],
+  stages: [{ id: 'dev', name: 'Dev', rules: branchRules('dev') }],
   rows: [{ type: 'github', id: 'web', repo: 'acme/web', displayName: 'web' }],
   rowGroups: [{ id: 'g', name: 'Apps', memberIds: ['web'] }],
 });

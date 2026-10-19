@@ -12,7 +12,6 @@ import type { App, Branch, JobSummary } from '@aws-sdk/client-amplify';
 
 import type { AmplifySource } from '@/domain/config/row';
 import type { AmplifyJobWithBranch } from '@/domain/derivation/types';
-import { matchesBranchPattern } from '@/domain/matching/branchPattern';
 
 import { AmplifyNotFoundError } from './errors';
 import type { AmplifyReader } from './reader';
@@ -69,28 +68,18 @@ export function memoizeReaderFor(
  * cover a newer-but-undated job. */
 const JOBS_PER_BRANCH = 5;
 
-/** The collected jobs and whether any source had a matching branch. */
-export interface RowJobs {
-  jobsByBranch: AmplifyJobWithBranch[];
-  branchExists: boolean;
-}
-
 /** Gather the jobs for one Amplify row and one stage's branch pattern. */
 export async function collectRowJobs(
   sources: readonly ResolvedAmplifySource[],
-  branchPattern: string,
   readerFor: AmplifyReaderFor,
-): Promise<RowJobs> {
+): Promise<AmplifyJobWithBranch[]> {
   const jobsByBranch: AmplifyJobWithBranch[] = [];
-  let branchExists = false;
 
   for (const source of sources) {
     const reader = readerFor(source);
     const branches = (await reader.listBranches(source.appId))
       .map((b) => b.branchName)
-      .filter((name): name is string => name !== undefined)
-      .filter((name) => matchesBranchPattern(branchPattern, name));
-    branchExists ||= branches.length > 0;
+      .filter((name): name is string => name !== undefined);
 
     for (const branch of branches) {
       const jobs = await reader.listJobs(source.appId, branch, JOBS_PER_BRANCH);
@@ -98,7 +87,7 @@ export async function collectRowJobs(
       for (const job of jobs) jobsByBranch.push({ source: tag, branch, job });
     }
   }
-  return { jobsByBranch, branchExists };
+  return jobsByBranch;
 }
 
 /** List the apps one credential can see in each region. A region where

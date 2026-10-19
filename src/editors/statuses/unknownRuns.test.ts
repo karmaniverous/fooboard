@@ -9,6 +9,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { DashboardSchema } from '@/domain/config/dashboard';
+import { branchRules } from '@/domain/config/placement';
 import { all, exists, not } from '@/domain/model/ruleBuilders';
 import type { RecordDoc } from '@/domain/model/translate';
 import { classify } from '@/domain/statuses/classify';
@@ -29,8 +30,8 @@ const base = DashboardSchema.parse({
   id: 'd',
   name: 'D',
   stages: [
-    { id: 'dev', name: 'Dev', branchPattern: 'dev' },
-    { id: 'prod', name: 'Prod', branchPattern: 'main' },
+    { id: 'dev', name: 'Dev', rules: branchRules('dev') },
+    { id: 'prod', name: 'Prod', rules: branchRules('main') },
   ],
   rows: [
     { type: 'github', id: 'web', repo: 'acme/web', displayName: 'web' },

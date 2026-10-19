@@ -12,7 +12,6 @@
 import { ConfirmButton } from '@/components/ConfirmButton';
 import type { Dashboard } from '@/domain/config/dashboard';
 import { inheritedCredential } from '@/domain/config/inheritance';
-import type { MatchTest } from '@/domain/config/matchTest';
 import type { Row } from '@/domain/config/row';
 import type { EngineProviders } from '@/engine';
 
@@ -20,10 +19,10 @@ import { CredentialSelect } from './CredentialSelect';
 import { removeRow, rowFromRepo } from './edit';
 import { CommitInput } from './fields';
 import { listHandlers } from './groupEdit';
-import { MatchTestsEditor } from './MatchTestsEditor';
 import { ReorderList } from './ReorderList';
 import { RowGrouping } from './RowGrouping';
 import { AddSource, AmplifyPicker, RepoPicker } from './rowPickers';
+import { RuleEditor } from './rules/RuleEditor';
 export function RowsEditor({
   dashboard,
   providers,
@@ -34,9 +33,7 @@ export function RowsEditor({
   providers: EngineProviders;
   onChange: (dashboard: Dashboard) => void;
   /** A row key test or a branch override to pre-fill on one row. */
-  draft?:
-    | { rowId: string; test: MatchTest }
-    | { rowId: string; overrideBranch: string };
+  draft?: { rowId: string } | { rowId: string; overrideBranch: string };
 }): React.JSX.Element {
   const replaceRow = (row: Row) => {
     onChange({
@@ -90,19 +87,20 @@ export function RowsEditor({
               }}
             />
             {row.type === 'github' ? (
-              <MatchTestsEditor
-                title={`Row key tests for ${row.displayName}`}
-                fields={['jobName', 'workflowName']}
-                tests={row.rowKeyTests}
-                draft={
-                  draft?.rowId === row.id && 'test' in draft
-                    ? draft.test
-                    : undefined
-                }
-                onChange={(rowKeyTests) => {
-                  replaceRow({ ...row, rowKeyTests });
-                }}
-              />
+              <div className="flex flex-col gap-1">
+                <span className="font-semibold">Jobs for this row</span>
+                <RuleEditor
+                  label={`Item rule for ${row.displayName}`}
+                  rule={row.itemRule ?? { combine: 'and', checks: [] }}
+                  newPath="$.name"
+                  onChange={(rule) => {
+                    replaceRow({
+                      ...row,
+                      itemRule: rule.checks.length > 0 ? rule : undefined,
+                    });
+                  }}
+                />
+              </div>
             ) : (
               <div className="flex flex-col gap-1">
                 <span className="font-semibold">Sources</span>

@@ -205,7 +205,7 @@ export function AmplifyPicker({
                         appId: a.appId,
                       },
                     ],
-                    branchPatternOverrides: {},
+                    stageRules: {},
                     cellStatusSets: {},
                   });
                 }}

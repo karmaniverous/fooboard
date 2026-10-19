@@ -36,8 +36,7 @@ export const STATUS_GLYPH: Record<StatusIcon, string> = {
 
 /** Text shown in an empty cell (spec.md §4.3.5). */
 export const EMPTY_LABEL: Record<EmptyCellState, string> = {
-  'no-branch': 'no branch',
-  'no-recent-runs': 'no recent runs',
+  'no-records': 'no records',
   'needs-credential': 'needs credential',
   error: 'error',
 };
@@ -45,8 +44,7 @@ export const EMPTY_LABEL: Record<EmptyCellState, string> = {
 /** Empty states at rung 0 (icons only): a short symbol; the label is in
  * the tooltip, the accessible name and the detail sheet. */
 export const EMPTY_SYMBOL: Record<EmptyCellState, string> = {
-  'no-branch': '–',
-  'no-recent-runs': '○',
+  'no-records': '○',
   'needs-credential': '?',
   error: '!',
 };

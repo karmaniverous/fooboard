@@ -46,7 +46,12 @@ describe('editor sections', () => {
     fireEvent.change(label, { target: { value: 'Production' } });
     fireEvent.blur(label);
     expect(latest.current.columnGroups).toEqual([
-      { id: 'group-prod', label: 'Production', memberIds: ['prod'] },
+      {
+        id: 'group-prod',
+        label: 'Production',
+        memberIds: ['prod'],
+        stageRules: {},
+      },
     ]);
   });
 

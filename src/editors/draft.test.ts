@@ -39,37 +39,36 @@ const run = (
 
 describe('draftFor', () => {
   it('maps each reason to its fix', () => {
-    expect(draftFor(run({ kind: 'no-row-key-matches' }), dashboard)).toEqual({
+    expect(draftFor(run({ kind: 'no-row-matches' }), dashboard)).toEqual({
       tab: 'Rows',
       rowId: 'api',
-      test: { field: 'workflowName', operator: 'is', value: 'Deploy API' },
     });
     expect(
       draftFor(
-        run({ kind: 'no-stage-matches-branch', branch: 'hotfix/1' }),
+        run({ kind: 'no-stage-matches', branch: 'hotfix/1' }),
         dashboard,
       ),
     ).toEqual({ tab: 'Stages', pattern: 'hotfix/1' });
-    expect(draftFor(run({ kind: 'no-relevant-job' }), dashboard)).toEqual({
+    expect(draftFor(run({ kind: 'no-item-counts' }), dashboard)).toEqual({
       tab: 'Statuses',
     });
   });
 
   it("offers an override on the repo's row for an unmatched branch only", () => {
-    const branch = run({ kind: 'no-stage-matches-branch', branch: 'hotfix/1' });
+    const branch = run({ kind: 'no-stage-matches', branch: 'hotfix/1' });
     expect(overrideDraftFor(branch, dashboard)).toEqual({
       tab: 'Rows',
       rowId: 'api',
       overrideBranch: 'hotfix/1',
     });
     expect(
-      overrideDraftFor(run({ kind: 'no-relevant-job' }), dashboard),
+      overrideDraftFor(run({ kind: 'no-item-counts' }), dashboard),
     ).toBeUndefined();
   });
 
   it('offers nothing when no GitHub row reads the repo', () => {
     expect(
-      draftFor(run({ kind: 'no-row-key-matches' }, 'acme/other'), dashboard),
+      draftFor(run({ kind: 'no-row-matches' }, 'acme/other'), dashboard),
     ).toBeUndefined();
   });
 });

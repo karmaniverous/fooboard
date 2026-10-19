@@ -47,8 +47,7 @@ export interface CellProps {
 }
 
 const EMPTY_CLASS = {
-  'no-branch': 'border-dashed border-border/60',
-  'no-recent-runs': 'border-dashed border-border',
+  'no-records': 'border-dashed border-border',
   'needs-credential': 'border-border bg-hatched',
   error: 'border-border bg-hatched',
 } as const;
@@ -83,7 +82,7 @@ export function Cell({
   const { derivation, badge, compare } = cell;
   if (derivation.kind === 'empty') {
     const label = EMPTY_LABEL[derivation.state];
-    const extra = derivation.reason ?? derivation.branch;
+    const extra = derivation.reason;
     // A button, so every empty state can be reached and opened (keyboard,
     // tap, click).
     return (

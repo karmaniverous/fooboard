@@ -89,20 +89,16 @@ describe('editor review fixes', () => {
     const rows = latest.current.rows.filter((r) => r.repo === 'acme/api');
     expect(rows.map((r) => r.id)).toEqual(['api', 'api-2']);
 
-    fireEvent.change(
-      screen.getAllByLabelText('New Row key tests for api value')[0],
-      {
-        target: { value: 'deploy-a' },
-      },
-    );
     const groups = screen.getAllByRole('group', {
-      name: 'Row key tests for api',
+      name: 'Item rule for api',
     });
-    fireEvent.click(within(groups[0]).getByRole('button', { name: 'Add' }));
-    const tests = latest.current.rows
+    fireEvent.click(
+      within(groups[0]).getByRole('button', { name: 'Add check' }),
+    );
+    const checks = latest.current.rows
       .filter((r) => r.repo === 'acme/api')
-      .map((r) => (r.type === 'github' ? r.rowKeyTests.length : -1));
-    expect(tests).toEqual([1, 0]);
+      .map((r) => r.itemRule?.checks.length ?? 0);
+    expect(checks).toEqual([1, 0]);
   });
 
   it('hides listed apps when the region changes, before or after the response', async () => {

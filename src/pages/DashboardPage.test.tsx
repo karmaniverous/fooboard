@@ -16,6 +16,7 @@ import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { DashboardSchema } from '@/domain/config/dashboard';
+import { branchRules } from '@/domain/config/placement';
 import { createAppStores } from '@/storage';
 import { memoryStorage } from '@/storage/keyValue';
 import { StoresContext } from '@/storage/storesContext';
@@ -88,7 +89,7 @@ describe('DashboardPage credential lifecycle', () => {
         rows: [
           { type: 'github', id: 'api', repo: 'acme/api', displayName: 'api' },
         ],
-        stages: [{ id: 'prod', name: 'prod', branchPattern: 'main' }],
+        stages: [{ id: 'prod', name: 'prod', rules: branchRules('main') }],
       }),
     );
     render(

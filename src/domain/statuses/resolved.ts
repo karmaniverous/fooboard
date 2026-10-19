@@ -5,7 +5,6 @@
  *
  * @module
  */
-import type { JSONValue } from 'json-p3';
 
 import {
   type CellStatus,
@@ -14,8 +13,6 @@ import {
   type SummaryStatus,
   UNKNOWN_STATUS_ID,
 } from '@/domain/config/statusSets';
-
-import { classify } from './classify';
 
 export interface ResolvedStatus {
   id: string;
@@ -72,7 +69,3 @@ export function resolveStatus(
 export const inProgress = (
   derivation: { kind: 'ok'; status: ResolvedStatus } | { kind: 'empty' },
 ): boolean => derivation.kind === 'ok' && derivation.status.summary.inProgress;
-
-/** Classify `doc` against `set` and resolve the result. */
-export const statusOf = (record: JSONValue, set: StatusSet): ResolvedStatus =>
-  resolveStatus(set, classify(record, set));

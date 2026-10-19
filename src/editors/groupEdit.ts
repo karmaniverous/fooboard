@@ -37,7 +37,8 @@ function onAxis(
     const next = change({ items: d.rows, groups: d.rowGroups }, (id) => ({
       id,
       memberIds: [],
-      branchPatternOverrides: {},
+      stageRules: {},
+      rowRules: {},
       defaultCredentials: {},
       statusSets: {},
     }));
@@ -46,6 +47,7 @@ function onAxis(
   const next = change({ items: d.stages, groups: d.columnGroups }, (id) => ({
     id,
     memberIds: [],
+    stageRules: {},
   }));
   return next && { ...d, stages: next.items, columnGroups: next.groups };
 }

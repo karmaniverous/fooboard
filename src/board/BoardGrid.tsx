@@ -21,6 +21,7 @@ import { columnLines } from './columnFrame';
 import { ColumnGroupLabels } from './ColumnGroupLabels';
 import { BOUNDARY, GROUP_LABEL } from './gridStyles';
 import { capText, type Layout, LINE_HEIGHT } from './layout';
+import { stageLabel } from './stageLabel';
 import { type CellFilter, matchesFilter } from './summary';
 
 export interface BoardGridProps {
@@ -130,10 +131,7 @@ export function BoardGrid({
           />
           {stages.map((stage) => {
             return (
-              <WithTooltip
-                key={stage.id}
-                label={`${stage.name} (${stage.branchPattern})`}
-              >
+              <WithTooltip key={stage.id} label={stageLabel(stage)}>
                 <div
                   role="columnheader"
                   // Focusable, so the keyboard can show its tooltip.

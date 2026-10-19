@@ -19,6 +19,7 @@ import { CredentialRefSchema } from './credentials';
 import { findAnyCycle } from './cycle';
 import { ColumnGroupSchema, type Group, RowGroupSchema } from './groups';
 import { MappingSettingsSchema } from './mappingSettings';
+import { ProviderRowRulesSchema, ProviderRulesSchema } from './placement';
 import { RowSchema } from './row';
 import { StageSchema } from './stage';
 import {
@@ -85,6 +86,10 @@ export const DashboardSchema = z
     mapping: MappingSettingsSchema.default(() =>
       MappingSettingsSchema.parse({}),
     ),
+    /** Default stage rules per source (spec.md A§4.3.7). */
+    stageRules: ProviderRulesSchema.default(() => ({})),
+    /** Default row-axis rules per source. */
+    rowRules: ProviderRowRulesSchema.default(() => ({})),
     /** Row groups replacing dividers (spec.md C-14b). */
     rowGroups: z.array(RowGroupSchema).default(() => []),
     /** Column groups replacing dividers (spec.md C-14b). */

@@ -10,7 +10,7 @@
 import { Fragment, useId } from 'react';
 
 import { Disclosure } from '@/components/Disclosure';
-import { ownOverride } from '@/domain/config/inheritance';
+import { ownOverride } from '@/domain/config/ownOverride';
 
 import { branchCounts } from './branches';
 import { BranchFinder } from './BranchFinder';

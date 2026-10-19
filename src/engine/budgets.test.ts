@@ -8,6 +8,7 @@
 import { describe, expect, it, vi } from 'vitest';
 
 import { DashboardSchema } from '@/domain/config/dashboard';
+import { branchRules } from '@/domain/config/placement';
 import type { RateLimitBudget } from '@/lib/github';
 
 import { BUDGET_READ_MS, budgetTargets, githubCredentialIds } from './budgets';
@@ -32,7 +33,7 @@ const dashboard = DashboardSchema.parse({
     },
     { type: 'github', id: 'c', repo: 'acme/c', displayName: 'c' },
   ],
-  stages: [{ id: 'dev', name: 'dev', branchPattern: 'dev' }],
+  stages: [{ id: 'dev', name: 'dev', rules: branchRules('dev') }],
 });
 
 const budget: RateLimitBudget = {

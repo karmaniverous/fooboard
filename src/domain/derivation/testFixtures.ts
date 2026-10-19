@@ -8,7 +8,6 @@
  *
  * @module
  */
-import { MappingSettingsSchema } from '@/domain/config/mappingSettings';
 import type { StatusSet } from '@/domain/config/statusSets';
 import { findStatusSet } from '@/domain/statuses/resolve';
 
@@ -21,7 +20,7 @@ import type {
 let nextId = 1;
 
 /** Build a minimal GitHub Actions workflow run, with sensible defaults. */
-export function makeRun(
+function makeRun(
   overrides: Partial<GithubWorkflowRun> = {},
 ): GithubWorkflowRun {
   const id = nextId++;
@@ -64,9 +63,6 @@ export function makeRunWithJobs(
 ): GithubRunWithJobs {
   return { run: makeRun(runOverrides), jobs };
 }
-
-/** Default mapping settings (spec.md §4.3.1 defaults). */
-export const defaultMapping = MappingSettingsSchema.parse({});
 
 const preset = (id: string): StatusSet => {
   const set = findStatusSet(id);

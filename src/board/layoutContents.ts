@@ -77,7 +77,7 @@ export function boardContents(
       if (!cell) continue;
       const d = cell.derivation;
       if (d.kind === 'empty') {
-        const extra = d.reason ?? d.branch;
+        const extra = d.reason;
         out.push({
           lead: rung === 0 ? EMPTY_SYMBOL[d.state] : EMPTY_LABEL[d.state],
           items:

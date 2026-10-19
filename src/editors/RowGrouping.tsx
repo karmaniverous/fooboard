@@ -13,14 +13,17 @@ import { Choice } from '@/components/Choice';
 import { Button } from '@/components/ui/button';
 import type { Dashboard } from '@/domain/config/dashboard';
 import { groupOf, type RowGroup } from '@/domain/config/groups';
-import { effectiveBranchPattern } from '@/domain/config/inheritance';
 import type { Row } from '@/domain/config/row';
+import type { Stage } from '@/domain/config/stage';
+import { branchOf } from '@/domain/rules/branch';
 import type { EngineProviders } from '@/engine';
 
 import { discoverBranches } from './branches';
 import { CredentialSelect } from './CredentialSelect';
 import { GroupControl } from './GroupControl';
 import {
+  groupOverridePattern,
+  rowOverridePattern,
   setRowGroupCredential,
   setRowGroupOverride,
   setRowOverride,
@@ -34,14 +37,31 @@ interface Props {
   onChange: (dashboard: Dashboard) => void;
 }
 
+/** A stage's own branch pattern, if its rules are one. */
+const stagePattern = (s: Stage): string =>
+  branchOf(s.rules.github) ?? branchOf(s.rules.amplify) ?? 'its stage rule';
+
 /** Each stage with the pattern it inherits below `group` (or the stage's
  * own pattern for the group itself). */
 const inheritedStages = (d: Dashboard, group: RowGroup | undefined) =>
   d.stages.map((s) => ({
     id: s.id,
     name: s.name,
-    inherited: effectiveBranchPattern(s, {}, group),
+    inherited: (group && groupOverridePattern(group, s.id)) || stagePattern(s),
   }));
+
+/** The overrides a level holds, by stage id, as branch patterns (`''`
+ * for one that is not a branch rule). */
+const patterns = (
+  stages: readonly Stage[],
+  patternOf: (stageId: string) => string | undefined,
+): Record<string, string> =>
+  Object.fromEntries(
+    stages.flatMap((s) => {
+      const pattern = patternOf(s.id);
+      return pattern === '' ? [] : [[s.id, pattern ?? '']];
+    }),
+  );
 
 export function RowGrouping({
   row,
@@ -70,7 +90,7 @@ export function RowGrouping({
       <OverrideFields
         name={row.displayName}
         stages={inheritedStages(dashboard, group)}
-        own={row.branchPatternOverrides}
+        own={patterns(dashboard.stages, (id) => rowOverridePattern(row, id))}
         loadBranches={() => discoverBranches(dashboard, providers, [row])}
         onChange={(stageId, pattern) => {
           onChange(setRowOverride(dashboard, row.id, stageId, pattern));
@@ -119,7 +139,9 @@ function RowGroupSettings({
       <OverrideFields
         name={name}
         stages={inheritedStages(dashboard, undefined)}
-        own={group.branchPatternOverrides}
+        own={patterns(dashboard.stages, (id) =>
+          groupOverridePattern(group, id),
+        )}
         loadBranches={() =>
           discoverBranches(
             dashboard,

@@ -1,98 +1,94 @@
 /**
- * Tests for unmapped-run classification (spec.md C-15): the three reason
- * buckets, a mapped run returning `undefined`, `pull_request` runs never
- * appearing as unmapped, and per-row branch patterns (C-14c).
+ * Tests for unmapped reasons: the order key, stage rules, row rules and
+ * counted items in turn; a record placed by any row is not unmapped; and
+ * without its items read, only stage and row rules decide.
  *
  * @module
  */
 import { describe, expect, it } from 'vitest';
 
-import {
-  defaultMapping,
-  githubSet,
-  makeJob,
-  makeRunWithJobs,
-} from './testFixtures';
-import { classifyUnmappedRun, describeUnmappedReason } from './unmapped';
+import { sourceFor } from '@/domain/config/cellRules';
+import type { CellRules } from '@/domain/model/cell';
+import { asJson } from '@/domain/model/json';
+import { all, always, is } from '@/domain/model/ruleBuilders';
+import { translate } from '@/domain/model/translate';
+import { branchRule } from '@/domain/rules/branch';
+import { presetById } from '@/domain/statuses/presets';
 
-const patterns = ['main', 'release/**'];
-const items = githubSet.items;
-const keyless = { rowKeyTests: [], branchPatterns: patterns, items };
-const keyed = (value: string) => ({
-  branchPatterns: patterns,
-  items,
-  rowKeyTests: [
-    { field: 'jobName' as const, operator: 'contains' as const, value },
-  ],
+import { makeJob, makeRunWithJobs } from './testFixtures';
+import { describeUnmappedReason, unmappedReason } from './unmapped';
+
+const set = presetById('github-deploy-test');
+const record = (headBranch: string, job: string) =>
+  translate(
+    sourceFor('github'),
+    asJson(makeRunWithJobs({ headBranch }, [makeJob({ name: job })])),
+  ).record;
+const cell = (over: Partial<CellRules> = {}): CellRules => ({
+  record: always,
+  items: always,
+  stage: branchRule('main'),
+  set,
+  order: 'created',
+  ...over,
 });
-const run = (headBranch: string, job: string, event = 'push') =>
-  makeRunWithJobs({ event, headBranch }, [makeJob({ name: job })]);
 
-describe('classifyUnmappedRun', () => {
+describe('unmappedReason', () => {
   it.each([
     [
-      'never unmapped: pull_request',
-      run('feature/x', 'deploy', 'pull_request'),
-      [keyless],
+      'no stage rule matches',
+      record('feature/x', 'deploy'),
+      [cell()],
+      { kind: 'no-stage-matches', branch: 'feature/x' },
+    ],
+    [
+      'no stage rule at all',
+      record('main', 'deploy'),
+      [cell({ stage: undefined })],
+      { kind: 'no-stage-matches', branch: 'main' },
+    ],
+    [
+      'no row rule matches',
+      record('main', 'deploy'),
+      [cell({ record: all(is('$.workflow', 'Nope')) })],
+      { kind: 'no-row-matches' },
+    ],
+    [
+      'no item counts',
+      record('main', 'lint'),
+      [cell()],
+      { kind: 'no-item-counts' },
+    ],
+    [
+      'no item the row takes',
+      record('main', 'deploy (billing)'),
+      [cell({ items: all(is('$.name', '*invoicing*')) })],
+      { kind: 'no-item-counts' },
+    ],
+    ['placed', record('main', 'deploy'), [cell()], undefined],
+    [
+      'placed by one of several rows',
+      record('main', 'deploy'),
+      [cell({ stage: branchRule('dev') }), cell()],
       undefined,
     ],
-    [
-      'no-stage-matches-branch',
-      run('feature/x', 'deploy'),
-      [keyless],
-      { kind: 'no-stage-matches-branch', branch: 'feature/x' },
-    ],
-    [
-      'no-relevant-job',
-      run('main', 'lint'),
-      [keyless],
-      { kind: 'no-relevant-job' },
-    ],
-    ['mapped by a key-less row', run('main', 'deploy'), [keyless], undefined],
-    [
-      'no-row-key-matches',
-      run('main', 'deploy (billing)'),
-      [keyed('invoicing')],
-      { kind: 'no-row-key-matches' },
-    ],
-    [
-      'mapped by a keyed row',
-      run('main', 'deploy (billing)'),
-      [keyed('billing')],
-      undefined,
-    ],
-  ])('%s', (_label, entry, rows, expected) => {
-    expect(classifyUnmappedRun(entry, rows, defaultMapping)).toEqual(expected);
+  ])('%s', (_label, r, cells, expected) => {
+    expect(unmappedReason(r, cells, true)).toEqual(expected);
   });
 
-  it('lets only rows whose effective patterns take the branch place it (C-14c)', () => {
-    const entry = run('preview/release', 'deploy');
-    // The override is on the keyed row whose key doesn't match: unmapped.
-    const overridden = { ...keyed('web'), branchPatterns: ['preview/release'] };
-    const api = { ...keyless, branchPatterns: ['release/**'] };
-    expect(classifyUnmappedRun(entry, [api], defaultMapping)).toEqual({
-      kind: 'no-stage-matches-branch',
-      branch: 'preview/release',
-    });
+  it('reports a record without its order key', () => {
     expect(
-      classifyUnmappedRun(entry, [api, overridden], defaultMapping),
-    ).toEqual({ kind: 'no-row-key-matches' });
-    expect(
-      classifyUnmappedRun(
-        entry,
-        [api, { ...overridden, rowKeyTests: [] }],
-        defaultMapping,
+      unmappedReason(
+        { ...record('main', 'deploy'), created: null },
+        [cell()],
+        true,
       ),
-    ).toBeUndefined();
+    ).toEqual({ kind: 'no-order-key' });
   });
 
-  it("uses each row's status set: a run its set covers is placed", () => {
-    const anyJob = {
-      ...keyless,
-      items: { combine: 'and' as const, checks: [] },
-    };
+  it('leaves items undecided when they were not read', () => {
     expect(
-      classifyUnmappedRun(run('main', 'lint'), [anyJob], defaultMapping),
+      unmappedReason(record('main', 'lint'), [cell()], false),
     ).toBeUndefined();
   });
 });
@@ -100,16 +96,19 @@ describe('classifyUnmappedRun', () => {
 describe('describeUnmappedReason', () => {
   it('renders each reason as the C-15 message text', () => {
     expect(
-      describeUnmappedReason({
-        kind: 'no-stage-matches-branch',
-        branch: 'feature/x',
-      }),
-    ).toBe('no stage matches branch "feature/x"');
-    expect(describeUnmappedReason({ kind: 'no-relevant-job' })).toBe(
-      'no job its status set covers',
+      describeUnmappedReason({ kind: 'no-stage-matches', branch: 'feature/x' }),
+    ).toBe('no stage rule matches branch "feature/x"');
+    expect(describeUnmappedReason({ kind: 'no-stage-matches' })).toBe(
+      'no stage rule matches',
     );
-    expect(describeUnmappedReason({ kind: 'no-row-key-matches' })).toBe(
-      'no row key matches',
+    expect(describeUnmappedReason({ kind: 'no-row-matches' })).toBe(
+      'no row rule matches',
+    );
+    expect(describeUnmappedReason({ kind: 'no-item-counts' })).toBe(
+      'no item counts',
+    );
+    expect(describeUnmappedReason({ kind: 'no-order-key' })).toBe(
+      'no order key',
     );
   });
 });

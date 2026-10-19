@@ -8,15 +8,13 @@
  */
 import { describe, expect, it } from 'vitest';
 
-import {
-  computeStaleness,
-  deriveAmplifyCell,
-  deriveGithubCell,
-} from '@/domain/derivation';
-import { amplifySet, githubSet } from '@/domain/derivation/testFixtures';
+import { cellRulesFor, sourceFor } from '@/domain/config/cellRules';
+import { computeStaleness, deriveCell } from '@/domain/derivation';
+import { placeCell } from '@/domain/model/cell';
+import { amplifyRecord } from '@/domain/statuses/documents';
+import { refreshGithubRepo } from '@/engine/githubRow';
 import { collectRowJobs } from '@/lib/amplify/rowJobs';
 import { GitHubAuthError, GitHubHttpError } from '@/lib/github/errors';
-import { mapRunWithJobs } from '@/lib/github/mapToDerivation';
 import type { GitHubReader } from '@/lib/github/reader';
 
 import { createDemoAmplifyReaderFor } from './amplify';
@@ -24,36 +22,28 @@ import { DEMO_AMPLIFY_APPS, demoDashboard } from './board';
 import { createDemoGitHubReader } from './github';
 import { stageBranch } from './scenarios';
 
-const stage = (id: string) => {
-  const found = demoDashboard.stages.find((s) => s.id === id);
-  if (!found) throw new Error(`no stage ${id}`);
-  return found;
-};
-
-/** The demo row's key tests (only GitHub rows have them). */
-const rowKeyTestsOf = (repo: string) => {
-  const row = demoDashboard.rows.find((r) => r.id === repo);
-  return row?.type === 'github' ? row.rowKeyTests : [];
+const rowOf = (id: string) => {
+  const row = demoDashboard.rows.find((r) => r.id === id);
+  if (!row) throw new Error(`no row ${id}`);
+  return row;
 };
 
 async function githubCell(reader: GitHubReader, repo: string, stageId: string) {
-  const ref = { owner: 'acme', repo };
-  const runs = await reader.listWorkflowRuns(ref);
-  const withJobs = await Promise.all(
-    runs.map(async (run) =>
-      mapRunWithJobs(run, await reader.listRunJobs(ref, run.id)),
-    ),
+  const row = rowOf(repo);
+  if (row.type !== 'github') throw new Error(`${repo} is not a GitHub row`);
+  const result = await refreshGithubRepo(
+    {
+      rows: [row],
+      repoRows: [row],
+      stages: demoDashboard.stages,
+      rulesFor: (r, s) => cellRulesFor(demoDashboard, r, s),
+      source: sourceFor('github'),
+      mapping: demoDashboard.mapping,
+    },
+    reader,
   );
-  const branches = (await reader.listBranches(ref)).map((b) => b.name);
-  return deriveGithubCell({
-    set: githubSet,
-    runs: withJobs,
-    mapping: demoDashboard.mapping,
-    branchPattern: stage(stageId).branchPattern,
-    rowKeyTests: rowKeyTestsOf(repo),
-    branchExists: branches.includes(stageBranch(stageId)),
-    credentialStatus: 'ok',
-  });
+  if (result.kind !== 'refreshed') throw new Error(result.kind);
+  return result.rows[repo][stageId].derivation;
 }
 
 describe('demo GitHub provider', () => {
@@ -81,8 +71,8 @@ describe('demo GitHub provider', () => {
   });
 
   it.each([
-    ['auth-service', 'release', 'no-branch'],
-    ['inventory', 'texas', 'no-recent-runs'],
+    ['auth-service', 'release', 'no-records'],
+    ['inventory', 'texas', 'no-records'],
   ])('%s/%s is empty: %s', async (repo, stageId, state) => {
     expect(await githubCell(reader, repo, stageId)).toMatchObject({
       kind: 'empty',
@@ -127,36 +117,36 @@ describe('demo Amplify provider', () => {
   const sourcesOf = (row: keyof typeof DEMO_AMPLIFY_APPS) =>
     DEMO_AMPLIFY_APPS[row].map((s) => ({ credentialId: 'demo-aws', ...s }));
 
+  /** The demo row's cell in `stageId`, from every branch's jobs. */
+  async function amplifyCell(
+    row: keyof typeof DEMO_AMPLIFY_APPS,
+    stageId: string,
+  ) {
+    const records = (await collectRowJobs(sourcesOf(row), readerFor)).map(
+      amplifyRecord,
+    );
+    const rules = cellRulesFor(demoDashboard, rowOf(row), stageId);
+    return deriveCell({
+      placed: placeCell(records, rules),
+      set: rules.set,
+      credentialStatus: 'ok',
+    });
+  }
+
   it.each([
     ['marketing-site', 'spokane', 'running'],
     ['marketing-site', 'prod', 'failure'],
   ] as const)('%s/%s derives %s', async (row, stageId, icon) => {
-    const jobs = await collectRowJobs(
-      sourcesOf(row),
-      stage(stageId).branchPattern,
-      readerFor,
-    );
-    expect(
-      deriveAmplifyCell({
-        set: amplifySet,
-        ...jobs,
-        credentialStatus: 'ok',
-      }),
-    ).toMatchObject({ kind: 'ok', status: { icon } });
+    expect(await amplifyCell(row, stageId)).toMatchObject({
+      kind: 'ok',
+      status: { icon },
+    });
   });
 
   it('prefers the newer of the partner portal sources', async () => {
-    const jobs = await collectRowJobs(
-      sourcesOf('partner-portal'),
-      'main',
-      readerFor,
-    );
-    expect(
-      deriveAmplifyCell({
-        set: amplifySet,
-        ...jobs,
-        credentialStatus: 'ok',
-      }),
-    ).toMatchObject({ kind: 'ok', appId: 'd1demopartnerus' });
+    expect(await amplifyCell('partner-portal', 'prod')).toMatchObject({
+      kind: 'ok',
+      document: { _raw: { source: { appId: 'd1demopartnerus' } } },
+    });
   });
 });

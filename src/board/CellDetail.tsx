@@ -46,7 +46,6 @@ export function CellDetail({
       {derivation.kind === 'empty' ? (
         <div>
           {EMPTY_LABEL[derivation.state]}
-          {derivation.branch && ` (${derivation.branch})`}
           {derivation.reason && (
             <div className="text-muted-foreground">{derivation.reason}</div>
           )}

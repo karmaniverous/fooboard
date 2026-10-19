@@ -9,11 +9,10 @@
  * @module
  */
 import type { Dashboard } from '@/domain/config/dashboard';
-import type { MatchTest } from '@/domain/config/matchTest';
 import type { UnmappedRun } from '@/engine';
 
 export type EditorDraft =
-  | { tab: 'Rows'; rowId: string; test: MatchTest }
+  | { tab: 'Rows'; rowId: string }
   | { tab: 'Rows'; rowId: string; overrideBranch: string }
   | { tab: 'Stages'; pattern: string }
   | { tab: 'Statuses' };
@@ -28,24 +27,18 @@ export function draftFor(
   dashboard: Pick<Dashboard, 'rows'>,
 ): EditorDraft | undefined {
   switch (run.reason.kind) {
-    case 'no-stage-matches-branch':
-      return { tab: 'Stages', pattern: run.reason.branch };
-    case 'no-relevant-job':
+    case 'no-stage-matches':
+      return run.reason.branch === undefined
+        ? undefined
+        : { tab: 'Stages', pattern: run.reason.branch };
+    case 'no-item-counts':
       return { tab: 'Statuses' };
-    case 'no-row-key-matches': {
+    case 'no-row-matches': {
       const row = githubRowFor(run, dashboard);
-      return row
-        ? {
-            tab: 'Rows',
-            rowId: row.id,
-            test: {
-              field: 'workflowName',
-              operator: 'is',
-              value: run.workflowName,
-            },
-          }
-        : undefined;
+      return row ? { tab: 'Rows', rowId: row.id } : undefined;
     }
+    case 'no-order-key':
+      return undefined;
   }
 }
 
@@ -56,7 +49,8 @@ export function overrideDraftFor(
   run: UnmappedRun,
   dashboard: Pick<Dashboard, 'rows'>,
 ): EditorDraft | undefined {
-  if (run.reason.kind !== 'no-stage-matches-branch') return undefined;
+  if (run.reason.kind !== 'no-stage-matches' || run.reason.branch === undefined)
+    return undefined;
   const row = githubRowFor(run, dashboard);
   return row
     ? { tab: 'Rows', rowId: row.id, overrideBranch: run.reason.branch }

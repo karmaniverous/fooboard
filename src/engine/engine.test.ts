@@ -10,6 +10,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { demoDashboard } from '@/demo/board';
 import { createDemoGitHubReader } from '@/demo/github';
 import { RowGroupSchema } from '@/domain/config/groups';
+import { all, is } from '@/domain/model/ruleBuilders';
 import { RateLimitedError } from '@/lib/github';
 
 import { demoProviders } from './demoProviders';
@@ -55,8 +56,7 @@ describe('board engine over the demo', () => {
         'queued',
         'failure',
         'cancelled',
-        'no-branch',
-        'no-recent-runs',
+        'no-records',
         'needs-credential',
         'error',
       ].sort(),
@@ -79,9 +79,9 @@ describe('board engine over the demo', () => {
     );
     expect(reasons).toEqual(
       expect.arrayContaining([
-        'acme/api-core:no-stage-matches-branch',
-        'acme/web-app:no-relevant-job',
-        'acme/payments:no-row-key-matches',
+        'acme/api-core:no-stage-matches',
+        'acme/web-app:no-item-counts',
+        'acme/payments:no-item-counts',
       ]),
     );
   });
@@ -239,14 +239,8 @@ describe('board engine review regressions', () => {
         id: 'api-core-worker',
         repo: 'acme/api-core',
         displayName: 'api-core worker',
-        rowKeyTests: [
-          {
-            field: 'jobName' as const,
-            operator: 'contains' as const,
-            value: 'deploy',
-          },
-        ],
-        branchPatternOverrides: {},
+        itemRule: all(is('$.name', '*deploy*')),
+        stageRules: {},
         cellStatusSets: {},
       },
     ],

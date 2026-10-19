@@ -9,7 +9,7 @@ import { describe, expect, it } from 'vitest';
 
 import { demoDashboard } from '@/demo/board';
 import { createDemoGitHubReader } from '@/demo/github';
-import { githubSet } from '@/domain/derivation/testFixtures';
+import { cellRulesFor, sourceFor } from '@/domain/config/cellRules';
 import type { GitHubReader } from '@/lib/github/reader';
 
 import { refreshGithubRepo } from './githubRow';
@@ -43,11 +43,14 @@ describe('refreshGithubRepo', () => {
     const row = demoDashboard.rows.find((r) => r.id === 'api-core');
     if (row?.type !== 'github') throw new Error('api-core is not a GitHub row');
     const result = await refreshGithubRepo(
-      [row],
-      [row],
-      () => demoDashboard.stages,
-      () => githubSet,
-      demoDashboard.mapping,
+      {
+        rows: [row],
+        repoRows: [row],
+        stages: demoDashboard.stages,
+        rulesFor: (r, stageId) => cellRulesFor(demoDashboard, r, stageId),
+        source: sourceFor('github'),
+        mapping: demoDashboard.mapping,
+      },
       reader,
     );
     if (result.kind !== 'refreshed') throw new Error(result.kind);

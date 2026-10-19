@@ -8,8 +8,7 @@
 import { z } from 'zod';
 
 import type {
-  AmplifyCellDerivation,
-  GithubCellDerivation,
+  CellDerivation,
   StalenessBadge,
   UnmappedReason,
 } from '@/domain/derivation';
@@ -31,7 +30,7 @@ export interface CompareDetail {
 export interface BoardCell {
   rowId: string;
   stageId: string;
-  derivation: GithubCellDerivation | AmplifyCellDerivation;
+  derivation: CellDerivation;
   /** A job in the cell's run is still queued or running; drives the fast
    * poll even when the displayed status is final (e.g. a failed test with
    * a deploy still running). */

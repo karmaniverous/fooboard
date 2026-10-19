@@ -7,8 +7,11 @@
 import { describe, expect, it } from 'vitest';
 import { vi } from 'vitest';
 
+import { branchRules } from '@/domain/config/placement';
 import type { AmplifyRow } from '@/domain/config/row';
 import { amplifySet } from '@/domain/derivation/testFixtures';
+import type { CellRules } from '@/domain/model/cell';
+import { always } from '@/domain/model/ruleBuilders';
 import { AmplifyAuthError, AmplifyThrottledError } from '@/lib/amplify/errors';
 import type { AmplifyReader } from '@/lib/amplify/reader';
 import { amplifyBranch } from '@/lib/amplify/sdkShapes';
@@ -22,11 +25,18 @@ const row: AmplifyRow = {
   repo: 'acme/site',
   displayName: 'site',
   sources: [{ credentialId: 'aws', region: 'us-east-1', appId: 'a1' }],
-  branchPatternOverrides: {},
+  stageRules: {},
   cellStatusSets: {},
 };
-const stages = [{ id: 'prod', name: 'Prod', branchPattern: 'main' }];
+const stages = [{ id: 'prod', name: 'Prod', rules: branchRules('main') }];
 const defaults = {};
+const rulesFor = (stageId: string): CellRules => ({
+  record: always,
+  items: always,
+  stage: stages.find((s) => s.id === stageId)?.rules.amplify,
+  set: amplifySet,
+  order: 'started',
+});
 
 const failing = (err: Error) => () =>
   ({
@@ -45,7 +55,7 @@ describe('refreshAmplifyRow', () => {
     const result = await refreshAmplifyRow(
       keyless,
       stages,
-      () => amplifySet,
+      rulesFor,
       defaults,
       () => failing(new Error('never called')),
     );
@@ -58,7 +68,7 @@ describe('refreshAmplifyRow', () => {
     const result = await refreshAmplifyRow(
       row,
       stages,
-      () => amplifySet,
+      rulesFor,
       defaults,
       () => undefined,
     );
@@ -72,7 +82,7 @@ describe('refreshAmplifyRow', () => {
     const result = await refreshAmplifyRow(
       row,
       stages,
-      () => amplifySet,
+      rulesFor,
       defaults,
       () => failing(new AmplifyAuthError('denied', 'ListBranches')),
     );
@@ -85,7 +95,7 @@ describe('refreshAmplifyRow', () => {
     const result = await refreshAmplifyRow(
       row,
       stages,
-      () => amplifySet,
+      rulesFor,
       defaults,
       () =>
         failing(new AmplifyThrottledError('slow down', 'ListBranches', 5_000)),
@@ -97,7 +107,7 @@ describe('refreshAmplifyRow', () => {
     const result = await refreshAmplifyRow(
       row,
       stages,
-      () => amplifySet,
+      rulesFor,
       defaults,
       () => failing(new Error('socket hang up')),
     );
@@ -125,12 +135,16 @@ describe('refreshAmplifyRow request count', () => {
       ],
     };
     const sixStages = ['dev', 'test', 'staging', 'main', 'main', 'dev'].map(
-      (branchPattern, i) => ({ id: `s${String(i)}`, name: 's', branchPattern }),
+      (branch, i) => ({
+        id: `s${String(i)}`,
+        name: 's',
+        rules: branchRules(branch),
+      }),
     );
     await refreshAmplifyRow(
       twoSources,
       sixStages,
-      () => amplifySet,
+      rulesFor,
       defaults,
       () => () => reader,
     );
