@@ -10,6 +10,7 @@ import { Choice } from '@/components/Choice';
 import { Button } from '@/components/ui/button';
 import type { Dashboard } from '@/domain/config/dashboard';
 import { PROVIDER_LABELS, PROVIDERS } from '@/domain/config/providers';
+import { targetKey } from '@/editors/editTarget';
 
 import { customise, removeSet, setInUse, updateSet } from './customSet';
 import { CustomSetEditor } from './CustomSetEditor';
@@ -43,7 +44,10 @@ export function StatusSetsEditor({
         <label
           key={provider}
           className="flex items-center gap-2"
-          data-edit-target="dashboard:statusSets"
+          data-edit-target={targetKey({
+            kind: 'dashboard',
+            part: 'statusSets',
+          })}
         >
           <span className="w-20">{label}</span>
           <Choice

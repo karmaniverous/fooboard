@@ -12,6 +12,7 @@ import { STATUS_GLYPH } from '@/board/cellView';
 import { Choice } from '@/components/Choice';
 import { Button } from '@/components/ui/button';
 import { STATUS_ICONS, type StatusSet } from '@/domain/config/statusSets';
+import { statusSetItemsKey, targetKey } from '@/editors/editTarget';
 import { move, patchAt } from '@/lib/lists';
 
 import { CommitInput } from '../fields';
@@ -41,7 +42,7 @@ export function CustomSetEditor({
   }));
   return (
     <section
-      data-edit-target={`statusSet:${set.id}`}
+      data-edit-target={targetKey({ kind: 'statusSet', id: set.id })}
       aria-label={`Status set ${set.name}`}
       className="flex flex-col gap-3 rounded border p-2"
     >
@@ -68,7 +69,7 @@ export function CustomSetEditor({
         <div className="flex flex-col gap-1">
           <h4 className="text-xs font-semibold">Items that count</h4>
           <RuleEditor
-            target={`statusSet:${set.id}:items`}
+            target={statusSetItemsKey(set.id)}
             provider={set.provider}
             scope="item"
             label="Item rule"

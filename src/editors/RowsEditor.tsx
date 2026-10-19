@@ -16,6 +16,7 @@ import type { Dashboard } from '@/domain/config/dashboard';
 import { inheritedCredential } from '@/domain/config/inheritance';
 import type { Row } from '@/domain/config/row';
 import { always, unlessAlways } from '@/domain/rules/always';
+import { targetKey } from '@/editors/editTarget';
 import type { EngineProviders } from '@/engine';
 
 import { CredentialSelect } from './CredentialSelect';
@@ -99,7 +100,11 @@ export function RowsEditor({
                 label={`Record rule for ${row.displayName}`}
                 rule={row.recordRule ?? always}
                 provider={row.type}
-                target={`row:${row.id}:record`}
+                target={targetKey({
+                  kind: 'row',
+                  id: row.id,
+                  part: 'record',
+                })}
                 onChange={(rule) => {
                   replaceRow({
                     ...row,
@@ -117,7 +122,11 @@ export function RowsEditor({
                   newPath="$.name"
                   provider={row.type}
                   scope="item"
-                  target={`row:${row.id}:items`}
+                  target={targetKey({
+                    kind: 'row',
+                    id: row.id,
+                    part: 'items',
+                  })}
                   onChange={(rule) => {
                     replaceRow({
                       ...row,

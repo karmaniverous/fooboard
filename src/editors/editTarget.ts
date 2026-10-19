@@ -51,6 +51,19 @@ export function focusKeys(t: EditTarget): string[] {
   }
 }
 
+/** The key of the editor item for `t` itself (its most specific). */
+export const targetKey = (t: EditTarget): string => {
+  const [key] = focusKeys(t);
+  return key;
+};
+
+/** The key of the form that adds a stage. */
+export const NEW_STAGE_KEY = 'stage-new';
+
+/** The key of a status set's item rule. */
+export const statusSetItemsKey = (id: string): string =>
+  `${targetKey({ kind: 'statusSet', id })}:items`;
+
 /** The tab `t` is edited on. */
 export function tabFor(t: EditTarget): EditorTab {
   switch (t.kind) {

@@ -18,6 +18,7 @@ import type { Dashboard } from '@/domain/config/dashboard';
 import { branchRules } from '@/domain/config/placement';
 import type { Stage } from '@/domain/config/stage';
 import { branchOf } from '@/domain/rules/branch';
+import { NEW_STAGE_KEY, targetKey } from '@/editors/editTarget';
 import type { EngineProviders } from '@/engine';
 
 import { discoverBranches, patternPreview } from './branches';
@@ -66,7 +67,7 @@ function AddStage({
   return (
     <section
       className="flex flex-col gap-2 rounded-md border p-2 text-xs"
-      data-edit-target="stage-new"
+      data-edit-target={NEW_STAGE_KEY}
     >
       <h3 className="text-sm font-semibold">Add a stage</h3>
       <BranchFinder
@@ -191,7 +192,7 @@ export function StagesEditor({
             </div>
             <ProviderRules
               title={`Stage rules of ${stage.name}`}
-              target={`stage:${stage.id}:rules`}
+              target={targetKey({ kind: 'stage', id: stage.id })}
               rules={stage.rules}
               onChange={(p, rule) => {
                 replace({ ...stage, rules: { ...stage.rules, [p]: rule } });
@@ -225,7 +226,7 @@ export function StagesEditor({
         <ProviderRules
           key={g.id}
           title={`Stage rules of group ${g.label ?? g.id}`}
-          target={`columnGroup:${g.id}:rules`}
+          target={targetKey({ kind: 'columnGroup', id: g.id })}
           rules={g.stageRules}
           onChange={(p, rule) => {
             onChange({

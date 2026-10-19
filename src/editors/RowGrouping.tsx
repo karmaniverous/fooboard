@@ -17,6 +17,7 @@ import type { Row } from '@/domain/config/row';
 import type { Stage } from '@/domain/config/stage';
 import { always } from '@/domain/rules/always';
 import { branchOf } from '@/domain/rules/branch';
+import { targetKey } from '@/editors/editTarget';
 import type { EngineProviders } from '@/engine';
 
 import { discoverBranches } from './branches';
@@ -109,7 +110,7 @@ export function RowGrouping({
       )}
       <OverrideFields
         name={row.displayName}
-        target={`row:${row.id}`}
+        target={targetKey({ kind: 'row', id: row.id })}
         stages={inheritedStages(dashboard, group)}
         own={patterns(dashboard.stages, (id) => rowOverridePattern(row, id))}
         custom={customStages(dashboard.stages, (id) =>
@@ -146,7 +147,7 @@ function RowGroupSettings({
   return (
     <div
       className="flex flex-col gap-1 rounded border border-dashed p-1 text-xs"
-      data-edit-target={`rowGroup:${group.id}`}
+      data-edit-target={targetKey({ kind: 'rowGroup', id: group.id })}
     >
       <span className="font-semibold">Group settings: {name}</span>
       <div className="flex flex-wrap items-center gap-1">
@@ -170,7 +171,11 @@ function RowGroupSettings({
       </div>
       <ProviderRules
         title={`Row rules of ${name}`}
-        target={`rowGroup:${group.id}:record`}
+        target={targetKey({
+          kind: 'rowGroup',
+          id: group.id,
+          part: 'record',
+        })}
         rules={{
           github: group.rowRules.github?.record,
           amplify: group.rowRules.amplify?.record,
@@ -183,7 +188,11 @@ function RowGroupSettings({
         title={`Item rules of ${name}`}
         scope="item"
         newPath="$.name"
-        target={`rowGroup:${group.id}:items`}
+        target={targetKey({
+          kind: 'rowGroup',
+          id: group.id,
+          part: 'items',
+        })}
         providers={withItems}
         rules={{
           github: group.rowRules.github?.items,
@@ -201,7 +210,7 @@ function RowGroupSettings({
       />
       <OverrideFields
         name={name}
-        target={`rowGroup:${group.id}`}
+        target={targetKey({ kind: 'rowGroup', id: group.id })}
         stages={inheritedStages(dashboard, undefined)}
         own={patterns(dashboard.stages, (id) =>
           groupOverridePattern(group, id),

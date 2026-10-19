@@ -23,7 +23,13 @@ import type { Check } from '@/domain/rules/schema';
 import { statusSetFor } from '@/domain/statuses/resolve';
 import type { UnmappedRun } from '@/engine';
 
-import { type EditorTab, focusKeys, tabFor } from './editTarget';
+import {
+  type EditorTab,
+  focusKeys,
+  NEW_STAGE_KEY,
+  statusSetItemsKey,
+  tabFor,
+} from './editTarget';
 
 export interface EditorDraft {
   tab: EditorTab;
@@ -77,7 +83,7 @@ export function draftFor(
       const branch = reason.branch ?? textOf(record.branch);
       return branch === undefined
         ? undefined
-        : { tab: 'Stages', pattern: branch, focus: ['stage-new'] };
+        : { tab: 'Stages', pattern: branch, focus: [NEW_STAGE_KEY] };
     }
     case 'no-row-matches': {
       const row = rowsFor(run, dashboard, 'no-row-matches').at(0);
@@ -97,7 +103,7 @@ export function draftFor(
       return {
         tab: 'Statuses',
         focus: [
-          `statusSet:${set.id}:items`,
+          statusSetItemsKey(set.id),
           ...focusKeys({ kind: 'statusSet', id: set.id }),
         ],
         check: item ? draftCheck(item) : undefined,
