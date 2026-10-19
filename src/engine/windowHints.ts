@@ -6,7 +6,7 @@
  * @module
  */
 import type { CellDerivation } from '@/domain/derivation';
-import { EMPTY_STATES } from '@/domain/derivation/index';
+import { EMPTY_STATES } from '@/domain/derivation';
 import type { SourceRule } from '@/domain/model/sourceRule';
 import type { Problem } from '@/domain/problems/problem';
 import { windowHint } from '@/domain/problems/runtime';

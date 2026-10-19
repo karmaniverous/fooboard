@@ -8,7 +8,7 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
-import { EMPTY_STATES } from '@/domain/derivation/index';
+import { EMPTY_STATES } from '@/domain/derivation';
 import { problem } from '@/domain/problems/problem';
 import type { BoardCell } from '@/engine';
 

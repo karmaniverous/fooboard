@@ -22,7 +22,7 @@ import {
   SheetContent,
   SheetTitle,
 } from '@/components/ui/sheet';
-import { EMPTY_STATES } from '@/domain/derivation/index';
+import { EMPTY_STATES } from '@/domain/derivation';
 import type { Problem } from '@/domain/problems/problem';
 import type { BoardCell } from '@/engine';
 import { readmeSection } from '@/lib/site';

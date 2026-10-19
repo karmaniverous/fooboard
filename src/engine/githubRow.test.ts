@@ -12,7 +12,7 @@ import { describe, expect, it } from 'vitest';
 import { demoDashboard } from '@/demo/board';
 import { createDemoGitHubReader } from '@/demo/github';
 import { cellRulesFor } from '@/domain/config/cellRules';
-import { EMPTY_STATES } from '@/domain/derivation/index';
+import { EMPTY_STATES } from '@/domain/derivation';
 import { all, exists, is, not } from '@/domain/model/ruleBuilders';
 import type { SourceRuleOf } from '@/domain/model/sourceRule';
 import { sourceRuleFor } from '@/domain/model/sources';

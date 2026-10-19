@@ -12,7 +12,7 @@
  */
 
 import type { Dashboard } from '@/domain/config/dashboard';
-import { UNMAPPED } from '@/domain/derivation/index';
+import { UNMAPPED } from '@/domain/derivation';
 import { textOf } from '@/domain/model/json';
 import { is } from '@/domain/model/ruleBuilders';
 import { sourceRuleFor } from '@/domain/model/sources';

@@ -12,7 +12,7 @@ import type { DefaultCredentials } from '@/domain/config/credentialRefs';
 import { branchRules } from '@/domain/config/placement';
 import type { AmplifyRow } from '@/domain/config/row';
 import type { Stage } from '@/domain/config/stage';
-import { EMPTY_STATES } from '@/domain/derivation/index';
+import { EMPTY_STATES } from '@/domain/derivation';
 import { amplifySet } from '@/domain/derivation/testFixtures';
 import { builtinSourceFor } from '@/domain/model/builtinSources';
 import type { CellRules } from '@/domain/model/cell';

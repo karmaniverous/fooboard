@@ -9,7 +9,7 @@ import { describe, expect, it, vi } from 'vitest';
 
 import { branchRules } from '@/domain/config/placement';
 import type { AmplifyRow } from '@/domain/config/row';
-import { UNMAPPED } from '@/domain/derivation/index';
+import { UNMAPPED } from '@/domain/derivation';
 import { amplifySet } from '@/domain/derivation/testFixtures';
 import { builtinSourceFor } from '@/domain/model/builtinSources';
 import type { CellRules } from '@/domain/model/cell';

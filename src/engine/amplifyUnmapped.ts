@@ -6,6 +6,7 @@
  *
  * @module
  */
+import { PROVIDER_LABELS } from '@/domain/config/providers';
 import type { AmplifyRow } from '@/domain/config/row';
 import { rowReasons } from '@/domain/derivation';
 import { isJsonObject, textOf } from '@/domain/model/json';
@@ -53,7 +54,7 @@ export function amplifyUnmapped(
       out.push({
         provider: 'amplify',
         id: `amplify:${key}:${branch ?? ''}#${job.jobId ?? ''}`,
-        where: job.appId ?? 'Amplify',
+        where: job.appId ?? PROVIDER_LABELS.amplify,
         title: `Amplify job ${job.jobId ?? '?'}`,
         branch,
         htmlUrl: textOf(record.link) ?? '',

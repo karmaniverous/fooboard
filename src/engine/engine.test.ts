@@ -10,7 +10,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { demoDashboard } from '@/demo/board';
 import { createDemoGitHubReader } from '@/demo/github';
 import { RowGroupSchema } from '@/domain/config/groups';
-import { EMPTY_STATES } from '@/domain/derivation/index';
+import { EMPTY_STATES } from '@/domain/derivation';
 import { all, is } from '@/domain/model/ruleBuilders';
 import { RateLimitedError } from '@/lib/github';
 

@@ -11,7 +11,7 @@ import { MemoryRouter } from 'react-router-dom';
 import { describe, expect, it, vi } from 'vitest';
 
 import { type Dashboard, DashboardSchema } from '@/domain/config/dashboard';
-import { UNMAPPED } from '@/domain/derivation/index';
+import { UNMAPPED } from '@/domain/derivation';
 import { DashboardEditor } from '@/editors/DashboardEditor';
 import { draftFor, type EditorDraft, overrideDraftFor } from '@/editors/draft';
 import type { UnmappedRun } from '@/engine';
@@ -65,6 +65,34 @@ describe('UnmappedPanel', () => {
       '_blank',
     );
     expect(screen.getAllByRole('button', { name: 'Add rule' })).toHaveLength(1);
+  });
+
+  it('says so when every run has a cell', () => {
+    render(<UnmappedPanel runs={[]} onAddTest={() => undefined} />);
+    expect(
+      screen.getByText('Every recent run has a cell.'),
+    ).toBeInTheDocument();
+  });
+
+  it('gives each row reading the run its own reason, by row name', () => {
+    const [first] = runs;
+    render(
+      <UnmappedPanel
+        runs={[
+          {
+            ...first,
+            rows: [
+              { rowId: 'api', reason: { kind: UNMAPPED.noRowMatches } },
+              { rowId: 'web', reason: { kind: UNMAPPED.noOrderKey } },
+            ],
+          },
+        ]}
+        rowNames={{ api: 'API' }}
+        onAddTest={() => undefined}
+      />,
+    );
+    expect(screen.getByText('API: no row rule matches')).toBeInTheDocument();
+    expect(screen.getByText('web: no order key')).toBeInTheDocument();
   });
 
   it('offers Add override only for a branch no stage matches, on a known repo', () => {

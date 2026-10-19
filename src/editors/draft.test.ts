@@ -10,7 +10,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { DashboardSchema } from '@/domain/config/dashboard';
-import { UNMAPPED } from '@/domain/derivation/index';
+import { UNMAPPED } from '@/domain/derivation';
 import { is } from '@/domain/model/ruleBuilders';
 import { problem } from '@/domain/problems/problem';
 import type { UnmappedRun } from '@/engine';
