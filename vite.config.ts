@@ -12,13 +12,22 @@ import tailwindcss from '@tailwindcss/vite';
 import react from '@vitejs/plugin-react';
 import { defineConfig } from 'vite';
 
-/** Split heavy, rarely-changing vendor code into its own cacheable chunks. */
+/** Heavy, rarely-changing vendor code, each group its own cacheable chunk:
+ * React, the AWS SDK, the UI kit (Radix, icons) and the data libraries
+ * (schemas, JSONPath, utilities). */
+const VENDOR_CHUNKS: readonly [RegExp, string][] = [
+  [
+    /node_modules[\\/](react|react-dom|react-router|react-router-dom)[\\/]/,
+    'react-vendor',
+  ],
+  [/node_modules[\\/]@aws-sdk[\\/]/, 'aws-amplify'],
+  [/node_modules[\\/](@radix-ui|lucide-react)[\\/]/, 'ui-vendor'],
+  [/node_modules[\\/](zod|json-p3|radash)[\\/]/, 'data-vendor'],
+];
+
+/** Split vendor code into {@link VENDOR_CHUNKS}. */
 function manualChunks(id: string): string | undefined {
-  if (/node_modules[\\/](react|react-dom|react-router-dom)[\\/]/.test(id)) {
-    return 'react-vendor';
-  }
-  if (/node_modules[\\/]@aws-sdk[\\/]/.test(id)) return 'aws-amplify';
-  return undefined;
+  return VENDOR_CHUNKS.find(([pattern]) => pattern.test(id))?.[1];
 }
 
 export default defineConfig({

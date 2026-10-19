@@ -1,6 +1,6 @@
 /**
  * Smoke test for the app shell: each route renders inside the shared
- * header and footer.
+ * header and footer (board and spike pages once they have loaded).
  *
  * @module
  */
@@ -14,6 +14,9 @@ import { memoryStorage } from '@/storage/keyValue';
 import { StoresContext } from '@/storage/storesContext';
 
 import App from './App';
+
+/** Long enough for a lazily loaded page to load on a cold test run. */
+const PAGE_LOAD_MS = 10_000;
 
 function renderAt(path: string): void {
   render(
@@ -32,16 +35,18 @@ describe('App', () => {
     ['/d/missing', 'Dashboard not found'],
     ['/spike/amplify', 'Amplify browser spike'],
     ['/spike/github', 'GitHub browser spike'],
-  ])('renders %s inside the shell', (path, heading) => {
+  ])('renders %s inside the shell', async (path, heading) => {
     renderAt(path);
-    expect(
-      screen.getByText(site.name, { ignore: '[aria-hidden="true"] *' }),
-    ).toBeInTheDocument();
     // Hidden measuring copies (aria-hidden) are not part of the page.
     expect(
-      screen.getByText(heading, {
-        ignore: '[aria-hidden="true"] *, script, style',
-      }),
+      await screen.findByText(
+        heading,
+        { ignore: '[aria-hidden="true"] *, script, style' },
+        { timeout: PAGE_LOAD_MS },
+      ),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(site.name, { ignore: '[aria-hidden="true"] *' }),
     ).toBeInTheDocument();
     expect(
       screen.getAllByRole('link', { name: 'Report an issue' })[0],
