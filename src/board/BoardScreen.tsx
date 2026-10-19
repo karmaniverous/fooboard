@@ -12,10 +12,13 @@ import { cn, PINNED_X } from '@/lib/utils';
 
 import { BoardSummary, BudgetMeter } from './BoardChrome';
 import { BoardViewport } from './BoardViewport';
+import { problemMarks } from './problemMarks';
+import { ProblemMarksContext } from './problemMarksContext';
 import { StatusLegend } from './StatusLegend';
 import { useCellFilter } from './summary';
 import { useBoardEngine } from './useBoardEngine';
 import { useBoardView } from './useBoardView';
+import { type BoardProblems, useProblems } from './useProblems';
 
 export function BoardScreen({
   dashboard,
@@ -27,7 +30,9 @@ export function BoardScreen({
   providers: EngineProviders;
   /** Extra header controls (credentials, editors, unmapped runs); a
    * function receives the live model. */
-  actions?: React.ReactNode | ((model: BoardModel) => React.ReactNode);
+  actions?:
+    | React.ReactNode
+    | ((model: BoardModel, problems: BoardProblems) => React.ReactNode);
 }): React.JSX.Element {
   const { model, now } = useBoardEngine(dashboard, providers);
   const view = useBoardView(
@@ -36,6 +41,7 @@ export function BoardScreen({
     dashboard.stages.length,
   );
   const [filter, setFilter] = useCellFilter(model);
+  const problems = useProblems(dashboard, model);
   return (
     <div className="flex flex-col gap-2 px-4 py-2">
       {/* Title at the left, requests and controls at the right; the
@@ -55,10 +61,10 @@ export function BoardScreen({
               dashboard.credentials.map((c) => [c.id, c.label]),
             )}
           />
-          {typeof actions === 'function' ? actions(model) : actions}
+          {typeof actions === 'function' ? actions(model, problems) : actions}
         </div>
       </div>
-      <div>
+      <ProblemMarksContext value={problemMarks(dashboard, problems.shown)}>
         <BoardViewport
           dashboard={dashboard}
           model={model}
@@ -74,7 +80,7 @@ export function BoardScreen({
             />
           )}
         />
-      </div>
+      </ProblemMarksContext>
     </div>
   );
 }

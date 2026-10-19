@@ -32,6 +32,7 @@ import { asJson } from '@/domain/model/json';
 import type { SourceRule } from '@/domain/model/sourceRule';
 import {
   compareOrder,
+  type KeyProblem,
   type RecordDoc,
   translate,
 } from '@/domain/model/translate';
@@ -65,6 +66,10 @@ export interface GithubRepoRefresh {
   rows: Record<string, Record<string, CellView>>;
   unmapped: UnmappedRun[];
   branches: DatedBranch[];
+  /** Keys the source rule couldn't translate cleanly. */
+  keyProblems: KeyProblem[];
+  /** Did the read return as many runs as the source rule reads? */
+  full: boolean;
 }
 
 export interface GithubRepoRateLimited {
@@ -113,6 +118,8 @@ function emptyRows(
     rows: objectify(input.rows, (r) => r.id, cellsOf),
     unmapped: [],
     branches: [],
+    keyProblems: [],
+    full: false,
   };
 }
 
@@ -157,6 +164,7 @@ async function refreshWith(
     })
   ).slice(0, runs);
   const keepDeep = ruleNeedsItems(source.keep);
+  const keyProblems: KeyProblem[] = [];
   const excludePrs =
     source.provider === 'github' && source.reader.excludePullRequests;
   const order = (r: RecordDoc): JSONValue => r[source.order] ?? null;
@@ -164,10 +172,11 @@ async function refreshWith(
     .filter((r) => !(excludePrs && isExcludedEvent(r.event)))
     .map((r) => {
       const mapped = mapWorkflowRun(r);
-      const shallow = translate(
-        source,
-        asJson({ run: mapped, jobs: [] }),
-      ).record;
+      const translated = translate(source, asJson({ run: mapped, jobs: [] }));
+      keyProblems.push(
+        ...translated.problems.filter((p) => p.scope === 'record'),
+      );
+      const shallow = translated.record;
       return { run: r, mapped, shallow };
     })
     // Keep, when it can judge a run without its jobs; otherwise below.
@@ -181,9 +190,11 @@ async function refreshWith(
     if (!pending) {
       pending = reader
         .listRunJobs(ref, run.id, { filter: 'latest' })
-        .then(
-          (jobs) => translate(source, asJson(mapRunWithJobs(run, jobs))).record,
-        );
+        .then((jobs) => {
+          const t = translate(source, asJson(mapRunWithJobs(run, jobs)));
+          keyProblems.push(...t.problems.filter((p) => p.scope === 'item'));
+          return t.record;
+        });
       fetched.set(run.id, pending);
     }
     return pending;
@@ -245,6 +256,8 @@ async function refreshWith(
       branchNames,
       candidates.map((c) => c.mapped),
     ),
+    keyProblems,
+    full: raw.length >= runs,
   };
 }
 

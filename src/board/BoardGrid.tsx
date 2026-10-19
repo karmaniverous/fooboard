@@ -21,6 +21,8 @@ import { columnLines } from './columnFrame';
 import { ColumnGroupLabels } from './ColumnGroupLabels';
 import { BOUNDARY, GROUP_LABEL } from './gridStyles';
 import { capText, type Layout, LINE_HEIGHT } from './layout';
+import { ProblemMark } from './ProblemMark';
+import { useProblemMarks } from './problemMarksContext';
 import { stageLabel } from './stageLabel';
 import { type CellFilter, matchesFilter } from './summary';
 
@@ -48,6 +50,7 @@ export function BoardGrid({
     'sticky top-[calc(var(--app-header-h,0px)+var(--strip-h,0px))] z-20 bg-background';
   const pinLeft = 'sticky left-0 z-20 bg-background';
   const { rows, stages } = dashboard;
+  const marks = useProblemMarks();
   const rowSegments = groupSegments(
     rows.map((r) => r.id),
     dashboard.rowGroups,
@@ -146,6 +149,7 @@ export function BoardGrid({
                   style={lineRow}
                 >
                   <span className="truncate">{capText(stage.name)}</span>
+                  <ProblemMark messages={marks.stages.get(stage.id)} />
                 </div>
               </WithTooltip>
             );
@@ -196,6 +200,7 @@ export function BoardGrid({
                         style={cellRow}
                       >
                         <span className="truncate">{row.displayName}</span>
+                        <ProblemMark messages={marks.rows.get(row.id)} />
                       </div>
                     </WithTooltip>
                     {stages.map((stage) => {

@@ -26,6 +26,7 @@ export const emptyModel = (
 ): BoardModel => ({
   cells: {},
   unmapped: [],
+  problems: [],
   budgets: Object.fromEntries(credentialIds.map((id) => [id, undefined])),
   refreshedAt: {},
 });

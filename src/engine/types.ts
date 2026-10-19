@@ -12,6 +12,7 @@ import type {
   StalenessBadge,
   UnmappedReason,
 } from '@/domain/derivation';
+import type { Problem } from '@/domain/problems/problems';
 import type { AmplifyReaderFor } from '@/lib/amplify/rowJobs';
 import type { GitHubReader } from '@/lib/github';
 import type { RateLimitBudget } from '@/lib/github';
@@ -56,6 +57,9 @@ export interface BoardModel {
    * first refreshes. */
   cells: Partial<Record<string, BoardCell>>;
   unmapped: UnmappedRun[];
+  /** Problems found while reading (spec.md A§4.3.7): translation
+   * problems and window hints. */
+  problems: Problem[];
   /** Latest known GitHub budget per credential id (spec.md C-16). */
   budgets: Record<string, RateLimitBudget | undefined>;
   /** When each row last refreshed (ms), keyed by row id. */

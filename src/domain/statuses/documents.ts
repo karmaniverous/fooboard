@@ -17,15 +17,20 @@ const builtin = (id: string): SourceRule => {
   return rule;
 };
 
-/** An Amplify job's record under `rule` (the built-in by default). */
-export function amplifyRecord(
+/** An Amplify job translated by `rule` (the built-in by default). */
+export function amplifyTranslate(
   { source: app, branch, job }: AmplifyJobWithBranch,
   rule: SourceRule = builtin('amplify'),
-): RecordDoc {
+): ReturnType<typeof translate> {
   const consoleUrl =
     job.jobId === undefined
       ? null
       : buildAmplifyConsoleLink({ ...app, branch, jobId: job.jobId });
-  return translate(rule, asJson({ source: app, branch, job, consoleUrl }))
-    .record;
+  return translate(rule, asJson({ source: app, branch, job, consoleUrl }));
 }
+
+/** An Amplify job's record under `rule`. */
+export const amplifyRecord = (
+  job: AmplifyJobWithBranch,
+  rule?: SourceRule,
+): RecordDoc => amplifyTranslate(job, rule).record;

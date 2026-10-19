@@ -20,6 +20,8 @@ import {
   rowGithubCredentialId,
 } from '@/domain/config/inheritance';
 import type { AmplifyRow, GithubRow, Row } from '@/domain/config/row';
+import type { Problem } from '@/domain/problems/problems';
+import { translationProblems, windowHint } from '@/domain/problems/runtime';
 import type { GitHubReader } from '@/lib/github';
 import { isOverPollingShare } from '@/lib/github';
 
@@ -89,6 +91,7 @@ export function createBoardEngine({
   const credentialIds = githubCredentialIds(dashboard);
   let model = emptyModel(credentialIds);
   const unmappedByTarget = new Map<string, UnmappedRun[]>();
+  const problemsByTarget = new Map<string, Problem[]>();
   const listeners = new Set<(m: BoardModel) => void>();
   const publish = (next: BoardModel): void => {
     model = next;
@@ -106,14 +109,17 @@ export function createBoardEngine({
     rows: Record<string, RowUpdate>,
     unmapped: UnmappedRun[],
     access: GithubAccess | undefined,
+    problems: Problem[] = [],
   ): void => {
     unmappedByTarget.set(targetId, unmapped);
+    problemsByTarget.set(targetId, problems);
     publish({
       ...withRows(model, stages, rows, now()),
       unmapped: unique(
         [...unmappedByTarget.values()].flat(),
         (u) => `${u.repo}#${String(u.runId)}`,
       ),
+      problems: unique([...problemsByTarget.values()].flat(), (p) => p.id),
       budgets: budgetsWith(access),
     });
   };
@@ -161,7 +167,23 @@ export function createBoardEngine({
           : {},
       };
     }
-    apply(targetId, applied, result.unmapped, access);
+    const githubSource = sourceFor(dashboard, 'github');
+    const runs =
+      githubSource.provider === 'github' ? githubSource.reader.runs : 100;
+    const hints = result.full
+      ? rows
+          .filter((row) =>
+            stages.some((s) => {
+              const d = result.rows[row.id][s.id].derivation;
+              return d.kind === 'empty' && d.state === 'no-records';
+            }),
+          )
+          .map((row) => windowHint(row.id, `${String(runs)} runs`))
+      : [];
+    apply(targetId, applied, result.unmapped, access, [
+      ...translationProblems(githubSource, result.keyProblems),
+      ...hints,
+    ]);
   };
 
   const refreshAmplify = async (row: AmplifyRow): Promise<void> => {
@@ -188,7 +210,16 @@ export function createBoardEngine({
           compareOnce(reader, row.repo),
         )
       : {};
-    apply(row.id, { [row.id]: { cells, staleness } }, [], access);
+    apply(
+      row.id,
+      { [row.id]: { cells, staleness } },
+      [],
+      access,
+      translationProblems(
+        sourceFor(dashboard, 'amplify'),
+        result.keyProblems ?? [],
+      ),
+    );
   };
 
   // GitHub targets: the rows reading one repo with one token.

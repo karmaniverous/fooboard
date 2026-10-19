@@ -67,11 +67,16 @@ describe('preferences store', () => {
 
   it('fills defaults, merges changes and forgets', () => {
     const store = createPreferencesStore(memoryStorage());
-    expect(store.getView('d')).toEqual({ zoom: 1, density: 'default' });
+    expect(store.getView('d')).toEqual({
+      zoom: 1,
+      density: 'default',
+      dismissedProblems: [],
+    });
     store.setView('d', { density: 'comfortable' });
     expect(store.setView('d', { zoom: 2 })).toEqual({
       zoom: 2,
       density: 'comfortable',
+      dismissedProblems: [],
     });
     store.forget('d');
     expect(store.getView('d').zoom).toBe(1);
@@ -96,8 +101,16 @@ describe('preferences store', () => {
       }),
     );
     const store = createPreferencesStore(kv);
-    expect(store.getView('a')).toEqual({ zoom: 1, density: 'default' });
-    expect(store.getView('b')).toEqual({ zoom: 1, density: 'compact' });
+    expect(store.getView('a')).toEqual({
+      zoom: 1,
+      density: 'default',
+      dismissedProblems: [],
+    });
+    expect(store.getView('b')).toEqual({
+      zoom: 1,
+      density: 'compact',
+      dismissedProblems: [],
+    });
   });
 });
 

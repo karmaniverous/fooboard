@@ -9,12 +9,15 @@
  * @module
  */
 import type { Dashboard } from '@/domain/config/dashboard';
+import type { Problem } from '@/domain/problems/problems';
 import type { UnmappedRun } from '@/engine';
 
 export type EditorDraft =
   | { tab: 'Rows'; rowId: string }
   | { tab: 'Rows'; rowId: string; overrideBranch: string }
-  | { tab: 'Stages'; pattern: string }
+  | { tab: 'Stages'; pattern?: string }
+  | { tab: 'Sources' }
+  | { tab: 'General' }
   | { tab: 'Statuses' };
 
 /** The GitHub row reading the run's repo: unmapped runs are GitHub runs,
@@ -55,4 +58,32 @@ export function overrideDraftFor(
   return row
     ? { tab: 'Rows', rowId: row.id, overrideBranch: run.reason.branch }
     : undefined;
+}
+
+/** The editor tab where `problem` is fixed. */
+export function problemDraft(problem: Problem): EditorDraft {
+  const { level, message } = problem;
+  if (
+    /source rule/.test(message) ||
+    / gives no /.test(message) ||
+    /read .* the most/.test(message)
+  )
+    return { tab: 'Sources' };
+  switch (level.kind) {
+    case 'row':
+    case 'cell':
+      return {
+        tab: 'Rows',
+        rowId: level.kind === 'row' ? level.id : level.rowId,
+      };
+    case 'stage':
+    case 'columnGroup':
+      return { tab: 'Stages' };
+    case 'rowGroup':
+      return { tab: 'Rows', rowId: '' };
+    case 'dashboard':
+      return /status|item rule/.test(message)
+        ? { tab: 'Statuses' }
+        : { tab: 'General' };
+  }
 }

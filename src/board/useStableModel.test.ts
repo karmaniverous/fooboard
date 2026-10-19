@@ -20,6 +20,7 @@ const model = (n: number): BoardModel => ({
     ]),
   ),
   unmapped: [],
+  problems: [],
   budgets: {},
   refreshedAt: {},
 });

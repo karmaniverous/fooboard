@@ -10,6 +10,7 @@ import { useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 
 import { BoardScreen } from '@/board/BoardScreen';
+import { ProblemsPanel } from '@/board/ProblemsPanel';
 import { UnmappedPanel } from '@/board/UnmappedPanel';
 import { SidePanel } from '@/components/SidePanel';
 import { Button } from '@/components/ui/button';
@@ -17,7 +18,12 @@ import { CredentialsPanel } from '@/credentials/CredentialsPanel';
 import { useCredentialVersion } from '@/credentials/useCredentialVersion';
 import type { Dashboard } from '@/domain/config/dashboard';
 import { DashboardEditor } from '@/editors/DashboardEditor';
-import { draftFor, type EditorDraft, overrideDraftFor } from '@/editors/draft';
+import {
+  draftFor,
+  type EditorDraft,
+  overrideDraftFor,
+  problemDraft,
+} from '@/editors/draft';
 import { unknownCells } from '@/editors/statuses/unknownRuns';
 import { credentialProviders } from '@/engine/credentialProviders';
 import { dashboardsOf } from '@/storage/configStore';
@@ -63,8 +69,27 @@ function SavedDashboard({
     <BoardScreen
       dashboard={dashboard}
       providers={providers}
-      actions={(model) => (
+      actions={(model, problems) => (
         <>
+          {problems.shown.length > 0 && (
+            <SidePanel
+              title="Problems"
+              trigger={
+                <Button size="sm" variant="outline">
+                  Problems ({problems.shown.length})
+                </Button>
+              }
+            >
+              <ProblemsPanel
+                dashboard={dashboard}
+                problems={problems.shown}
+                onFix={(p) => {
+                  openEditor(problemDraft(p));
+                }}
+                onDismiss={problems.dismiss}
+              />
+            </SidePanel>
+          )}
           {model.unmapped.length > 0 && (
             <SidePanel
               title="Unmapped runs"

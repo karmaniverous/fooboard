@@ -22,7 +22,8 @@ import {
 import { BUILTIN_SOURCES } from '@/domain/model/builtinSources';
 import { type CellRules, placeCell } from '@/domain/model/cell';
 import type { SourceRule } from '@/domain/model/sourceRule';
-import { amplifyRecord } from '@/domain/statuses/documents';
+import type { KeyProblem } from '@/domain/model/translate';
+import { amplifyTranslate } from '@/domain/statuses/documents';
 import { inProgress } from '@/domain/statuses/resolved';
 import { AmplifyAuthError, AmplifyThrottledError } from '@/lib/amplify/errors';
 import {
@@ -35,7 +36,12 @@ import {
 import { failureOutcome } from './providerOutcome';
 
 export type AmplifyRowRefresh =
-  | { kind: 'refreshed'; cells: Record<string, CellDerivation> }
+  | {
+      kind: 'refreshed';
+      cells: Record<string, CellDerivation>;
+      /** Keys the source rule couldn't translate cleanly. */
+      keyProblems?: KeyProblem[];
+    }
   | { kind: 'rate-limited' };
 
 type RulesFor = (stageId: string) => CellRules;
@@ -103,9 +109,11 @@ export async function refreshAmplifyRow(
             jobsPerBranch: 20,
             branches: { combine: 'and' as const, checks: [] },
           };
-    const records = (await collectRowJobs(sources, readerFor, options)).map(
-      (j) => amplifyRecord(j, source),
+    const translated = (await collectRowJobs(sources, readerFor, options)).map(
+      (j) => amplifyTranslate(j, source),
     );
+    const records = translated.map((t) => t.record);
+    const keyProblems = translated.flatMap((t) => t.problems);
     const cells: Record<string, CellDerivation> = {};
     for (const stage of stages) {
       const rules = rulesFor(stage.id);
@@ -116,7 +124,7 @@ export async function refreshAmplifyRow(
         credentialStatus: 'ok',
       });
     }
-    return { kind: 'refreshed', cells };
+    return { kind: 'refreshed', cells, keyProblems };
   } catch (err) {
     const outcome = failureOutcome(err, {
       isRateLimit: (e) => e instanceof AmplifyThrottledError,

@@ -14,6 +14,7 @@ import { BoardSummary, BudgetMeter } from './BoardChrome';
 const model: BoardModel = {
   cells: {},
   unmapped: [],
+  problems: [],
   budgets: {
     gh: { limit: 5000, remaining: 300, reset: 0, used: 4700, status: 'low' },
     off: undefined,
