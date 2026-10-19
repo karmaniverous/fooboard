@@ -37,8 +37,7 @@ async function githubCell(reader: GitHubReader, repo: string, stageId: string) {
       repoRows: [row],
       stages: demoDashboard.stages,
       rulesFor: (r, s) => cellRulesFor(demoDashboard, r, s),
-      source: sourceFor('github'),
-      mapping: demoDashboard.mapping,
+      source: sourceFor(demoDashboard, 'github'),
     },
     reader,
   );
@@ -122,8 +121,8 @@ describe('demo Amplify provider', () => {
     row: keyof typeof DEMO_AMPLIFY_APPS,
     stageId: string,
   ) {
-    const records = (await collectRowJobs(sourcesOf(row), readerFor)).map(
-      amplifyRecord,
+    const records = (await collectRowJobs(sourcesOf(row), readerFor)).map((j) =>
+      amplifyRecord(j),
     );
     const rules = cellRulesFor(demoDashboard, rowOf(row), stageId);
     return deriveCell({

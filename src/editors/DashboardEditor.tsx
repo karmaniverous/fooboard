@@ -1,6 +1,6 @@
 /**
  * The dashboard editor (spec.md C-21): general settings (rename,
- * duplicate, delete), rows, stages, mapping rules and status sets. Every
+ * duplicate, delete), rows, stages, source rules and status sets. Every
  * change is validated against the dashboard schema before it is saved, so
  * an edit can never leave a dashboard that won't load.
  *
@@ -24,12 +24,12 @@ import type { EditorDraft } from './draft';
 import { duplicateDashboard } from './edit';
 import { CommitInput } from './fields';
 import { RowsEditor } from './RowsEditor';
-import { MappingEditor } from './SettingsEditors';
+import { SourcesEditor } from './sources/SourcesEditor';
 import { StagesEditor } from './StagesEditor';
 import { StatusSetsEditor } from './statuses/StatusSetsEditor';
 import type { UnknownCell } from './statuses/unknownRuns';
 
-const TABS = ['General', 'Rows', 'Stages', 'Mapping', 'Statuses'] as const;
+const TABS = ['General', 'Rows', 'Stages', 'Sources', 'Statuses'] as const;
 type Tab = (typeof TABS)[number];
 
 function GeneralEditor({
@@ -170,8 +170,8 @@ export function DashboardEditor({
           draftPattern={draft?.tab === 'Stages' ? draft.pattern : undefined}
         />
       </TabsContent>
-      <TabsContent value="Mapping">
-        <MappingEditor {...props} />
+      <TabsContent value="Sources">
+        <SourcesEditor {...props} />
       </TabsContent>
       <TabsContent value="Statuses">
         <StatusSetsEditor {...props} unknown={unknown} />

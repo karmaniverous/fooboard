@@ -19,7 +19,9 @@ import {
   deriveCell,
   type ProviderFailure,
 } from '@/domain/derivation';
+import { BUILTIN_SOURCES } from '@/domain/model/builtinSources';
 import { type CellRules, placeCell } from '@/domain/model/cell';
+import type { SourceRule } from '@/domain/model/sourceRule';
 import { amplifyRecord } from '@/domain/statuses/documents';
 import { inProgress } from '@/domain/statuses/resolved';
 import { AmplifyAuthError, AmplifyThrottledError } from '@/lib/amplify/errors';
@@ -58,12 +60,19 @@ function emptyRow(
   return { kind: 'refreshed', cells };
 }
 
+const sourceFor = (provider: SourceRule['provider']): SourceRule => {
+  const rule = BUILTIN_SOURCES.find((s) => s.provider === provider);
+  if (!rule) throw new Error(`no built-in source rule for ${provider}`);
+  return rule;
+};
+
 export async function refreshAmplifyRow(
   row: AmplifyRow,
   stages: readonly Stage[],
   rulesFor: RulesFor,
   defaults: DefaultCredentials,
   readersFor: (credentialId: string) => AmplifyReaderFor | undefined,
+  source: SourceRule = sourceFor('amplify'),
 ): Promise<AmplifyRowRefresh> {
   const sources: ResolvedAmplifySource[] = [];
   for (const source of row.sources) {
@@ -87,8 +96,15 @@ export async function refreshAmplifyRow(
     return forCredential(source);
   });
   try {
-    const records = (await collectRowJobs(sources, readerFor)).map(
-      amplifyRecord,
+    const options =
+      source.provider === 'amplify'
+        ? source.reader
+        : {
+            jobsPerBranch: 20,
+            branches: { combine: 'and' as const, checks: [] },
+          };
+    const records = (await collectRowJobs(sources, readerFor, options)).map(
+      (j) => amplifyRecord(j, source),
     );
     const cells: Record<string, CellDerivation> = {};
     for (const stage of stages) {

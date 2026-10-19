@@ -12,12 +12,13 @@ import { branchRules } from '@/domain/config/placement';
 import { DashboardSchema } from './dashboard';
 
 describe('DashboardSchema', () => {
-  it('applies mapping, status set, group and credential defaults', () => {
+  it('applies source rule, status set, group and credential defaults', () => {
     const dashboard = DashboardSchema.parse({ id: 'd1', name: 'Dashboard 1' });
-    expect(dashboard.mapping.workflowFilter).toEqual({
-      include: [],
-      exclude: [],
+    expect(dashboard.sourceRules).toEqual({
+      github: 'github',
+      amplify: 'amplify',
     });
+    expect(dashboard.customSourceRules).toEqual([]);
     expect(dashboard.statusSets).toEqual({
       github: 'github-deploy-test',
       amplify: 'amplify',

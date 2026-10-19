@@ -48,8 +48,7 @@ describe('refreshGithubRepo', () => {
         repoRows: [row],
         stages: demoDashboard.stages,
         rulesFor: (r, stageId) => cellRulesFor(demoDashboard, r, stageId),
-        source: sourceFor('github'),
-        mapping: demoDashboard.mapping,
+        source: sourceFor(demoDashboard, 'github'),
       },
       reader,
     );

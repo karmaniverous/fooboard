@@ -51,7 +51,7 @@ export interface CompareResult {
 export interface GitHubReader {
   listWorkflowRuns(
     repo: RepoRef,
-    opts?: { perPage?: number; excludePullRequests?: boolean },
+    opts?: { perPage?: number; pages?: number; excludePullRequests?: boolean },
   ): Promise<WorkflowRun[]>;
   listRunJobs(
     repo: RepoRef,
@@ -141,15 +141,19 @@ export function createGitHubReader({
   return {
     async listWorkflowRuns(
       ref,
-      { perPage = 100, excludePullRequests = true } = {},
+      { perPage = 100, pages = 1, excludePullRequests = true } = {},
     ) {
-      const query = `per_page=${String(perPage)}&exclude_pull_requests=${String(excludePullRequests)}`;
-      return (
-        await get(
+      const runs: WorkflowRun[] = [];
+      for (let page = 1; page <= pages; page++) {
+        const query = `per_page=${String(perPage)}&page=${String(page)}&exclude_pull_requests=${String(excludePullRequests)}`;
+        const { workflow_runs: batch } = await get(
           repoUrl(ref, `actions/runs?${query}`),
           WorkflowRunsResponseSchema,
-        )
-      ).workflow_runs;
+        );
+        runs.push(...batch);
+        if (batch.length < perPage) break;
+      }
+      return runs;
     },
 
     listRunJobs: (ref, runId, { filter = 'latest' } = {}) =>

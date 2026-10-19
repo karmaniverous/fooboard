@@ -12,6 +12,9 @@ import type { App, Branch, JobSummary } from '@aws-sdk/client-amplify';
 
 import type { AmplifySource } from '@/domain/config/row';
 import type { AmplifyJobWithBranch } from '@/domain/derivation/types';
+import { asJson } from '@/domain/model/json';
+import { evaluateRule } from '@/domain/rules/check';
+import type { Rule } from '@/domain/rules/schema';
 
 import { AmplifyNotFoundError } from './errors';
 import type { AmplifyReader } from './reader';
@@ -64,25 +67,30 @@ export function memoizeReaderFor(
   };
 }
 
-/** Jobs per matching branch; the cell needs only the newest, a few spare
- * cover a newer-but-undated job. */
-const JOBS_PER_BRANCH = 5;
-
 /** Gather the jobs for one Amplify row and one stage's branch pattern. */
 export async function collectRowJobs(
   sources: readonly ResolvedAmplifySource[],
   readerFor: AmplifyReaderFor,
+  options: { jobsPerBranch: number; branches: Rule } = {
+    jobsPerBranch: 20,
+    branches: { combine: 'and', checks: [] },
+  },
 ): Promise<AmplifyJobWithBranch[]> {
   const jobsByBranch: AmplifyJobWithBranch[] = [];
 
   for (const source of sources) {
     const reader = readerFor(source);
     const branches = (await reader.listBranches(source.appId))
+      .filter((b) => evaluateRule(options.branches, asJson(b)))
       .map((b) => b.branchName)
       .filter((name): name is string => name !== undefined);
 
     for (const branch of branches) {
-      const jobs = await reader.listJobs(source.appId, branch, JOBS_PER_BRANCH);
+      const jobs = await reader.listJobs(
+        source.appId,
+        branch,
+        options.jobsPerBranch,
+      );
       const tag = { region: source.region, appId: source.appId };
       for (const job of jobs) jobsByBranch.push({ source: tag, branch, job });
     }

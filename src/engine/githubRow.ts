@@ -10,7 +10,6 @@
 import type { JSONValue } from 'json-p3';
 import { objectify } from 'radash';
 
-import type { MappingSettings } from '@/domain/config/mappingSettings';
 import type { GithubRow } from '@/domain/config/row';
 import type { Stage } from '@/domain/config/stage';
 import {
@@ -19,7 +18,6 @@ import {
   deriveCell,
   type GithubWorkflowRun,
   isExcludedEvent,
-  passesWorkflowFilter,
   type ProviderFailure,
   unmappedReason,
 } from '@/domain/derivation';
@@ -28,6 +26,7 @@ import {
   needsItems,
   placeCell,
   placed,
+  ruleNeedsItems,
 } from '@/domain/model/cell';
 import { asJson } from '@/domain/model/json';
 import type { SourceRule } from '@/domain/model/sourceRule';
@@ -36,6 +35,7 @@ import {
   type RecordDoc,
   translate,
 } from '@/domain/model/translate';
+import { evaluateRule } from '@/domain/rules/check';
 import { inProgress } from '@/domain/statuses/resolved';
 import {
   GitHubAuthError,
@@ -87,7 +87,6 @@ export interface GithubRepoInput {
   stages: readonly Stage[];
   rulesFor: RulesFor;
   source: SourceRule;
-  mapping: MappingSettings;
 }
 
 function emptyRows(
@@ -146,13 +145,18 @@ async function refreshWith(
   input: GithubRepoInput,
   reader: GitHubReader,
 ): Promise<GithubRepoRefresh> {
-  const { source, mapping } = input;
+  const { source } = input;
+  const runs = source.provider === 'github' ? source.reader.runs : 100;
   const repo = input.rows[0]?.repo ?? '';
   const ref = repoRef(repo);
-  const raw = await reader.listWorkflowRuns(ref, {
-    perPage: 100,
-    excludePullRequests: true,
-  });
+  const raw = (
+    await reader.listWorkflowRuns(ref, {
+      perPage: 100,
+      pages: Math.ceil(runs / 100),
+      excludePullRequests: true,
+    })
+  ).slice(0, runs);
+  const keepDeep = ruleNeedsItems(source.keep);
   const excludePrs =
     source.provider === 'github' && source.reader.excludePullRequests;
   const order = (r: RecordDoc): JSONValue => r[source.order] ?? null;
@@ -166,8 +170,8 @@ async function refreshWith(
       ).record;
       return { run: r, mapped, shallow };
     })
-    // Until source rules carry it (keep), the workflow filter.
-    .filter((c) => passesWorkflowFilter(c.mapped.workflowName, mapping))
+    // Keep, when it can judge a run without its jobs; otherwise below.
+    .filter((c) => keepDeep || evaluateRule(source.keep, c.shallow))
     .sort((a, b) => compareOrder(order(b.shallow), order(a.shallow)));
   const branchNames = (await reader.listBranches(ref)).map((b) => b.name);
 
@@ -193,7 +197,9 @@ async function refreshWith(
       const deep = needsItems(rules);
       for (const c of candidates) {
         if (!deep && !placed(c.shallow, rules)) continue;
-        found = placeCell([await full(c.run)], rules);
+        const record = await full(c.run);
+        if (keepDeep && !evaluateRule(source.keep, record)) continue;
+        found = placeCell([record], rules);
         if (found) break;
       }
     }

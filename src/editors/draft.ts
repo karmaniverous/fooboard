@@ -4,7 +4,7 @@
  * a row key test on its workflow name; a run on a branch no stage matches
  * gets a new stage for that branch, or (`overrideDraftFor`) a
  * branch-pattern override on that repo's row or its group (C-14c); a run
- * whose jobs match no phase opens the mapping rules. Pure.
+ * with no counted item opens the status sets. Pure.
  *
  * @module
  */

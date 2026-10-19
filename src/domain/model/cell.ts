@@ -60,10 +60,11 @@ export const placed = (record: RecordDoc, rules: CellRules): boolean =>
  * record can't be judged before its items are read? */
 export const needsItems = (
   rules: Pick<CellRules, 'record' | 'stage'>,
-): boolean =>
-  [rules.record, rules.stage].some((rule) =>
-    (rule?.checks ?? []).some((c) => /items|_raw|\.\./.test(c.path)),
-  );
+): boolean => [rules.record, rules.stage].some(ruleNeedsItems);
+
+/** Does `rule` test items (or raw data)? */
+export const ruleNeedsItems = (rule: Rule | undefined): boolean =>
+  (rule?.checks ?? []).some((c) => /items|_raw|\.\./.test(c.path));
 
 /** The first cell status whose rule matches `record`. */
 const classify = (

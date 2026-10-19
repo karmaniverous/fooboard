@@ -8,6 +8,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { sourceFor } from '@/domain/config/cellRules';
+import { DashboardSchema } from '@/domain/config/dashboard';
 import type { CellRules } from '@/domain/model/cell';
 import { asJson } from '@/domain/model/json';
 import { all, always, is } from '@/domain/model/ruleBuilders';
@@ -21,7 +22,7 @@ import { describeUnmappedReason, unmappedReason } from './unmapped';
 const set = presetById('github-deploy-test');
 const record = (headBranch: string, job: string) =>
   translate(
-    sourceFor('github'),
+    sourceFor(DashboardSchema.parse({ id: 'd', name: 'd' }), 'github'),
     asJson(makeRunWithJobs({ headBranch }, [makeJob({ name: job })])),
   ).record;
 const cell = (over: Partial<CellRules> = {}): CellRules => ({

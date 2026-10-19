@@ -12,8 +12,6 @@ export * from './dashboard';
 export * from './devicePreferences';
 export * from './groups';
 export * from './inheritance';
-export * from './mappingSettings';
-export * from './matchTest';
 export * from './migrate';
 export * from './presets';
 export * from './root';

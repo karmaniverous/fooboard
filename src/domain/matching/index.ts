@@ -5,4 +5,3 @@
  * @module
  */
 export * from './branchPattern';
-export * from './matchTest';

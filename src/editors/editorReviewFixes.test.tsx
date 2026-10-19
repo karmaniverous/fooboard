@@ -1,6 +1,6 @@
 /**
- * Tests for editor fixes from review: deleting a match test or an Amplify
- * source asks first; a failed repo list retries; the same repo can be
+ * Tests for editor fixes from review: deleting an Amplify source asks
+ * first; a failed repo list retries; the same repo can be
  * added twice; listed apps hide when the region changes.
  *
  * @module
@@ -11,40 +11,6 @@ import { describe, expect, it } from 'vitest';
 import { setup, tab } from './editorSectionsHarness';
 
 describe('editor review fixes', () => {
-  it('asks before deleting a match test, and Keep preserves it', () => {
-    const latest = setup();
-    tab('Mapping');
-    fireEvent.change(
-      screen.getByLabelText('New Only workflows matching value'),
-      {
-        target: { value: 'deploy' },
-      },
-    );
-    const filter = screen.getByRole('group', {
-      name: 'Only workflows matching',
-    });
-    fireEvent.click(within(filter).getByRole('button', { name: 'Add' }));
-    const count = latest.current.mapping.workflowFilter.include.length;
-    const del = within(filter).getByRole('button', {
-      name: `Delete Only workflows matching ${String(count)}`,
-    });
-    fireEvent.click(del);
-    expect(latest.current.mapping.workflowFilter.include).toHaveLength(count);
-    fireEvent.click(within(filter).getByRole('button', { name: 'Keep' }));
-    expect(latest.current.mapping.workflowFilter.include).toHaveLength(count);
-    fireEvent.click(
-      within(filter).getByRole('button', {
-        name: `Delete Only workflows matching ${String(count)}`,
-      }),
-    );
-    fireEvent.click(
-      within(filter).getByRole('button', { name: 'Delete deploy' }),
-    );
-    expect(latest.current.mapping.workflowFilter.include).toHaveLength(
-      count - 1,
-    );
-  });
-
   it('retries a failed repo list', async () => {
     let calls = 0;
     setup({

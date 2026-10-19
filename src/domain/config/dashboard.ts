@@ -9,6 +9,11 @@
  */
 import { z } from 'zod';
 
+import { SourceRuleSchema } from '@/domain/model/sourceRule';
+import {
+  SourceRefsSchema,
+  sourceRuleReferenceIssues,
+} from '@/domain/model/sources';
 import { statusSetReferenceIssues } from '@/domain/statuses/resolve';
 
 import {
@@ -18,7 +23,6 @@ import {
 import { CredentialRefSchema } from './credentials';
 import { findAnyCycle } from './cycle';
 import { ColumnGroupSchema, type Group, RowGroupSchema } from './groups';
-import { MappingSettingsSchema } from './mappingSettings';
 import { ProviderRowRulesSchema, ProviderRulesSchema } from './placement';
 import { RowSchema } from './row';
 import { StageSchema } from './stage';
@@ -83,9 +87,6 @@ export const DashboardSchema = z
     name: z.string().min(1),
     rows: z.array(RowSchema).default(() => []),
     stages: z.array(StageSchema).default(() => []),
-    mapping: MappingSettingsSchema.default(() =>
-      MappingSettingsSchema.parse({}),
-    ),
     /** Default stage rules per source (spec.md A§4.3.7). */
     stageRules: ProviderRulesSchema.default(() => ({})),
     /** Default row-axis rules per source. */
@@ -104,11 +105,20 @@ export const DashboardSchema = z
     /** The dashboard's own status sets (customised presets), so it stays
      * self-contained for sharing and export. */
     customStatusSets: z.array(StatusSetSchema).default(() => []),
+    /** The source rule per source (spec.md A§4.3.7): a built-in id or one
+     * of the dashboard's own. */
+    sourceRules: SourceRefsSchema.default(() => ({
+      github: 'github',
+      amplify: 'amplify',
+    })),
+    /** The dashboard's own source rules (customised built-ins). */
+    customSourceRules: z.array(SourceRuleSchema).default(() => []),
   })
   .superRefine((dashboard, ctx) => {
     for (const issue of [
       ...credentialReferenceIssues(dashboard),
       ...statusSetReferenceIssues(dashboard),
+      ...sourceRuleReferenceIssues(dashboard),
       ...groupIssues(dashboard.rowGroups, dashboard.rows, 'rowGroups', 'row'),
       ...groupIssues(
         dashboard.columnGroups,

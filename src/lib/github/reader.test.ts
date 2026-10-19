@@ -38,7 +38,7 @@ const repo = { owner: 'acme', repo: 'api-core' };
 describe('createGitHubReader', () => {
   it('listWorkflowRuns requests per_page and exclude_pull_requests, and parses the envelope', async () => {
     const url =
-      'https://api.github.com/repos/acme/api-core/actions/runs?per_page=100&exclude_pull_requests=true';
+      'https://api.github.com/repos/acme/api-core/actions/runs?per_page=100&page=1&exclude_pull_requests=true';
     const { fetchImpl } = fakeFetch({
       [url]: () =>
         jsonResponse({
@@ -210,7 +210,7 @@ describe('createGitHubReader', () => {
 
   it('exposes the budget and token expiration from the underlying client', async () => {
     const url =
-      'https://api.github.com/repos/acme/api-core/actions/runs?per_page=100&exclude_pull_requests=true';
+      'https://api.github.com/repos/acme/api-core/actions/runs?per_page=100&page=1&exclude_pull_requests=true';
     const { fetchImpl } = fakeFetch({
       [url]: () =>
         jsonResponse(
@@ -255,7 +255,7 @@ describe('createGitHubReader', () => {
   });
   it('rejects a malformed payload with GitHubValidationError', async () => {
     const url =
-      'https://api.github.com/repos/acme/api-core/actions/runs?per_page=100&exclude_pull_requests=true';
+      'https://api.github.com/repos/acme/api-core/actions/runs?per_page=100&page=1&exclude_pull_requests=true';
     const { fetchImpl } = fakeFetch({
       [url]: () => jsonResponse({ total_count: 0 }), // missing workflow_runs
     });
@@ -267,7 +267,7 @@ describe('createGitHubReader', () => {
 
   it('never leaks the token into a thrown error message', async () => {
     const url =
-      'https://api.github.com/repos/acme/api-core/actions/runs?per_page=100&exclude_pull_requests=true';
+      'https://api.github.com/repos/acme/api-core/actions/runs?per_page=100&page=1&exclude_pull_requests=true';
     const { fetchImpl } = fakeFetch({
       [url]: () =>
         new Response(JSON.stringify({ message: 'Bad credentials' }), {

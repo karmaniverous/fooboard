@@ -74,7 +74,7 @@ export function createBoardEngine({
   now?: () => number;
   onError?: (targetId: string, err: unknown) => void;
 }): BoardEngine {
-  const { stages, mapping } = dashboard;
+  const { stages } = dashboard;
 
   const rulesFor = (row: Row, stageId: string) =>
     cellRulesFor(dashboard, row, stageId);
@@ -141,8 +141,7 @@ export function createBoardEngine({
         repoRows: rowsByRepo[first.repo] ?? rows,
         stages,
         rulesFor,
-        source: sourceFor('github'),
-        mapping,
+        source: sourceFor(dashboard, 'github'),
       },
       access?.reader,
     );
@@ -172,6 +171,7 @@ export function createBoardEngine({
       (stageId) => rulesFor(row, stageId),
       inheritedCredentials(dashboard, row.id),
       (id) => providers.amplify(id),
+      sourceFor(dashboard, 'amplify'),
     );
     const access = githubAccess(row);
     if (result.kind === 'rate-limited') {
