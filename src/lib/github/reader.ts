@@ -175,7 +175,7 @@ export function createGitHubReader({
 
     listWorkflows: (ref) =>
       getAll(
-        repoUrl(ref, 'actions/workflows?per_page=100'),
+        repoUrl(ref, `actions/workflows?per_page=${String(GITHUB_PER_PAGE)}`),
         WorkflowsResponseSchema,
         (page) => page.workflows,
       ),
