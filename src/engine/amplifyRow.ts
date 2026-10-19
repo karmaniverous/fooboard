@@ -26,11 +26,10 @@ import {
 } from '@/domain/derivation';
 import { type CellRules, placeCell } from '@/domain/model/cell';
 import { asJson } from '@/domain/model/json';
-import type { SourceRule } from '@/domain/model/sourceRule';
+import type { SourceRuleOf } from '@/domain/model/sourceRule';
 import type { KeyProblem, RecordDoc } from '@/domain/model/translate';
 import { evaluateRule } from '@/domain/rules/check';
 import { amplifyTranslate } from '@/domain/statuses/documents';
-import { inProgress } from '@/domain/statuses/resolved';
 import { AmplifyAuthError, AmplifyThrottledError } from '@/lib/amplify/errors';
 import {
   type AmplifyReaderFor,
@@ -41,6 +40,7 @@ import {
 } from '@/lib/amplify/rowJobs';
 
 import { amplifyUnmapped } from './amplifyUnmapped';
+import { emptyCells } from './cells';
 import { failureOutcome } from './providerOutcome';
 import type { UnmappedRun } from './types';
 
@@ -65,7 +65,7 @@ export interface AmplifyRowsInput {
   rulesFor: (row: AmplifyRow, stageId: string) => CellRules;
   defaultsFor: (row: AmplifyRow) => DefaultCredentials;
   readersFor: (credentialId: string) => AmplifyReaderFor | undefined;
-  source: SourceRule;
+  source: SourceRuleOf<'amplify'>;
 }
 
 /** A row's apps with their credentials, or `undefined` when one has no
@@ -84,22 +84,17 @@ export function resolvedSources(
   return out;
 }
 
-const emptyCells = (
+const emptyRowCells = (
   input: AmplifyRowsInput,
   row: AmplifyRow,
   credentialStatus: CredentialStatus,
   providerFailure?: ProviderFailure,
 ) =>
-  objectify(
+  emptyCells(
     input.stages,
-    (s) => s.id,
-    (s) =>
-      deriveCell({
-        placed: undefined,
-        set: input.rulesFor(row, s.id).set,
-        credentialStatus,
-        providerFailure,
-      }),
+    (stageId) => input.rulesFor(row, stageId).set,
+    credentialStatus,
+    providerFailure,
   );
 
 interface AppRecords {
@@ -120,20 +115,13 @@ export async function refreshAmplifyRows(
       input.readersFor,
     );
     if (sources) reading.set(row.id, sources);
-    else rows[row.id] = emptyCells(input, row, 'missing');
+    else rows[row.id] = emptyRowCells(input, row, 'missing');
   }
   const readerFor: AmplifyReaderFor = memoizeReaderFor((s) => {
     const forCredential = input.readersFor(s.credentialId);
     if (!forCredential) throw new Error('missing Amplify credential');
     return forCredential(s);
   });
-  const options =
-    source.provider === 'amplify'
-      ? source.reader
-      : {
-          jobsPerBranch: 20,
-          branches: { combine: 'and' as const, checks: [] },
-        };
   const keyProblems: KeyProblem[] = [];
   const branches: JSONValue[] = [];
   const apps = new Map<string, AppRecords>();
@@ -141,7 +129,7 @@ export async function refreshAmplifyRows(
     for (const s of [...reading.values()].flat()) {
       const key = appKey(s);
       if (apps.has(key)) continue;
-      const read = await readAppJobs(s, readerFor, options);
+      const read = await readAppJobs(s, readerFor, source.reader);
       branches.push(...read.branches.map((b) => asJson(b)));
       const translated = read.jobs.map((j) => amplifyTranslate(j, source));
       keyProblems.push(...translated.flatMap((t) => t.problems));
@@ -160,7 +148,7 @@ export async function refreshAmplifyRows(
     if (outcome.kind === 'rate-limited') return outcome;
     for (const row of input.rows)
       if (reading.has(row.id))
-        rows[row.id] = emptyCells(
+        rows[row.id] = emptyRowCells(
           input,
           row,
           outcome.credentialStatus,
@@ -204,16 +192,4 @@ export async function refreshAmplifyRows(
       .map((r) => r.id),
     branches,
   };
-}
-
-/** Each cell's derivation, active while its status is in progress. */
-export function amplifyCellViews(
-  cells: Readonly<Record<string, CellDerivation>>,
-): Record<string, { derivation: CellDerivation; active: boolean }> {
-  return Object.fromEntries(
-    Object.entries(cells).map(([stageId, derivation]) => [
-      stageId,
-      { derivation, active: inProgress(derivation) },
-    ]),
-  );
 }

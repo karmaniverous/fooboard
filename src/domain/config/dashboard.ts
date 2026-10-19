@@ -9,6 +9,7 @@
  */
 import { z } from 'zod';
 
+import { DEFAULT_SOURCE_RULE_IDS } from '@/domain/model/builtinSources';
 import { SourceRuleSchema } from '@/domain/model/sourceRule';
 import {
   SourceRefsSchema,
@@ -108,8 +109,7 @@ export const DashboardSchema = z
     /** The source rule per source (spec.md A§4.3.7): a built-in id or one
      * of the dashboard's own. */
     sourceRules: SourceRefsSchema.default(() => ({
-      github: 'github',
-      amplify: 'amplify',
+      ...DEFAULT_SOURCE_RULE_IDS,
     })),
     /** The dashboard's own source rules (customised built-ins). */
     customSourceRules: z.array(SourceRuleSchema).default(() => []),

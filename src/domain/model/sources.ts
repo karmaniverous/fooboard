@@ -11,13 +11,21 @@ import { z } from 'zod';
 
 import type { Provider } from '@/domain/config/providers';
 
-import { BUILTIN_SOURCES } from './builtinSources';
-import type { SourceRule } from './sourceRule';
+import {
+  BUILTIN_SOURCES,
+  builtinSourceFor,
+  DEFAULT_SOURCE_RULE_IDS,
+} from './builtinSources';
+import {
+  isSourceRuleFor,
+  type SourceRule,
+  type SourceRuleOf,
+} from './sourceRule';
 
 /** The source rule id per source; defaults to the built-ins. */
 export const SourceRefsSchema = z.object({
-  github: z.string().min(1).default('github'),
-  amplify: z.string().min(1).default('amplify'),
+  github: z.string().min(1).default(DEFAULT_SOURCE_RULE_IDS.github),
+  amplify: z.string().min(1).default(DEFAULT_SOURCE_RULE_IDS.amplify),
 });
 type SourceRefs = z.infer<typeof SourceRefsSchema>;
 
@@ -33,22 +41,16 @@ export const findSourceRule = (
 ): SourceRule | undefined =>
   BUILTIN_SOURCES.find((s) => s.id === id) ?? custom.find((s) => s.id === id);
 
-const builtinFor = (provider: Provider): SourceRule => {
-  const rule = BUILTIN_SOURCES.find((s) => s.provider === provider);
-  if (!rule) throw new Error(`no built-in source rule for ${provider}`);
-  return rule;
-};
-
 /** The source rule `scope` uses for `provider`. */
-export function sourceRuleFor(
+export function sourceRuleFor<P extends Provider>(
   scope: SourceScope,
-  provider: Provider,
-): SourceRule {
+  provider: P,
+): SourceRuleOf<P> {
   const rule = findSourceRule(
     scope.sourceRules[provider],
     scope.customSourceRules,
   );
-  return rule?.provider === provider ? rule : builtinFor(provider);
+  return isSourceRuleFor(rule, provider) ? rule : builtinSourceFor(provider);
 }
 
 /** Integrity problems with a dashboard's own source rules: ids shadowing

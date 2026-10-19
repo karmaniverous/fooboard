@@ -1,5 +1,5 @@
 /**
- * The sources fooboard reads (spec.md AA§4.3.7): GitHub Actions and AWS
+ * The sources fooboard reads (spec.md A§4.3.7): GitHub Actions and AWS
  * Amplify. Rules, status sets, source rules and readers are each for one
  * of them. Pure.
  *

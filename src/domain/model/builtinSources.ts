@@ -7,12 +7,26 @@
  *
  * @module
  */
+import { type Provider, PROVIDER_LABELS } from '@/domain/config/providers';
+
 import { all, any, copy, exists, give, is, not } from './ruleBuilders';
-import { type SourceRule, SourceRuleSchema } from './sourceRule';
+import {
+  isSourceRuleFor,
+  type SourceRule,
+  type SourceRuleOf,
+  SourceRuleSchema,
+} from './sourceRule';
+
+/** The built-in source rule each source uses unless a dashboard chooses
+ * another. */
+export const DEFAULT_SOURCE_RULE_IDS = {
+  github: 'github',
+  amplify: 'amplify',
+} as const satisfies Record<Provider, string>;
 
 const github = SourceRuleSchema.parse({
-  id: 'github',
-  name: 'GitHub',
+  id: DEFAULT_SOURCE_RULE_IDS.github,
+  name: PROVIDER_LABELS.github,
   provider: 'github',
   keys: [
     { name: 'workflow', translations: [copy('$.run.workflowName')] },
@@ -66,8 +80,8 @@ const github = SourceRuleSchema.parse({
 });
 
 const amplify = SourceRuleSchema.parse({
-  id: 'amplify',
-  name: 'Amplify',
+  id: DEFAULT_SOURCE_RULE_IDS.amplify,
+  name: PROVIDER_LABELS.amplify,
   provider: 'amplify',
   keys: [
     { name: 'branch', translations: [copy('$.branch')] },
@@ -98,3 +112,13 @@ const amplify = SourceRuleSchema.parse({
 
 /** The built-in source rules. */
 export const BUILTIN_SOURCES: readonly SourceRule[] = [github, amplify];
+
+/** The built-in source rule for `provider`. */
+export function builtinSourceFor<P extends Provider>(
+  provider: P,
+): SourceRuleOf<P> {
+  const rule = BUILTIN_SOURCES.find((s) => isSourceRuleFor(s, provider));
+  if (!isSourceRuleFor(rule, provider))
+    throw new Error(`no built-in source rule for ${provider}`);
+  return rule;
+}

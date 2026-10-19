@@ -48,6 +48,13 @@ export interface CompareResult {
 }
 
 /** Read-only access to one GitHub credential's repos (spec.md §5). */
+/** The most items GitHub's REST API returns per page. */
+export const GITHUB_PER_PAGE = 100;
+
+/** Pages of `GITHUB_PER_PAGE` needed to read `count` items. */
+export const pagesFor = (count: number): number =>
+  Math.ceil(count / GITHUB_PER_PAGE);
+
 export interface GitHubReader {
   listWorkflowRuns(
     repo: RepoRef,
@@ -141,7 +148,7 @@ export function createGitHubReader({
   return {
     async listWorkflowRuns(
       ref,
-      { perPage = 100, pages = 1, excludePullRequests = true } = {},
+      { perPage = GITHUB_PER_PAGE, pages = 1, excludePullRequests = true } = {},
     ) {
       const runs: WorkflowRun[] = [];
       for (let page = 1; page <= pages; page++) {
@@ -160,7 +167,7 @@ export function createGitHubReader({
       getAll(
         repoUrl(
           ref,
-          `actions/runs/${String(runId)}/jobs?filter=${filter}&per_page=100`,
+          `actions/runs/${String(runId)}/jobs?filter=${filter}&per_page=${String(GITHUB_PER_PAGE)}`,
         ),
         JobsResponseSchema,
         (page) => page.jobs,
@@ -205,7 +212,7 @@ export function createGitHubReader({
 
     listRepos: () =>
       getAll(
-        `${API_BASE}/user/repos?per_page=100`,
+        `${API_BASE}/user/repos?per_page=${String(GITHUB_PER_PAGE)}`,
         ReposResponseSchema,
         asIs<Repo>,
       ),

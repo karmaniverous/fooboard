@@ -11,7 +11,14 @@ import { useContext } from 'react';
 
 import { Choice } from '@/components/Choice';
 import { Button } from '@/components/ui/button';
-import type { SourceRule } from '@/domain/model/sourceRule';
+import type { Provider } from '@/domain/config/providers';
+import {
+  MAX_AMPLIFY_JOBS_PER_BRANCH,
+  MAX_GITHUB_RUNS,
+  MIN_READ,
+  type SourceRule,
+} from '@/domain/model/sourceRule';
+import { pagesFor } from '@/lib/github';
 
 import { CommitInput } from '../fields';
 import { RuleEditor } from '../rules/RuleEditor';
@@ -21,6 +28,20 @@ import {
   useRuleSamples,
 } from '../rules/samples';
 import { KeysEditor } from './KeysEditor';
+
+/** What each source's raw data is, for the translation previews. */
+const RAW_NOUNS = {
+  github: 'raw runs',
+  amplify: 'raw jobs',
+} as const satisfies Record<Provider, string>;
+
+/** The GitHub requests a read of `runs` makes, in words. */
+const requestsText = (runs: number): string => {
+  const pages = pagesFor(runs);
+  return pages === 1
+    ? '1 request per repo per poll'
+    : `${String(pages)} requests per repo per poll`;
+};
 
 /** A number setting committed on blur, clamped to `[min, max]`. */
 function NumberField({
@@ -94,7 +115,7 @@ export function CustomSourceEditor({
         title="Record keys"
         keys={rule.keys}
         samples={raw.records}
-        noun={rule.provider === 'github' ? 'raw runs' : 'raw jobs'}
+        noun={RAW_NOUNS[rule.provider]}
         target={target}
         onChange={(keys) => {
           onChange({ ...rule, keys });
@@ -171,17 +192,15 @@ export function CustomSourceEditor({
             <NumberField
               label="Runs per repo"
               value={rule.reader.runs}
-              min={1}
-              max={500}
+              min={MIN_READ}
+              max={MAX_GITHUB_RUNS}
               onCommit={(runs) => {
                 onChange({ ...rule, reader: { ...rule.reader, runs } });
               }}
             />
           </span>
           <span className="text-muted-foreground">
-            {rule.reader.runs > 100
-              ? `${String(Math.ceil(rule.reader.runs / 100))} requests per repo per poll`
-              : '1 request per repo per poll'}
+            {requestsText(rule.reader.runs)}
           </span>
         </div>
       ) : (
@@ -191,8 +210,8 @@ export function CustomSourceEditor({
             <NumberField
               label="Jobs per branch"
               value={rule.reader.jobsPerBranch}
-              min={1}
-              max={100}
+              min={MIN_READ}
+              max={MAX_AMPLIFY_JOBS_PER_BRANCH}
               onCommit={(jobsPerBranch) => {
                 onChange({
                   ...rule,

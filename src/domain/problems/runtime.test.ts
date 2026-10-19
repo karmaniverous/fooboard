@@ -6,9 +6,16 @@
  */
 import { describe, expect, it } from 'vitest';
 
-import { BUILTIN_SOURCES } from '@/domain/model/builtinSources';
+import {
+  BUILTIN_SOURCES,
+  builtinSourceFor,
+} from '@/domain/model/builtinSources';
+import {
+  DEFAULT_AMPLIFY_JOBS_PER_BRANCH,
+  DEFAULT_GITHUB_RUNS,
+} from '@/domain/model/sourceRule';
 
-import { translationProblems, windowHint } from './runtime';
+import { readLimit, translationProblems, windowHint } from './runtime';
 
 const [github] = BUILTIN_SOURCES;
 
@@ -46,16 +53,28 @@ describe('translationProblems', () => {
 
 describe('windowHint', () => {
   it('marks the empty cell, is fixed on the Sources tab and can be dismissed', () => {
-    const hint = windowHint(
-      { rowId: 'web', stageId: 'dev' },
-      'github',
-      '100 runs',
-    );
+    const source = builtinSourceFor('github');
+    const hint = windowHint({ rowId: 'web', stageId: 'dev' }, source);
     expect(hint).toMatchObject({
       level: { kind: 'cell', rowId: 'web', stageId: 'dev' },
       target: { kind: 'source', provider: 'github' },
       dismissable: true,
     });
-    expect(hint.message).toContain('read 100 runs');
+    expect(hint.message).toContain(`read ${readLimit(source)},`);
+  });
+
+  it('names what each source reads', () => {
+    const github = builtinSourceFor('github');
+    const amplify = builtinSourceFor('amplify');
+    expect(readLimit(github)).toBe(`${String(DEFAULT_GITHUB_RUNS)} runs`);
+    expect(
+      readLimit({ ...github, reader: { ...github.reader, runs: 7 } }),
+    ).toBe('7 runs');
+    expect(readLimit(amplify)).toBe(
+      `${String(DEFAULT_AMPLIFY_JOBS_PER_BRANCH)} jobs per branch`,
+    );
+    expect(
+      windowHint({ rowId: 'site', stageId: 'prod' }, amplify).target,
+    ).toEqual({ kind: 'source', provider: 'amplify' });
   });
 });

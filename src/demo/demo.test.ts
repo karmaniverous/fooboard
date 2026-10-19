@@ -8,9 +8,10 @@
  */
 import { describe, expect, it } from 'vitest';
 
-import { cellRulesFor, sourceFor } from '@/domain/config/cellRules';
+import { cellRulesFor } from '@/domain/config/cellRules';
 import { computeStaleness, deriveCell } from '@/domain/derivation';
 import { placeCell } from '@/domain/model/cell';
+import { sourceRuleFor } from '@/domain/model/sources';
 import { amplifyRecord } from '@/domain/statuses/documents';
 import { refreshGithubRepo } from '@/engine/githubRow';
 import { collectRowJobs } from '@/lib/amplify/rowJobs';
@@ -37,7 +38,7 @@ async function githubCell(reader: GitHubReader, repo: string, stageId: string) {
       repoRows: [row],
       stages: demoDashboard.stages,
       rulesFor: (r, s) => cellRulesFor(demoDashboard, r, s),
-      source: sourceFor(demoDashboard, 'github'),
+      source: sourceRuleFor(demoDashboard, 'github'),
     },
     reader,
   );

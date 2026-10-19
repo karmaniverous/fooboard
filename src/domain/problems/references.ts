@@ -14,7 +14,7 @@ import {
   PROVIDERS,
 } from '@/domain/config/providers';
 import { DEFAULT_STATUS_SET_IDS } from '@/domain/config/statusSets';
-import { BUILTIN_SOURCES } from '@/domain/model/builtinSources';
+import { builtinSourceFor } from '@/domain/model/builtinSources';
 import { findSourceRule } from '@/domain/model/sources';
 import { presetById } from '@/domain/statuses/presets';
 import { findStatusSet } from '@/domain/statuses/resolve';
@@ -50,12 +50,11 @@ function sourceRefProblems(d: Dashboard): Problem[] {
       p,
       'source rule',
     );
-    const builtin = BUILTIN_SOURCES.find((s) => s.provider === p);
     return why
       ? [
           problem(
             { kind: 'dashboard' },
-            `${why}: using the built-in ${builtin?.name ?? p} rule`,
+            `${why}: using the built-in ${builtinSourceFor(p).name} rule`,
             false,
             { target: { kind: 'source', provider: p } },
           ),

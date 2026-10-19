@@ -7,7 +7,7 @@
  * @module
  */
 import type { AmplifyRow } from '@/domain/config/row';
-import { unmappedReason } from '@/domain/derivation';
+import { rowReasons } from '@/domain/derivation';
 import type { RecordDoc } from '@/domain/model/translate';
 import { appKey, type ResolvedAmplifySource } from '@/lib/amplify/rowJobs';
 
@@ -52,16 +52,10 @@ export function amplifyUnmapped(
     const readers = input.rows.filter((r) =>
       (reading.get(r.id) ?? []).some((s) => appKey(s) === key),
     );
-    const cells = new Map(readers.map((r) => [r.id, cellsOf(r)]));
+    const rows = readers.map((r) => ({ rowId: r.id, cells: cellsOf(r) }));
     for (const record of records) {
-      const rows = readers.map((r) => ({
-        rowId: r.id,
-        reason: unmappedReason(record, cells.get(r.id) ?? [], true),
-      }));
-      const reasons = rows.flatMap(({ rowId, reason }) =>
-        reason ? [{ rowId, reason }] : [],
-      );
-      if (reasons.length === 0 || reasons.length < rows.length) continue;
+      const reasons = rowReasons(record, rows, true);
+      if (!reasons) continue;
       const [first] = reasons;
       const job = rawJob(record);
       const branch = text(record.branch) ?? job.branch ?? null;

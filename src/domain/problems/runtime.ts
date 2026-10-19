@@ -7,7 +7,6 @@
  *
  * @module
  */
-import type { Provider } from '@/domain/config/providers';
 import type { SourceRule } from '@/domain/model/sourceRule';
 import type { KeyProblem } from '@/domain/model/translate';
 
@@ -44,16 +43,21 @@ export function translationProblems(
   });
 }
 
-/** The hint that the empty cell at `rowId` and `stageId` may need more
- * read (`limit`, e.g. "100 runs"). */
+/** How much `source` reads, in words (e.g. "100 runs"). */
+export const readLimit = (source: SourceRule): string =>
+  source.provider === 'github'
+    ? `${String(source.reader.runs)} runs`
+    : `${String(source.reader.jobsPerBranch)} jobs per branch`;
+
+/** The hint that the empty cell at `rowId` and `stageId`, read with
+ * `source`, may need more read. */
 export const windowHint = (
   cell: { rowId: string; stageId: string },
-  provider: Provider,
-  limit: string,
+  source: SourceRule,
 ): Problem =>
   problem(
     { kind: 'cell', ...cell },
-    `read ${limit}, the most its source rule reads; this cell's last record may be older: read more on the Sources tab`,
+    `read ${readLimit(source)}, the most its source rule reads; this cell's last record may be older: read more on the Sources tab`,
     true,
-    { target: { kind: 'source', provider } },
+    { target: { kind: 'source', provider: source.provider } },
   );

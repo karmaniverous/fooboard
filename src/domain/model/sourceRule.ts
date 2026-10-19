@@ -10,6 +10,7 @@
  */
 import { z } from 'zod';
 
+import type { Provider } from '@/domain/config/providers';
 import { always } from '@/domain/rules/always';
 import { RuleSchema } from '@/domain/rules/schema';
 
@@ -41,36 +42,76 @@ const base = {
   order: z.string().min(1),
 };
 
+/** The fewest runs or jobs a reader may ask for. */
+export const MIN_READ = 1;
+/** The most runs the GitHub reader may read per repo, and its default. */
+export const MAX_GITHUB_RUNS = 500;
+export const DEFAULT_GITHUB_RUNS = 100;
+/** The most jobs the Amplify reader may read per branch, and its default. */
+export const MAX_AMPLIFY_JOBS_PER_BRANCH = 100;
+export const DEFAULT_AMPLIFY_JOBS_PER_BRANCH = 20;
+
+/** What the GitHub reader asks for, by default. */
+const GITHUB_READER_DEFAULTS = {
+  excludePullRequests: true,
+  runs: DEFAULT_GITHUB_RUNS,
+};
+
+/** What the Amplify reader asks for, by default: every branch. */
+export const AMPLIFY_READER_DEFAULTS = {
+  jobsPerBranch: DEFAULT_AMPLIFY_JOBS_PER_BRANCH,
+  branches: always,
+};
+
 /** What the GitHub reader asks for. */
 const GithubReaderSchema = z.object({
   /** Filtered in the browser: the runs API can't exclude an event. */
-  excludePullRequests: z.boolean().default(true),
-  runs: z.number().int().min(1).max(500).default(100),
+  excludePullRequests: z
+    .boolean()
+    .default(GITHUB_READER_DEFAULTS.excludePullRequests),
+  runs: z
+    .number()
+    .int()
+    .min(MIN_READ)
+    .max(MAX_GITHUB_RUNS)
+    .default(DEFAULT_GITHUB_RUNS),
 });
 
 /** What the Amplify reader asks for. */
 const AmplifyReaderSchema = z.object({
-  jobsPerBranch: z.number().int().min(1).max(100).default(20),
+  jobsPerBranch: z
+    .number()
+    .int()
+    .min(MIN_READ)
+    .max(MAX_AMPLIFY_JOBS_PER_BRANCH)
+    .default(DEFAULT_AMPLIFY_JOBS_PER_BRANCH),
   /** Over one entry of Amplify's branch list; empty: every branch. */
   branches: RuleSchema.default(always),
 });
+export type AmplifyReaderOptions = z.infer<typeof AmplifyReaderSchema>;
 
 export const SourceRuleSchema = z.discriminatedUnion('provider', [
   z.object({
     ...base,
     provider: z.literal('github'),
-    reader: GithubReaderSchema.default({
-      excludePullRequests: true,
-      runs: 100,
-    }),
+    reader: GithubReaderSchema.default(GITHUB_READER_DEFAULTS),
   }),
   z.object({
     ...base,
     provider: z.literal('amplify'),
-    reader: AmplifyReaderSchema.default({
-      jobsPerBranch: 20,
-      branches: always,
-    }),
+    reader: AmplifyReaderSchema.default(AMPLIFY_READER_DEFAULTS),
   }),
 ]);
 export type SourceRule = z.infer<typeof SourceRuleSchema>;
+
+/** The source rule for `provider`. */
+export type SourceRuleOf<P extends Provider> = Extract<
+  SourceRule,
+  { provider: P }
+>;
+
+/** Is `rule` for `provider`? */
+export const isSourceRuleFor = <P extends Provider>(
+  rule: SourceRule | undefined,
+  provider: P,
+): rule is SourceRuleOf<P> => rule?.provider === provider;

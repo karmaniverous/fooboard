@@ -5,18 +5,18 @@
  *
  * @module
  */
-import type { Provider } from '@/domain/config/providers';
 import type { CellDerivation } from '@/domain/derivation';
+import type { SourceRule } from '@/domain/model/sourceRule';
 import type { Problem } from '@/domain/problems/problem';
 import { windowHint } from '@/domain/problems/runtime';
 
-/** Hints for every empty cell in `rows` (row id to stage id to cell). */
+/** Hints for every empty cell in `rows` (row id to stage id to cell),
+ * read with `source`. */
 export function windowHints(
   rows: Readonly<
     Record<string, Readonly<Record<string, { derivation: CellDerivation }>>>
   >,
-  provider: Provider,
-  limit: string,
+  source: SourceRule,
 ): Problem[] {
   return Object.entries(rows).flatMap(([rowId, cells]) =>
     Object.entries(cells)
@@ -24,6 +24,6 @@ export function windowHints(
         ([, { derivation: d }]) =>
           d.kind === 'empty' && d.state === 'no-records',
       )
-      .map(([stageId]) => windowHint({ rowId, stageId }, provider, limit)),
+      .map(([stageId]) => windowHint({ rowId, stageId }, source)),
   );
 }

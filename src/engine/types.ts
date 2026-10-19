@@ -43,6 +43,9 @@ export interface BoardCell {
   compare?: CompareDetail;
 }
 
+/** What a provider refresh yields per cell, before staleness. */
+export type CellView = Pick<BoardCell, 'derivation' | 'active'>;
+
 /** A record the board couldn't place, for the Unmapped panel (C-15,
  * spec.md A§4.3.7): a GitHub run or an Amplify job. */
 export interface UnmappedRun {
@@ -82,11 +85,11 @@ export interface BoardModel {
   refreshedAt: Record<string, number>;
 }
 
-/** The key of one cell in `BoardModel.cells`. */
-/** Ids may contain any character, so the pair is encoded unambiguously. */
 /** A cell key parsed back into its row and stage ids. */
 export const CellKeySchema = z.tuple([z.string(), z.string()]);
 
+/** The key of one cell in `BoardModel.cells`. Ids may contain any
+ * character, so the pair is encoded unambiguously. */
 export const cellKey = (rowId: string, stageId: string): string =>
   JSON.stringify([rowId, stageId]);
 

@@ -58,3 +58,19 @@ export function unmappedReason(
     ? undefined
     : { kind: 'no-item-counts' };
 }
+
+/** Why each row reading `record`'s repo or app leaves it unplaced, or
+ * `undefined` when one of them places it (or none reads it). */
+export function rowReasons(
+  record: RecordDoc,
+  rows: readonly { rowId: string; cells: readonly CellRules[] }[],
+  itemsKnown: boolean,
+): { rowId: string; reason: UnmappedReason }[] | undefined {
+  const reasons: { rowId: string; reason: UnmappedReason }[] = [];
+  for (const { rowId, cells } of rows) {
+    const reason = unmappedReason(record, cells, itemsKnown);
+    if (!reason) return undefined;
+    reasons.push({ rowId, reason });
+  }
+  return reasons.length > 0 ? reasons : undefined;
+}

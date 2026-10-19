@@ -13,9 +13,11 @@ import type { App, Branch, JobSummary } from '@aws-sdk/client-amplify';
 import type { AmplifySource } from '@/domain/config/row';
 import type { AmplifyJobWithBranch } from '@/domain/derivation/types';
 import { asJson } from '@/domain/model/json';
-import { always } from '@/domain/rules/always';
+import {
+  AMPLIFY_READER_DEFAULTS,
+  type AmplifyReaderOptions,
+} from '@/domain/model/sourceRule';
 import { evaluateRule } from '@/domain/rules/check';
-import type { Rule } from '@/domain/rules/schema';
 
 import { AmplifyNotFoundError } from './errors';
 import type { AmplifyReader } from './reader';
@@ -72,17 +74,6 @@ export function memoizeReaderFor(
   };
 }
 
-/** What the Amplify reader asks for (the source rule's reader options). */
-export interface AmplifyReadOptions {
-  jobsPerBranch: number;
-  branches: Rule;
-}
-
-const ALL_BRANCHES: AmplifyReadOptions = {
-  jobsPerBranch: 20,
-  branches: always,
-};
-
 /** One app's read: the jobs of the branches the branch rule chose, the
  * whole branch list (for the branch rule's sample), and whether any
  * branch's read came back full (as many jobs as asked for). */
@@ -97,7 +88,7 @@ export interface AppRead {
 export async function readAppJobs(
   source: ResolvedAmplifySource,
   readerFor: AmplifyReaderFor,
-  options: AmplifyReadOptions = ALL_BRANCHES,
+  options: AmplifyReaderOptions = AMPLIFY_READER_DEFAULTS,
 ): Promise<AppRead> {
   const reader = readerFor(source);
   const branches = await reader.listBranches(source.appId);
@@ -124,7 +115,7 @@ export async function readAppJobs(
 export async function collectRowJobs(
   sources: readonly ResolvedAmplifySource[],
   readerFor: AmplifyReaderFor,
-  options: AmplifyReadOptions = ALL_BRANCHES,
+  options: AmplifyReaderOptions = AMPLIFY_READER_DEFAULTS,
 ): Promise<AmplifyJobWithBranch[]> {
   const jobs: AmplifyJobWithBranch[] = [];
   for (const source of sources)

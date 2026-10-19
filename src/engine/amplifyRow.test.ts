@@ -13,10 +13,10 @@ import { branchRules } from '@/domain/config/placement';
 import type { AmplifyRow } from '@/domain/config/row';
 import type { Stage } from '@/domain/config/stage';
 import { amplifySet } from '@/domain/derivation/testFixtures';
-import { BUILTIN_SOURCES } from '@/domain/model/builtinSources';
+import { builtinSourceFor } from '@/domain/model/builtinSources';
 import type { CellRules } from '@/domain/model/cell';
 import { all, is, not } from '@/domain/model/ruleBuilders';
-import type { SourceRule } from '@/domain/model/sourceRule';
+import type { SourceRuleOf } from '@/domain/model/sourceRule';
 import { always } from '@/domain/rules/always';
 import { AmplifyAuthError, AmplifyThrottledError } from '@/lib/amplify/errors';
 import type { AmplifyReader } from '@/lib/amplify/reader';
@@ -33,7 +33,7 @@ async function refreshAmplifyRow(
   rulesFor: (stageId: string) => CellRules,
   defaults: DefaultCredentials,
   readersFor: (id: string) => AmplifyReaderFor | undefined,
-  source: SourceRule = amplifySource,
+  source: SourceRuleOf<'amplify'> = amplifySource,
 ) {
   const result = await refreshAmplifyRows({
     rows: [row],
@@ -59,7 +59,7 @@ const row: AmplifyRow = {
 };
 const stages = [{ id: 'prod', name: 'Prod', rules: branchRules('main') }];
 const defaults = {};
-const amplifySource = BUILTIN_SOURCES[1];
+const amplifySource = builtinSourceFor('amplify');
 const rulesFor = (stageId: string): CellRules => ({
   record: always,
   items: always,
@@ -198,11 +198,9 @@ describe('refreshAmplifyRow keep', () => {
           }),
         ]),
     });
-    const amplify = BUILTIN_SOURCES.find((x) => x.provider === 'amplify');
-    if (!amplify) throw new Error('no Amplify source rule');
     const refresh = (keep = always) =>
       refreshAmplifyRow(row, stages, rulesFor, defaults, () => () => reader, {
-        ...amplify,
+        ...amplifySource,
         keep,
       });
     expect(await refresh()).toMatchObject({ cells: { prod: { kind: 'ok' } } });

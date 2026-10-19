@@ -14,13 +14,14 @@
 import type { JSONValue } from 'json-p3';
 import { group, unique } from 'radash';
 
-import { cellRulesFor, sourceFor } from '@/domain/config/cellRules';
+import { cellRulesFor } from '@/domain/config/cellRules';
 import type { Dashboard } from '@/domain/config/dashboard';
 import {
   inheritedCredentials,
   rowGithubCredentialId,
 } from '@/domain/config/inheritance';
 import type { AmplifyRow, GithubRow, Row } from '@/domain/config/row';
+import { sourceRuleFor } from '@/domain/model/sources';
 import type { Problem } from '@/domain/problems/problem';
 import { translationProblems } from '@/domain/problems/runtime';
 import type { GitHubReader } from '@/lib/github';
@@ -144,6 +145,7 @@ export function createBoardEngine({
     (r): r is GithubRow => r.type === 'github',
   );
   const rowsByRepo = group(githubRows, (r) => r.repo);
+  const githubSource = sourceRuleFor(dashboard, 'github');
 
   const refreshGithubGroup = async (
     targetId: string,
@@ -158,7 +160,7 @@ export function createBoardEngine({
         repoRows: rowsByRepo[first.repo] ?? rows,
         stages,
         rulesFor,
-        source: sourceFor(dashboard, 'github'),
+        source: githubSource,
       },
       access?.reader,
     );
@@ -178,12 +180,7 @@ export function createBoardEngine({
           : {},
       };
     }
-    const githubSource = sourceFor(dashboard, 'github');
-    const runs =
-      githubSource.provider === 'github' ? githubSource.reader.runs : 100;
-    const hints = result.full
-      ? windowHints(result.rows, 'github', `${String(runs)} runs`)
-      : [];
+    const hints = result.full ? windowHints(result.rows, githubSource) : [];
     apply(
       targetId,
       applied,
@@ -206,7 +203,7 @@ export function createBoardEngine({
       rulesFor,
       defaultsFor,
       readersFor,
-      source: sourceFor(dashboard, 'amplify'),
+      source: sourceRuleFor(dashboard, 'amplify'),
       githubFor: (row) => githubAccess(row)?.reader,
     });
     const accesses = rows.map(githubAccess);

@@ -8,18 +8,17 @@
  * @module
  */
 import type { JSONValue } from 'json-p3';
-import { objectify } from 'radash';
+import { mapValues, objectify } from 'radash';
 
 import type { GithubRow } from '@/domain/config/row';
 import type { Stage } from '@/domain/config/stage';
 import {
-  type CellDerivation,
   type CredentialStatus,
   deriveCell,
   type GithubWorkflowRun,
   isExcludedEvent,
   type ProviderFailure,
-  unmappedReason,
+  rowReasons,
 } from '@/domain/derivation';
 import {
   type CellRules,
@@ -29,7 +28,7 @@ import {
   ruleNeedsItems,
 } from '@/domain/model/cell';
 import { asJson } from '@/domain/model/json';
-import type { SourceRule } from '@/domain/model/sourceRule';
+import type { SourceRuleOf } from '@/domain/model/sourceRule';
 import {
   compareOrder,
   type KeyProblem,
@@ -37,28 +36,25 @@ import {
   translate,
 } from '@/domain/model/translate';
 import { evaluateRule } from '@/domain/rules/check';
-import { inProgress } from '@/domain/statuses/resolved';
 import {
+  GITHUB_PER_PAGE,
   GitHubAuthError,
   type GitHubReader,
   mapRunWithJobs,
   mapWorkflowRun,
+  pagesFor,
   RateLimitedError,
   type WorkflowRun,
 } from '@/lib/github';
 
+import { cellView, emptyCells } from './cells';
 import { failureOutcome } from './providerOutcome';
-import type { UnmappedRun } from './types';
+import type { CellView, UnmappedRun } from './types';
 
 /** A branch and when it last ran, for branch suggestions. */
 interface DatedBranch {
   name: string;
   updatedAt: string;
-}
-
-interface CellView {
-  derivation: CellDerivation;
-  active: boolean;
 }
 
 export interface GithubRepoRefresh {
@@ -91,7 +87,7 @@ export interface GithubRepoInput {
   repoRows: readonly GithubRow[];
   stages: readonly Stage[];
   rulesFor: RulesFor;
-  source: SourceRule;
+  source: SourceRuleOf<'github'>;
 }
 
 function emptyRows(
@@ -100,18 +96,14 @@ function emptyRows(
   providerFailure?: ProviderFailure,
 ): GithubRepoRefresh {
   const cellsOf = (row: GithubRow) =>
-    objectify(
-      input.stages,
-      (s) => s.id,
-      (s): CellView => ({
-        active: false,
-        derivation: deriveCell({
-          placed: undefined,
-          set: input.rulesFor(row, s.id).set,
-          credentialStatus,
-          providerFailure,
-        }),
-      }),
+    mapValues(
+      emptyCells(
+        input.stages,
+        (stageId) => input.rulesFor(row, stageId).set,
+        credentialStatus,
+        providerFailure,
+      ),
+      cellView,
     );
   return {
     kind: 'refreshed',
@@ -153,20 +145,18 @@ async function refreshWith(
   reader: GitHubReader,
 ): Promise<GithubRepoRefresh> {
   const { source } = input;
-  const runs = source.provider === 'github' ? source.reader.runs : 100;
+  const { runs, excludePullRequests: excludePrs } = source.reader;
   const repo = input.rows[0]?.repo ?? '';
   const ref = repoRef(repo);
   const raw = (
     await reader.listWorkflowRuns(ref, {
-      perPage: 100,
-      pages: Math.ceil(runs / 100),
+      perPage: GITHUB_PER_PAGE,
+      pages: pagesFor(runs),
       excludePullRequests: true,
     })
   ).slice(0, runs);
   const keepDeep = ruleNeedsItems(source.keep);
   const keyProblems: KeyProblem[] = [];
-  const excludePrs =
-    source.provider === 'github' && source.reader.excludePullRequests;
   const order = (r: RecordDoc): JSONValue => r[source.order] ?? null;
   const candidates: Candidate[] = raw
     .filter((r) => !(excludePrs && isExcludedEvent(r.event)))
@@ -214,12 +204,7 @@ async function refreshWith(
         if (found) break;
       }
     }
-    const derivation = deriveCell({
-      placed: found,
-      set,
-      credentialStatus: 'ok',
-    });
-    return { derivation, active: inProgress(derivation) };
+    return cellView(deriveCell({ placed: found, set, credentialStatus: 'ok' }));
   };
 
   const result: Record<string, Record<string, CellView>> = {};
@@ -238,14 +223,8 @@ async function refreshWith(
   for (const c of candidates) {
     const pending = fetched.get(c.run.id);
     const record = pending ? await pending : c.shallow;
-    const rows = rulesByRow.map(({ rowId, cells }) => ({
-      rowId,
-      reason: unmappedReason(record, cells, pending !== undefined),
-    }));
-    if (rows.some((r) => r.reason === undefined)) continue;
-    const reasons = rows.flatMap(({ rowId, reason }) =>
-      reason ? [{ rowId, reason }] : [],
-    );
+    const reasons = rowReasons(record, rulesByRow, pending !== undefined);
+    if (!reasons) continue;
     const [{ reason }] = reasons;
     unmapped.push({
       provider: 'github',

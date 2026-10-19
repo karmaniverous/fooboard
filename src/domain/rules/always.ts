@@ -1,5 +1,5 @@
 /**
- * The rule with no checks (spec.md AA§4.3.7: a rule with no checks
+ * The rule with no checks (spec.md A§4.3.7: a rule with no checks
  * matches everything): the default of every optional rule, and what an
  * emptied rule in an editor means, so it unsets that level's rule and the
  * level above applies. Pure.

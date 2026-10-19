@@ -11,9 +11,10 @@ import { describe, expect, it } from 'vitest';
 
 import { demoDashboard } from '@/demo/board';
 import { createDemoGitHubReader } from '@/demo/github';
-import { cellRulesFor, sourceFor } from '@/domain/config/cellRules';
+import { cellRulesFor } from '@/domain/config/cellRules';
 import { all, exists, is, not } from '@/domain/model/ruleBuilders';
-import type { SourceRule } from '@/domain/model/sourceRule';
+import type { SourceRuleOf } from '@/domain/model/sourceRule';
+import { sourceRuleFor } from '@/domain/model/sources';
 import type { GitHubReader } from '@/lib/github/reader';
 
 import { refreshGithubRepo } from './githubRow';
@@ -52,7 +53,7 @@ describe('refreshGithubRepo', () => {
         repoRows: [row],
         stages: demoDashboard.stages,
         rulesFor: (r, stageId) => cellRulesFor(demoDashboard, r, stageId),
-        source: sourceFor(demoDashboard, 'github'),
+        source: sourceRuleFor(demoDashboard, 'github'),
       },
       reader,
     );
@@ -64,7 +65,10 @@ describe('refreshGithubRepo', () => {
   });
 
   const row = demoDashboard.rows.find((r) => r.id === 'api-core');
-  const refresh = async (source: SourceRule, reader: GitHubReader) => {
+  const refresh = async (
+    source: SourceRuleOf<'github'>,
+    reader: GitHubReader,
+  ) => {
     if (row?.type !== 'github') throw new Error('api-core is not a GitHub row');
     const result = await refreshGithubRepo(
       {
@@ -82,7 +86,7 @@ describe('refreshGithubRepo', () => {
 
   it('drops records the keep rule rejects, on record keys or items', async () => {
     const reader = createDemoGitHubReader(() => 0);
-    const builtin = sourceFor(demoDashboard, 'github');
+    const builtin = sourceRuleFor(demoDashboard, 'github');
     const plain = await refresh(builtin, reader);
     expect(plain.rows['api-core'].dev.derivation.kind).toBe('ok');
     const noDev = await refresh(
@@ -106,11 +110,10 @@ describe('refreshGithubRepo', () => {
 
   it('reports a full read when the reader returns as many runs as the rule reads', async () => {
     const demo = createDemoGitHubReader(() => 0);
-    const builtin = sourceFor(demoDashboard, 'github');
+    const builtin = sourceRuleFor(demoDashboard, 'github');
     const runs = (
       await demo.listWorkflowRuns({ owner: 'acme', repo: 'api-core' })
     ).length;
-    if (builtin.provider !== 'github') throw new Error('not GitHub');
     const result = await refresh(
       { ...builtin, reader: { ...builtin.reader, runs } },
       demo,

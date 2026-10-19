@@ -10,7 +10,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { branchRules } from '@/domain/config/placement';
 import type { AmplifyRow } from '@/domain/config/row';
 import { amplifySet } from '@/domain/derivation/testFixtures';
-import { BUILTIN_SOURCES } from '@/domain/model/builtinSources';
+import { builtinSourceFor } from '@/domain/model/builtinSources';
 import type { CellRules } from '@/domain/model/cell';
 import { always } from '@/domain/rules/always';
 import { amplifyBranch, amplifyJobSummary } from '@/lib/amplify/sdkShapes';
@@ -22,7 +22,7 @@ import {
   refreshAmplifyTarget,
 } from './amplifyTarget';
 
-const amplify = BUILTIN_SOURCES[1];
+const amplify = builtinSourceFor('amplify');
 const row = (id: string, appIds: string[]): AmplifyRow => ({
   type: 'amplify',
   id,
