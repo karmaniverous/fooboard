@@ -6,7 +6,7 @@
  */
 import { render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
-import { describe, expect, it } from 'vitest';
+import { beforeAll, describe, expect, it } from 'vitest';
 
 import { site } from '@/lib/site';
 import { createAppStores } from '@/storage';
@@ -15,8 +15,19 @@ import { StoresContext } from '@/storage/storesContext';
 
 import App from './App';
 
-/** Long enough for a lazily loaded page to load on a cold test run. */
-const PAGE_LOAD_MS = 10_000;
+/** Long enough for the lazily loaded pages to load on a cold, busy test
+ * run (coverage instrumentation included). */
+const PAGE_LOAD_MS = 60_000;
+
+// Load the lazy pages once up front, so each route renders them at once.
+beforeAll(async () => {
+  await Promise.all([
+    import('@/pages/DashboardPage'),
+    import('@/pages/DemoPage'),
+    import('@/pages/spike/AmplifySpikePage'),
+    import('@/pages/spike/GithubSpikePage'),
+  ]);
+}, PAGE_LOAD_MS);
 
 function renderAt(path: string): void {
   render(
