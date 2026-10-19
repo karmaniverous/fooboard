@@ -8,18 +8,44 @@
 import { describe, expect, it } from 'vitest';
 import { vi } from 'vitest';
 
+import type { DefaultCredentials } from '@/domain/config/credentialRefs';
 import { branchRules } from '@/domain/config/placement';
 import type { AmplifyRow } from '@/domain/config/row';
+import type { Stage } from '@/domain/config/stage';
 import { amplifySet } from '@/domain/derivation/testFixtures';
 import { BUILTIN_SOURCES } from '@/domain/model/builtinSources';
 import type { CellRules } from '@/domain/model/cell';
 import { all, always, is, not } from '@/domain/model/ruleBuilders';
+import type { SourceRule } from '@/domain/model/sourceRule';
 import { AmplifyAuthError, AmplifyThrottledError } from '@/lib/amplify/errors';
 import type { AmplifyReader } from '@/lib/amplify/reader';
+import type { AmplifyReaderFor } from '@/lib/amplify/rowJobs';
 import { amplifyBranch, amplifyJobSummary } from '@/lib/amplify/sdkShapes';
 import { fakeAmplifyReader } from '@/test/fakeReaders';
 
-import { refreshAmplifyRow } from './amplifyRow';
+import { refreshAmplifyRows } from './amplifyRow';
+
+/** One row's refresh through the shared-app refresh, as its cells. */
+async function refreshAmplifyRow(
+  row: AmplifyRow,
+  stages: readonly Stage[],
+  rulesFor: (stageId: string) => CellRules,
+  defaults: DefaultCredentials,
+  readersFor: (id: string) => AmplifyReaderFor | undefined,
+  source: SourceRule = amplifySource,
+) {
+  const result = await refreshAmplifyRows({
+    rows: [row],
+    stages,
+    rulesFor: (_, stageId) => rulesFor(stageId),
+    defaultsFor: () => defaults,
+    readersFor,
+    source,
+  });
+  return result.kind === 'rate-limited'
+    ? result
+    : { kind: result.kind, cells: result.rows[row.id] };
+}
 
 const row: AmplifyRow = {
   type: 'amplify',
@@ -32,6 +58,7 @@ const row: AmplifyRow = {
 };
 const stages = [{ id: 'prod', name: 'Prod', rules: branchRules('main') }];
 const defaults = {};
+const amplifySource = BUILTIN_SOURCES[1];
 const rulesFor = (stageId: string): CellRules => ({
   record: always,
   items: always,

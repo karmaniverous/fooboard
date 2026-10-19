@@ -75,7 +75,7 @@ describe('board engine over the demo', () => {
 
   it('lists one unmapped demo run per reason', async () => {
     const reasons = (await demoModel()).unmapped.map(
-      (u) => `${u.repo}:${u.reason.kind}`,
+      (u) => `${u.where}:${u.reason.kind}`,
     );
     expect(reasons).toEqual(
       expect.arrayContaining([

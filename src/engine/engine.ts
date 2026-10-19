@@ -11,6 +11,7 @@
  *
  * @module
  */
+import type { JSONValue } from 'json-p3';
 import { group, unique } from 'radash';
 
 import { cellRulesFor, sourceFor } from '@/domain/config/cellRules';
@@ -25,7 +26,11 @@ import { translationProblems } from '@/domain/problems/runtime';
 import type { GitHubReader } from '@/lib/github';
 import { isOverPollingShare } from '@/lib/github';
 
-import { amplifyCellViews, refreshAmplifyRow } from './amplifyRow';
+import {
+  amplifyGroups,
+  refreshAmplifyTarget,
+  rowAppKeys,
+} from './amplifyTarget';
 import { budgetTargets, githubCredentialIds } from './budgets';
 import { refreshGithubRepo } from './githubRow';
 import { emptyModel, type RowUpdate, withRows } from './model';
@@ -99,35 +104,40 @@ export function createBoardEngine({
     for (const listener of listeners) listener(model);
   };
 
-  const budgetsWith = (access: GithubAccess | undefined) =>
-    access?.reader
-      ? { ...model.budgets, [access.credentialId]: access.reader.getBudget() }
-      : model.budgets;
+  const branchesByTarget = new Map<string, JSONValue[]>();
+  const budgetsWith = (accesses: readonly (GithubAccess | undefined)[]) => {
+    const budgets = { ...model.budgets };
+    for (const access of accesses)
+      if (access?.reader)
+        budgets[access.credentialId] = access.reader.getBudget();
+    return budgets;
+  };
 
-  /** Publish one target's rows, its unmapped runs and the token's budget. */
+  /** Publish one target's rows, its unmapped records, problems and branch
+   * samples, and the budgets of the tokens it used. */
   const apply = (
     targetId: string,
     rows: Record<string, RowUpdate>,
     unmapped: UnmappedRun[],
-    access: GithubAccess | undefined,
+    accesses: readonly (GithubAccess | undefined)[],
     problems: Problem[] = [],
+    branches: JSONValue[] = [],
   ): void => {
     unmappedByTarget.set(targetId, unmapped);
     problemsByTarget.set(targetId, problems);
+    branchesByTarget.set(targetId, branches);
     publish({
       ...withRows(model, stages, rows, now()),
-      unmapped: unique(
-        [...unmappedByTarget.values()].flat(),
-        (u) => `${u.repo}#${String(u.runId)}`,
-      ),
+      unmapped: unique([...unmappedByTarget.values()].flat(), (u) => u.id),
       problems: unique([...problemsByTarget.values()].flat(), (p) => p.id),
-      budgets: budgetsWith(access),
+      amplifyBranches: [...branchesByTarget.values()].flat(),
+      budgets: budgetsWith(accesses),
     });
   };
 
   /** Rate limited: keep the cells, but record the budget GitHub reported. */
   const applyBudgetOnly = (access: GithubAccess | undefined): void => {
-    publish({ ...model, budgets: budgetsWith(access) });
+    publish({ ...model, budgets: budgetsWith([access]) });
   };
 
   const githubRows = dashboard.rows.filter(
@@ -174,45 +184,43 @@ export function createBoardEngine({
     const hints = result.full
       ? windowHints(result.rows, 'github', `${String(runs)} runs`)
       : [];
-    apply(targetId, applied, result.unmapped, access, [
-      ...translationProblems(githubSource, result.keyProblems),
-      ...hints,
-    ]);
+    apply(
+      targetId,
+      applied,
+      result.unmapped,
+      [access],
+      [...translationProblems(githubSource, result.keyProblems), ...hints],
+    );
   };
 
-  const refreshAmplify = async (row: AmplifyRow): Promise<void> => {
-    const result = await refreshAmplifyRow(
-      row,
+  const defaultsFor = (row: AmplifyRow) =>
+    inheritedCredentials(dashboard, row.id);
+  const readersFor = (id: string) => providers.amplify(id);
+  const refreshAmplify = async (
+    targetId: string,
+    rows: AmplifyRow[],
+  ): Promise<void> => {
+    const result = await refreshAmplifyTarget({
+      rows,
       stages,
-      (stageId) => rulesFor(row, stageId),
-      inheritedCredentials(dashboard, row.id),
-      (id) => providers.amplify(id),
-      sourceFor(dashboard, 'amplify'),
-    );
-    const access = githubAccess(row);
+      rulesFor,
+      defaultsFor,
+      readersFor,
+      source: sourceFor(dashboard, 'amplify'),
+      githubFor: (row) => githubAccess(row)?.reader,
+    });
+    const accesses = rows.map(githubAccess);
     if (result.kind === 'rate-limited') {
-      applyBudgetOnly(access);
+      publish({ ...model, budgets: budgetsWith(accesses) });
       return;
     }
-    const cells = amplifyCellViews(result.cells);
-    const reader = access?.reader;
-    const staleness = reader
-      ? await readStaleness(
-          stages,
-          reader,
-          cells,
-          compareOnce(reader, row.repo),
-        )
-      : {};
     apply(
-      row.id,
-      { [row.id]: { cells, staleness } },
-      [],
-      access,
-      translationProblems(
-        sourceFor(dashboard, 'amplify'),
-        result.keyProblems ?? [],
-      ),
+      targetId,
+      result.rows,
+      result.unmapped,
+      accesses,
+      result.problems,
+      result.branches,
     );
   };
 
@@ -237,16 +245,17 @@ export function createBoardEngine({
         isActive: () => isActive(rows.map((r) => r.id)),
       };
     }),
-    ...dashboard.rows
-      .filter((r): r is AmplifyRow => r.type === 'amplify')
-      .map((row) => {
-        const id = `amplify:${row.id}`;
-        return {
-          id,
-          refresh: () => once(id, () => refreshAmplify(row)),
-          isActive: () => isActive([row.id]),
-        };
-      }),
+    ...amplifyGroups(
+      dashboard.rows.filter((r): r is AmplifyRow => r.type === 'amplify'),
+      (row) => rowAppKeys(row, defaultsFor(row), readersFor),
+    ).map((rows) => {
+      const id = `amplify:${rows.map((r) => r.id).join(',')}`;
+      return {
+        id,
+        refresh: () => once(id, () => refreshAmplify(id, rows)),
+        isActive: () => isActive(rows.map((r) => r.id)),
+      };
+    }),
   ];
 
   targets.push(

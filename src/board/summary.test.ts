@@ -68,6 +68,7 @@ const model: BoardModel = {
   },
   unmapped: [],
   problems: [],
+  amplifyBranches: [],
   budgets: {},
   refreshedAt: {},
 };

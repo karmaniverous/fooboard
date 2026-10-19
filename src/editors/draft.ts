@@ -20,10 +20,10 @@ export type EditorDraft =
   | { tab: 'General' }
   | { tab: 'Statuses' };
 
-/** The GitHub row reading the run's repo: unmapped runs are GitHub runs,
- * so only a GitHub row's key tests or overrides can place one. */
+/** The first row reading the record's repo or app that the dashboard
+ * still has. */
 const githubRowFor = (run: UnmappedRun, dashboard: Pick<Dashboard, 'rows'>) =>
-  dashboard.rows.find((r) => r.type === 'github' && r.repo === run.repo);
+  dashboard.rows.find((r) => run.rows.some((x) => x.rowId === r.id));
 
 export function draftFor(
   run: UnmappedRun,

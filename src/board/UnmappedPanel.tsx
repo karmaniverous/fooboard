@@ -1,7 +1,8 @@
 /**
- * Unmapped runs (spec.md C-15): recent runs the board could not place,
- * with why (per row, when several read its repo), a link to each run,
- * and *Add rule* to open the editor on the fix.
+ * Unmapped records (spec.md C-15, A§4.3.7): recent GitHub runs and
+ * Amplify jobs the board could not place, with why (per row, when several
+ * read its repo or app), a link to each, and *Add rule* to open the
+ * editor on the fix.
  *
  * @module
  */
@@ -39,15 +40,15 @@ export function UnmappedPanel({
         const override = onAddOverride?.(run);
         return (
           <li
-            key={`${run.repo}-${String(run.runId)}`}
+            key={run.id}
             className="flex flex-col gap-1 rounded-md border p-2"
           >
             <div className="flex items-center gap-2">
               <ExternalLink href={run.htmlUrl} className="font-medium">
-                {run.workflowName}
+                {run.title}
               </ExternalLink>
               <span className="text-xs text-muted-foreground">
-                {run.repo}
+                {run.where}
                 {run.branch ? ` · ${run.branch}` : ''}
               </span>
               {add && (

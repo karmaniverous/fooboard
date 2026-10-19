@@ -27,18 +27,22 @@ const dashboard = DashboardSchema.parse({
 });
 const runs: UnmappedRun[] = [
   {
-    repo: 'acme/api',
-    runId: 7,
-    workflowName: 'Deploy API',
+    provider: 'github',
+    id: 'github:acme/api#7',
+    where: 'acme/api',
+    title: 'Deploy API',
+    record: { workflow: 'Deploy API', branch: 'main' },
     branch: 'main',
     htmlUrl: 'https://github.com/acme/api/actions/runs/7',
     reason: { kind: 'no-row-matches' },
     rows: [{ rowId: 'api', reason: { kind: 'no-row-matches' } }],
   },
   {
-    repo: 'acme/gone',
-    runId: 8,
-    workflowName: 'Nightly',
+    provider: 'github',
+    id: 'github:acme/gone#8',
+    where: 'acme/gone',
+    title: 'Nightly',
+    record: { workflow: 'Nightly', branch: 'main' },
     branch: 'main',
     htmlUrl: 'https://github.com/acme/gone/actions/runs/8',
     reason: { kind: 'no-row-matches' },
@@ -66,7 +70,7 @@ describe('UnmappedPanel', () => {
     const branchRuns: UnmappedRun[] = [
       {
         ...runs[0],
-        runId: 9,
+        id: 'github:acme/api#9',
         reason: { kind: 'no-stage-matches', branch: 'hotfix/1' },
         rows: [
           {
@@ -77,10 +81,11 @@ describe('UnmappedPanel', () => {
       },
       {
         ...runs[1],
-        runId: 10,
+        id: 'github:acme/gone#10',
         reason: { kind: 'no-stage-matches', branch: 'x' },
+        // No row on the board reads it any more.
         rows: [
-          { rowId: 'api', reason: { kind: 'no-stage-matches', branch: 'x' } },
+          { rowId: 'gone', reason: { kind: 'no-stage-matches', branch: 'x' } },
         ],
       },
       ...runs,

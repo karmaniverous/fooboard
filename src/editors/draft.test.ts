@@ -29,12 +29,14 @@ const run = (
   reason: UnmappedRun['reason'],
   repo = 'acme/api',
 ): UnmappedRun => ({
-  repo,
+  provider: 'github',
+  id: `github:${repo}#1`,
+  where: repo,
   rows: repo === 'acme/api' ? [{ rowId: 'api', reason }] : [],
-  runId: 1,
-  workflowName: 'Deploy API',
+  title: 'Deploy API',
   branch: 'hotfix/1',
   htmlUrl: '',
+  record: { workflow: 'Deploy API', branch: 'hotfix/1' },
   reason,
 });
 

@@ -5,6 +5,7 @@
  *
  * @module
  */
+import type { JSONValue } from 'json-p3';
 import { z } from 'zod';
 
 import type {
@@ -12,6 +13,7 @@ import type {
   StalenessBadge,
   UnmappedReason,
 } from '@/domain/derivation';
+import type { RecordDoc } from '@/domain/model/translate';
 import type { Problem } from '@/domain/problems/problem';
 import type { AmplifyReaderFor } from '@/lib/amplify/rowJobs';
 import type { GitHubReader } from '@/lib/github';
@@ -40,14 +42,21 @@ export interface BoardCell {
   compare?: CompareDetail;
 }
 
-/** A run the board couldn't place, for the Unmapped runs panel (C-15). */
+/** A record the board couldn't place, for the Unmapped panel (C-15,
+ * spec.md A§4.3.7): a GitHub run or an Amplify job. */
 export interface UnmappedRun {
-  /** `owner/name`; a run is listed once per repo, not per row. */
-  repo: string;
-  runId: number;
-  workflowName: string;
+  provider: 'github' | 'amplify';
+  /** Unique on the board; a record is listed once per repo or app, not
+   * per row. */
+  id: string;
+  /** What was read: the repo (`owner/name`) or the Amplify app. */
+  where: string;
+  /** The run's workflow, or the Amplify job. */
+  title: string;
   branch: string | null;
   htmlUrl: string;
+  /** The translated record, to draft a check from (*Add rule*). */
+  record: RecordDoc;
   /** The first row's reason (one row reads most repos). */
   reason: UnmappedReason;
   /** Why each row reading the repo didn't place it (spec.md A§4.3.7). */
@@ -63,6 +72,9 @@ export interface BoardModel {
   /** Problems found while reading (spec.md A§4.3.7): translation
    * problems and window hints. */
   problems: Problem[];
+  /** Entries of the Amplify branch lists read, for the branch rule's
+   * field picker and preview. */
+  amplifyBranches: JSONValue[];
   /** Latest known GitHub budget per credential id (spec.md C-16). */
   budgets: Record<string, RateLimitBudget | undefined>;
   /** When each row last refreshed (ms), keyed by row id. */

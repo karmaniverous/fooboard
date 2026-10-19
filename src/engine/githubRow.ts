@@ -248,11 +248,13 @@ async function refreshWith(
     );
     const [{ reason }] = reasons;
     unmapped.push({
-      repo,
-      runId: c.run.id,
-      workflowName: c.mapped.workflowName,
+      provider: 'github',
+      id: `github:${repo}#${String(c.run.id)}`,
+      where: repo,
+      title: c.mapped.workflowName,
       branch: c.mapped.headBranch,
       htmlUrl: c.mapped.htmlUrl,
+      record,
       reason,
       rows: reasons,
     });

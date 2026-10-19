@@ -27,6 +27,7 @@ export const emptyModel = (
   cells: {},
   unmapped: [],
   problems: [],
+  amplifyBranches: [],
   budgets: Object.fromEntries(credentialIds.map((id) => [id, undefined])),
   refreshedAt: {},
 });
