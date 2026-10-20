@@ -7,7 +7,10 @@
  */
 import { useState } from 'react';
 
+import { CheckField } from '@/components/CheckField';
+import { Choice } from '@/components/Choice';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { BUILTIN_KEYS } from '@/domain/model/keys';
 import type { Check } from '@/domain/rules/schema';
 
@@ -33,39 +36,27 @@ export function ItemsWhereBuilder({
       className="flex flex-wrap items-center gap-1 text-xs"
     >
       <span>Only items where</span>
-      <select
-        aria-label={`${label} item key`}
-        className="h-8 rounded-md border bg-background px-1"
+      <Choice
+        label={`${label} item key`}
+        className="h-8 text-xs"
         value={key}
-        onChange={(e) => {
-          setKey(e.target.value);
-        }}
-      >
-        {itemKeys.map((k) => (
-          <option key={k} value={k}>
-            {k}
-          </option>
-        ))}
-      </select>
+        options={itemKeys.map((k) => ({ value: k, label: k }))}
+        onValueChange={setKey}
+      />
       <span>matches</span>
-      <input
+      <Input
         aria-label={`${label} item glob`}
-        className="h-8 w-32 rounded-md border bg-background px-1 font-mono"
+        className="h-8 w-32 px-1 font-mono text-xs"
         value={glob}
         onChange={(e) => {
           setGlob(e.target.value);
         }}
       />
-      <label className="flex items-center gap-1">
-        <input
-          type="checkbox"
-          checked={ignoreCase}
-          onChange={(e) => {
-            setIgnoreCase(e.target.checked);
-          }}
-        />
-        Ignore case
-      </label>
+      <CheckField
+        label="Ignore case"
+        checked={ignoreCase}
+        onCheckedChange={setIgnoreCase}
+      />
       <Button
         type="button"
         size="sm"

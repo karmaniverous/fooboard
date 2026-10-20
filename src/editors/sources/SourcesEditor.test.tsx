@@ -43,6 +43,7 @@ describe('SourcesEditor', () => {
     const saved: Dashboard[] = [];
     render(<Harness saved={saved} />);
     const before = start.customSourceRules[0]?.keys.length ?? 0;
+    fireEvent.click(screen.getByText(`Record keys (${String(before)})`));
     fireEvent.click(screen.getAllByText('Add key')[0]);
     expect(custom(saved)?.keys).toHaveLength(before + 1);
     const name = custom(saved)?.keys[before]?.name ?? '';
@@ -91,6 +92,7 @@ describe('SourcesEditor', () => {
       jobsPerBranch: MAX_AMPLIFY_JOBS_PER_BRANCH,
     });
     const section = screen.getByLabelText('Source rule Amplify (custom)');
+    fireEvent.click(within(section).getByText(/^Record keys/));
     fireEvent.click(within(section).getByText('Add key'));
     const added = amplify()?.keys.at(-1)?.name ?? '';
     expect(added).not.toBe('');

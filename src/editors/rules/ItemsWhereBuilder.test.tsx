@@ -7,6 +7,8 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
+import { choose } from '@/test/choose';
+
 import { itemsWhere } from './itemsWhere';
 import { ItemsWhereBuilder } from './ItemsWhereBuilder';
 
@@ -34,10 +36,11 @@ describe('ItemsWhereBuilder', () => {
 
   it('uses the chosen key and case', () => {
     const { onAdd, glob, add } = setup();
-    fireEvent.change(screen.getByLabelText('R item key'), {
-      target: { value: 'state' },
-    });
-    fireEvent.click(screen.getByLabelText('Ignore case'));
+    choose(screen.getByRole('combobox', { name: 'R item key' }), 'state');
+    const ignoreCase = screen.getByRole('checkbox', { name: 'Ignore case' });
+    expect(ignoreCase).toBeChecked();
+    fireEvent.click(ignoreCase);
+    expect(ignoreCase).not.toBeChecked();
     fireEvent.change(glob, { target: { value: 'failed' } });
     fireEvent.click(add);
     expect(onAdd).toHaveBeenCalledWith(itemsWhere('state', 'failed', false));

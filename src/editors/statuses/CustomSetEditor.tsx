@@ -9,6 +9,7 @@
 import { useContext } from 'react';
 
 import { STATUS_GLYPH } from '@/board/cellView';
+import { CheckField } from '@/components/CheckField';
 import { Choice } from '@/components/Choice';
 import { Button } from '@/components/ui/button';
 import { STATUS_ICONS, type StatusSet } from '@/domain/config/statusSets';
@@ -117,21 +118,16 @@ export function CustomSetEditor({
                 });
               }}
             />
-            <label className="flex items-center gap-1 text-xs">
-              <input
-                type="checkbox"
-                checked={s.inProgress}
-                onChange={(e) => {
-                  onChange({
-                    ...set,
-                    summary: patchAt(set.summary, i, {
-                      inProgress: e.target.checked,
-                    }),
-                  });
-                }}
-              />
-              In progress
-            </label>
+            <CheckField
+              label="In progress"
+              checked={s.inProgress}
+              onCheckedChange={(inProgress) => {
+                onChange({
+                  ...set,
+                  summary: patchAt(set.summary, i, { inProgress }),
+                });
+              }}
+            />
           </div>
         ))}
       </div>
@@ -202,16 +198,13 @@ export function CustomSetEditor({
                     });
                   }}
                 />
-                <label className="flex items-center gap-1 text-xs">
-                  <input
-                    type="checkbox"
-                    checked={c.outlined}
-                    onChange={(e) => {
-                      update({ outlined: e.target.checked });
-                    }}
-                  />
-                  Outlined
-                </label>
+                <CheckField
+                  label="Outlined"
+                  checked={c.outlined}
+                  onCheckedChange={(outlined) => {
+                    update({ outlined });
+                  }}
+                />
                 <Button
                   size="sm"
                   variant="ghost"

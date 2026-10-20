@@ -15,7 +15,6 @@ import { ownOverride } from '@/domain/config/ownOverride';
 
 import { branchCounts } from './branches';
 import { BranchFinder } from './BranchFinder';
-import { useFocused } from './editTarget';
 import { CommitInput } from './fields';
 import { useLoad } from './useLoad';
 
@@ -29,18 +28,16 @@ function StageRule({
   name: string;
   children: React.ReactNode;
 }): React.JSX.Element {
-  const focused = useFocused(target);
   return (
-    <details
-      className="col-span-2 ml-2"
-      open={focused || undefined}
-      data-edit-target={target}
+    <Disclosure
+      title={`${name} as a rule`}
+      count={0}
+      target={target}
+      className="col-span-2 ml-2 text-muted-foreground"
+      contentClassName="text-foreground"
     >
-      <summary className="cursor-pointer select-none text-muted-foreground">
-        {name} as a rule
-      </summary>
       {children}
-    </details>
+    </Disclosure>
   );
 }
 

@@ -86,9 +86,9 @@ describe('opening the editor at an item', () => {
     const rule = screen.getByRole('group', {
       name: 'dev stage rule for web',
     });
-    const details = rule.closest('details');
-    expect(details?.open).toBe(true);
-    expect(details?.className).toContain('ring-2');
+    const section = rule.closest('[data-edit-target="row:web:stage:dev"]');
+    expect(section).toHaveAttribute('data-state', 'open');
+    expect(section?.className).toContain('ring-2');
     expect(
       screen.getByLabelText('Dev branch override for web'),
     ).toHaveAttribute('placeholder', 'a rule (below)');

@@ -7,6 +7,7 @@
  */
 import type { JSONValue } from 'json-p3';
 
+import { CheckField } from '@/components/CheckField';
 import { Choice } from '@/components/Choice';
 import { Button } from '@/components/ui/button';
 import { checkProblem } from '@/domain/rules/check';
@@ -46,16 +47,13 @@ export function CheckRow({
 }): React.JSX.Element {
   const problem = checkProblem(check);
   const flag = (name: 'ignoreCase' | 'not', text: string) => (
-    <label className="flex items-center gap-1 text-xs">
-      <input
-        type="checkbox"
-        checked={check[name]}
-        onChange={(e) => {
-          onChange({ [name]: e.target.checked });
-        }}
-      />
-      {text}
-    </label>
+    <CheckField
+      label={text}
+      checked={check[name]}
+      onCheckedChange={(on) => {
+        onChange({ [name]: on });
+      }}
+    />
   );
   return (
     <div className="flex flex-col gap-0.5" role="group" aria-label={label}>

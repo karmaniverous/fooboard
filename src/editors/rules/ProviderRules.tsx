@@ -7,6 +7,7 @@
  *
  * @module
  */
+import { Disclosure } from '@/components/Disclosure';
 import {
   type Provider,
   PROVIDER_LABELS,
@@ -15,7 +16,6 @@ import {
 import { always, unlessAlways } from '@/domain/rules/always';
 import type { Rule } from '@/domain/rules/schema';
 
-import { useFocused } from '../editTarget';
 import { RuleEditor } from './RuleEditor';
 
 export function ProviderRules({
@@ -26,6 +26,7 @@ export function ProviderRules({
   newPath,
   providers = PROVIDERS,
   target,
+  defaultOpen,
 }: {
   title: string;
   rules: Partial<Record<Provider, Rule | undefined>>;
@@ -36,37 +37,35 @@ export function ProviderRules({
   providers?: readonly Provider[];
   /** Its editor-item key; each source's rule is `<target>:<source>`. */
   target?: string;
+  /** Open from the start (inside a section that was itself opened). */
+  defaultOpen?: boolean;
 }): React.JSX.Element {
   const set = providers.filter((p) => rules[p] !== undefined).length;
-  const focused = useFocused(target);
   return (
-    <details
-      className="rounded-md border px-2 py-1 text-xs"
-      open={focused || undefined}
-      data-edit-target={target}
+    <Disclosure
+      title={title}
+      count={set}
+      target={target}
+      defaultOpen={defaultOpen}
+      className="rounded-md border px-2 py-1"
+      contentClassName="flex flex-col gap-2 py-1"
     >
-      <summary className="cursor-pointer select-none">
-        {title}
-        {set > 0 ? ` (${String(set)})` : ''}
-      </summary>
-      <div className="flex flex-col gap-2 py-1">
-        {providers.map((p) => (
-          <div key={p} className="flex flex-col gap-1">
-            <span className="font-semibold">{PROVIDER_LABELS[p]}</span>
-            <RuleEditor
-              label={`${title}: ${PROVIDER_LABELS[p]}`}
-              provider={p}
-              scope={scope}
-              newPath={newPath}
-              target={target === undefined ? undefined : `${target}:${p}`}
-              rule={rules[p] ?? always}
-              onChange={(rule) => {
-                onChange(p, unlessAlways(rule));
-              }}
-            />
-          </div>
-        ))}
-      </div>
-    </details>
+      {providers.map((p) => (
+        <div key={p} className="flex flex-col gap-1">
+          <span className="font-semibold">{PROVIDER_LABELS[p]}</span>
+          <RuleEditor
+            label={`${title}: ${PROVIDER_LABELS[p]}`}
+            provider={p}
+            scope={scope}
+            newPath={newPath}
+            target={target === undefined ? undefined : `${target}:${p}`}
+            rule={rules[p] ?? always}
+            onChange={(rule) => {
+              onChange(p, unlessAlways(rule));
+            }}
+          />
+        </div>
+      ))}
+    </Disclosure>
   );
 }

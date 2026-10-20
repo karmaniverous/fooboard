@@ -70,6 +70,7 @@ describe('CheckRow', () => {
     const { onChange } = renderRow(is('$.', ''), {
       pickFrom: { branch: 'main' },
     });
+    fireEvent.click(screen.getByRole('button', { name: 'Pick field' }));
     fireEvent.click(screen.getByRole('button', { name: /branch/ }));
     expect(onChange).toHaveBeenLastCalledWith({ path: '$.branch' });
   });

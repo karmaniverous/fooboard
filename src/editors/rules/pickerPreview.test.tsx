@@ -17,6 +17,7 @@ import { all, exists, is } from '@/domain/model/ruleBuilders';
 
 import { CustomSourceEditor } from '../sources/CustomSourceEditor';
 import { KeysEditor } from '../sources/KeysEditor';
+import { SHOW_FIELDS } from './FieldPicker';
 import { RuleEditor } from './RuleEditor';
 import {
   BranchSamplesContext,
@@ -46,6 +47,11 @@ describe('the field picker', () => {
     );
     const picker = screen.getByLabelText('R check 1 field picker');
     fireEvent.click(within(picker).getByText('Pick field'));
+    // Raw data starts closed: open it, then the run.
+    for (const name of ['_raw', 'run'])
+      fireEvent.click(
+        within(picker).getByRole('button', { name: `${SHOW_FIELDS} ${name}` }),
+      );
     fireEvent.click(within(picker).getByRole('button', { name: 'event' }));
     expect(onChange).toHaveBeenCalledWith(all(exists('$._raw.run.event')));
     fireEvent.click(within(picker).getAllByRole('button', { name: '[*]' })[0]);
@@ -75,6 +81,7 @@ describe('previews over real data', () => {
         onChange={vi.fn()}
       />,
     );
+    fireEvent.click(screen.getByText('Record keys (1)'));
     expect(
       screen.getByText('Rule matches 1 of 2 raw runs'),
     ).toBeInTheDocument();

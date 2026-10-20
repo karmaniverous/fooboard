@@ -9,6 +9,7 @@
  */
 import { useContext } from 'react';
 
+import { CheckField } from '@/components/CheckField';
 import { Choice } from '@/components/Choice';
 import { Button } from '@/components/ui/button';
 import type { Provider } from '@/domain/config/providers';
@@ -171,22 +172,16 @@ export function CustomSourceEditor({
       <h4 className="text-xs font-semibold">What to read</h4>
       {rule.provider === 'github' ? (
         <div className="flex flex-wrap items-center gap-3 text-xs">
-          <label className="flex items-center gap-1">
-            <input
-              type="checkbox"
-              checked={rule.reader.excludePullRequests}
-              onChange={(e) => {
-                onChange({
-                  ...rule,
-                  reader: {
-                    ...rule.reader,
-                    excludePullRequests: e.target.checked,
-                  },
-                });
-              }}
-            />
-            Skip pull-request runs
-          </label>
+          <CheckField
+            label="Skip pull-request runs"
+            checked={rule.reader.excludePullRequests}
+            onCheckedChange={(excludePullRequests) => {
+              onChange({
+                ...rule,
+                reader: { ...rule.reader, excludePullRequests },
+              });
+            }}
+          />
           <span className="flex items-center gap-1">
             Runs per repo
             <NumberField

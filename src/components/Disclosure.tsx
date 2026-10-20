@@ -13,6 +13,7 @@ import {
   CollapsibleTrigger,
 } from '@/components/ui/collapsible';
 import { useFocused } from '@/editors/editTarget';
+import { cn } from '@/lib/utils';
 
 export function Disclosure({
   title,
@@ -20,6 +21,8 @@ export function Disclosure({
   contentClassName,
   children,
   target,
+  className,
+  defaultOpen = false,
 }: {
   title: string;
   /** How many settings inside are set; shown when any. */
@@ -28,12 +31,16 @@ export function Disclosure({
   children: React.ReactNode;
   /** Its editor-item key: open when the editor focuses inside it. */
   target?: string;
+  /** Classes for the whole section (its place in a layout). */
+  className?: string;
+  /** Open from the start, focused or not. */
+  defaultOpen?: boolean;
 }): React.JSX.Element {
   const focused = useFocused(target);
   return (
     <Collapsible
-      className="flex flex-col gap-1 text-xs"
-      defaultOpen={focused}
+      className={cn('flex flex-col gap-1 text-xs', className)}
+      defaultOpen={defaultOpen || focused}
       data-edit-target={target}
     >
       <CollapsibleTrigger className="flex items-center gap-1 self-start rounded-sm hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring [&[data-state=open]>svg]:rotate-90">

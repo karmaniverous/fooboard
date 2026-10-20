@@ -36,15 +36,14 @@ import type { UnknownCell } from './statuses/unknownRuns';
 
 const FOCUS_RING = ['ring-2', 'ring-amber-500'];
 
-/** Open and scroll to the first of `keys` found under `root`. */
+/** Mark and scroll to the first of `keys` found under `root` (the
+ * sections holding it opened themselves: `useFocused`). */
 function focusItem(root: HTMLElement, keys: readonly string[]): void {
   for (const key of keys) {
     const el = root.querySelector<HTMLElement>(
       `[data-edit-target="${CSS.escape(key)}"]`,
     );
     if (!el) continue;
-    for (let at: HTMLElement | null = el; at; at = at.parentElement)
-      if (at instanceof HTMLDetailsElement) at.open = true;
     el.classList.add(...FOCUS_RING);
     // Not every environment lays out (scrolling is a nicety there).
     if (typeof el.scrollIntoView === 'function')

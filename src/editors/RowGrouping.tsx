@@ -223,6 +223,7 @@ function RowGroupSettings({
           const rules = ownOverride(group.stageRules, stageId);
           return (
             <ProviderRules
+              defaultOpen
               title={`${stageId} stage rules of ${name}`}
               rules={{ github: rules?.github, amplify: rules?.amplify }}
               onChange={(p, rule) => {

@@ -10,13 +10,13 @@
 import type { JSONValue } from 'json-p3';
 
 import { Choice } from '@/components/Choice';
+import { Disclosure } from '@/components/Disclosure';
 import { Button } from '@/components/ui/button';
 import { NEW_FIELD_PATH } from '@/domain/model/keys';
 import { give } from '@/domain/model/ruleBuilders';
 import type { KeyDef, Translation } from '@/domain/model/sourceRule';
 import { patchAt } from '@/lib/lists';
 
-import { useFocused } from '../editTarget';
 import { CommitInput } from '../fields';
 import { RuleEditor } from '../rules/RuleEditor';
 
@@ -114,102 +114,97 @@ export function KeysEditor({
   /** The source rule's editor-item key; each key is `<target>:key:<name>`. */
   target?: string;
 }): React.JSX.Element {
-  const focused = useFocused(
-    target === undefined ? undefined : `${target}:key`,
-  );
   return (
-    <details
-      className="rounded-md border px-2 py-1 text-xs"
-      open={focused || undefined}
+    <Disclosure
+      title={title}
+      count={keys.length}
+      target={target === undefined ? undefined : `${target}:key`}
+      className="rounded-md border px-2 py-1"
+      contentClassName="flex flex-col gap-2 py-1"
     >
-      <summary className="cursor-pointer select-none">
-        {title} ({keys.length})
-      </summary>
-      <div className="flex flex-col gap-2 py-1">
-        {keys.map((key, i) => (
-          <section
-            key={i}
-            aria-label={`${title}: ${key.name}`}
-            data-edit-target={
-              target === undefined ? undefined : `${target}:key:${key.name}`
-            }
-            className="flex flex-col gap-1"
-          >
-            <div className="flex items-center gap-2">
-              <CommitInput
-                label={`${title} key ${String(i + 1)} name`}
-                className="h-9 w-40 font-mono"
-                value={key.name}
-                onCommit={(name) => {
-                  if (name) onChange(patchAt(keys, i, { name }));
-                }}
-              />
-              <Button
-                size="sm"
-                variant="ghost"
-                aria-label={`Delete key ${key.name}`}
-                onClick={() => {
-                  onChange(keys.filter((_, j) => j !== i));
-                }}
-              >
-                ×
-              </Button>
-            </div>
-            {key.translations.map((t, j) => (
-              <TranslationRow
-                key={j}
-                label={`${key.name} translation ${String(j + 1)}`}
-                translation={t}
-                samples={samples}
-                noun={noun}
-                onChange={(next) => {
-                  onChange(
-                    patchAt(keys, i, {
-                      translations: key.translations.map((x, k) =>
-                        k === j ? next : x,
-                      ),
-                    }),
-                  );
-                }}
-                onRemove={() => {
-                  onChange(
-                    patchAt(keys, i, {
-                      translations: key.translations.filter((_, k) => k !== j),
-                    }),
-                  );
-                }}
-              />
-            ))}
+      {keys.map((key, i) => (
+        <section
+          key={i}
+          aria-label={`${title}: ${key.name}`}
+          data-edit-target={
+            target === undefined ? undefined : `${target}:key:${key.name}`
+          }
+          className="flex flex-col gap-1"
+        >
+          <div className="flex items-center gap-2">
+            <CommitInput
+              label={`${title} key ${String(i + 1)} name`}
+              className="h-9 w-40 font-mono"
+              value={key.name}
+              onCommit={(name) => {
+                if (name) onChange(patchAt(keys, i, { name }));
+              }}
+            />
             <Button
               size="sm"
-              variant="outline"
-              className="self-start"
+              variant="ghost"
+              aria-label={`Delete key ${key.name}`}
               onClick={() => {
+                onChange(keys.filter((_, j) => j !== i));
+              }}
+            >
+              ×
+            </Button>
+          </div>
+          {key.translations.map((t, j) => (
+            <TranslationRow
+              key={j}
+              label={`${key.name} translation ${String(j + 1)}`}
+              translation={t}
+              samples={samples}
+              noun={noun}
+              onChange={(next) => {
                 onChange(
                   patchAt(keys, i, {
-                    translations: [...key.translations, give('')],
+                    translations: key.translations.map((x, k) =>
+                      k === j ? next : x,
+                    ),
                   }),
                 );
               }}
-            >
-              Add translation
-            </Button>
-          </section>
-        ))}
-        <Button
-          size="sm"
-          variant="outline"
-          className="self-start"
-          onClick={() => {
-            onChange([
-              ...keys,
-              { name: `key${String(keys.length + 1)}`, translations: [] },
-            ]);
-          }}
-        >
-          Add key
-        </Button>
-      </div>
-    </details>
+              onRemove={() => {
+                onChange(
+                  patchAt(keys, i, {
+                    translations: key.translations.filter((_, k) => k !== j),
+                  }),
+                );
+              }}
+            />
+          ))}
+          <Button
+            size="sm"
+            variant="outline"
+            className="self-start"
+            onClick={() => {
+              onChange(
+                patchAt(keys, i, {
+                  translations: [...key.translations, give('')],
+                }),
+              );
+            }}
+          >
+            Add translation
+          </Button>
+        </section>
+      ))}
+      <Button
+        size="sm"
+        variant="outline"
+        className="self-start"
+        onClick={() => {
+          onChange([
+            ...keys,
+            { name: `key${String(keys.length + 1)}`, translations: [] },
+          ]);
+        }}
+      >
+        Add key
+      </Button>
+    </Disclosure>
   );
 }
