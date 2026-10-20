@@ -14,6 +14,7 @@ import { type Dashboard, DashboardSchema } from '@/domain/config/dashboard';
 import { give } from '@/domain/model/ruleBuilders';
 import { MAX_AMPLIFY_JOBS_PER_BRANCH } from '@/domain/model/sourceRule';
 
+import { itemsWherePath } from '../rules/itemsWhere';
 import { customiseSource } from './customSource';
 import { SourcesEditor } from './SourcesEditor';
 
@@ -67,7 +68,7 @@ describe('SourcesEditor', () => {
     });
     fireEvent.click(within(group).getByRole('button', { name: 'Add' }));
     expect(custom(saved)?.keep.checks.at(-1)).toMatchObject({
-      path: "$.items[?match(@.name, '[Dd][Ee][Pp][Ll][Oo][Yy].*')]",
+      path: itemsWherePath('name', 'deploy*', true),
       operator: 'exists',
     });
   });

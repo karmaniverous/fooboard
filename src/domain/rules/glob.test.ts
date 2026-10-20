@@ -7,7 +7,7 @@
  */
 import { describe, expect, it } from 'vitest';
 
-import { globToRegExp } from './glob';
+import { globToIRegexp, globToRegExp } from './glob';
 
 describe('globToRegExp', () => {
   it.each([
@@ -37,6 +37,23 @@ describe('globToRegExp', () => {
   it('ignores case only when asked', () => {
     expect(globToRegExp('FAIL*', true).test('failure')).toBe(true);
     expect(globToRegExp('FAIL*', false).test('failure')).toBe(false);
+  });
+
+  it('folds sets and ranges when ignoring case, without inverting a range', () => {
+    expect(globToRegExp('[a-c]x', true).test('BX')).toBe(true);
+    expect(globToRegExp('[!a-c]x', true).test('Bx')).toBe(false);
+    expect(globToRegExp('[A-z]', true).test('m')).toBe(true);
+  });
+
+  it('matches line breaks with a wildcard', () => {
+    expect(globToRegExp('fix*', false).test('fix: a\n\nbody')).toBe(true);
+    expect(globToRegExp('a?b', false).test('a\rb')).toBe(true);
+  });
+
+  it('writes an I-Regexp body: no anchors, flags, dots or lookarounds', () => {
+    expect(globToIRegexp('a.{b,c}*$', true)).toBe(
+      '[Aa]\\.([Bb]|[Cc])([^\\n]|\\n)*[$]',
+    );
   });
 
   it('throws on an impossible range, for the caller to report', () => {
