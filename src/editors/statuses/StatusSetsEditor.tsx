@@ -11,6 +11,7 @@ import { Button } from '@/components/ui/button';
 import type { Dashboard } from '@/domain/config/dashboard';
 import { PROVIDER_LABELS, PROVIDERS } from '@/domain/config/providers';
 import { targetKey } from '@/editors/editTarget';
+import { useAccordion } from '@/editors/useAccordion';
 
 import { customise, removeSet, setInUse, updateSet } from './customSet';
 import { CustomSetEditor } from './CustomSetEditor';
@@ -34,6 +35,12 @@ export function StatusSetsEditor({
   /** The board's cells whose run matched no status. */
   unknown?: readonly UnknownCell[];
 }): React.JSX.Element {
+  const accordion = useAccordion(
+    dashboard.customStatusSets.map((s) => ({
+      key: s.id,
+      targets: [targetKey({ kind: 'statusSet', id: s.id })],
+    })),
+  );
   return (
     <div className="flex flex-col gap-3 text-sm">
       <p className="text-xs text-muted-foreground">
@@ -79,6 +86,7 @@ export function StatusSetsEditor({
         <CustomSetEditor
           key={set.id}
           set={set}
+          item={accordion.itemProps(set.id)}
           onChange={(next) => {
             onChange(updateSet(dashboard, set.id, () => next));
           }}

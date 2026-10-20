@@ -14,6 +14,7 @@ import { PRESET_IDS } from '@/domain/config/statusSets';
 import { PRESET_SUMMARY_IDS } from '@/domain/statuses/presetRules';
 import { presetById } from '@/domain/statuses/presets';
 import { choose } from '@/test/choose';
+import { OPEN_ITEM } from '@/test/openItem';
 
 import { CustomSetEditor } from './CustomSetEditor';
 
@@ -22,7 +23,14 @@ function setup(initial: StatusSet, onRemove?: () => void) {
   function Harness() {
     const [set, setSet] = useState(initial);
     latest.current = set;
-    return <CustomSetEditor set={set} onChange={setSet} onRemove={onRemove} />;
+    return (
+      <CustomSetEditor
+        item={OPEN_ITEM}
+        set={set}
+        onChange={setSet}
+        onRemove={onRemove}
+      />
+    );
   }
   render(<Harness />);
   return latest;

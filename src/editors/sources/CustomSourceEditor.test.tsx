@@ -16,6 +16,7 @@ import {
   type SourceRule,
 } from '@/domain/model/sourceRule';
 import { GITHUB_PER_PAGE } from '@/lib/github';
+import { OPEN_ITEM } from '@/test/openItem';
 
 import { CustomSourceEditor } from './CustomSourceEditor';
 
@@ -25,6 +26,7 @@ const setup = (rule: SourceRule = github) => {
   const onChange = vi.fn();
   render(
     <CustomSourceEditor
+      item={OPEN_ITEM}
       rule={rule}
       chosen
       onChange={onChange}

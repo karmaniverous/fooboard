@@ -22,6 +22,7 @@ import type { EngineProviders } from '@/engine';
 import { createAppStores } from '@/storage';
 import { memoryStorage } from '@/storage/keyValue';
 import { StoresContext } from '@/storage/storesContext';
+import { expand } from '@/test/openItem';
 
 import { DashboardEditor } from './DashboardEditor';
 import type { EditorDraft } from './draft';
@@ -178,6 +179,7 @@ describe('item rules follow the source rule', () => {
       sourceRules: { github: 'github', amplify: 'mine' },
     });
     setup(withItems, { tab: 'Rows' });
+    expand('site');
     expect(
       screen.getByRole('group', { name: 'Item rule for site' }),
     ).toBeInTheDocument();

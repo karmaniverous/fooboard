@@ -164,6 +164,7 @@ export function StagesEditor({
         items={stages}
         keyOf={(s) => s.id}
         nameOf={(s) => s.name}
+        summaryOf={stagePattern}
         targetOf={(s) => `stage:${s.id}`}
         {...listHandlers(dashboard, 'stages', onChange)}
         onRemove={(s) => {

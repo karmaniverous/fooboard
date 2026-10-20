@@ -11,6 +11,7 @@ import { describe, expect, it } from 'vitest';
 
 import { PRESET_IDS } from '@/domain/config/statusSets';
 import { choose } from '@/test/choose';
+import { expand } from '@/test/openItem';
 
 import { setup, tab } from './editorSectionsHarness';
 
@@ -42,6 +43,7 @@ describe('editor sections', () => {
   it('creates a labelled column group from a stage', () => {
     const latest = setup();
     tab('Stages');
+    expand('prod');
     choose(screen.getByLabelText('Group of prod'), 'New group from prod');
     const label = screen.getByLabelText('Label of the group of prod');
     fireEvent.change(label, { target: { value: 'Production' } });
