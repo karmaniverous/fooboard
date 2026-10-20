@@ -1,6 +1,5 @@
 /**
- * Matching domain barrel: branch pattern matching and match-test evaluation
- * (spec.md §3).
+ * Matching domain barrel: branch pattern matching (spec.md §3).
  *
  * @module
  */
