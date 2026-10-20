@@ -6,6 +6,7 @@
  * @module
  */
 
+import { STATUS_COLORS } from '@/domain/config/colors';
 import {
   type CellStatus,
   type StatusIcon,
@@ -29,7 +30,7 @@ export interface ResolvedStatus {
 const UNKNOWN_SUMMARY: SummaryStatus = {
   id: UNKNOWN_STATUS_ID,
   name: 'Unknown',
-  color: '#a21caf',
+  color: STATUS_COLORS.unknown,
   icon: 'unknown',
   inProgress: false,
 };

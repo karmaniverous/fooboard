@@ -5,6 +5,7 @@
  * @module
  */
 import { always } from '@/domain/rules/always';
+import { ROOT_PATH } from '@/domain/rules/path';
 import { type Check, CheckSchema, type Rule } from '@/domain/rules/schema';
 
 import type { Translation } from './sourceRule';
@@ -41,3 +42,7 @@ export const copy = (path: string): Translation => ({
 
 /** Negate a check. */
 export const not = (c: Check): Check => ({ ...c, not: true });
+
+/** Matches no record (every record has a root): a rule to write
+ * before it is edited. */
+export const never: Rule = all(not(exists(ROOT_PATH)));

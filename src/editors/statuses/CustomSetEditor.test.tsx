@@ -11,6 +11,7 @@ import { describe, expect, it, vi } from 'vitest';
 
 import type { StatusSet } from '@/domain/config/statusSets';
 import { PRESET_IDS } from '@/domain/config/statusSets';
+import { PRESET_SUMMARY_IDS } from '@/domain/statuses/presetRules';
 import { presetById } from '@/domain/statuses/presets';
 import { choose } from '@/test/choose';
 
@@ -49,7 +50,7 @@ describe('CustomSetEditor', () => {
     choose(within(status).getByLabelText(`${first.name} counts toward`), 'OK');
     expect(latest.current.cell[0]).toMatchObject({
       outlined: true,
-      summary: 'ok',
+      summary: PRESET_SUMMARY_IDS.ok,
     });
     expect(screen.getByText('Items that count')).toBeInTheDocument();
   });

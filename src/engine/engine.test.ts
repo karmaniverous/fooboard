@@ -10,6 +10,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { demoDashboard } from '@/demo/board';
 import { createDemoGitHubReader } from '@/demo/github';
 import { RowGroupSchema } from '@/domain/config/groups';
+import { STATUS_ICONS, UNKNOWN_STATUS_ID } from '@/domain/config/statusSets';
 import { EMPTY_STATES } from '@/domain/derivation';
 import { all, is } from '@/domain/model/ruleBuilders';
 import { RateLimitedError } from '@/lib/github';
@@ -49,17 +50,11 @@ describe('board engine over the demo', () => {
           : c.derivation.state,
       ),
     );
+    // Every look but Unknown, and every empty state.
     expect([...seen].sort()).toEqual(
       [
-        'success',
-        'partial',
-        'running',
-        'queued',
-        'failure',
-        'cancelled',
-        'no-records',
-        'needs-credential',
-        'error',
+        ...STATUS_ICONS.filter((icon) => icon !== UNKNOWN_STATUS_ID),
+        ...Object.values(EMPTY_STATES),
       ].sort(),
     );
     expect(cell(model, 'billing', 'bali')?.badge).toEqual({

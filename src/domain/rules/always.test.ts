@@ -1,7 +1,15 @@
-import { all, is } from '@/domain/model/ruleBuilders';
+import { all, is, never } from '@/domain/model/ruleBuilders';
 
 import { always, isAlways, unlessAlways } from './always';
 import { evaluateRule } from './check';
+
+describe('never', () => {
+  it('matches no record', () => {
+    expect(evaluateRule(never, {})).toBe(false);
+    expect(evaluateRule(never, { branch: 'main' })).toBe(false);
+    expect(isAlways(never)).toBe(false);
+  });
+});
 
 describe('always', () => {
   it('matches every document', () => {

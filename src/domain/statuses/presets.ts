@@ -9,85 +9,52 @@
  *
  * @module
  */
+import type { z } from 'zod';
+
+import { STATUS_COLORS } from '@/domain/config/colors';
 import {
-  type CellStatus,
   PRESET_IDS,
   type StatusSet,
   StatusSetSchema,
-  type SummaryStatus,
 } from '@/domain/config/statusSets';
+import {
+  BUILTIN_KEYS,
+  itemKeyPath,
+  ITEMS_PATH,
+  itemsFilterPath,
+  keyPath,
+  STATES,
+} from '@/domain/model/keys';
 import { all, check, exists, is, not } from '@/domain/model/ruleBuilders';
 import { always } from '@/domain/rules/always';
-import type { Rule } from '@/domain/rules/schema';
 
-/** The summary statuses every preset uses. */
-const PRESET_SUMMARY: SummaryStatus[] = [
-  {
-    id: 'failing',
-    name: 'Failing',
-    color: '#dc2626',
-    icon: 'failure',
-    inProgress: false,
-  },
-  {
-    id: 'running',
-    name: 'Running',
-    color: '#2563eb',
-    icon: 'running',
-    inProgress: true,
-  },
-  {
-    id: 'cancelled',
-    name: 'Cancelled',
-    color: '#475569',
-    icon: 'cancelled',
-    inProgress: false,
-  },
-  {
-    id: 'ok',
-    name: 'OK',
-    color: '#15803d',
-    icon: 'success',
-    inProgress: false,
-  },
-];
+import {
+  DEPLOY,
+  JOB_WORDS,
+  PRESET_SUMMARY,
+  PRESET_SUMMARY_IDS as S,
+  QUEUED_LOOK,
+  recordState,
+  some,
+  state,
+  status,
+  TEST,
+} from './presetRules';
 
-const status = (
-  id: string,
-  name: string,
-  color: string,
-  summary: string,
-  rule: Rule,
-  extra: Partial<CellStatus> = {},
-): CellStatus => ({
-  id,
-  name,
-  color,
-  summary,
-  rule,
-  outlined: false,
-  ...extra,
-});
+const C = STATUS_COLORS;
 
-/** Case-insensitive `search()` source for `word` (RFC 9535 is
- * case-sensitive, so each letter becomes a class). */
-const caseless = (word: string): string =>
-  word.replace(/[a-z]/gi, (c) => `[${c.toUpperCase()}${c.toLowerCase()}]`);
+const notSkipped = not(is(keyPath(BUILTIN_KEYS.state), STATES.skipped));
 
-const TEST = `search(@.name, '${caseless('test')}')`;
-const DEPLOY = `search(@.name, '${caseless('deploy')}') && !${TEST}`;
-/** Some item where `filter` holds. */
-const some = (filter: string) => all(exists(`$.items[?${filter}]`));
-const state = (s: string) => `@.state == '${s}'`;
-
-const notSkipped = not(is('$.state', 'skipped'));
-
-const deployTest = {
+const deployTest: z.input<typeof StatusSetSchema> = {
   id: PRESET_IDS.githubDeployTest,
   name: 'GitHub deploy and test',
   provider: 'github',
   items: all(
-    check({ path: '$.name', operator: 'regex', value: 'deploy|test' }),
+    check({
+      path: keyPath(BUILTIN_KEYS.name),
+      operator: 'regex',
+      value: `${JOB_WORDS.deploy}|${JOB_WORDS.test}`,
+    }),
     notSkipped,
   ),
   summary: PRESET_SUMMARY,
@@ -95,106 +62,119 @@ const deployTest = {
     status(
       'testFailed',
       'Tests failed',
-      '#b91c1c',
-      'failing',
-      some(`${TEST} && ${state('failed')}`),
+      C.testFailure,
+      S.failing,
+      some(`${TEST} && ${state(STATES.failed)}`),
     ),
     status(
       'deployFailed',
       'Deploy failed',
-      '#dc2626',
-      'failing',
-      some(`${DEPLOY} && ${state('failed')}`),
+      C.failure,
+      S.failing,
+      some(`${DEPLOY} && ${state(STATES.failed)}`),
     ),
     status(
       'cancelled',
       'Cancelled',
-      '#475569',
-      'cancelled',
-      some(state('cancelled')),
+      C.cancelled,
+      S.cancelled,
+      some(state(STATES.cancelled)),
     ),
     status(
       'testing',
       'Testing',
-      '#4f46e5',
-      'running',
-      some(`${TEST} && ${state('running')}`),
+      C.testing,
+      S.running,
+      some(`${TEST} && ${state(STATES.running)}`),
     ),
     status(
       'deploying',
       'Deploying',
-      '#2563eb',
-      'running',
-      some(`${DEPLOY} && ${state('running')}`),
+      C.started,
+      S.running,
+      some(`${DEPLOY} && ${state(STATES.running)}`),
     ),
     status(
       'passed',
       'Passed',
-      '#15803d',
-      'ok',
-      some(`${TEST} && ${state('succeeded')}`),
+      C.success,
+      S.ok,
+      some(`${TEST} && ${state(STATES.succeeded)}`),
     ),
     status(
       'deployed',
       'Deployed',
-      '#0f766e',
-      'ok',
+      C.deployed,
+      S.ok,
       all(
-        not(exists(`$.items[?${TEST}]`)),
-        exists(`$.items[?${DEPLOY} && ${state('succeeded')}]`),
+        not(exists(itemsFilterPath(TEST))),
+        exists(itemsFilterPath(`${DEPLOY} && ${state(STATES.succeeded)}`)),
       ),
     ),
     status(
       'partial',
       'Partial',
-      '#0e7490',
-      'running',
-      some(state('succeeded')),
+      C.partial,
+      S.running,
+      some(state(STATES.succeeded)),
       { icon: 'partial' },
     ),
     status(
       'queued',
       'Queued',
-      '#e2e8f0',
-      'running',
-      all(exists('$.items[*]')),
-      {
-        icon: 'queued',
-        outlined: true,
-      },
+      C.queued,
+      S.running,
+      all(exists(ITEMS_PATH)),
+      QUEUED_LOOK,
     ),
   ],
 };
 
-const singleJob = {
+const singleJob: z.input<typeof StatusSetSchema> = {
   id: PRESET_IDS.githubSingleJob,
   name: 'GitHub single job',
   provider: 'github',
   items: all(notSkipped),
   summary: PRESET_SUMMARY,
   cell: [
-    status('failed', 'Failed', '#dc2626', 'failing', some(state('failed'))),
+    status(
+      'failed',
+      'Failed',
+      C.failure,
+      S.failing,
+      some(state(STATES.failed)),
+    ),
     status(
       'cancelled',
       'Cancelled',
-      '#475569',
-      'cancelled',
-      some(state('cancelled')),
+      C.cancelled,
+      S.cancelled,
+      some(state(STATES.cancelled)),
     ),
-    status('running', 'Running', '#2563eb', 'running', some(state('running'))),
-    status('queued', 'Queued', '#e2e8f0', 'running', some(state('queued')), {
-      icon: 'queued',
-      outlined: true,
-    }),
+    status(
+      'running',
+      'Running',
+      C.started,
+      S.running,
+      some(state(STATES.running)),
+    ),
+    status(
+      'queued',
+      'Queued',
+      C.queued,
+      S.running,
+      some(state(STATES.queued)),
+      QUEUED_LOOK,
+    ),
     status(
       'succeeded',
       'Succeeded',
-      '#15803d',
-      'ok',
+      C.success,
+      S.ok,
       all(
         check({
-          path: '$.items[*].state',
-          value: 'succeeded',
+          path: itemKeyPath(BUILTIN_KEYS.state),
+          value: STATES.succeeded,
           quantifier: 'every',
         }),
       ),
@@ -202,7 +182,7 @@ const singleJob = {
   ],
 };
 
-const amplify = {
+const amplify: z.input<typeof StatusSetSchema> = {
   id: PRESET_IDS.amplify,
   name: 'Amplify',
   provider: 'amplify',
@@ -212,41 +192,38 @@ const amplify = {
     status(
       'failed',
       'Failed',
-      '#dc2626',
-      'failing',
-      all(is('$.state', 'failed')),
+      C.failure,
+      S.failing,
+      recordState(STATES.failed),
     ),
     status(
       'cancelled',
       'Cancelled',
-      '#475569',
-      'cancelled',
-      all(is('$.state', 'cancelled')),
+      C.cancelled,
+      S.cancelled,
+      recordState(STATES.cancelled),
     ),
     status(
       'running',
       'Running',
-      '#2563eb',
-      'running',
-      all(is('$.state', 'running')),
+      C.started,
+      S.running,
+      recordState(STATES.running),
     ),
     status(
       'queued',
       'Queued',
-      '#e2e8f0',
-      'running',
-      all(is('$.state', 'queued')),
-      {
-        icon: 'queued',
-        outlined: true,
-      },
+      C.queued,
+      S.running,
+      recordState(STATES.queued),
+      QUEUED_LOOK,
     ),
     status(
       'deployed',
       'Deployed',
-      '#15803d',
-      'ok',
-      all(is('$.state', 'succeeded')),
+      C.success,
+      S.ok,
+      recordState(STATES.succeeded),
     ),
   ],
 };

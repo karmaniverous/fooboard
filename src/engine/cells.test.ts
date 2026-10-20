@@ -8,13 +8,14 @@ import { describe, expect, it } from 'vitest';
 
 import { PRESET_IDS } from '@/domain/config/statusSets';
 import { deriveCell, EMPTY_STATES } from '@/domain/derivation';
+import { PRESET_SUMMARY_IDS } from '@/domain/statuses/presetRules';
 import { presetById } from '@/domain/statuses/presets';
 
 import { cellView, cellViews, emptyCells } from './cells';
 
 const set = presetById(PRESET_IDS.amplify);
-const running = set.cell.find((c) => c.summary === 'running');
-const done = set.cell.find((c) => c.summary === 'ok');
+const running = set.cell.find((c) => c.summary === PRESET_SUMMARY_IDS.running);
+const done = set.cell.find((c) => c.summary === PRESET_SUMMARY_IDS.ok);
 
 const placed = (status: typeof running) =>
   deriveCell({

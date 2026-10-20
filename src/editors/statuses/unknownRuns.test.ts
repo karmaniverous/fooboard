@@ -11,7 +11,7 @@ import { describe, expect, it } from 'vitest';
 import { DashboardSchema } from '@/domain/config/dashboard';
 import { branchRules } from '@/domain/config/placement';
 import { PRESET_IDS } from '@/domain/config/statusSets';
-import { all, exists, not } from '@/domain/model/ruleBuilders';
+import { never } from '@/domain/model/ruleBuilders';
 import type { RecordDoc } from '@/domain/model/translate';
 import { classify } from '@/domain/statuses/classify';
 import { statusSetFor } from '@/domain/statuses/resolve';
@@ -166,9 +166,7 @@ describe('addStatusFor', () => {
       stageId: 'dev',
       document: 42,
     });
-    expect(odd.customStatusSets[0]?.cell[0]?.rule).toEqual(
-      all(not(exists('$'))),
-    );
+    expect(odd.customStatusSets[0]?.cell[0]?.rule).toEqual(never);
   });
 
   it('leaves the dashboard alone for a row it does not have', () => {

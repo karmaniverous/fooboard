@@ -6,9 +6,10 @@
  *
  * @module
  */
+import { STATUS_COLORS } from '@/domain/config/colors';
 import type { Dashboard } from '@/domain/config/dashboard';
 import type { CellStatus, StatusSet } from '@/domain/config/statusSets';
-import { CheckSchema } from '@/domain/rules/schema';
+import { never } from '@/domain/model/ruleBuilders';
 import { findStatusSet } from '@/domain/statuses/resolve';
 import { freshId } from '@/lib/ids';
 
@@ -95,13 +96,10 @@ export function addCellStatus(set: StatusSet, name = 'New status'): StatusSet {
       set.cell.map((c) => c.id),
     ),
     name,
-    color: '#64748b',
+    color: STATUS_COLORS.added,
     summary: set.summary[0]?.id ?? '',
     outlined: false,
-    rule: {
-      combine: 'and',
-      checks: [CheckSchema.parse({ path: '$', operator: 'exists', not: true })],
-    },
+    rule: never,
   };
   return { ...set, cell: [status, ...set.cell] };
 }

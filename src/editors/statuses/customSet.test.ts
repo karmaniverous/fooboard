@@ -10,6 +10,7 @@ import { describe, expect, it } from 'vitest';
 
 import { DashboardSchema } from '@/domain/config/dashboard';
 import { PRESET_IDS } from '@/domain/config/statusSets';
+import { never } from '@/domain/model/ruleBuilders';
 
 import {
   addCellStatus,
@@ -74,7 +75,7 @@ describe('addCellStatus', () => {
     expect(next.cell[0]).toMatchObject({
       name: 'New status',
       summary: set.summary[0]?.id,
-      rule: { checks: [{ path: '$', operator: 'exists', not: true }] },
+      rule: never,
     });
     expect(next.cell).toHaveLength(set.cell.length + 1);
   });

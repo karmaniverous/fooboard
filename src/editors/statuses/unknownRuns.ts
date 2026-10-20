@@ -13,7 +13,13 @@ import { z } from 'zod';
 import type { Dashboard } from '@/domain/config/dashboard';
 import type { Row } from '@/domain/config/row';
 import { UNKNOWN_STATUS_ID } from '@/domain/config/statusSets';
-import { all, exists, is, not } from '@/domain/model/ruleBuilders';
+import {
+  BUILTIN_KEYS,
+  itemKeyPath,
+  keyPath,
+  RECORD_KEYS,
+} from '@/domain/model/keys';
+import { all, exists, is, never, not } from '@/domain/model/ruleBuilders';
 import { escapeGlob } from '@/domain/rules/glob';
 import type { Rule } from '@/domain/rules/schema';
 import { statusSetFor, statusSetSource } from '@/domain/statuses/resolve';
@@ -84,10 +90,12 @@ function chooseAt(
  * items' states, or an Amplify job's state. */
 const DraftSourceSchema = z.union([
   z.object({
-    workflow: z.string(),
-    items: z.array(z.object({ state: z.string().nullable() })),
+    [BUILTIN_KEYS.workflow]: z.string(),
+    [RECORD_KEYS.items]: z.array(
+      z.object({ [BUILTIN_KEYS.state]: z.string().nullable() }),
+    ),
   }),
-  z.object({ state: z.string().nullable() }),
+  z.object({ [BUILTIN_KEYS.state]: z.string().nullable() }),
 ]);
 
 const stateIs = (path: string, state: string | null | undefined) =>
@@ -98,12 +106,13 @@ const stateIs = (path: string, state: string | null | undefined) =>
  * nothing. */
 function draftRule(record: unknown): Rule {
   const parsed = DraftSourceSchema.safeParse(record);
-  if (!parsed.success) return all(not(exists('$')));
+  if (!parsed.success) return never;
   const doc = parsed.data;
-  if ('state' in doc) return all(stateIs('$.state', doc.state));
+  if (BUILTIN_KEYS.state in doc)
+    return all(stateIs(keyPath(BUILTIN_KEYS.state), doc.state));
   return all(
-    is('$.workflow', escapeGlob(doc.workflow)),
-    stateIs('$.items[*].state', doc.items.at(0)?.state),
+    is(keyPath(BUILTIN_KEYS.workflow), escapeGlob(doc.workflow)),
+    stateIs(itemKeyPath(BUILTIN_KEYS.state), doc.items.at(0)?.state),
   );
 }
 
