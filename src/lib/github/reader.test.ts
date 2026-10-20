@@ -9,7 +9,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { GitHubValidationError } from './errors';
-import { createGitHubReader } from './reader';
+import { COMMIT_SUBJECTS_LISTED, createGitHubReader } from './reader';
 import { fakeFetch, jsonResponse } from './testFetch';
 
 const repo = { owner: 'acme', repo: 'api-core' };
@@ -119,6 +119,28 @@ describe('createGitHubReader', () => {
       aheadCommitSubjects: ['second commit', 'first commit'],
       behindCommitSubjects: ['hotfix on main'],
     });
+  });
+
+  it('compare lists only the newest COMMIT_SUBJECTS_LISTED subjects each way', async () => {
+    const commits = Array.from(
+      { length: COMMIT_SUBJECTS_LISTED + 2 },
+      (_, i) => ({ sha: String(i), commit: { message: `c${String(i)}` } }),
+    );
+    const body = { ahead_by: 0, behind_by: 0, html_url: 'u', commits };
+    const { fetchImpl } = fakeFetch({
+      'https://api.github.com/repos/acme/api-core/compare/main...feature': () =>
+        jsonResponse(body),
+      'https://api.github.com/repos/acme/api-core/compare/feature...main': () =>
+        jsonResponse(body),
+    });
+    const reader = createGitHubReader({ token: 't', fetchImpl });
+    const result = await reader.compare(repo, 'main', 'feature');
+    const newest = commits
+      .slice(-COMMIT_SUBJECTS_LISTED)
+      .reverse()
+      .map((c) => c.commit.message);
+    expect(result.aheadCommitSubjects).toEqual(newest);
+    expect(result.behindCommitSubjects).toEqual(newest);
   });
 
   it('listBranches follows pagination via the Link header', async () => {

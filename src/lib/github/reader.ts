@@ -41,9 +41,9 @@ export interface CompareResult {
   aheadBy: number;
   behindBy: number;
   htmlUrl: string;
-  /** Subjects of commits `head` has that `base` lacks (newest first), up to 10. */
+  /** Subjects of commits `head` has that `base` lacks (newest first), up to `COMMIT_SUBJECTS_LISTED`. */
   aheadCommitSubjects: string[];
-  /** Subjects of commits `base` has that `head` lacks (newest first), up to 10. */
+  /** Subjects of commits `base` has that `head` lacks (newest first), up to `COMMIT_SUBJECTS_LISTED`. */
   behindCommitSubjects: string[];
 }
 
@@ -106,10 +106,13 @@ function parse<T>(schema: Parser<T>, path: string, data: unknown): T {
   }
 }
 
-/** The newest ten commit subjects of a compare (GitHub lists oldest first). */
+/** The most commit subjects a compare lists each way. */
+export const COMMIT_SUBJECTS_LISTED = 10;
+
+/** The newest commit subjects of a compare (GitHub lists oldest first). */
 function commitSubjects(result: CompareApiResult): string[] {
   return result.commits
-    .slice(-10)
+    .slice(-COMMIT_SUBJECTS_LISTED)
     .reverse()
     .map((c) => c.commit.message.split('\n')[0]);
 }
@@ -205,7 +208,7 @@ export function createGitHubReader({
 
     listBranches: (ref) =>
       getAll(
-        repoUrl(ref, 'branches?per_page=100'),
+        repoUrl(ref, `branches?per_page=${String(GITHUB_PER_PAGE)}`),
         BranchesResponseSchema,
         asIs<Branch>,
       ),
