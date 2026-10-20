@@ -86,7 +86,7 @@ function TranslationRow({
           onCommit={(next) => {
             onChange(
               mode === 'copy'
-                ? { rule: translation.rule, copy: next || NEW_FIELD_PATH }
+                ? { rule: translation.rule, copy: next }
                 : { rule: translation.rule, value: next },
             );
           }}
