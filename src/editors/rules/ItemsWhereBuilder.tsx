@@ -8,6 +8,7 @@
 import { useState } from 'react';
 
 import { Button } from '@/components/ui/button';
+import { BUILTIN_KEYS } from '@/domain/model/keys';
 import type { Check } from '@/domain/rules/schema';
 
 import { itemsWhere } from './itemsWhere';
@@ -22,7 +23,7 @@ export function ItemsWhereBuilder({
   itemKeys: readonly string[];
   onAdd: (check: Check) => void;
 }): React.JSX.Element {
-  const [key, setKey] = useState(itemKeys[0] ?? 'name');
+  const [key, setKey] = useState(itemKeys[0] ?? BUILTIN_KEYS.name);
   const [glob, setGlob] = useState('');
   const [ignoreCase, setIgnoreCase] = useState(true);
   return (

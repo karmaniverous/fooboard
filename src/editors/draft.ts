@@ -14,6 +14,7 @@
 import type { Dashboard } from '@/domain/config/dashboard';
 import { UNMAPPED } from '@/domain/derivation';
 import { textOf } from '@/domain/model/json';
+import { keyPath, RECORD_KEYS, RESERVED_KEYS } from '@/domain/model/keys';
 import { is } from '@/domain/model/ruleBuilders';
 import { sourceRuleFor } from '@/domain/model/sources';
 import { itemsOf, type RecordDoc } from '@/domain/model/translate';
@@ -46,7 +47,14 @@ export interface EditorDraft {
 }
 
 /** Keys the board shows rather than tests by (a poor first check). */
-const SHOWN = new Set(['time', 'link', 'message', 'commit', 'items', '_raw']);
+const SHOWN = new Set<string>([
+  RESERVED_KEYS.time,
+  RESERVED_KEYS.link,
+  RESERVED_KEYS.message,
+  RESERVED_KEYS.commit,
+  RECORD_KEYS.items,
+  RECORD_KEYS.raw,
+]);
 
 /** A first check matching `doc`: its first key with a text value that
  * isn't one the board only shows (nor `skip`). */
@@ -59,7 +67,7 @@ function draftCheck(doc: RecordDoc, skip?: string): Check | undefined {
       e[1] !== '' &&
       PATH_IDENTIFIER.test(e[0]),
   );
-  return hit ? is(`$.${hit[0]}`, escapeGlob(hit[1])) : undefined;
+  return hit ? is(keyPath(hit[0]), escapeGlob(hit[1])) : undefined;
 }
 
 /** The rows of the dashboard that `run` names for `kind`. */

@@ -11,6 +11,7 @@ import type { JSONValue } from 'json-p3';
 
 import { Choice } from '@/components/Choice';
 import { Button } from '@/components/ui/button';
+import { NEW_FIELD_PATH } from '@/domain/model/keys';
 import { give } from '@/domain/model/ruleBuilders';
 import type { KeyDef, Translation } from '@/domain/model/sourceRule';
 import { patchAt } from '@/lib/lists';
@@ -18,9 +19,6 @@ import { patchAt } from '@/lib/lists';
 import { useFocused } from '../editTarget';
 import { CommitInput } from '../fields';
 import { RuleEditor } from '../rules/RuleEditor';
-
-/** Where a new path starts: the document's root, ready to extend. */
-const NEW_PATH = '$.';
 
 const MODES = [
   { value: 'value', label: 'gives' },
@@ -61,7 +59,7 @@ function TranslationRow({
       <RuleEditor
         label={`${label} rule`}
         rule={translation.rule}
-        newPath={NEW_PATH}
+        newPath={NEW_FIELD_PATH}
         documents={samples}
         noun={noun}
         onChange={(rule) => {
@@ -76,7 +74,7 @@ function TranslationRow({
           onValueChange={(next) => {
             onChange(
               next === 'copy'
-                ? { rule: translation.rule, copy: text || NEW_PATH }
+                ? { rule: translation.rule, copy: text || NEW_FIELD_PATH }
                 : { rule: translation.rule, value: text },
             );
           }}
@@ -88,7 +86,7 @@ function TranslationRow({
           onCommit={(next) => {
             onChange(
               mode === 'copy'
-                ? { rule: translation.rule, copy: next || NEW_PATH }
+                ? { rule: translation.rule, copy: next || NEW_FIELD_PATH }
                 : { rule: translation.rule, value: next },
             );
           }}

@@ -10,6 +10,7 @@
  */
 import { type Dashboard, DashboardSchema } from '@/domain/config/dashboard';
 import { branchRules } from '@/domain/config/placement';
+import { ITEM_NAME_PATH } from '@/domain/model/keys';
 import { all, is } from '@/domain/model/ruleBuilders';
 
 /** Credential reference ids the demo providers answer for. */
@@ -58,7 +59,7 @@ const github = DEMO_GITHUB_REPOS.map((name) => ({
   displayName: name,
   ...(name === DEMO_KEYED_REPO
     ? {
-        itemRule: all(is('$.name', `*${name}*`)),
+        itemRule: all(is(ITEM_NAME_PATH, `*${name}*`)),
       }
     : {}),
 }));

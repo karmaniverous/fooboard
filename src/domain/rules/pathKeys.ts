@@ -10,6 +10,8 @@
  *
  * @module
  */
+import { RECORD_KEYS } from '@/domain/model/keys';
+
 import { AST, astChildren, isAstNode as isRecord } from './jsonPathAst';
 import { compilePath } from './path';
 
@@ -88,14 +90,15 @@ function walk(
     refs.unchecked.push(why(first));
     return;
   }
-  if (scope === 'record' && head === '_raw') {
-    if (second !== undefined) refs.unchecked.push('a path under _raw');
+  if (scope === 'record' && head === RECORD_KEYS.raw) {
+    if (second !== undefined)
+      refs.unchecked.push(`a path under ${RECORD_KEYS.raw}`);
     return;
   }
   const key = { scope, name: head };
   refs.keys.push(key);
   if (second === undefined) return;
-  if (scope === 'item' || head !== 'items') {
+  if (scope === 'item' || head !== RECORD_KEYS.items) {
     refs.inside.push(key);
     return;
   }

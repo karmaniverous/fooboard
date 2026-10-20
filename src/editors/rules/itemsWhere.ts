@@ -6,8 +6,9 @@
  *
  * @module
  */
+import { itemsFilterPath, relativeKeyPath } from '@/domain/model/keys';
 import { exists } from '@/domain/model/ruleBuilders';
-import { pathStep, quoted } from '@/domain/rules/path';
+import { caseClass, quoted } from '@/domain/rules/path';
 import type { Check } from '@/domain/rules/schema';
 
 /** A glob as an I-Regexp body (`*` any run, `?` one character). */
@@ -16,8 +17,8 @@ function globRegex(glob: string, ignoreCase: boolean): string {
     .map((ch) => {
       if (ch === '*') return '.*';
       if (ch === '?') return '.';
-      if (ignoreCase && ch.toLowerCase() !== ch.toUpperCase())
-        return `[${ch.toUpperCase()}${ch.toLowerCase()}]`;
+      const folded = ignoreCase ? caseClass(ch) : undefined;
+      if (folded !== undefined) return folded;
       return /[\\^$.|+()[\]{}]/.test(ch) ? `\\${ch}` : ch;
     })
     .join('');
@@ -29,7 +30,9 @@ export function itemsWherePath(
   glob: string,
   ignoreCase: boolean,
 ): string {
-  return `$.items[?match(@${pathStep(key)}, ${quoted(globRegex(glob, ignoreCase))})]`;
+  return itemsFilterPath(
+    `match(${relativeKeyPath(key)}, ${quoted(globRegex(glob, ignoreCase))})`,
+  );
 }
 
 /** A check that some item's `key` matches `glob`. */

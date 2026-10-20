@@ -15,7 +15,14 @@ import type { CellStatus, StatusSet } from '@/domain/config/statusSets';
 import { evaluateRule } from '@/domain/rules/check';
 import type { Rule } from '@/domain/rules/schema';
 
+import { RECORD_KEYS } from './keys';
 import { compareOrder, hasItems, itemsOf, type RecordDoc } from './translate';
+
+/** A path naming items, raw data or a descendant segment, so it can't be
+ * judged before items are read. */
+const NEEDS_ITEMS = new RegExp(
+  `${RECORD_KEYS.items}|${RECORD_KEYS.raw}|\\.\\.`,
+);
 
 export interface CellRules {
   record: Rule;
@@ -64,7 +71,7 @@ export const needsItems = (
 
 /** Does `rule` test items (or raw data)? */
 export const ruleNeedsItems = (rule: Rule | undefined): boolean =>
-  (rule?.checks ?? []).some((c) => /items|_raw|\.\./.test(c.path));
+  (rule?.checks ?? []).some((c) => NEEDS_ITEMS.test(c.path));
 
 /** The first cell status whose rule matches `record`. */
 const classify = (

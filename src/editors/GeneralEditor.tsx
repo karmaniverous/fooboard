@@ -14,6 +14,7 @@ import { Button } from '@/components/ui/button';
 import { useActionError } from '@/components/useActionError';
 import { deleteWithSecrets, saveDuplicate } from '@/credentials/credentialOps';
 import type { Dashboard } from '@/domain/config/dashboard';
+import { ITEM_NAME_PATH } from '@/domain/model/keys';
 import { targetKey } from '@/editors/editTarget';
 import { useStores } from '@/storage/storesContext';
 
@@ -60,7 +61,7 @@ export function GeneralEditor({
       <ProviderRules
         title="Default item rules"
         scope="item"
-        newPath="$.name"
+        newPath={ITEM_NAME_PATH}
         target={targetKey({ kind: 'dashboard', part: 'itemRules' })}
         providers={withItems}
         rules={{

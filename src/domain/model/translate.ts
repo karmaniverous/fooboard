@@ -13,6 +13,7 @@ import { evaluateRule } from '@/domain/rules/check';
 import { compilePath, valuesAt } from '@/domain/rules/path';
 
 import { isJsonObject } from './json';
+import { RECORD_KEYS } from './keys';
 import type { KeyDef, SourceRule } from './sourceRule';
 
 /** A translated record or item: its keys (and, for records, `items` and
@@ -76,23 +77,23 @@ export function translate(
     const path = compilePath(rule.items.path);
     const rawItems = path.ok ? valuesAt(path.query, raw) : [];
     const { keys } = rule.items;
-    record.items = rawItems.map((item) =>
+    record[RECORD_KEYS.items] = rawItems.map((item) =>
       translateKeys(keys, item, 'item', problems),
     );
   }
-  record._raw = raw;
+  record[RECORD_KEYS.raw] = raw;
   return { record, problems };
 }
 
 /** The items of a translated record (none when its source has none). */
 export const itemsOf = (record: RecordDoc): RecordDoc[] => {
-  const items = record.items;
+  const items = record[RECORD_KEYS.items];
   return Array.isArray(items) ? items.filter(isJsonObject) : [];
 };
 
 /** Does `record`'s source have items? */
 export const hasItems = (record: RecordDoc): boolean =>
-  Array.isArray(record.items);
+  Array.isArray(record[RECORD_KEYS.items]);
 
 /** Compare two order-key (or item time) values: numbers as numbers,
  * anything else as text; `null` sorts first. */

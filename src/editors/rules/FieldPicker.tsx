@@ -9,6 +9,7 @@
 import type { JSONValue } from 'json-p3';
 
 import { isJsonObject } from '@/domain/model/json';
+import { keyPath, RECORD_KEYS, WILDCARD_STEP } from '@/domain/model/keys';
 import { pathStep } from '@/domain/rules/path';
 
 /** The deepest the tree opens; deeper values show as a preview. */
@@ -52,7 +53,7 @@ function Node({
   );
   const children: [string, string, JSONValue][] = Array.isArray(value)
     ? value.length > 0
-      ? [['[*]', `${path}[*]`, value[0]]]
+      ? [[WILDCARD_STEP, `${path}${WILDCARD_STEP}`, value[0]]]
       : []
     : typeof value === 'object' && value !== null
       ? Object.entries(value).map(([k, v]) => [k, `${path}${step(k)}`, v])
@@ -65,7 +66,7 @@ function Node({
     );
   return (
     <li>
-      <details open={depth < 1 && name !== '_raw'}>
+      <details open={depth === 0 && name !== RECORD_KEYS.raw}>
         <summary className="cursor-pointer">
           {pick}
           {Array.isArray(value) && (
@@ -113,7 +114,7 @@ export function FieldPicker({
           <Node
             key={k}
             name={k}
-            path={`$${step(k)}`}
+            path={keyPath(k)}
             value={v}
             depth={0}
             onPick={onPick}

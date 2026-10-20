@@ -15,6 +15,7 @@ import { groupOf, type RowGroup } from '@/domain/config/groups';
 import { ownOverride } from '@/domain/config/ownOverride';
 import type { Row } from '@/domain/config/row';
 import type { Stage } from '@/domain/config/stage';
+import { ITEM_NAME_PATH } from '@/domain/model/keys';
 import { always } from '@/domain/rules/always';
 import { branchOf } from '@/domain/rules/branch';
 import { targetKey } from '@/editors/editTarget';
@@ -187,7 +188,7 @@ function RowGroupSettings({
       <ProviderRules
         title={`Item rules of ${name}`}
         scope="item"
-        newPath="$.name"
+        newPath={ITEM_NAME_PATH}
         target={targetKey({
           kind: 'rowGroup',
           id: group.id,

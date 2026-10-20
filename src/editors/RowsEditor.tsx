@@ -15,6 +15,7 @@ import { ConfirmButton } from '@/components/ConfirmButton';
 import type { Dashboard } from '@/domain/config/dashboard';
 import { inheritedCredential } from '@/domain/config/inheritance';
 import type { Row } from '@/domain/config/row';
+import { ITEM_NAME_PATH } from '@/domain/model/keys';
 import { always, unlessAlways } from '@/domain/rules/always';
 import { targetKey } from '@/editors/editTarget';
 import type { EngineProviders } from '@/engine';
@@ -119,7 +120,7 @@ export function RowsEditor({
                 <RuleEditor
                   label={`Item rule for ${row.displayName}`}
                   rule={row.itemRule ?? always}
-                  newPath="$.name"
+                  newPath={ITEM_NAME_PATH}
                   provider={row.type}
                   scope="item"
                   target={targetKey({

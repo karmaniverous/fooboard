@@ -18,6 +18,7 @@ import { Choice } from '@/components/Choice';
 import { Button } from '@/components/ui/button';
 import type { Provider } from '@/domain/config/providers';
 import { isJsonObject } from '@/domain/model/json';
+import { BUILTIN_KEYS, NEW_FIELD_PATH } from '@/domain/model/keys';
 import type { RecordDoc } from '@/domain/model/translate';
 import { isAlways } from '@/domain/rules/always';
 import {
@@ -48,7 +49,7 @@ const itemKeys = (records: readonly RecordDoc[]): string[] => {
   const keys = samplePaths(records, 'item').map((p) => p.replace(/^\$\./, ''));
   return keys.length > 0
     ? keys.filter((k) => PATH_IDENTIFIER.test(k))
-    : ['name', 'state'];
+    : [BUILTIN_KEYS.name, BUILTIN_KEYS.state];
 };
 
 const describe = (c: Check) =>
@@ -58,7 +59,7 @@ export function RuleEditor({
   label,
   rule,
   onChange,
-  newPath = '$.',
+  newPath = NEW_FIELD_PATH,
   provider,
   scope = 'record',
   target,

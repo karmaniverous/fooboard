@@ -7,8 +7,11 @@
  *
  * @module
  */
+import type { z } from 'zod';
+
 import { type Provider, PROVIDER_LABELS } from '@/domain/config/providers';
 
+import { BUILTIN_KEYS, RESERVED_KEYS, STATES } from './keys';
 import { all, any, copy, exists, give, is, not } from './ruleBuilders';
 import {
   isSourceRuleFor,
@@ -30,21 +33,28 @@ export const BUILTIN_ORDER_KEYS = {
   amplify: 'started',
 } as const satisfies Record<Provider, string>;
 
-const github = SourceRuleSchema.parse({
+/** A built-in rule, its literals checked against the schema. */
+const builtin = (rule: z.input<typeof SourceRuleSchema>): SourceRule =>
+  SourceRuleSchema.parse(rule);
+
+const github = builtin({
   id: DEFAULT_SOURCE_RULE_IDS.github,
   name: PROVIDER_LABELS.github,
   provider: 'github',
   keys: [
-    { name: 'workflow', translations: [copy('$.run.workflowName')] },
-    { name: 'event', translations: [copy('$.run.event')] },
-    { name: 'branch', translations: [copy('$.run.headBranch'), give('')] },
-    { name: 'commit', translations: [copy('$.run.headSha')] },
+    { name: BUILTIN_KEYS.workflow, translations: [copy('$.run.workflowName')] },
+    { name: BUILTIN_KEYS.event, translations: [copy('$.run.event')] },
     {
-      name: 'message',
+      name: RESERVED_KEYS.branch,
+      translations: [copy('$.run.headBranch'), give('')],
+    },
+    { name: RESERVED_KEYS.commit, translations: [copy('$.run.headSha')] },
+    {
+      name: RESERVED_KEYS.message,
       translations: [copy('$.run.headCommitMessage'), give('')],
     },
-    { name: 'time', translations: [copy('$.run.createdAt')] },
-    { name: 'link', translations: [copy('$.run.htmlUrl')] },
+    { name: RESERVED_KEYS.time, translations: [copy('$.run.createdAt')] },
+    { name: RESERVED_KEYS.link, translations: [copy('$.run.htmlUrl')] },
     {
       name: BUILTIN_ORDER_KEYS.github,
       translations: [copy('$.run.createdAt')],
@@ -53,69 +63,81 @@ const github = SourceRuleSchema.parse({
   items: {
     path: '$.jobs[*]',
     keys: [
-      { name: 'name', translations: [copy('$.name')] },
+      { name: BUILTIN_KEYS.name, translations: [copy('$.name')] },
       {
-        name: 'state',
+        name: BUILTIN_KEYS.state,
         translations: [
           give(
-            'failed',
+            STATES.failed,
             all(is('$.conclusion', '{failure,timed_out,startup_failure}')),
           ),
-          give('cancelled', all(is('$.conclusion', 'cancelled'))),
+          give(STATES.cancelled, all(is('$.conclusion', 'cancelled'))),
           give(
-            'running',
+            STATES.running,
             all(is('$.status', 'in_progress'), not(exists('$.conclusion'))),
           ),
           give(
-            'queued',
+            STATES.queued,
             any(
               is('$.status', '{queued,waiting,pending,requested}'),
               is('$.conclusion', 'action_required'),
             ),
           ),
-          give('succeeded', all(is('$.conclusion', 'success'))),
-          give('skipped', all(is('$.conclusion', '{skipped,neutral,stale}'))),
+          give(STATES.succeeded, all(is('$.conclusion', 'success'))),
+          give(
+            STATES.skipped,
+            all(is('$.conclusion', '{skipped,neutral,stale}')),
+          ),
           give(''),
         ],
       },
       {
-        name: 'time',
+        name: RESERVED_KEYS.time,
         translations: [copy('$.completedAt'), copy('$.startedAt'), give('')],
       },
-      { name: 'link', translations: [copy('$.htmlUrl')] },
+      { name: RESERVED_KEYS.link, translations: [copy('$.htmlUrl')] },
     ],
   },
   order: BUILTIN_ORDER_KEYS.github,
 });
 
-const amplify = SourceRuleSchema.parse({
+const amplify = builtin({
   id: DEFAULT_SOURCE_RULE_IDS.amplify,
   name: PROVIDER_LABELS.amplify,
   provider: 'amplify',
   keys: [
-    { name: 'branch', translations: [copy('$.branch')] },
-    { name: 'commit', translations: [copy('$.job.commitId'), give('')] },
-    { name: 'message', translations: [copy('$.job.commitMessage'), give('')] },
+    { name: RESERVED_KEYS.branch, translations: [copy('$.branch')] },
     {
-      name: 'time',
+      name: RESERVED_KEYS.commit,
+      translations: [copy('$.job.commitId'), give('')],
+    },
+    {
+      name: RESERVED_KEYS.message,
+      translations: [copy('$.job.commitMessage'), give('')],
+    },
+    {
+      name: RESERVED_KEYS.time,
       translations: [copy('$.job.endTime'), copy('$.job.startTime'), give('')],
     },
-    { name: 'link', translations: [copy('$.consoleUrl')] },
+    { name: RESERVED_KEYS.link, translations: [copy('$.consoleUrl')] },
     {
       name: BUILTIN_ORDER_KEYS.amplify,
       translations: [copy('$.job.startTime')],
     },
     {
-      name: 'state',
+      name: BUILTIN_KEYS.state,
       translations: [
-        give('failed', all(is('$.job.status', 'FAILED'))),
-        give('cancelled', all(is('$.job.status', '{CANCELLED,CANCELLING}'))),
-        give('running', all(is('$.job.status', 'RUNNING'))),
+        give(STATES.failed, all(is('$.job.status', 'FAILED'))),
         give(
-          'queued',
+          STATES.cancelled,
+          all(is('$.job.status', '{CANCELLED,CANCELLING}')),
+        ),
+        give(STATES.running, all(is('$.job.status', 'RUNNING'))),
+        give(
+          STATES.queued,
           all(is('$.job.status', '{PENDING,PROVISIONING,CREATED}')),
         ),
-        give('succeeded', all(is('$.job.status', 'SUCCEED'))),
+        give(STATES.succeeded, all(is('$.job.status', 'SUCCEED'))),
       ],
     },
   ],

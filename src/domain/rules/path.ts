@@ -14,6 +14,9 @@ import {
 
 import { AST, astChildren, isAstNode } from './jsonPathAst';
 
+/** The path to a whole document. */
+export const ROOT_PATH = '$';
+
 /** Longest regex a rule may hold, filter functions included (a bound on
  * what an imported board can make the page do). */
 export const MAX_REGEX_LENGTH = 500;
@@ -95,6 +98,18 @@ export const quoted = (text: string): string =>
  * when it isn't an identifier. */
 export const pathStep = (key: string): string =>
   PATH_IDENTIFIER.test(key) ? `.${key}` : `[${quoted(key)}]`;
+
+/** `ch` as an I-Regexp class matching it in either case, or `undefined`
+ * for a character without case (RFC 9535 regexes have no flag to ignore
+ * case). */
+export const caseClass = (ch: string): string | undefined =>
+  ch.toLowerCase() === ch.toUpperCase()
+    ? undefined
+    : `[${ch.toUpperCase()}${ch.toLowerCase()}]`;
+
+/** `text` with each letter matching either case. */
+export const caseless = (text: string): string =>
+  Array.from(text, (ch) => caseClass(ch) ?? ch).join('');
 
 /** The values `query` finds in `document`. */
 export const valuesAt = (

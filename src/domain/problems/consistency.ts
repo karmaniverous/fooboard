@@ -12,6 +12,7 @@
  */
 import { PROVIDER_LABELS, PROVIDERS } from '@/domain/config/providers';
 import type { Row } from '@/domain/config/row';
+import { RECORD_KEYS } from '@/domain/model/keys';
 import type { KeyDef, SourceRule } from '@/domain/model/sourceRule';
 import { isAlways, unlessAlways } from '@/domain/rules/always';
 import { ruleProblems } from '@/domain/rules/check';
@@ -20,15 +21,18 @@ import { type NamedKey, pathRefs } from '@/domain/rules/pathKeys';
 import { note, type Problem, problem } from './problem';
 import type { RuleSite } from './sites';
 
+/** A key's id in {@link producedKeys}. */
+const scoped = (scope: NamedKey['scope'], name: string) => `${scope}:${name}`;
+
 /** A source rule's record and item keys, by scope and name. */
 function producedKeys(source: SourceRule): Map<string, KeyDef | undefined> {
   const keys = new Map<string, KeyDef | undefined>(
-    source.keys.map((k) => [`record:${k.name}`, k]),
+    source.keys.map((k) => [scoped('record', k.name), k]),
   );
-  keys.set('record:_raw', undefined);
+  keys.set(scoped('record', RECORD_KEYS.raw), undefined);
   if (source.items) {
-    keys.set('record:items', undefined);
-    for (const k of source.items.keys) keys.set(`item:${k.name}`, k);
+    keys.set(scoped('record', RECORD_KEYS.items), undefined);
+    for (const k of source.items.keys) keys.set(scoped('item', k.name), k);
   }
   return keys;
 }
@@ -58,9 +62,9 @@ export function siteProblems(site: RuleSite, source: SourceRule): Problem[] {
     const refs = pathRefs(check.path, site.scope);
     if (!refs) continue;
     for (const k of refs.keys)
-      if (!produced.has(`${k.scope}:${k.name}`)) missing.add(keyText(k));
+      if (!produced.has(scoped(k.scope, k.name))) missing.add(keyText(k));
     for (const k of refs.inside) {
-      const id = `${k.scope}:${k.name}`;
+      const id = scoped(k.scope, k.name);
       if (!produced.has(id)) continue;
       if (copies(produced.get(id)))
         unchecked.add(`${check.path} (inside copied ${keyText(k)})`);
