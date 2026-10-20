@@ -2,8 +2,8 @@
  * A dashboard's credentials (spec.md C-1a, C-5, C-6, C-7): enter a GitHub
  * token or AWS key, keep it for the tab or remember it on this device,
  * forget it, choose the defaults, copy one from another dashboard, and
- * remove it. States the worst case plainly and links the credential guide
- * (C-3a). Secrets go to the credential store; the dashboard records only
+ * remove it. Lists credentials by name. States the worst case plainly
+ * and links the credential guide (C-3a). Secrets go to the credential store; the dashboard records only
  * ids and labels.
  *
  * @module
@@ -23,6 +23,7 @@ import { useStores } from '@/storage/storesContext';
 
 import { CredentialItem } from './CredentialItem';
 import { addWithSecret, copyCredential } from './credentialOps';
+import { sortByCredential, sortCredentials } from './credentialOrder';
 import { KIND_LABEL } from './kindLabel';
 import { SecretFields } from './SecretFields';
 import { useCredentialVersion } from './useCredentialVersion';
@@ -44,10 +45,13 @@ export function CredentialsPanel({
   const [error, run] = useActionError();
   const [kind, setKind] = useState<CredentialKind>('github');
   const [label, setLabel] = useState('');
-  const copyable = otherDashboards.flatMap((d) =>
-    d.credentials
-      .filter((c) => credentials.get(c.id) !== undefined)
-      .map((c) => ({ dashboard: d.name, credential: c })),
+  const copyable = sortByCredential(
+    otherDashboards.flatMap((d) =>
+      d.credentials
+        .filter((c) => credentials.get(c.id) !== undefined)
+        .map((c) => ({ dashboard: d.name, credential: c })),
+    ),
+    (item) => item.credential,
   );
 
   return (
@@ -62,7 +66,7 @@ export function CredentialsPanel({
 
       {dashboard.credentials.length > 0 && (
         <ul className="flex flex-col gap-2">
-          {dashboard.credentials.map((c) => (
+          {sortCredentials(dashboard.credentials).map((c) => (
             <CredentialItem
               key={c.id}
               dashboard={dashboard}

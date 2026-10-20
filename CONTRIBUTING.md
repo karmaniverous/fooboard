@@ -88,7 +88,7 @@ On both pages, credentials are held only in the page's React state. They are nev
 ### Amplify (`/spike/amplify`)
 
 1. Run `npm run dev` and open `http://localhost:5173/spike/amplify`.
-2. Enter an AWS access key ID and secret for an IAM user with read-only Amplify permissions (`ListApps`, `ListBranches`, `ListJobs`, `GetJob`). Then enter a region and an Amplify app ID. Branch is optional; leave it blank to use the first branch the app returns.
+2. Enter an AWS access key ID and secret for an IAM user with read-only Amplify permissions (`ListApps`, `ListBranches`, `ListJobs`, `GetJob`). `GetJob` is for this spike only: the board never calls it, so the policy from **Copy AWS policy** (and the README's) leaves it out. Add it to the spike user's policy yourself. Then enter a region and an Amplify app ID. Branch is optional; leave it blank to use the first branch the app returns.
 3. Submit. The page calls `ListBranches`, then `ListJobs` (5 jobs), then `GetJob` on the newest job. It shows the raw responses and the AWS console link to that deployment.
 
 ### GitHub (`/spike/github`)

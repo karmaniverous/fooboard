@@ -81,7 +81,7 @@ An **empty cell** says why: _no records_, _needs credential_ (with a link to [Cr
 _Edit_ (on the board) opens the editor, with these tabs:
 
 - **General**: rename, duplicate or delete the dashboard.
-- **Rows**: add GitHub rows from your repos, or Amplify rows from the apps your AWS key lists. A row can use its own credentials, its own row rule (e.g. one deployable unit in a repo), and its own rule for any stage (an **override**).
+- **Rows**: add GitHub rows from the repos a token can see (the dashboard's default token unless you choose another; the row keeps the one you chose), or Amplify rows from the apps your AWS key lists. A credential choice offers the default it inherits first, as _Dashboard default (name)_ or _Group default (name)_, then the other credentials of that kind. A row can use its own credentials, its own row rule (e.g. one deployable unit in a repo), and its own rule for any stage (an **override**).
 - **Stages**: add stages, each with a rule saying which records belong in it (the presets test the branch); set each stage's source (for the behind/diverged badges).
 - **Sources**: the source rules for GitHub and Amplify, including what to read (GitHub: skip pull-request runs, which still count toward what is read, and runs per repo, 100 by default and up to 500, each 100 one request per repo per poll; Amplify: jobs per branch, 20 by default and up to 100, and which branches). When a read comes back full, each of its rows' cells showing _no records_ gets a hint to read more, since the stage's last run or job may be older than what was read. Amplify reads every branch by default, which makes more AWS calls than reading only stage branches; narrow it with the branch rule; see [Rules](#rules).
 - **Statuses**: the status set GitHub rows and Amplify rows use; see [Rules](#rules).
@@ -161,8 +161,41 @@ Everyone viewing a board with the same token shares that token's hourly GitHub b
 Amplify rows need an AWS access key for an IAM user that can only read Amplify:
 
 1. In the IAM console, create a user for fooboard (one per AWS account).
-2. Attach this policy. On the AWS key form in fooboard, **Copy AWS policy** copies it with your dashboard's apps filled in; or replace `REGION`, `ACCOUNT_ID` and `APP_ID` below, adding a line to each of the last three statements for each app.
+2. Attach a read-only Amplify policy. On the AWS key form in fooboard, **Copy AWS policy** copies the right one:
+   - **Before the dashboard has Amplify rows** (you create the key before you can pick its apps), it copies the account-wide policy below: the key can read the branches and jobs of every Amplify app in the account.
+   - **After you add Amplify rows**, copy it again and replace the policy: the copy narrows branches and jobs to this dashboard's apps, as in the template below.
+
+   Or attach a policy below yourself: in the template, replace `REGION`, `ACCOUNT_ID` and `APP_ID`, adding a line to each of the last two statements for each app.
 3. Create an access key for the user, and paste its ID and secret into _Credentials_ → _Add a credential_ → _AWS key_.
+
+Account-wide, before the dashboard has Amplify rows:
+
+```json
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "FooboardListApps",
+      "Effect": "Allow",
+      "Action": [
+        "amplify:ListApps"
+      ],
+      "Resource": "*"
+    },
+    {
+      "Sid": "FooboardReadAllApps",
+      "Effect": "Allow",
+      "Action": [
+        "amplify:ListBranches",
+        "amplify:ListJobs"
+      ],
+      "Resource": "arn:aws:amplify:*:*:apps/*"
+    }
+  ]
+}
+```
+
+Narrowed to the dashboard's apps (the template):
 
 ```json
 {
@@ -195,28 +228,18 @@ Amplify rows need an AWS access key for an IAM user that can only read Amplify:
       "Resource": [
         "arn:aws:amplify:REGION:ACCOUNT_ID:apps/APP_ID/branches/*"
       ]
-    },
-    {
-      "Sid": "FooboardReadJob",
-      "Effect": "Allow",
-      "Action": [
-        "amplify:GetJob"
-      ],
-      "Resource": [
-        "arn:aws:amplify:REGION:ACCOUNT_ID:apps/APP_ID/branches/*/jobs/*"
-      ]
     }
   ]
 }
 ```
 
-AWS can't limit listing apps to particular apps, so the key can see the **names** of every Amplify app in the account (that is how the editor offers apps to pick); it reads branches and jobs only for the apps listed. The copied policy uses `*` for the account, because fooboard doesn't know it: that grants nothing more, since a user's policy only reaches its own account's apps. Before a dashboard has Amplify rows, the copied policy only lists apps; copy it again after adding them. A source whose region or app ID is not valid (an app ID of `*`, say, would widen the policy) is left out, and the button says so. A row whose apps span accounts uses one key per account.
+AWS can't limit listing apps to particular apps, so the key can see the **names** of every Amplify app in the account (that is how the editor offers apps to pick). With the narrowed policy it reads branches and jobs only for the apps listed; with the account-wide one, for every app in the account. The copied policy uses `*` for the account, because fooboard doesn't know it: that grants nothing more, since a user's policy only reaches its own account's apps. A source whose region or app ID is not valid (an app ID of `*`, say, would widen the policy) is left out, and the button says so; if no source is valid, it copies the account-wide policy. A row whose apps span accounts uses one key per account.
 
 ### What a leaked credential exposes
 
 - **Fine-grained GitHub token** (as above): read access to the selected repos only, including their code, workflow files and Actions logs. It cannot write, push or start anything.
 - **Classic token** with the `repo` scope: read **and write** access to every repo its owner can reach; treat a leak as a compromise of those repos. With no scopes: public data only.
-- **AWS key** (policy above): the names of the account's Amplify apps, and branch and job details for the listed apps; nothing else in your AWS account.
+- **AWS key** (policies above): the names of the account's Amplify apps, and branch and job details for the listed apps (for every app in the account, with the account-wide policy); nothing else in your AWS account.
 
 ### Revoking a credential
 

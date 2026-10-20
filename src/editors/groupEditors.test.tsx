@@ -112,7 +112,7 @@ describe('row groups in the editor', () => {
       },
     ]);
     const token = screen.getByLabelText('GitHub token for api');
-    expect(optionsOf(token)[0]).toBe("team (the group's default)");
+    expect(optionsOf(token)[0]).toBe('Group default (team)');
     openOverrides();
     expect(
       screen.getByLabelText('prod branch override for api'),
