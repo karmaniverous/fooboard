@@ -1,5 +1,5 @@
-﻿/**
- * Branch rules (spec.md AÂ§4.3.7): the branch presets and the editors'
+/**
+ * Branch rules (spec.md A§4.3.7): the branch presets and the editors'
  * *Branch* field write a stage rule testing `$.branch` with an anchored,
  * case-sensitive regex that keeps branch-pattern meaning (`*` is one or
  * more characters other than `/`, `**` one or more of any), and read a
