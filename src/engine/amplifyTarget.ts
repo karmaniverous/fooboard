@@ -45,11 +45,10 @@ export function amplifyGroups(
   }
   // Keep the board's row order within and across groups.
   const order = new Map(rows.map((r, i) => [r.id, i]));
+  const rank = (row: AmplifyRow) => order.get(row.id) ?? 0;
   return groups
-    .map((g) =>
-      g.rows.sort((a, b) => (order.get(a.id) ?? 0) - (order.get(b.id) ?? 0)),
-    )
-    .sort((a, b) => (order.get(a[0].id) ?? 0) - (order.get(b[0].id) ?? 0));
+    .map((g) => g.rows.sort((a, b) => rank(a) - rank(b)))
+    .sort((a, b) => rank(a[0]) - rank(b[0]));
 }
 
 /** The keys of the apps `row` reads (none when it can't read them). */
