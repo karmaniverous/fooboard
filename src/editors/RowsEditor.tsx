@@ -1,6 +1,7 @@
 /**
- * Rows (spec.md C-21): add a GitHub row by picking a repo the dashboard's
- * token can see (display name defaults to the repo without its owner), or
+ * Rows (spec.md C-21): add a GitHub row by choosing a token (unset: the
+ * dashboard default) and picking a repo it can see (display name defaults
+ * to the repo without its owner; the row keeps the chosen token), or
  * an Amplify row by choosing credential, region and app (listed via
  * `ListApps`); rename, reorder, remove; per-row token override, row key
  * and item rules (item rules when its source rule reads items), extra
@@ -25,8 +26,9 @@ import { removeRow, rowFromRepo } from './edit';
 import { CommitInput } from './fields';
 import { listHandlers } from './groupEdit';
 import { ReorderList } from './ReorderList';
+import { RepoPicker } from './RepoPicker';
 import { RowGrouping } from './RowGrouping';
-import { AddSource, AmplifyPicker, RepoPicker } from './rowPickers';
+import { AddSource, AmplifyPicker } from './rowPickers';
 import { RuleEditor } from './rules/RuleEditor';
 import { SourcesWithItemsContext } from './rules/samples';
 
@@ -189,10 +191,13 @@ export function RowsEditor({
         <RepoPicker
           dashboard={dashboard}
           providers={providers}
-          onPick={(repo) => {
+          onPick={(repo, credentialId) => {
             onChange({
               ...dashboard,
-              rows: [...dashboard.rows, rowFromRepo(repo, dashboard)],
+              rows: [
+                ...dashboard.rows,
+                rowFromRepo(repo, dashboard, credentialId),
+              ],
             });
           }}
         />

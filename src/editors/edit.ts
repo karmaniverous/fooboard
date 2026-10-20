@@ -24,10 +24,12 @@ export function uniqueId(base: string, taken: Iterable<string>): string {
 }
 
 /** A GitHub row for a picked repo: the display name defaults to the repo
- * name without its owner (spec.md C-21). */
+ * name without its owner, and it keeps the token it was picked with
+ * (unset follows the default; spec.md C-21). */
 export function rowFromRepo(
   fullName: string,
   dashboard: Pick<Dashboard, 'rows'>,
+  credentialId?: string,
 ): GithubRow {
   const name = fullName.split('/')[1] ?? fullName;
   return {
@@ -38,6 +40,7 @@ export function rowFromRepo(
     ),
     repo: fullName,
     displayName: name,
+    ...(credentialId ? { credentialId } : {}),
     stageRules: {},
     cellStatusSets: {},
   };
