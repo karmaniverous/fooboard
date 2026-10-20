@@ -1,7 +1,8 @@
 /**
  * One of the dashboard's own status sets (spec.md A§4.3.6): its name, its
- * item rule (when its source rule reads items), its summary statuses and its cell statuses in order
- * (the first whose rule matches wins). Changes go to the dashboard, which
+ * item rule (when its source rule reads items), its summary statuses and
+ * its cell statuses in order (the first whose rule matches wins; each
+ * collapses to its header: `CellStatusList`). Changes go to the dashboard, which
  * the editor validates before saving.
  *
  * @module
@@ -19,12 +20,12 @@ import { Button } from '@/components/ui/button';
 import { PROVIDER_LABELS } from '@/domain/config/providers';
 import { STATUS_ICONS, type StatusSet } from '@/domain/config/statusSets';
 import { statusSetItemsKey, targetKey } from '@/editors/editTarget';
-import { move, patchAt } from '@/lib/lists';
+import { patchAt } from '@/lib/lists';
 
 import { CommitInput } from '../fields';
 import { RuleEditor } from '../rules/RuleEditor';
 import { SourcesWithItemsContext } from '../rules/samples';
-import { addCellStatus } from './customSet';
+import { CellStatusList } from './CellStatusList';
 
 const iconOptions = STATUS_ICONS.map((icon) => ({
   value: icon,
@@ -45,10 +46,6 @@ export function CustomSetEditor({
   onRemove?: () => void;
 }): React.JSX.Element {
   const jobs = useContext(SourcesWithItemsContext).includes(set.provider);
-  const summaryOptions = set.summary.map((s) => ({
-    value: s.id,
-    label: s.name,
-  }));
   return (
     <CollapsibleItem
       {...item}
@@ -142,129 +139,11 @@ export function CustomSetEditor({
             </div>
           ))}
         </div>
-        <div className="flex flex-col gap-2">
-          <div className="flex items-center justify-between">
-            <h4 className="text-xs font-semibold">
-              Cell statuses (first match wins)
-            </h4>
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => {
-                onChange(addCellStatus(set));
-              }}
-            >
-              Add status
-            </Button>
-          </div>
-          {set.cell.map((c, i) => {
-            const update = (change: Partial<typeof c>) => {
-              onChange({
-                ...set,
-                cell: patchAt(set.cell, i, change),
-              });
-            };
-            return (
-              <div
-                key={c.id}
-                role="group"
-                aria-label={`Cell status ${c.name}`}
-                className="flex flex-col gap-1 rounded border p-2"
-              >
-                <div className="flex flex-wrap items-center gap-2">
-                  <input
-                    type="color"
-                    aria-label={`${c.name} colour`}
-                    value={c.color}
-                    onChange={(e) => {
-                      update({ color: e.target.value });
-                    }}
-                  />
-                  <CommitInput
-                    label={`Cell status ${String(i + 1)} name`}
-                    className="h-9 w-40"
-                    value={c.name}
-                    onCommit={(name) => {
-                      update({ name });
-                    }}
-                  />
-                  <Choice
-                    label={`${c.name} counts toward`}
-                    value={c.summary}
-                    options={summaryOptions}
-                    onValueChange={(summary) => {
-                      update({ summary });
-                    }}
-                  />
-                  <Choice
-                    label={`${c.name} icon`}
-                    value={c.icon ?? ''}
-                    options={[
-                      { value: '', label: 'Summary icon' },
-                      ...iconOptions,
-                    ]}
-                    onValueChange={(icon) => {
-                      update({
-                        icon: icon || undefined,
-                      });
-                    }}
-                  />
-                  <CheckField
-                    label="Outlined"
-                    checked={c.outlined}
-                    onCheckedChange={(outlined) => {
-                      update({ outlined });
-                    }}
-                  />
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    aria-label={`Move ${c.name} up`}
-                    disabled={i === 0}
-                    onClick={() => {
-                      onChange({ ...set, cell: move(set.cell, i, -1) });
-                    }}
-                  >
-                    ↑
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    aria-label={`Move ${c.name} down`}
-                    disabled={i === set.cell.length - 1}
-                    onClick={() => {
-                      onChange({ ...set, cell: move(set.cell, i, 1) });
-                    }}
-                  >
-                    ↓
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    aria-label={`Delete ${c.name}`}
-                    disabled={set.cell.length === 1}
-                    onClick={() => {
-                      onChange({
-                        ...set,
-                        cell: set.cell.filter((_, j) => j !== i),
-                      });
-                    }}
-                  >
-                    ×
-                  </Button>
-                </div>
-                <RuleEditor
-                  provider={set.provider}
-                  label={`${c.name} rule`}
-                  rule={c.rule}
-                  onChange={(rule) => {
-                    update({ rule });
-                  }}
-                />
-              </div>
-            );
-          })}
-        </div>
+        <CellStatusList
+          set={set}
+          onChange={onChange}
+          iconOptions={iconOptions}
+        />
       </div>
     </CollapsibleItem>
   );

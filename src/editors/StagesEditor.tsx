@@ -23,6 +23,7 @@ import type { EngineProviders } from '@/engine';
 
 import { discoverBranches, patternPreview } from './branches';
 import { BranchFinder } from './BranchFinder';
+import { ColumnGroupList } from './ColumnGroupList';
 import { removeStage, uniqueId } from './edit';
 import { CommitInput } from './fields';
 import { GroupControl } from './GroupControl';
@@ -192,6 +193,7 @@ export function StagesEditor({
               />
             </div>
             <ProviderRules
+              defaultOpen
               title={`Stage rules of ${stage.name}`}
               target={targetKey({ kind: 'stage', id: stage.id })}
               rules={stage.rules}
@@ -223,24 +225,7 @@ export function StagesEditor({
           </div>
         )}
       </ReorderList>
-      {dashboard.columnGroups.map((g) => (
-        <ProviderRules
-          key={g.id}
-          title={`Stage rules of group ${g.label ?? g.id}`}
-          target={targetKey({ kind: 'columnGroup', id: g.id })}
-          rules={g.stageRules}
-          onChange={(p, rule) => {
-            onChange({
-              ...dashboard,
-              columnGroups: dashboard.columnGroups.map((x) =>
-                x.id === g.id
-                  ? { ...x, stageRules: { ...x.stageRules, [p]: rule } }
-                  : x,
-              ),
-            });
-          }}
-        />
-      ))}
+      <ColumnGroupList dashboard={dashboard} onChange={onChange} />
       <AddStage
         dashboard={dashboard}
         providers={providers}

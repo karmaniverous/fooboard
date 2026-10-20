@@ -101,6 +101,7 @@ describe('row groups in the editor', () => {
     const latest = setup();
     expand('api');
     choose(screen.getByLabelText('Group of api'), 'New group from api');
+    fireEvent.click(screen.getByRole('button', { name: /^Group settings/ }));
     choose(screen.getByLabelText('GitHub token for this group'), 'team');
     commit('prod branch override for this group', 'release/*');
     expect(latest.current.rowGroups).toEqual([

@@ -15,6 +15,7 @@ import { PRESET_SUMMARY_IDS } from '@/domain/statuses/presetRules';
 import { presetById } from '@/domain/statuses/presets';
 import { choose } from '@/test/choose';
 import { OPEN_ITEM } from '@/test/openItem';
+import { expand } from '@/test/openItem';
 
 import { CustomSetEditor } from './CustomSetEditor';
 
@@ -51,7 +52,8 @@ describe('CustomSetEditor', () => {
     });
 
     const [first] = latest.current.cell;
-    const status = screen.getByRole('group', {
+    expand(first.name);
+    const status = screen.getByRole('region', {
       name: `Cell status ${first.name}`,
     });
     fireEvent.click(within(status).getByRole('checkbox', { name: 'Outlined' }));
@@ -76,6 +78,7 @@ describe('CustomSetEditor', () => {
     });
 
     const [a, b] = latest.current.cell;
+    expand(a.name);
     choose(screen.getByLabelText(`${a.name} icon`), '? unknown');
     expect(latest.current.cell[0].icon).toBe('unknown');
     choose(screen.getByLabelText(`${a.name} icon`), 'Summary icon');

@@ -3,14 +3,16 @@
  * translations whose rule matches the raw data, giving a fixed value or
  * copying one from a path. Translation rules test the raw entry (`$` is
  * the raw run or job, or the raw item), so they preview over the raw data
- * of the board's records (A§4.3.7 *Editing rules*).
+ * of the board's records. Each key collapses to its header (name, how
+ * many translations, delete), one open at a time; its translations show
+ * when it is open (A§4.3.7 *Editing rules*).
  *
  * @module
  */
 import type { JSONValue } from 'json-p3';
 
 import { Choice } from '@/components/Choice';
-import { Disclosure } from '@/components/Disclosure';
+import { CollapsibleItem } from '@/components/CollapsibleItem';
 import { Button } from '@/components/ui/button';
 import { NEW_FIELD_PATH } from '@/domain/model/keys';
 import { give } from '@/domain/model/ruleBuilders';
@@ -19,11 +21,16 @@ import { patchAt } from '@/lib/lists';
 
 import { CommitInput } from '../fields';
 import { RuleEditor } from '../rules/RuleEditor';
+import { useAccordion } from '../useAccordion';
 
 const MODES = [
   { value: 'value', label: 'gives' },
   { value: 'copy', label: 'copies' },
 ];
+
+/** A key's header summary. */
+const translationCount = (n: number): string =>
+  n === 1 ? '1 translation' : `${String(n)} translations`;
 
 function TranslationRow({
   label,
@@ -114,32 +121,31 @@ export function KeysEditor({
   /** The source rule's editor-item key; each key is `<target>:key:<name>`. */
   target?: string;
 }): React.JSX.Element {
+  const keyTarget = (name: string) =>
+    target === undefined ? undefined : `${target}:key:${name}`;
+  // Names may repeat while being edited: the position keeps keys apart.
+  const itemKey = (i: number, name: string) => `${String(i)}:${name}`;
+  const accordion = useAccordion(
+    keys.map((k, i) => {
+      const own = keyTarget(k.name);
+      return { key: itemKey(i, k.name), targets: own ? [own] : [] };
+    }),
+  );
   return (
-    <Disclosure
-      title={title}
-      count={keys.length}
-      target={target === undefined ? undefined : `${target}:key`}
-      className="rounded-md border px-2 py-1"
-      contentClassName="flex flex-col gap-2 py-1"
-    >
+    <section aria-label={title} className="flex flex-col gap-1">
+      <h5 className="text-xs font-semibold">
+        {title} ({keys.length})
+      </h5>
       {keys.map((key, i) => (
-        <section
+        <CollapsibleItem
           key={i}
-          aria-label={`${title}: ${key.name}`}
-          data-edit-target={
-            target === undefined ? undefined : `${target}:key:${key.name}`
-          }
-          className="flex flex-col gap-1"
-        >
-          <div className="flex items-center gap-2">
-            <CommitInput
-              label={`${title} key ${String(i + 1)} name`}
-              className="h-9 w-40 font-mono"
-              value={key.name}
-              onCommit={(name) => {
-                if (name) onChange(patchAt(keys, i, { name }));
-              }}
-            />
+          {...accordion.itemProps(itemKey(i, key.name))}
+          name={key.name}
+          summary={translationCount(key.translations.length)}
+          label={`${title}: ${key.name}`}
+          target={keyTarget(key.name)}
+          className="gap-1 p-1"
+          actions={
             <Button
               size="sm"
               variant="ghost"
@@ -150,47 +156,58 @@ export function KeysEditor({
             >
               ×
             </Button>
-          </div>
-          {key.translations.map((t, j) => (
-            <TranslationRow
-              key={j}
-              label={`${key.name} translation ${String(j + 1)}`}
-              translation={t}
-              samples={samples}
-              noun={noun}
-              onChange={(next) => {
-                onChange(
-                  patchAt(keys, i, {
-                    translations: key.translations.map((x, k) =>
-                      k === j ? next : x,
-                    ),
-                  }),
-                );
-              }}
-              onRemove={() => {
-                onChange(
-                  patchAt(keys, i, {
-                    translations: key.translations.filter((_, k) => k !== j),
-                  }),
-                );
+          }
+        >
+          <div className="flex flex-col gap-1">
+            <CommitInput
+              label={`${title} key ${String(i + 1)} name`}
+              className="h-9 w-40 font-mono"
+              value={key.name}
+              onCommit={(name) => {
+                if (name) onChange(patchAt(keys, i, { name }));
               }}
             />
-          ))}
-          <Button
-            size="sm"
-            variant="outline"
-            className="self-start"
-            onClick={() => {
-              onChange(
-                patchAt(keys, i, {
-                  translations: [...key.translations, give('')],
-                }),
-              );
-            }}
-          >
-            Add translation
-          </Button>
-        </section>
+            {key.translations.map((t, j) => (
+              <TranslationRow
+                key={j}
+                label={`${key.name} translation ${String(j + 1)}`}
+                translation={t}
+                samples={samples}
+                noun={noun}
+                onChange={(next) => {
+                  onChange(
+                    patchAt(keys, i, {
+                      translations: key.translations.map((x, k) =>
+                        k === j ? next : x,
+                      ),
+                    }),
+                  );
+                }}
+                onRemove={() => {
+                  onChange(
+                    patchAt(keys, i, {
+                      translations: key.translations.filter((_, k) => k !== j),
+                    }),
+                  );
+                }}
+              />
+            ))}
+            <Button
+              size="sm"
+              variant="outline"
+              className="self-start"
+              onClick={() => {
+                onChange(
+                  patchAt(keys, i, {
+                    translations: [...key.translations, give('')],
+                  }),
+                );
+              }}
+            >
+              Add translation
+            </Button>
+          </div>
+        </CollapsibleItem>
       ))}
       <Button
         size="sm"
@@ -205,6 +222,6 @@ export function KeysEditor({
       >
         Add key
       </Button>
-    </Disclosure>
+    </section>
   );
 }

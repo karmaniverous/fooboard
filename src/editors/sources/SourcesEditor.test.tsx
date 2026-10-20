@@ -45,11 +45,12 @@ describe('SourcesEditor', () => {
     render(<Harness saved={saved} />);
     const before = start.customSourceRules[0]?.keys.length ?? 0;
     expand('GitHub (custom)');
-    fireEvent.click(screen.getByText(`Record keys (${String(before)})`));
+    expect(screen.getByText(`Record keys (${String(before)})`)).toBeVisible();
     fireEvent.click(screen.getAllByText('Add key')[0]);
     expect(custom(saved)?.keys).toHaveLength(before + 1);
     const name = custom(saved)?.keys[before]?.name ?? '';
-    fireEvent.click(screen.getAllByText('Add translation')[before]);
+    // The new key opens on its own (the only one open).
+    fireEvent.click(screen.getByText('Add translation'));
     expect(custom(saved)?.keys[before]?.translations).toEqual([give('')]);
     const value = screen.getByLabelText(`${name} translation 1 value`);
     fireEvent.change(value, { target: { value: 'x' } });
