@@ -5,6 +5,7 @@
  * @module
  */
 import { Choice } from '@/components/Choice';
+import { sortCredentials } from '@/credentials/credentialOrder';
 import type { CredentialKind } from '@/domain/config/credentials';
 import type { Dashboard } from '@/domain/config/dashboard';
 
@@ -21,7 +22,7 @@ export interface Inherited {
 
 /** A credential choice, captioned with its kind: the inherited default
  * (named, with where it comes from), or one of the dashboard's
- * credentials of that kind. */
+ * credentials of that kind, by name. */
 export function CredentialSelect({
   dashboard,
   kind,
@@ -39,7 +40,9 @@ export function CredentialSelect({
   /** What leaving it unset means (C-1a); the dashboard default if omitted. */
   inherited?: Inherited;
 }): React.JSX.Element {
-  const options = dashboard.credentials.filter((c) => c.kind === kind);
+  const options = sortCredentials(
+    dashboard.credentials.filter((c) => c.kind === kind),
+  );
   const named = options.find((c) => c.id === inherited.id)?.label;
   const source = inherited.from === 'group' ? "group's" : "dashboard's";
   return (
