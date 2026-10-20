@@ -83,6 +83,7 @@ function TranslationRow({
           label={`${label} ${mode === 'copy' ? 'path' : 'value'}`}
           className="h-9 w-56 font-mono"
           value={text}
+          optional={mode === 'value'}
           onCommit={(next) => {
             onChange(
               mode === 'copy'

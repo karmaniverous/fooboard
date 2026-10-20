@@ -1,8 +1,8 @@
 /**
  * Tests for a source rule's keys: switching a translation between giving
  * a value and copying a path keeps its text (an empty copy starts from
- * the root), commits write the right kind (a cleared path reverts), a
- * blank key name is refused,
+ * the root), commits write the right kind (a cleared path reverts, a
+ * cleared value gives empty text), a blank key name is refused,
  * and translations and keys are added and removed.
  *
  * @module
@@ -66,6 +66,12 @@ describe('KeysEditor translations', () => {
     commit(`${ROW} path`, '');
     expect(onChange).toHaveBeenCalledOnce();
     expect(screen.getByLabelText(`${ROW} path`)).toHaveValue(HEAD_PATH);
+  });
+
+  it('clears a value back to empty text', () => {
+    const onChange = renderKeys([{ name: KEY, translations: [give('a')] }]);
+    commit(`${ROW} value`, '');
+    expect(translationOf(onChange)).toEqual(give(''));
   });
 
   it('commits a value, and adds and removes translations', () => {
