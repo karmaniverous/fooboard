@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Tests for `SerialQueue`: tasks run one at a time, in FIFO order, and
  * `pauseUntil` delays the next queued task (not one already running).
  *
