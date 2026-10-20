@@ -5,7 +5,8 @@
  * actions such as move and remove), and a body with the item's fields,
  * mounted only while open. Which item is open is the owner's (see
  * `useAccordion`); an item added while the list is shown scrolls into
- * view.
+ * view. `ItemHeaderPreview` is the same header, inert, for a drag
+ * overlay.
  *
  * @module
  */
@@ -18,6 +19,52 @@ import {
   CollapsibleTrigger,
 } from '@/components/ui/collapsible';
 import { cn } from '@/lib/utils';
+
+/** The chevron, name and summary of an item's header. */
+function Heading({
+  name,
+  summary,
+}: {
+  name: string;
+  summary?: React.ReactNode;
+}): React.JSX.Element {
+  return (
+    <>
+      <ChevronRight
+        aria-hidden
+        className="size-4 shrink-0 transition-transform"
+      />
+      <span className="truncate font-medium">{name}</span>
+      {summary !== undefined && (
+        <>
+          {/* A space between, for the trigger's accessible name. */}{' '}
+          <span className="truncate text-xs text-muted-foreground">
+            {summary}
+          </span>
+        </>
+      )}
+    </>
+  );
+}
+
+/** An item's collapsed header, inert (no trigger or actions): what a drag
+ * carries under the cursor. */
+export function ItemHeaderPreview({
+  name,
+  summary,
+  lead,
+}: {
+  name: string;
+  summary?: React.ReactNode;
+  lead?: React.ReactNode;
+}): React.JSX.Element {
+  return (
+    <div className="flex items-center gap-1 rounded-md border bg-background p-2 shadow-lg">
+      {lead}
+      <Heading name={name} summary={summary} />
+    </div>
+  );
+}
 
 /** Whether an item is open, and its owner's handlers (`useAccordion`). */
 export interface ItemOpenState {
@@ -74,19 +121,7 @@ export function CollapsibleItem({
         <div className="flex items-center gap-1">
           {lead}
           <CollapsibleTrigger className="flex min-w-0 flex-1 items-center gap-1 rounded-sm text-left hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring [&[data-state=open]>svg]:rotate-90">
-            <ChevronRight
-              aria-hidden
-              className="size-4 shrink-0 transition-transform"
-            />
-            <span className="truncate font-medium">{name}</span>
-            {summary !== undefined && (
-              <>
-                {/* A space between, for the trigger's accessible name. */}{' '}
-                <span className="truncate text-xs text-muted-foreground">
-                  {summary}
-                </span>
-              </>
-            )}
+            <Heading name={name} summary={summary} />
           </CollapsibleTrigger>
           {actions !== undefined && (
             <div className="flex shrink-0 items-center gap-1">{actions}</div>

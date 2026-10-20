@@ -21,6 +21,7 @@ import { memoryStorage } from '@/storage/keyValue';
 import { StoresContext } from '@/storage/storesContext';
 import { choose, optionsOf } from '@/test/choose';
 import { fakeGitHubReader, ghBranch } from '@/test/fakeReaders';
+import { keyboardDrag } from '@/test/keyboardDrag';
 import { expand } from '@/test/openItem';
 
 import { DashboardEditor } from './DashboardEditor';
@@ -146,9 +147,8 @@ describe('row groups in the editor', () => {
         name: 'Find branches',
       })[0],
     );
-    expect(await screen.findByRole('status')).toHaveTextContent(
-      '2 branches found',
-    );
+    // (By text: the drag-and-drop announcer is a status region too.)
+    expect(await screen.findByText(/^2 branches found/)).toBeInTheDocument();
     expect(screen.queryByRole('list', { name: 'Branches found' })).toBeNull();
     const options = [...document.querySelectorAll('datalist option')];
     expect(options.map((o) => o.getAttribute('value'))).toEqual([
@@ -161,23 +161,17 @@ describe('row groups in the editor', () => {
     ).toHaveAttribute('list');
   });
 
-  it('drags a row across a group edge into the group, and steps it back out', () => {
+  it('drags a row across a group edge into the group, and steps it back out', async () => {
     const latest = setup(
       DashboardSchema.parse({
         ...start,
         rowGroups: [{ id: 'g', memberIds: ['api'] }],
       }),
     );
-    const items = screen
-      .getAllByRole('listitem')
-      .filter((li) => li.querySelector(':scope > section > div > [draggable]'));
-    const api = items.at(0);
-    const web = items.at(1);
-    const grip = web?.querySelector('[draggable]');
-    if (!grip || !api) throw new Error('drag handles not found');
-    fireEvent.dragStart(grip, { dataTransfer: { effectAllowed: '' } });
-    fireEvent.dragOver(api);
-    fireEvent.drop(api);
+    await keyboardDrag(
+      screen.getByRole('button', { name: 'Drag web to reorder' }),
+      -1,
+    );
     expect(latest.current.rows.map((r) => r.id)).toEqual(['web', 'api']);
     expect(latest.current.rowGroups[0]?.memberIds).toEqual(['web', 'api']);
 

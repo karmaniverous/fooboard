@@ -13,7 +13,7 @@ import react from '@vitejs/plugin-react';
 import { defineConfig } from 'vite';
 
 /** Heavy, rarely-changing vendor code, each group its own cacheable chunk:
- * React, the AWS SDK, the UI kit (Radix, icons) and the data libraries
+ * React, the AWS SDK, the UI kit (Radix, dnd-kit, icons) and the data libraries
  * (schemas, JSONPath, utilities). */
 const VENDOR_CHUNKS: readonly [RegExp, string][] = [
   [
@@ -21,7 +21,7 @@ const VENDOR_CHUNKS: readonly [RegExp, string][] = [
     'react-vendor',
   ],
   [/node_modules[\\/]@aws-sdk[\\/]/, 'aws-amplify'],
-  [/node_modules[\\/](@radix-ui|lucide-react)[\\/]/, 'ui-vendor'],
+  [/node_modules[\\/](@radix-ui|@dnd-kit|lucide-react)[\\/]/, 'ui-vendor'],
   [/node_modules[\\/](zod|json-p3|radash)[\\/]/, 'data-vendor'],
 ];
 
