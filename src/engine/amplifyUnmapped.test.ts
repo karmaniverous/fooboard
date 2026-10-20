@@ -109,6 +109,20 @@ describe('amplifyUnmapped', () => {
     expect(bare).toMatchObject({ branch: null, id: `amplify:${key}:#` });
   });
 
+  it('keeps jobs apart when a source rule translates their branches to one value', () => {
+    const job = (branch: string) => ({
+      branch: 'preview',
+      [BUILTIN_ORDER_KEYS.amplify]: '2026-10-01T00:00:00Z',
+      _raw: { branch, job: { jobId: '1' }, source: { appId: 'app1' } },
+    });
+    const runs = unmapped([job('preview/a'), job('preview/b')]);
+    expect(runs.map((r) => r.branch)).toEqual(['preview', 'preview']);
+    expect(runs.map((r) => r.id)).toEqual([
+      `amplify:${key}:preview/a#1`,
+      `amplify:${key}:preview/b#1`,
+    ]);
+  });
+
   it('lists nothing for an app no row reads', () => {
     expect(
       amplifyUnmapped(

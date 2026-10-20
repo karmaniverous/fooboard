@@ -50,10 +50,14 @@ export function amplifyUnmapped(
       if (!reasons) continue;
       const [first] = reasons;
       const job = rawJob(record);
+      // Shown: the branch as translated. Identity: the branch Amplify
+      // read (job ids count per branch, and a source rule may translate
+      // two branches to one value).
       const branch = textOf(record.branch) ?? job.branch ?? null;
+      const readBranch = job.branch ?? branch ?? '';
       out.push({
         provider: 'amplify',
-        id: `amplify:${key}:${branch ?? ''}#${job.jobId ?? ''}`,
+        id: `amplify:${key}:${readBranch}#${job.jobId ?? ''}`,
         where: job.appId ?? PROVIDER_LABELS.amplify,
         title: `Amplify job ${job.jobId ?? '?'}`,
         branch,
