@@ -1,8 +1,8 @@
 /**
  * Tests for *Copy AWS policy* (spec.md C-3a): what it copies and says when
- * the dashboard has no Amplify apps yet, when a source is invalid, and
- * when the browser won't copy.
- * (Copying a dashboard's apps is tested through the credentials panel.)
+ * the dashboard has no Amplify apps yet (account-wide), when it has apps
+ * (narrowed to them), when a source is invalid, and when the browser won't
+ * copy.
  *
  * @module
  */
@@ -12,7 +12,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { DashboardSchema } from '@/domain/config/dashboard';
 
 import { CopyAwsPolicy } from './CopyAwsPolicy';
-import { amplifyPolicy } from './iamPolicy';
+import { accountPolicy, amplifyPolicy } from './iamPolicy';
 
 const noApps = DashboardSchema.parse({ id: 'd', name: 'D' });
 
@@ -37,16 +37,53 @@ afterEach(() => {
 });
 
 describe('CopyAwsPolicy', () => {
-  it('copies a list-only policy before there are Amplify rows, and says to copy again', async () => {
+  it('copies an account-wide policy before there are Amplify rows, and says copying again narrows it', async () => {
     const writeText = vi.fn<(text: string) => Promise<void>>(() =>
       Promise.resolve(),
     );
     clipboard(writeText);
     await copy();
     const copied: unknown = JSON.parse(writeText.mock.calls[0]?.[0] ?? 'null');
-    expect(copied).toEqual(amplifyPolicy([]));
+    expect(copied).toEqual(accountPolicy());
     expect(screen.getByRole('status')).toHaveTextContent(
-      'Copy it again after adding Amplify rows',
+      "Copied: read access to every Amplify app in the AWS account. Copy it again after adding Amplify rows to narrow it to this dashboard's apps.",
+    );
+  });
+
+  it("copies a policy narrowed to the dashboard's apps, and says so", async () => {
+    const writeText = vi.fn<(text: string) => Promise<void>>(() =>
+      Promise.resolve(),
+    );
+    clipboard(writeText);
+    await copy(
+      DashboardSchema.parse({
+        id: 'd',
+        name: 'D',
+        rows: [
+          {
+            type: 'amplify',
+            id: 'web',
+            displayName: 'web',
+            repo: 'acme/web',
+            sources: [
+              { region: 'us-east-1', appId: 'd1' },
+              { region: 'eu-west-1', appId: 'd2' },
+            ],
+          },
+        ],
+      }),
+    );
+    const copied = writeText.mock.calls[0]?.[0] ?? '';
+    expect(JSON.parse(copied)).toEqual(
+      amplifyPolicy([
+        { region: 'us-east-1', appId: 'd1' },
+        { region: 'eu-west-1', appId: 'd2' },
+      ]),
+    );
+    expect(copied).not.toContain('GetJob');
+    expect(copied).not.toContain('apps/*');
+    expect(screen.getByRole('status')).toHaveTextContent(
+      "Copied: read-only access to this dashboard's 2 Amplify apps.",
     );
   });
 

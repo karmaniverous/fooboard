@@ -1,7 +1,7 @@
 /**
  * *Copy AWS policy* on the AWS key form (spec.md C-3a): copies the
- * read-only IAM policy for the dashboard's Amplify apps, and says what it
- * copied.
+ * read-only IAM policy for the dashboard's Amplify apps (account-wide
+ * while it has none), and says what it copied.
  *
  * @module
  */
@@ -21,7 +21,7 @@ function copiedMessage(ok: boolean, count: number, skipped: number): string {
   if (!ok) return "Couldn't copy the policy. The README has it as a template.";
   const copied = count
     ? `Copied: read-only access to this dashboard's ${nApps(count)}.`
-    : 'Copied: listing apps only. Copy it again after adding Amplify rows, so the key can read them.';
+    : "Copied: read access to every Amplify app in the AWS account. Copy it again after adding Amplify rows to narrow it to this dashboard's apps.";
   return skipped
     ? `${copied} Left out ${nApps(skipped)} with an invalid region or app ID: fix them in the editor.`
     : copied;
