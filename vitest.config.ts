@@ -22,6 +22,9 @@ export default mergeConfig(
       // the slowest come near the 5 s default.
       testTimeout: 15_000,
       setupFiles: ['./src/test/setup.ts'],
+      // CSS is stubbed in tests, except the theme, whose tokens
+      // theme.test.ts reads (as raw text) to check their contrast.
+      css: { include: [/src\/index\.css/] },
       coverage: {
         enabled: true,
         provider: 'v8',
