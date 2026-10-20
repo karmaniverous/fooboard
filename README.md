@@ -88,7 +88,7 @@ _Edit_ (on the board) opens the editor, with these tabs:
 
 **Groups**: start a group from any row or stage, add others to it, label it, or delete it (its members stay). A row group can have its own default credentials, row rule, status sets and stage overrides; a row's own override beats its group's, which beats the stage's rule, and each choice names what it inherits.
 
-**Lists**: rows, stages, your own status sets and your own source rules each show as a header (name, what it reads or matches, and its move and remove buttons) that opens to its settings. One opens at a time, all start closed, a new one opens (and scrolls into view), and _Fix_ or _Add override_ opens the one to change.
+**Lists**: rows, stages, column groups, your own status sets and their cell statuses, your own source rules and their keys, and the runs no status matches each show as a header (name, a summary such as the repo, pattern or members, and its move, remove or add buttons) that opens to its details with one click. One opens at a time per list, all start closed, a new one opens (and scrolls into view), and _Fix_ or _Add override_ opens the one to change. A row group's settings, shown in each member's row, open from _Group settings_.
 
 **Reordering**: drag, or use _Move up_ / _Move down_. Dropping onto an item puts it in that item's group. Every removal asks first.
 
