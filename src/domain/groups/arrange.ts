@@ -8,6 +8,7 @@
  * @module
  */
 import type { Group } from '@/domain/config/groups';
+import { freshId } from '@/lib/ids';
 
 /** An item list and its groups, changed together. */
 export interface Arranged<T extends { id: string }, G extends Group> {
@@ -78,11 +79,10 @@ export function newGroupId(
   memberId: string,
   groups: readonly Pick<Group, 'id'>[],
 ): string {
-  const taken = new Set(groups.map((g) => g.id));
-  const base = `group-${memberId}`;
-  let id = base;
-  for (let n = 2; taken.has(id); n++) id = `${base}-${String(n)}`;
-  return id;
+  return freshId(
+    `group-${memberId}`,
+    groups.map((g) => g.id),
+  );
 }
 
 /** Drag `fromId` onto `toId`: it takes the target's place and the

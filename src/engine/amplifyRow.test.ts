@@ -1,20 +1,53 @@
 /**
  * Tests for `refreshAmplifyRow`'s failure handling: a missing credential,
- * a rejected one, throttling (keep previous cells) and other errors.
+ * a rejected one, throttling (keep previous cells) and other errors; the
+ * source rule's keep rule drops records.
  *
  * @module
  */
 import { describe, expect, it } from 'vitest';
 import { vi } from 'vitest';
 
+import type { DefaultCredentials } from '@/domain/config/credentialRefs';
+import { branchRules } from '@/domain/config/placement';
 import type { AmplifyRow } from '@/domain/config/row';
+import type { Stage } from '@/domain/config/stage';
+import { EMPTY_STATES } from '@/domain/derivation';
 import { amplifySet } from '@/domain/derivation/testFixtures';
+import { builtinSourceFor } from '@/domain/model/builtinSources';
+import type { CellRules } from '@/domain/model/cell';
+import { all, is, not } from '@/domain/model/ruleBuilders';
+import type { SourceRuleOf } from '@/domain/model/sourceRule';
+import { always } from '@/domain/rules/always';
 import { AmplifyAuthError, AmplifyThrottledError } from '@/lib/amplify/errors';
 import type { AmplifyReader } from '@/lib/amplify/reader';
-import { amplifyBranch } from '@/lib/amplify/sdkShapes';
+import type { AmplifyReaderFor } from '@/lib/amplify/rowJobs';
+import { amplifyBranch, amplifyJobSummary } from '@/lib/amplify/sdkShapes';
 import { fakeAmplifyReader } from '@/test/fakeReaders';
 
-import { refreshAmplifyRow } from './amplifyRow';
+import { refreshAmplifyRows } from './amplifyRow';
+
+/** One row's refresh through the shared-app refresh, as its cells. */
+async function refreshAmplifyRow(
+  row: AmplifyRow,
+  stages: readonly Stage[],
+  rulesFor: (stageId: string) => CellRules,
+  defaults: DefaultCredentials,
+  readersFor: (id: string) => AmplifyReaderFor | undefined,
+  source: SourceRuleOf<'amplify'> = amplifySource,
+) {
+  const result = await refreshAmplifyRows({
+    rows: [row],
+    stages,
+    rulesFor: (_, stageId) => rulesFor(stageId),
+    defaultsFor: () => defaults,
+    readersFor,
+    source,
+  });
+  return result.kind === 'rate-limited'
+    ? result
+    : { kind: result.kind, cells: result.rows[row.id] };
+}
 
 const row: AmplifyRow = {
   type: 'amplify',
@@ -22,11 +55,19 @@ const row: AmplifyRow = {
   repo: 'acme/site',
   displayName: 'site',
   sources: [{ credentialId: 'aws', region: 'us-east-1', appId: 'a1' }],
-  branchPatternOverrides: {},
+  stageRules: {},
   cellStatusSets: {},
 };
-const stages = [{ id: 'prod', name: 'Prod', branchPattern: 'main' }];
+const stages = [{ id: 'prod', name: 'Prod', rules: branchRules('main') }];
 const defaults = {};
+const amplifySource = builtinSourceFor('amplify');
+const rulesFor = (stageId: string): CellRules => ({
+  record: always,
+  items: always,
+  stage: stages.find((s) => s.id === stageId)?.rules.amplify,
+  set: amplifySet,
+  order: 'started',
+});
 
 const failing = (err: Error) => () =>
   ({
@@ -45,12 +86,12 @@ describe('refreshAmplifyRow', () => {
     const result = await refreshAmplifyRow(
       keyless,
       stages,
-      () => amplifySet,
+      rulesFor,
       defaults,
       () => failing(new Error('never called')),
     );
     expect(result).toMatchObject({
-      cells: { prod: { state: 'needs-credential' } },
+      cells: { prod: { state: EMPTY_STATES.needsCredential } },
     });
   });
 
@@ -58,13 +99,13 @@ describe('refreshAmplifyRow', () => {
     const result = await refreshAmplifyRow(
       row,
       stages,
-      () => amplifySet,
+      rulesFor,
       defaults,
       () => undefined,
     );
     expect(result).toMatchObject({
       kind: 'refreshed',
-      cells: { prod: { kind: 'empty', state: 'needs-credential' } },
+      cells: { prod: { kind: 'empty', state: EMPTY_STATES.needsCredential } },
     });
   });
 
@@ -72,12 +113,12 @@ describe('refreshAmplifyRow', () => {
     const result = await refreshAmplifyRow(
       row,
       stages,
-      () => amplifySet,
+      rulesFor,
       defaults,
       () => failing(new AmplifyAuthError('denied', 'ListBranches')),
     );
     expect(result).toMatchObject({
-      cells: { prod: { state: 'needs-credential' } },
+      cells: { prod: { state: EMPTY_STATES.needsCredential } },
     });
   });
 
@@ -85,7 +126,7 @@ describe('refreshAmplifyRow', () => {
     const result = await refreshAmplifyRow(
       row,
       stages,
-      () => amplifySet,
+      rulesFor,
       defaults,
       () =>
         failing(new AmplifyThrottledError('slow down', 'ListBranches', 5_000)),
@@ -97,7 +138,7 @@ describe('refreshAmplifyRow', () => {
     const result = await refreshAmplifyRow(
       row,
       stages,
-      () => amplifySet,
+      rulesFor,
       defaults,
       () => failing(new Error('socket hang up')),
     );
@@ -125,17 +166,47 @@ describe('refreshAmplifyRow request count', () => {
       ],
     };
     const sixStages = ['dev', 'test', 'staging', 'main', 'main', 'dev'].map(
-      (branchPattern, i) => ({ id: `s${String(i)}`, name: 's', branchPattern }),
+      (branch, i) => ({
+        id: `s${String(i)}`,
+        name: 's',
+        rules: branchRules(branch),
+      }),
     );
     await refreshAmplifyRow(
       twoSources,
       sixStages,
-      () => amplifySet,
+      rulesFor,
       defaults,
       () => () => reader,
     );
     expect(listBranches).toHaveBeenCalledTimes(2);
     // main and dev, per source: four job lists, not one per stage.
     expect(listJobs).toHaveBeenCalledTimes(4);
+  });
+});
+
+describe('refreshAmplifyRow keep', () => {
+  it('drops records the keep rule rejects', async () => {
+    const reader = fakeAmplifyReader({
+      listBranches: () =>
+        Promise.resolve([amplifyBranch({ branchName: 'main' })]),
+      listJobs: () =>
+        Promise.resolve([
+          amplifyJobSummary({
+            jobId: '1',
+            status: 'SUCCEED',
+            startTime: new Date('2026-10-16T00:00:00Z'),
+          }),
+        ]),
+    });
+    const refresh = (keep = always) =>
+      refreshAmplifyRow(row, stages, rulesFor, defaults, () => () => reader, {
+        ...amplifySource,
+        keep,
+      });
+    expect(await refresh()).toMatchObject({ cells: { prod: { kind: 'ok' } } });
+    expect(await refresh(all(not(is('$.branch', 'main'))))).toMatchObject({
+      cells: { prod: { kind: 'empty', state: EMPTY_STATES.noRecords } },
+    });
   });
 });

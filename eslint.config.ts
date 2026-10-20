@@ -54,6 +54,38 @@ export default defineConfig(
     },
   },
   {
+    // CONTRIBUTING (Use library controls): native selects, collapsibles
+    // and checkboxes only inside the library wrappers in src/components.
+    files: ['src/**/*.tsx'],
+    ignores: ['src/components/**'],
+    rules: {
+      'no-restricted-syntax': [
+        'error',
+        {
+          selector: "JSXOpeningElement[name.name='select']",
+          message: 'Use Choice (the library Select), not a native <select>.',
+        },
+        {
+          selector: 'JSXOpeningElement[name.name=/^(details|summary)$/]',
+          message:
+            'Use Disclosure (or the library Collapsible), not native <details>/<summary>.',
+        },
+        {
+          selector:
+            "JSXOpeningElement[name.name='input'] > JSXAttribute[name.name='type'][value.value='checkbox']",
+          message:
+            'Use CheckField (the library Checkbox with its Label), not a native checkbox.',
+        },
+        {
+          selector:
+            "JSXOpeningElement[name.name='input'] > JSXAttribute[name.name='type'] > JSXExpressionContainer > Literal[value='checkbox']",
+          message:
+            'Use CheckField (the library Checkbox with its Label), not a native checkbox.',
+        },
+      ],
+    },
+  },
+  {
     files: ['**/*.test.{ts,tsx}'],
     extends: [vitest.configs.recommended],
   },

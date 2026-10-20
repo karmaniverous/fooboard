@@ -3,41 +3,46 @@
  * token can see (display name defaults to the repo without its owner), or
  * an Amplify row by choosing credential, region and app (listed via
  * `ListApps`); rename, reorder, remove; per-row token override, row key
- * tests, extra Amplify sources, the row's group, its branch-pattern
- * overrides, and its group's overrides and default credentials.
+ * and item rules (item rules when its source rule reads items), extra
+ * Amplify sources, the row's group, its stage-rule overrides, and its
+ * group's overrides and default credentials.
  *
  * @module
  */
+import { useContext } from 'react';
 
 import { ConfirmButton } from '@/components/ConfirmButton';
 import type { Dashboard } from '@/domain/config/dashboard';
 import { inheritedCredential } from '@/domain/config/inheritance';
-import type { MatchTest } from '@/domain/config/matchTest';
 import type { Row } from '@/domain/config/row';
+import { ITEM_NAME_PATH } from '@/domain/model/keys';
+import { always, unlessAlways } from '@/domain/rules/always';
+import { targetKey } from '@/editors/editTarget';
 import type { EngineProviders } from '@/engine';
 
 import { CredentialSelect } from './CredentialSelect';
 import { removeRow, rowFromRepo } from './edit';
 import { CommitInput } from './fields';
 import { listHandlers } from './groupEdit';
-import { MatchTestsEditor } from './MatchTestsEditor';
 import { ReorderList } from './ReorderList';
 import { RowGrouping } from './RowGrouping';
 import { AddSource, AmplifyPicker, RepoPicker } from './rowPickers';
+import { RuleEditor } from './rules/RuleEditor';
+import { SourcesWithItemsContext } from './rules/samples';
+
 export function RowsEditor({
   dashboard,
   providers,
   onChange,
-  draft,
+  override,
 }: {
   dashboard: Dashboard;
   providers: EngineProviders;
   onChange: (dashboard: Dashboard) => void;
-  /** A row key test or a branch override to pre-fill on one row. */
-  draft?:
-    | { rowId: string; test: MatchTest }
-    | { rowId: string; overrideBranch: string };
+  /** *Add override*: a branch to offer on the rows reading a record. */
+  override?: { branch: string; rowIds: readonly string[] };
 }): React.JSX.Element {
+  const withItems = useContext(SourcesWithItemsContext);
   const replaceRow = (row: Row) => {
     onChange({
       ...dashboard,
@@ -50,6 +55,7 @@ export function RowsEditor({
         items={dashboard.rows}
         keyOf={(r) => r.id}
         nameOf={(r) => r.displayName}
+        targetOf={(r) => `row:${r.id}`}
         {...listHandlers(dashboard, 'rows', onChange)}
         onRemove={(r) => {
           onChange(removeRow(dashboard, r.id));
@@ -89,21 +95,49 @@ export function RowsEditor({
                 );
               }}
             />
-            {row.type === 'github' ? (
-              <MatchTestsEditor
-                title={`Row key tests for ${row.displayName}`}
-                fields={['jobName', 'workflowName']}
-                tests={row.rowKeyTests}
-                draft={
-                  draft?.rowId === row.id && 'test' in draft
-                    ? draft.test
-                    : undefined
-                }
-                onChange={(rowKeyTests) => {
-                  replaceRow({ ...row, rowKeyTests });
+            <div className="flex flex-col gap-1">
+              <span className="font-semibold">Records for this row</span>
+              <RuleEditor
+                label={`Record rule for ${row.displayName}`}
+                rule={row.recordRule ?? always}
+                provider={row.type}
+                target={targetKey({
+                  kind: 'row',
+                  id: row.id,
+                  part: 'record',
+                })}
+                onChange={(rule) => {
+                  replaceRow({
+                    ...row,
+                    recordRule: unlessAlways(rule),
+                  });
                 }}
               />
-            ) : (
+            </div>
+            {withItems.includes(row.type) && (
+              <div className="flex flex-col gap-1">
+                <span className="font-semibold">Items for this row</span>
+                <RuleEditor
+                  label={`Item rule for ${row.displayName}`}
+                  rule={row.itemRule ?? always}
+                  newPath={ITEM_NAME_PATH}
+                  provider={row.type}
+                  scope="item"
+                  target={targetKey({
+                    kind: 'row',
+                    id: row.id,
+                    part: 'items',
+                  })}
+                  onChange={(rule) => {
+                    replaceRow({
+                      ...row,
+                      itemRule: unlessAlways(rule),
+                    });
+                  }}
+                />
+              </div>
+            )}
+            {row.type === 'amplify' && (
               <div className="flex flex-col gap-1">
                 <span className="font-semibold">Sources</span>
                 {row.sources.map((s, i) => (
@@ -143,11 +177,7 @@ export function RowsEditor({
               dashboard={dashboard}
               providers={providers}
               row={row}
-              overrideBranch={
-                draft?.rowId === row.id && 'overrideBranch' in draft
-                  ? draft.overrideBranch
-                  : undefined
-              }
+              override={override}
               onChange={onChange}
             />
           </div>

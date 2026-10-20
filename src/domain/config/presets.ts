@@ -8,6 +8,7 @@
 import { z } from 'zod';
 
 import { type Dashboard, DashboardSchema } from './dashboard';
+import { branchRules } from './placement';
 import type { Stage } from './stage';
 
 /** Branch preset ids (spec.md §3 table). */
@@ -43,18 +44,18 @@ export function buildPresetStages(
       const dev: Stage = {
         id: nextStageId(),
         name: 'dev',
-        branchPattern: 'dev',
+        rules: branchRules('dev'),
       };
       const staging: Stage = {
         id: nextStageId(),
         name: 'staging',
-        branchPattern: 'staging',
+        rules: branchRules('staging'),
         sourceStageId: dev.id,
       };
       const prod: Stage = {
         id: nextStageId(),
         name: 'prod',
-        branchPattern: 'main',
+        rules: branchRules('main'),
         sourceStageId: staging.id,
       };
       return [dev, staging, prod];
@@ -63,18 +64,18 @@ export function buildPresetStages(
       const dev: Stage = {
         id: nextStageId(),
         name: 'dev',
-        branchPattern: 'develop',
+        rules: branchRules('develop'),
       };
       const test: Stage = {
         id: nextStageId(),
         name: 'test',
-        branchPattern: 'release/**',
+        rules: branchRules('release/**'),
         sourceStageId: dev.id,
       };
       const prod: Stage = {
         id: nextStageId(),
         name: 'prod',
-        branchPattern: 'main',
+        rules: branchRules('main'),
         sourceStageId: test.id,
       };
       return [dev, test, prod];
@@ -83,24 +84,24 @@ export function buildPresetStages(
       const dev: Stage = {
         id: nextStageId(),
         name: 'dev',
-        branchPattern: 'dev',
+        rules: branchRules('dev'),
       };
       const previews: Stage[] = (options.previewNames ?? []).map((name) => ({
         id: nextStageId(),
         name,
-        branchPattern: `preview/${name}`,
+        rules: branchRules(`preview/${name}`),
         sourceStageId: dev.id,
       }));
       const release: Stage = {
         id: nextStageId(),
         name: 'release',
-        branchPattern: 'release/**',
+        rules: branchRules('release/**'),
         sourceStageId: dev.id,
       };
       const prod: Stage = {
         id: nextStageId(),
         name: 'prod',
-        branchPattern: 'main',
+        rules: branchRules('main'),
         sourceStageId: release.id,
       };
       return [dev, ...previews, release, prod];

@@ -15,7 +15,10 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { wouldCreateCycle } from '@/domain/config/cycle';
 import type { Dashboard } from '@/domain/config/dashboard';
+import { branchRules } from '@/domain/config/placement';
 import type { Stage } from '@/domain/config/stage';
+import { branchOf } from '@/domain/rules/branch';
+import { NEW_STAGE_KEY, targetKey } from '@/editors/editTarget';
 import type { EngineProviders } from '@/engine';
 
 import { discoverBranches, patternPreview } from './branches';
@@ -25,7 +28,11 @@ import { CommitInput } from './fields';
 import { GroupControl } from './GroupControl';
 import { listHandlers } from './groupEdit';
 import { ReorderList } from './ReorderList';
+import { ProviderRules } from './rules/ProviderRules';
 import { useLoad } from './useLoad';
+
+/** The most matching branches a new stage's preview names. */
+const BRANCHES_PREVIEWED = 8;
 
 function AddStage({
   dashboard,
@@ -52,13 +59,16 @@ function AddStage({
         dashboard.stages.map((s) => s.id),
       ),
       name: n,
-      branchPattern: p,
+      rules: branchRules(p),
     });
     setPattern('');
     setName('');
   };
   return (
-    <section className="flex flex-col gap-2 rounded-md border p-2 text-xs">
+    <section
+      className="flex flex-col gap-2 rounded-md border p-2 text-xs"
+      data-edit-target={NEW_STAGE_KEY}
+    >
       <h3 className="text-sm font-semibold">Add a stage</h3>
       <BranchFinder
         found={found}
@@ -107,12 +117,16 @@ function AddStage({
         <p aria-live="polite" className="text-muted-foreground">
           Matches {preview.repos.length}/{byRepo?.size ?? 0} repos
           {preview.branches.length > 0 &&
-            `: ${preview.branches.slice(0, 8).join(', ')}${preview.branches.length > 8 ? '…' : ''}`}
+            `: ${preview.branches.slice(0, BRANCHES_PREVIEWED).join(', ')}${preview.branches.length > BRANCHES_PREVIEWED ? '…' : ''}`}
         </p>
       )}
     </section>
   );
 }
+
+/** A stage's branch pattern, when its rules are a branch rule. */
+const stagePattern = (stage: Stage): string =>
+  branchOf(stage.rules.github) ?? branchOf(stage.rules.amplify) ?? '';
 
 export function StagesEditor({
   dashboard,
@@ -135,10 +149,22 @@ export function StagesEditor({
   };
   return (
     <div className="flex flex-col gap-3 text-sm">
+      <ProviderRules
+        title="Default stage rules"
+        target={targetKey({ kind: 'dashboard', part: 'stageRules' })}
+        rules={dashboard.stageRules}
+        onChange={(p, rule) => {
+          onChange({
+            ...dashboard,
+            stageRules: { ...dashboard.stageRules, [p]: rule },
+          });
+        }}
+      />
       <ReorderList
         items={stages}
         keyOf={(s) => s.id}
         nameOf={(s) => s.name}
+        targetOf={(s) => `stage:${s.id}`}
         {...listHandlers(dashboard, 'stages', onChange)}
         onRemove={(s) => {
           onChange(removeStage(dashboard, s.id));
@@ -158,12 +184,20 @@ export function StagesEditor({
               <CommitInput
                 label={`Branch pattern of ${stage.name}`}
                 className="h-8 font-mono text-xs"
-                value={stage.branchPattern}
-                onCommit={(branchPattern) => {
-                  replace({ ...stage, branchPattern });
+                value={stagePattern(stage)}
+                onCommit={(pattern) => {
+                  replace({ ...stage, rules: branchRules(pattern) });
                 }}
               />
             </div>
+            <ProviderRules
+              title={`Stage rules of ${stage.name}`}
+              target={targetKey({ kind: 'stage', id: stage.id })}
+              rules={stage.rules}
+              onChange={(p, rule) => {
+                replace({ ...stage, rules: { ...stage.rules, [p]: rule } });
+              }}
+            />
             <Choice
               label={`Source stage of ${stage.name}`}
               className="h-8"
@@ -188,6 +222,24 @@ export function StagesEditor({
           </div>
         )}
       </ReorderList>
+      {dashboard.columnGroups.map((g) => (
+        <ProviderRules
+          key={g.id}
+          title={`Stage rules of group ${g.label ?? g.id}`}
+          target={targetKey({ kind: 'columnGroup', id: g.id })}
+          rules={g.stageRules}
+          onChange={(p, rule) => {
+            onChange({
+              ...dashboard,
+              columnGroups: dashboard.columnGroups.map((x) =>
+                x.id === g.id
+                  ? { ...x, stageRules: { ...x.stageRules, [p]: rule } }
+                  : x,
+              ),
+            });
+          }}
+        />
+      ))}
       <AddStage
         dashboard={dashboard}
         providers={providers}

@@ -7,10 +7,6 @@
  *
  * @module
  */
-import { max } from 'radash';
-
-import { isLiteralPattern } from '@/domain/matching/branchPattern';
-
 /** `ahead_by`/`behind_by` from `GET compare/{cellBranch}...{sourceBranch}`
  * (spec.md §3). */
 export interface CompareCounts {
@@ -41,37 +37,6 @@ export function computeStaleness(
   if (behindCount > 0) return { kind: 'behind', count: behindCount };
   return undefined;
 }
-
-/** A branch candidate with its most recent head-commit time, for resolving
- * a glob pattern's staleness branch. */
-export interface BranchCandidate {
-  name: string;
-  updatedAt: string;
-}
-
-/**
- * Resolve the branch used for staleness (spec.md §4.3.5, confirmed
- * 2026-10-16): the cell's run's branch if it has one; otherwise, for a
- * literal pattern, that branch if it exists; for a glob, the matching
- * branch with the most recently updated head commit. Returns `undefined`
- * if none can be resolved (no run, and either no literal branch or no
- * matching branches), meaning no badge is shown for this side.
- */
-export function resolveStalenessBranch(input: {
-  runBranch?: string;
-  pattern: string;
-  literalBranchExists?: boolean;
-  matchingBranches?: readonly BranchCandidate[];
-}): string | undefined {
-  if (input.runBranch) return input.runBranch;
-  if (isLiteralPattern(input.pattern)) {
-    return input.literalBranchExists ? input.pattern : undefined;
-  }
-  return max(input.matchingBranches ?? [], (b) =>
-    new Date(b.updatedAt).getTime(),
-  )?.name;
-}
-
 /**
  * No badge is shown if either side lacks a resolved branch (spec.md
  * §4.3.5). Combines branch resolution for both sides with the compare

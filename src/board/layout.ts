@@ -31,7 +31,23 @@ import {
 
 export type Rung = 0 | 1 | 2 | 3 | 4 | 5;
 export const TOP_RUNG: Rung = 5;
+
+/** The lowest rung that shows each part of a cell (C-13): the status
+ * name, time, commit (the badge follows it from there), branch or an
+ * empty cell's reason, and the commit message. Cells and the layout that
+ * measures them both read these, so they agree. */
+export const RUNG_SHOWS = {
+  name: 1,
+  time: 2,
+  commit: 3,
+  branch: 4,
+  message: 5,
+} as const satisfies Record<string, Rung>;
 const RUNGS_DOWN: readonly Rung[] = [5, 4, 3, 2, 1, 0];
+
+/** Sub-pixel slack when comparing measured sizes, so rounding never flips
+ * a fit. */
+const PX_SLACK = 0.5;
 
 /** Readable text at 100% zoom (C-13). */
 export const BASE_FONT_PX = 13;
@@ -160,7 +176,7 @@ export function layoutAtRung(
     padX: f.padX,
     padY: f.padY,
     overflowX,
-    overflowY: total > input.height + 0.5,
+    overflowY: total > input.height + PX_SLACK,
     boardHeight: total,
   };
 }
@@ -177,7 +193,7 @@ export function fitLayout(input: LayoutInput, fontPx: number): Layout {
   if (across.length === 0) return layoutAtRung(input, 0, fontPx);
   const shortest = Math.min(...across.map((l) => l.rowHeight));
   return (
-    across.find((l) => l.rowHeight <= shortest + 0.5) ??
+    across.find((l) => l.rowHeight <= shortest + PX_SLACK) ??
     layoutAtRung(input, 0, fontPx)
   );
 }

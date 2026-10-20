@@ -24,6 +24,9 @@ export const DashboardViewPreferencesSchema = z.object({
   density: DensitySchema.default(DEFAULT_DENSITY),
   /** The board size the zoom was saved for; zoom resets when it changes. */
   boardSize: z.string().optional(),
+  /** Problems dismissed on this device (spec.md A§4.3.7), by id; an id
+   * carries the message, so a changed problem shows again. */
+  dismissedProblems: z.array(z.string()).default(() => []),
 });
 export type DashboardViewPreferences = z.infer<
   typeof DashboardViewPreferencesSchema
@@ -76,6 +79,7 @@ export function migrateDevicePreferences(
         {
           zoom: DEFAULT_ZOOM,
           density: view.rowHeight === 'compact' ? 'compact' : 'default',
+          dismissedProblems: [],
         },
       ]),
     ),

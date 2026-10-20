@@ -6,9 +6,10 @@
  *
  * @module
  */
-import { fireEvent, screen, within } from '@testing-library/react';
+import { fireEvent, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
+import { PRESET_IDS } from '@/domain/config/statusSets';
 import { choose } from '@/test/choose';
 
 import { setup, tab } from './editorSectionsHarness';
@@ -46,7 +47,12 @@ describe('editor sections', () => {
     fireEvent.change(label, { target: { value: 'Production' } });
     fireEvent.blur(label);
     expect(latest.current.columnGroups).toEqual([
-      { id: 'group-prod', label: 'Production', memberIds: ['prod'] },
+      {
+        id: 'group-prod',
+        label: 'Production',
+        memberIds: ['prod'],
+        stageRules: {},
+      },
     ]);
   });
 
@@ -62,26 +68,24 @@ describe('editor sections', () => {
     expect(latest.current.stages.map((s) => s.id)).toEqual(['prod', 'dev']);
   });
 
-  it('edits the workflow filter and the status sets', () => {
+  it('customises a source rule and edits what it reads, and the status sets', () => {
     const latest = setup();
-    tab('Mapping');
-    fireEvent.change(
-      screen.getByLabelText('New Only workflows matching value'),
-      {
-        target: { value: 'Deploy' },
-      },
-    );
-    const filter = screen.getByRole('group', {
-      name: 'Only workflows matching',
+    tab('Sources');
+    fireEvent.click(screen.getAllByRole('button', { name: 'Customise' })[0]);
+    expect(latest.current.sourceRules.github).toBe('custom-github');
+    const runs = screen.getByLabelText('Runs per repo');
+    fireEvent.change(runs, { target: { value: '250' } });
+    fireEvent.blur(runs);
+    expect(latest.current.customSourceRules[0]).toMatchObject({
+      provider: 'github',
+      reader: { runs: 250 },
     });
-    fireEvent.click(within(filter).getByRole('button', { name: 'Add' }));
-    expect(latest.current.mapping.workflowFilter.include.at(-1)).toMatchObject({
-      field: 'workflowName',
-      value: 'Deploy',
-    });
+    expect(
+      screen.getByText('3 requests per repo per poll'),
+    ).toBeInTheDocument();
 
     tab('Statuses');
     choose(screen.getByLabelText('GitHub status set'), 'GitHub single job');
-    expect(latest.current.statusSets.github).toBe('github-single-job');
+    expect(latest.current.statusSets.github).toBe(PRESET_IDS.githubSingleJob);
   });
 });

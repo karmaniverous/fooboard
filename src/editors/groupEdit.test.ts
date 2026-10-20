@@ -9,6 +9,7 @@
 import { describe, expect, it, vi } from 'vitest';
 
 import { type Dashboard, DashboardSchema } from '@/domain/config/dashboard';
+import { branchRules } from '@/domain/config/placement';
 
 import {
   deleteGroup,
@@ -28,8 +29,8 @@ const base = DashboardSchema.parse({
     displayName: id,
   })),
   stages: [
-    { id: 'dev', name: 'dev', branchPattern: 'dev' },
-    { id: 'prod', name: 'prod', branchPattern: 'main' },
+    { id: 'dev', name: 'dev', rules: branchRules('dev') },
+    { id: 'prod', name: 'prod', rules: branchRules('main') },
   ],
 });
 const rowIds = (d: Dashboard) => d.rows.map((r) => r.id);
@@ -41,7 +42,8 @@ describe('group lifecycle', () => {
       {
         id: 'group-b',
         memberIds: ['b'],
-        branchPatternOverrides: {},
+        stageRules: {},
+        rowRules: {},
         defaultCredentials: {},
         statusSets: {},
       },
@@ -64,7 +66,9 @@ describe('group lifecycle', () => {
 
   it('labels (an empty label clears it) and deletes, on either axis', () => {
     let d = setGroup(base, 'stages', 'prod', 'new');
-    expect(d.columnGroups).toEqual([{ id: 'group-prod', memberIds: ['prod'] }]);
+    expect(d.columnGroups).toEqual([
+      { id: 'group-prod', memberIds: ['prod'], stageRules: {} },
+    ]);
     d = renameGroup(d, 'stages', 'group-prod', ' Production ');
     expect(d.columnGroups[0]?.label).toBe('Production');
     expect(

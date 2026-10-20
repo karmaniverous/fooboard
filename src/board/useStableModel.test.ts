@@ -20,6 +20,8 @@ const model = (n: number): BoardModel => ({
     ]),
   ),
   unmapped: [],
+  problems: [],
+  amplifyBranches: [],
   budgets: {},
   refreshedAt: {},
 });

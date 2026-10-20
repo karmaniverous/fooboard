@@ -5,6 +5,8 @@
  *
  * @module
  */
+
+import { STATUS_COLORS } from '@/domain/config/colors';
 import {
   type CellStatus,
   type StatusIcon,
@@ -12,8 +14,6 @@ import {
   type SummaryStatus,
   UNKNOWN_STATUS_ID,
 } from '@/domain/config/statusSets';
-
-import { classify } from './classify';
 
 export interface ResolvedStatus {
   id: string;
@@ -30,7 +30,7 @@ export interface ResolvedStatus {
 const UNKNOWN_SUMMARY: SummaryStatus = {
   id: UNKNOWN_STATUS_ID,
   name: 'Unknown',
-  color: '#a21caf',
+  color: STATUS_COLORS.unknown,
   icon: 'unknown',
   inProgress: false,
 };
@@ -70,7 +70,3 @@ export function resolveStatus(
 export const inProgress = (
   derivation: { kind: 'ok'; status: ResolvedStatus } | { kind: 'empty' },
 ): boolean => derivation.kind === 'ok' && derivation.status.summary.inProgress;
-
-/** Classify `doc` against `set` and resolve the result. */
-export const statusOf = (doc: unknown, set: StatusSet): ResolvedStatus =>
-  resolveStatus(set, classify(doc, set));

@@ -47,7 +47,7 @@ const source = (appId: string, region = 'us-east-1') => ({
 });
 
 describe('collectRowJobs', () => {
-  it('reads only branches matching the stage pattern, tagged by source', async () => {
+  it('reads every branch, tagged by source', async () => {
     const byApp: Record<string, ReturnType<typeof reader>> = {
       web: reader({ branches: ['main', 'preview/bali', 'preview/lima'] }),
       api: reader({ branches: ['preview/oslo'] }),
@@ -57,23 +57,54 @@ describe('collectRowJobs', () => {
 
     const result = await collectRowJobs(
       [source('web'), source('api', 'eu-west-1')],
-      'preview/*',
       readerFor,
     );
 
-    expect(result.branchExists).toBe(true);
-    expect(
-      result.jobsByBranch.map((j) => `${j.source.appId}:${j.branch}`),
-    ).toEqual(['web:preview/bali', 'web:preview/lima', 'api:preview/oslo']);
-    expect(result.jobsByBranch[2]?.source.region).toBe('eu-west-1');
-    expect(byApp.web.listJobs).not.toHaveBeenCalledWith('web', 'main', 5);
+    expect(result.map((j) => `${j.source.appId}:${j.branch}`)).toEqual([
+      'web:main',
+      'web:preview/bali',
+      'web:preview/lima',
+      'api:preview/oslo',
+    ]);
+    expect(result[3]?.source.region).toBe('eu-west-1');
   });
 
-  it('reports no branch when nothing matches', async () => {
-    const result = await collectRowJobs([source('web')], 'release/*', () =>
-      reader({ branches: ['main'] }),
+  it('reads only branches the branch rule keeps, and jobs per branch', async () => {
+    const app = reader({ branches: ['main', 'preview/bali', 'feature/x'] });
+    const result = await collectRowJobs([source('web')], () => app, {
+      jobsPerBranch: 7,
+      branches: {
+        combine: 'or',
+        checks: [
+          {
+            path: '$.branchName',
+            operator: 'glob',
+            value: 'main',
+            ignoreCase: true,
+            quantifier: 'any',
+            not: false,
+          },
+          {
+            path: '$.branchName',
+            operator: 'glob',
+            value: 'preview/*',
+            ignoreCase: true,
+            quantifier: 'any',
+            not: false,
+          },
+        ],
+      },
+    });
+    expect(result.map((j) => j.branch)).toEqual(['main', 'preview/bali']);
+    expect(app.listJobs).toHaveBeenCalledWith('web', 'main', 7);
+    expect(app.listJobs).not.toHaveBeenCalledWith('web', 'feature/x', 7);
+  });
+
+  it('reads nothing from an app without branches', async () => {
+    const result = await collectRowJobs([source('web')], () =>
+      reader({ branches: [] }),
     );
-    expect(result).toEqual({ jobsByBranch: [], branchExists: false });
+    expect(result).toEqual([]);
   });
 });
 

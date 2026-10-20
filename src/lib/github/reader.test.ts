@@ -9,36 +9,15 @@
 import { describe, expect, it } from 'vitest';
 
 import { GitHubValidationError } from './errors';
-import type { FetchLike } from './httpClient';
-import { createGitHubReader } from './reader';
-
-function jsonResponse(
-  body: unknown,
-  headers: Record<string, string> = {},
-): Response {
-  return new Response(JSON.stringify(body), { status: 200, headers });
-}
-
-function fakeFetch(handlers: Record<string, () => Response>): {
-  fetchImpl: FetchLike;
-  calls: string[];
-} {
-  const calls: string[] = [];
-  const fetchImpl: FetchLike = (url) => {
-    calls.push(url);
-    const handler = handlers[url] as (() => Response) | undefined;
-    if (!handler) throw new Error(`unexpected URL: ${url}`);
-    return Promise.resolve(handler());
-  };
-  return { fetchImpl, calls };
-}
+import { COMMIT_SUBJECTS_LISTED, createGitHubReader } from './reader';
+import { fakeFetch, jsonResponse } from './testFetch';
 
 const repo = { owner: 'acme', repo: 'api-core' };
 
 describe('createGitHubReader', () => {
   it('listWorkflowRuns requests per_page and exclude_pull_requests, and parses the envelope', async () => {
     const url =
-      'https://api.github.com/repos/acme/api-core/actions/runs?per_page=100&exclude_pull_requests=true';
+      'https://api.github.com/repos/acme/api-core/actions/runs?per_page=100&page=1&exclude_pull_requests=true';
     const { fetchImpl } = fakeFetch({
       [url]: () =>
         jsonResponse({
@@ -142,6 +121,28 @@ describe('createGitHubReader', () => {
     });
   });
 
+  it('compare lists only the newest COMMIT_SUBJECTS_LISTED subjects each way', async () => {
+    const commits = Array.from(
+      { length: COMMIT_SUBJECTS_LISTED + 2 },
+      (_, i) => ({ sha: String(i), commit: { message: `c${String(i)}` } }),
+    );
+    const body = { ahead_by: 0, behind_by: 0, html_url: 'u', commits };
+    const { fetchImpl } = fakeFetch({
+      'https://api.github.com/repos/acme/api-core/compare/main...feature': () =>
+        jsonResponse(body),
+      'https://api.github.com/repos/acme/api-core/compare/feature...main': () =>
+        jsonResponse(body),
+    });
+    const reader = createGitHubReader({ token: 't', fetchImpl });
+    const result = await reader.compare(repo, 'main', 'feature');
+    const newest = commits
+      .slice(-COMMIT_SUBJECTS_LISTED)
+      .reverse()
+      .map((c) => c.commit.message);
+    expect(result.aheadCommitSubjects).toEqual(newest);
+    expect(result.behindCommitSubjects).toEqual(newest);
+  });
+
   it('listBranches follows pagination via the Link header', async () => {
     const page1 =
       'https://api.github.com/repos/acme/api-core/branches?per_page=100';
@@ -210,7 +211,7 @@ describe('createGitHubReader', () => {
 
   it('exposes the budget and token expiration from the underlying client', async () => {
     const url =
-      'https://api.github.com/repos/acme/api-core/actions/runs?per_page=100&exclude_pull_requests=true';
+      'https://api.github.com/repos/acme/api-core/actions/runs?per_page=100&page=1&exclude_pull_requests=true';
     const { fetchImpl } = fakeFetch({
       [url]: () =>
         jsonResponse(
@@ -255,7 +256,7 @@ describe('createGitHubReader', () => {
   });
   it('rejects a malformed payload with GitHubValidationError', async () => {
     const url =
-      'https://api.github.com/repos/acme/api-core/actions/runs?per_page=100&exclude_pull_requests=true';
+      'https://api.github.com/repos/acme/api-core/actions/runs?per_page=100&page=1&exclude_pull_requests=true';
     const { fetchImpl } = fakeFetch({
       [url]: () => jsonResponse({ total_count: 0 }), // missing workflow_runs
     });
@@ -267,7 +268,7 @@ describe('createGitHubReader', () => {
 
   it('never leaks the token into a thrown error message', async () => {
     const url =
-      'https://api.github.com/repos/acme/api-core/actions/runs?per_page=100&exclude_pull_requests=true';
+      'https://api.github.com/repos/acme/api-core/actions/runs?per_page=100&page=1&exclude_pull_requests=true';
     const { fetchImpl } = fakeFetch({
       [url]: () =>
         new Response(JSON.stringify({ message: 'Bad credentials' }), {

@@ -9,7 +9,8 @@
 import { Choice } from '@/components/Choice';
 import { Button } from '@/components/ui/button';
 import type { Dashboard } from '@/domain/config/dashboard';
-import { PROVIDER_LABELS, STATUS_PROVIDERS } from '@/domain/config/statusSets';
+import { PROVIDER_LABELS, PROVIDERS } from '@/domain/config/providers';
+import { targetKey } from '@/editors/editTarget';
 
 import { customise, removeSet, setInUse, updateSet } from './customSet';
 import { CustomSetEditor } from './CustomSetEditor';
@@ -18,7 +19,7 @@ import { setOptions } from './statusSetOptions';
 import { addStatusFor, type UnknownCell } from './unknownRuns';
 import { UnknownRunsList } from './UnknownRunsList';
 
-const PROVIDERS = STATUS_PROVIDERS.map((provider) => ({
+const PROVIDER_OPTIONS = PROVIDERS.map((provider) => ({
   provider,
   label: PROVIDER_LABELS[provider],
 }));
@@ -39,8 +40,15 @@ export function StatusSetsEditor({
         A status set decides which jobs count and what status a cell shows: the
         first status whose test matches.
       </p>
-      {PROVIDERS.map(({ provider, label }) => (
-        <label key={provider} className="flex items-center gap-2">
+      {PROVIDER_OPTIONS.map(({ provider, label }) => (
+        <label
+          key={provider}
+          className="flex items-center gap-2"
+          data-edit-target={targetKey({
+            kind: 'dashboard',
+            part: 'statusSets',
+          })}
+        >
           <span className="w-20">{label}</span>
           <Choice
             label={`${label} status set`}

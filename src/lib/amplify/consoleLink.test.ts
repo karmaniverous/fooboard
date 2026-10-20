@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Tests for `buildAmplifyConsoleLink`, including slashed branch names
  * (e.g. `preview/bali`), which must be URL-encoded as a single path
  * segment.

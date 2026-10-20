@@ -33,6 +33,7 @@ describe('matchesBranchPattern', () => {
   it('matches `*` within one segment only', () => {
     expect(matchesBranchPattern('preview/*', 'preview/bali')).toBe(true);
     expect(matchesBranchPattern('preview/*', 'preview/bali/extra')).toBe(false);
+    expect(matchesBranchPattern('preview/*', 'preview/')).toBe(false);
   });
 
   it('matches `**` across segments', () => {
@@ -55,7 +56,6 @@ describe('matchesBranchPattern', () => {
     expect(matchesBranchPattern('release/v?*', 'release/v?1')).toBe(true);
     expect(matchesBranchPattern('release/v?*', 'release/123')).toBe(false);
     expect(matchesBranchPattern('release/24.*', 'release/24x3')).toBe(false);
-    expect(() => matchesBranchPattern('?*', '?x')).not.toThrow();
     expect(matchesBranchPattern('?*', '?x')).toBe(true);
   });
 });

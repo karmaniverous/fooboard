@@ -10,6 +10,8 @@ import { useState } from 'react';
 import { describe, expect, it } from 'vitest';
 
 import { type Dashboard, DashboardSchema } from '@/domain/config/dashboard';
+import { branchRules } from '@/domain/config/placement';
+import { PRESET_IDS } from '@/domain/config/statusSets';
 import { choose, optionsOf } from '@/test/choose';
 
 import { GroupStatusSets, RowStatusSets } from './StatusSetOverrides';
@@ -17,7 +19,7 @@ import { GroupStatusSets, RowStatusSets } from './StatusSetOverrides';
 const base = DashboardSchema.parse({
   id: 'd',
   name: 'D',
-  stages: [{ id: 'dev', name: 'Dev', branchPattern: 'dev' }],
+  stages: [{ id: 'dev', name: 'Dev', rules: branchRules('dev') }],
   rows: [{ type: 'github', id: 'web', repo: 'acme/web', displayName: 'web' }],
   rowGroups: [{ id: 'g', name: 'Apps', memberIds: ['web'] }],
 });
@@ -49,7 +51,7 @@ describe('RowStatusSets', () => {
     const rowChoice = screen.getByLabelText('Status set for web');
     expect(optionsOf(rowChoice)[0]).toBe('Inherit (GitHub deploy and test)');
     choose(rowChoice, 'GitHub single job');
-    expect(latest.current.rows[0].statusSet).toBe('github-single-job');
+    expect(latest.current.rows[0].statusSet).toBe(PRESET_IDS.githubSingleJob);
     expect(
       screen.getByRole('button', { name: 'Status sets (1)' }),
     ).toBeInTheDocument();
@@ -72,7 +74,7 @@ describe('GroupStatusSets', () => {
       'GitHub single job',
     );
     expect(latest.current.rowGroups[0].statusSets).toEqual({
-      github: 'github-single-job',
+      github: PRESET_IDS.githubSingleJob,
     });
     expect(
       optionsOf(screen.getByLabelText('Amplify status set for Apps'))[0],

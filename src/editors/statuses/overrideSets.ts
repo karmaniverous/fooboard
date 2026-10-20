@@ -9,12 +9,12 @@
 import { omit } from 'radash';
 
 import type { Dashboard } from '@/domain/config/dashboard';
+import { type Provider } from '@/domain/config/providers';
 import type { Row } from '@/domain/config/row';
-import type { StatusProvider } from '@/domain/config/statusSets';
 
 export const setDashboardStatusSet = (
   dashboard: Dashboard,
-  provider: StatusProvider,
+  provider: Provider,
   id: string,
 ): Dashboard => ({
   ...dashboard,
@@ -24,7 +24,7 @@ export const setDashboardStatusSet = (
 export function setGroupStatusSet(
   dashboard: Dashboard,
   groupId: string,
-  provider: StatusProvider,
+  provider: Provider,
   id: string,
 ): Dashboard {
   return {

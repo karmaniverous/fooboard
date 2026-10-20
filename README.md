@@ -25,7 +25,7 @@ fooboard shows the deployment state of every repo × stage at a glance. Paste a 
 - [Your own dashboard](#your-own-dashboard)
 - [Reading the board](#reading-the-board)
 - [Editing a dashboard](#editing-a-dashboard)
-- [Status sets](#status-sets)
+- [Rules](#rules)
 - [Unmapped runs](#unmapped-runs)
 - [Credentials](#credentials)
 - [Header, menu and footer](#header-menu-and-footer)
@@ -51,7 +51,7 @@ A dashboard lives at `/d/<id>` in this browser.
 
 > 📷 _Screenshot to come: a board with every status, badge and empty state._
 
-Each **row** is a repo (or an Amplify app, or one deployable unit in a repo), and each **column** a stage: a branch, or a pattern such as `release/*`. Each **cell** shows the newest run on that stage's branch with jobs its **status set** cares about, as the first status in the set whose test the run passes. The built-in sets:
+Each **row** is a repo (or an Amplify app, or one deployable unit in a repo), and each **column** a stage (for the built-in presets, a branch or a pattern such as `release/*`). Each **cell** shows the newest record that its row's and its column's [rules](#rules) place there, as the first status in its **status set** whose rule the record matches. The built-in sets:
 
 | Set | Statuses (first match wins) |
 | --- | --- |
@@ -61,11 +61,11 @@ Each **row** is a repo (or an Amplify app, or one deployable unit in a repo), an
 
 Each status has a name, a colour, an icon (✓ success, ✕ failure, ◔ running, ◑ partial, ○ queued, ⊘ cancelled) and can be outlined, as Queued is. A status in progress pulses. Text on a cell is white or near-black, whichever reads better on its colour.
 
-A run with relevant jobs that matches no status shows **Unknown** (purple, ?), so a gap in the rules is visible; see [Status sets](#status-sets).
+A record that matches no status shows **Unknown** (purple, ?), so a gap in the rules is visible; see [Rules](#rules).
 
-A cell can carry a **badge**: _behind_ (amber, with a count) when its branch is missing commits from the stage it is promoted from, or _diverged_ (with `behind/ahead`) when it also has commits the source lacks. A badge links to GitHub's compare page.
+A cell can carry a **badge**: _behind_ (amber, with a count) when its branch is missing commits from the stage it is promoted from, or _diverged_ (with `behind/ahead`) when it also has commits the source lacks. A badge links to GitHub's compare page. Badges need git: they show on rows linked to a GitHub repo (a GitHub row's own repo; an Amplify row's repo) when the cell's record has a commit and a branch.
 
-An **empty cell** says why: _no branch_, _no recent runs_, _needs credential_ (with a link to [Credentials](#credentials)) or _error_.
+An **empty cell** says why: _no records_, _needs credential_ (with a link to [Credentials](#credentials)) or _error_. A **warning marker** (!) on a row or stage header, or beside the board's name for board-wide problems, means a rule there has a problem (a group's problems mark its members; a status set's problems mark the rows whose cells use it); hover it to read them, click it to open the editor at the problem. A cell's own problems (such as a hint to read more) are listed in its detail. _Problems (N)_ in the toolbar lists every problem with _Fix_ to open the editor at the exact item, and notes on what the rule check couldn't decide; when there are only notes it reads _Notes (N)_.
 
 - **Details**: hover a cell (or focus it from the keyboard) for its status, branch, commit and time; on a touch screen, tap for a detail sheet. Clicking a cell opens the job on GitHub (or the Amplify console).
 - **Groups**: rows and stages can be grouped, with a line at each group's edges. A column group is framed, its name at its left; group names stay in view as the board scrolls.
@@ -81,32 +81,47 @@ An **empty cell** says why: _no branch_, _no recent runs_, _needs credential_ (w
 _Edit_ (on the board) opens the editor, with these tabs:
 
 - **General**: rename, duplicate or delete the dashboard.
-- **Rows**: add GitHub rows from your repos, or Amplify rows from the apps your AWS key lists. A row can use its own credentials, and its own branch for any stage (an **override**); _Find branches_ suggests the branches in its repo as you type.
-- **Stages**: add stages from the branches found in your repos, with a preview of what a pattern matches; set each stage's source (for the behind/diverged badges).
-- **Mapping**: which workflows count (include and exclude by workflow name).
-- **Statuses**: the status set GitHub rows and Amplify rows use; see [Status sets](#status-sets).
+- **Rows**: add GitHub rows from your repos, or Amplify rows from the apps your AWS key lists. A row can use its own credentials, its own row rule (e.g. one deployable unit in a repo), and its own rule for any stage (an **override**).
+- **Stages**: add stages, each with a rule saying which records belong in it (the presets test the branch); set each stage's source (for the behind/diverged badges).
+- **Sources**: the source rules for GitHub and Amplify, including what to read (GitHub: skip pull-request runs, which still count toward what is read, and runs per repo, 100 by default and up to 500, each 100 one request per repo per poll; Amplify: jobs per branch, 20 by default and up to 100, and which branches). When a read comes back full, each of its rows' cells showing _no records_ gets a hint to read more, since the stage's last run or job may be older than what was read. Amplify reads every branch by default, which makes more AWS calls than reading only stage branches; narrow it with the branch rule; see [Rules](#rules).
+- **Statuses**: the status set GitHub rows and Amplify rows use; see [Rules](#rules).
 
-**Groups**: start a group from any row or stage, add others to it, label it, or delete it (its members stay). A row group can have its own default credentials, status sets and branch overrides; a row's own override beats its group's, which beats the stage's pattern, and each choice names what it inherits.
+**Groups**: start a group from any row or stage, add others to it, label it, or delete it (its members stay). A row group can have its own default credentials, row rule, status sets and stage overrides; a row's own override beats its group's, which beats the stage's rule, and each choice names what it inherits.
 
 **Reordering**: drag, or use _Move up_ / _Move down_. Dropping onto an item puts it in that item's group. Every removal asks first.
 
-## Status sets
+## Rules
 
-A **status set** decides which of a run's jobs count and what status a cell shows. It has **summary statuses** (the summary chips: each a name and colour, and whether it is in progress) and **cell statuses**, in order: a cell shows the first whose test the run passes. Each cell status counts toward one summary status.
+Everything fooboard knows about GitHub, Amplify or your pipeline is a rule you can edit; the app ships built-in rules for both sources.
 
-- **Which set a cell uses**: a single cell's choice, else its row's, else its row group's, else the dashboard's. Each choice offers _Inherit_, naming the set it would get. Choose the dashboard's on the _Statuses_ tab; a row's and its cells' under _Status sets_ in the row's editor; a row group's with the group's settings.
-- **Customise**: copies the chosen set into one the dashboard owns, then edit its name, which jobs count (GitHub), its summary statuses (name, colour, icon, in progress) and its cell statuses (name, colour, summary, icon, outline, order). The built-in sets can't be edited. A set still chosen somewhere can't be removed.
-- **Tests**: a list of conditions, all of which must hold: a field, an operator (_is_, _is one of_, _starts with_, _ends with_, _contains_, _matches regex_; text operators ignore case; _is one of_ is exact) and a value, on the run or on any or every job. Any test can also be edited as [JSON Schema](https://json-schema.org/); one the conditions can't express stays JSON.
-- **What a test sees**: for GitHub, the run (`workflow`, `event`, `branch`, `attempt`) and its jobs that count (`name`, `status`, `conclusion`, `startedAt`, `completedAt`), latest attempt only; for Amplify, the job (`branch`, `status`, `commitId`, `startTime`, `endTime`).
-- **Runs no status matches**: the _Statuses_ tab lists the board's Unknown cells with what their tests saw. _Add status_ puts a new status at the top of that cell's set, drafted to match the run; a built-in set is first copied into the dashboard, and only the cells that shared it move to the copy.
+**Checks and rules.** A **check** tests a value in a record: a [JSONPath](https://www.rfc-editor.org/rfc/rfc9535) (filters allowed, e.g. `$.items[?search(@.name, '[Tt]est')].state`; filter functions are case-sensitive, so the _only items where_ builder writes them for you), an operator, and options:
 
-A cell's time and link come from its most recently active relevant job: a running one, else the latest finished.
+- **glob** (default): the whole value; `*` any characters, `?` one, `[abc]` one of, `{a,b}` either;
+- **regex**: JavaScript syntax, anywhere in the value unless anchored;
+- **exists**: the path finds a value that isn't null;
+- **ignore case** (default on), **any** or **every** value the path finds, and **NOT**.
 
-Dashboards saved by an earlier version move to the built-in sets; one whose phase tests or colours were changed gets its own sets built from them, so it looks the same.
+A **rule** is one or more checks joined by **AND** (default) or **OR**. Null counts as missing; numbers are tested as text. The branch presets test the branch with regexes, so `preview/*` stops at `/` and needs at least one character after `preview/`. Regexes are limited to 500 characters; a badly written one in a board you import can still slow the page.
+
+**Three kinds of rule.**
+
+- **Source rules** (the _Sources_ tab, one per source) turn each source's raw data into **records** with keys you name: each key is an ordered list of translations (the first whose rule matches gives the value), so GitHub's `failure` and Amplify's `FAILED` can both become `status: failed`. A source rule also says where the items are (GitHub: the run's jobs) and their keys (item rules are offered only for a source whose rule has items), which records to keep (default: all), which key orders records (required), and, for Amplify, which branches to read (default: all). Every record keeps its raw data under `_raw`. The board shows `time`, `link`, `message`, `commit` and `branch` when a record has them.
+- **Placement rules**, one per source, say which records belong where: on the dashboard, a row group or a row, a **row rule** for the record and an **item rule** for its items (e.g. only the `deploy (billing)` job on a billing row); on the dashboard, a column group or a stage, a **stage rule**, overridable for a row group or a row. The most specific level wins; a stage without its own rule uses its column group's, then the dashboard's. With no stage rule at all a stage matches nothing (and says so); with no row rule a row takes everything from its repo or app. A record belongs in a cell when it passes the row and stage rules; the cell shows the newest by the order key.
+- **Status sets** decide what a cell shows: an **item rule** (an item counts when it passes this and the row's item rule; a record with items but none that count isn't the cell's), **summary statuses** (the summary chips: name, colour, icon, in progress) and **cell statuses** in order, each with a rule: a cell shows the first whose rule its record matches, or Unknown.
+
+**Which set a cell uses**: a single cell's choice, else its row's, else its row group's, else the dashboard's; each choice offers _Inherit_, naming the set it would get. **Built-in rules** (source rules and status sets) are referenced by id, so a board picks up fixes in new releases. The branch presets instead write ordinary stage rules into each stage, which you edit directly. **Customise** copies one into the dashboard to edit; built-ins can't be edited in place, and a rule still in use can't be removed.
+
+**Time and link**: a cell shows the `time` and `link` of its counted item with the latest time (else the record's own). The built-in GitHub rule gives each job its completion time, else its start time, so a running job shows when it started.
+
+**Editing a rule**: rows of checks under an AND/OR switch. The path field suggests the paths the board's current records have, and _Pick field_ shows a real record (an Unknown one when there is one) as a tree, raw data included, to click a path from; _only items where_ (pick an item key, type a glob) writes the filter for you, ignoring case unless you untick it; a live preview says how many of the board's records (or items) each check and the whole rule match, over up to 50 records per source. A source rule's keys are edited on the _Sources_ tab as lists of translations, each a rule over the raw data that gives a value or copies one, previewed over the raw data of the board's records; the Amplify branch rule previews over the branch lists read. A stage's branch pattern (on the _Stages_ tab, and in a stage-rule override on a row or row group) is a shortcut that writes the stage rule for you; under it you can write a full rule instead.
+
+**Problems**: a path that doesn't parse (copy and items paths included), a rule that uses a key (or item key) its source rule doesn't produce, an order key that is none of the source rule's keys, an item rule on a source without items, a stage with no stage rule for a source its rows use, a source rule or status set that doesn't exist or is for the other source (the built-in default is used meanwhile), and a key no translation matched while reading (with how often and a sample) are reported where they happen. _Fix_ opens the editor at the item; a problem in a built-in source rule or status set offers _Customise_, which makes an editable copy and uses it, since built-ins can't be edited in place. Notes say what the check couldn't decide (paths under `_raw`, wildcards) and which rules are for a source no row uses. Hints (an Amplify row without a GitHub credential, so no badges; an empty cell that may need more read, also listed on the _Sources_ tab) and notes can be dismissed; dismissals stay in this browser. The _Statuses_ tab lists the records no status matches; _Add status_ drafts a status for an Unknown record at the top of its set (a built-in set is first copied into the dashboard).
+
+**Versions**: a board records the version of fooboard's data model that saved it (now 4); a release that changes the data model migrates older boards automatically, and a board from a newer release asks you to reload. Boards saved by early development builds (before version 4) can't be opened.
 
 ## Unmapped runs
 
-_Unmapped (N)_ lists recent runs that have no cell, with the reason: no stage matches the branch, no job its status set covers, or no row key matches. _Add test_ opens the editor with the fix filled in; for an unmatched branch, _Add override_ uses that branch for a stage on the run's row or its group.
+_Unmapped (N)_ lists recent GitHub runs and Amplify jobs that have no cell, with the reason for each row that reads their repo or app: no stage rule matches (naming the branch), no row rule matches, no item counts, or no order key. _Add rule_ opens the editor where the fix goes, with a check drafted from the record to add: a new stage pre-filled with the branch; the row rule that missed it; the item rule of the row's status set; or the source rule's order key. _Add override_ opens a stage-rule override for the branch on a row reading the record or its group.
 
 ## Credentials
 

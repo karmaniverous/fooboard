@@ -8,25 +8,24 @@
  */
 import { z } from 'zod';
 
+import { always } from '@/domain/rules/always';
+import { RuleSchema } from '@/domain/rules/schema';
+
 import { HexColorSchema } from './colors';
+import { type Provider, ProviderSchema } from './providers';
 
-const StatusProviderSchema = z.enum(['github', 'amplify']);
-export type StatusProvider = z.infer<typeof StatusProviderSchema>;
-
-/** Every provider a status set can be for. */
-export const STATUS_PROVIDERS = StatusProviderSchema.options;
-
-/** Each provider's name in the editor. */
-export const PROVIDER_LABELS = {
-  github: 'GitHub',
-  amplify: 'Amplify',
-} as const satisfies Record<StatusProvider, string>;
+/** The ids of the bundled preset status sets. */
+export const PRESET_IDS = {
+  githubDeployTest: 'github-deploy-test',
+  githubSingleJob: 'github-single-job',
+  amplify: 'amplify',
+} as const;
 
 /** The set each provider uses unless a level overrides it: bundled presets. */
 export const DEFAULT_STATUS_SET_IDS = {
-  github: 'github-deploy-test',
-  amplify: 'amplify',
-} as const satisfies Record<StatusProvider, string>;
+  github: PRESET_IDS.githubDeployTest,
+  amplify: PRESET_IDS.amplify,
+} as const satisfies Record<Provider, string>;
 
 /** A status set per provider, either unset (inherit), for a row group. */
 export const StatusSetRefsSchema = z.object({
@@ -77,9 +76,6 @@ const SummaryStatusSchema = z.object({
 });
 export type SummaryStatus = z.infer<typeof SummaryStatusSchema>;
 
-/** A JSON Schema object (validated as JSON Schema when it is used). */
-const JsonSchemaObjectSchema = z.record(z.string(), z.unknown());
-
 /** A cell status: shown when its `test` is the first in the set to match. */
 const CellStatusSchema = z.object({
   id: StatusIdSchema,
@@ -91,7 +87,7 @@ const CellStatusSchema = z.object({
   icon: StatusIconSchema.optional(),
   /** Drawn with a dashed outline (today's Queued look). */
   outlined: z.boolean().default(false),
-  test: JsonSchemaObjectSchema,
+  rule: RuleSchema,
 });
 export type CellStatus = z.infer<typeof CellStatusSchema>;
 
@@ -102,11 +98,11 @@ export const StatusSetSchema = z
   .object({
     id: z.string().min(1),
     name: z.string().min(1),
-    provider: StatusProviderSchema,
+    provider: ProviderSchema,
     /** GitHub: which of a run's jobs the set cares about, a JSON Schema over
      * one job's document. A run with none of them is not the cell's and is
      * skipped (A§4.3.6, option A). Empty: every job. Amplify ignores it. */
-    jobs: JsonSchemaObjectSchema.default(() => ({})),
+    items: RuleSchema.default(always),
     summary: z.array(SummaryStatusSchema).min(1),
     cell: z.array(CellStatusSchema).min(1),
   })

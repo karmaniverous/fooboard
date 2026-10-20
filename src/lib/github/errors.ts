@@ -1,5 +1,5 @@
-﻿/**
- * Typed errors for the GitHub adapter (spec.md Â§5, C-5, C-16): distinct
+/**
+ * Typed errors for the GitHub adapter (spec.md §5, C-5, C-16): distinct
  * classes for the HTTP outcomes callers need to branch on (expired/bad
  * credential, rate limiting, not found, network failure, bad payload).
  * Messages never include the token; only the request path and status are

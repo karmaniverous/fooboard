@@ -5,45 +5,20 @@
  *
  * @module
  */
-import {
-  fireEvent,
-  render,
-  screen,
-  waitFor,
-  within,
-} from '@testing-library/react';
-import { MemoryRouter, Route, Routes } from 'react-router-dom';
+import { fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { DashboardSchema } from '@/domain/config/dashboard';
-import { createAppStores } from '@/storage';
-import { memoryStorage } from '@/storage/keyValue';
-import { StoresContext } from '@/storage/storesContext';
-
-import { DashboardPage } from './DashboardPage';
+import { branchRules } from '@/domain/config/placement';
+import { renderDashboardPage } from '@/test/renderDashboardPage';
 
 describe('DashboardPage', () => {
   it('shows the saved board and saves a credential added from it', () => {
-    const stores = createAppStores(memoryStorage());
-    stores.config.saveDashboard(
-      DashboardSchema.parse({ id: 'mine', name: 'My board' }),
+    const stores = renderDashboardPage({ id: 'mine', name: 'My board' });
+    expect(screen.getByRole('heading', { name: 'My board' })).toHaveTextContent(
+      'My board',
     );
-    render(
-      <StoresContext value={stores}>
-        <MemoryRouter initialEntries={['/d/mine']}>
-          <Routes>
-            <Route path="/d/:id" element={<DashboardPage />} />
-          </Routes>
-        </MemoryRouter>
-      </StoresContext>,
-    );
-    expect(
-      screen.getByRole('heading', { name: 'My board' }),
-    ).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Add a credential' }));
-    expect(
-      screen.getByRole('dialog', { name: 'Credentials' }),
-    ).toBeInTheDocument();
+    expect(screen.getByRole('dialog', { name: 'Credentials' })).toBeVisible();
     fireEvent.change(screen.getByLabelText('Token'), {
       target: { value: 'github_pat_1' },
     });
@@ -80,26 +55,14 @@ describe('DashboardPage credential lifecycle', () => {
         ),
       ),
     );
-    const stores = createAppStores(memoryStorage());
-    stores.config.saveDashboard(
-      DashboardSchema.parse({
-        id: 'mine',
-        name: 'My board',
-        rows: [
-          { type: 'github', id: 'api', repo: 'acme/api', displayName: 'api' },
-        ],
-        stages: [{ id: 'prod', name: 'prod', branchPattern: 'main' }],
-      }),
-    );
-    render(
-      <StoresContext value={stores}>
-        <MemoryRouter initialEntries={['/d/mine']}>
-          <Routes>
-            <Route path="/d/:id" element={<DashboardPage />} />
-          </Routes>
-        </MemoryRouter>
-      </StoresContext>,
-    );
+    renderDashboardPage({
+      id: 'mine',
+      name: 'My board',
+      rows: [
+        { type: 'github', id: 'api', repo: 'acme/api', displayName: 'api' },
+      ],
+      stages: [{ id: 'prod', name: 'prod', rules: branchRules('main') }],
+    });
     await screen.findByRole('button', { name: /needs credential/ });
 
     fireEvent.click(screen.getByRole('button', { name: 'Add a credential' }));

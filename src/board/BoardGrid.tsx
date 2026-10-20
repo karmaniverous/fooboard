@@ -21,6 +21,9 @@ import { columnLines } from './columnFrame';
 import { ColumnGroupLabels } from './ColumnGroupLabels';
 import { BOUNDARY, GROUP_LABEL } from './gridStyles';
 import { capText, type Layout, LINE_HEIGHT } from './layout';
+import { ProblemMark } from './ProblemMark';
+import { useProblemMarks } from './problemMarksContext';
+import { stageLabel } from './stageLabel';
 import { type CellFilter, matchesFilter } from './summary';
 
 export interface BoardGridProps {
@@ -47,6 +50,7 @@ export function BoardGrid({
     'sticky top-[calc(var(--app-header-h,0px)+var(--strip-h,0px))] z-20 bg-background';
   const pinLeft = 'sticky left-0 z-20 bg-background';
   const { rows, stages } = dashboard;
+  const marks = useProblemMarks();
   const rowSegments = groupSegments(
     rows.map((r) => r.id),
     dashboard.rowGroups,
@@ -81,7 +85,12 @@ export function BoardGrid({
   const detail = (key: string, interactive: boolean) => {
     const cell = model.cells[key];
     return cell ? (
-      <CellDetail cell={cell} interactive={interactive} {...names(key)} />
+      <CellDetail
+        cell={cell}
+        interactive={interactive}
+        problems={marks.cells.get(key)}
+        {...names(key)}
+      />
     ) : null;
   };
 
@@ -130,10 +139,7 @@ export function BoardGrid({
           />
           {stages.map((stage) => {
             return (
-              <WithTooltip
-                key={stage.id}
-                label={`${stage.name} (${stage.branchPattern})`}
-              >
+              <WithTooltip key={stage.id} label={stageLabel(stage)}>
                 <div
                   role="columnheader"
                   // Focusable, so the keyboard can show its tooltip.
@@ -148,6 +154,7 @@ export function BoardGrid({
                   style={lineRow}
                 >
                   <span className="truncate">{capText(stage.name)}</span>
+                  <ProblemMark problems={marks.stages.get(stage.id)} />
                 </div>
               </WithTooltip>
             );
@@ -198,6 +205,7 @@ export function BoardGrid({
                         style={cellRow}
                       >
                         <span className="truncate">{row.displayName}</span>
+                        <ProblemMark problems={marks.rows.get(row.id)} />
                       </div>
                     </WithTooltip>
                     {stages.map((stage) => {

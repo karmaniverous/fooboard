@@ -7,11 +7,15 @@
  */
 import { z } from 'zod';
 
-/** A deployment target: branch pattern plus optional source stage. */
+import { ProviderRulesSchema } from './placement';
+
+/** A deployment target: its stage rules per source (spec.md A§4.3.7;
+ * optional, the column group's or dashboard's apply otherwise) and an
+ * optional source stage. */
 export const StageSchema = z.object({
   id: z.string().min(1),
   name: z.string().min(1),
-  branchPattern: z.string().min(1),
+  rules: ProviderRulesSchema.default(() => ({})),
   sourceStageId: z.string().min(1).optional(),
 });
 export type Stage = z.infer<typeof StageSchema>;

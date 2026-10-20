@@ -1,7 +1,8 @@
 /**
- * Branch-pattern overrides per stage (spec.md C-14c, C-21) for a row or a
- * row group: one field per stage, empty meaning the inherited pattern
- * (shown as the placeholder). *Find branches* reads the branches of the
+ * Stage-rule overrides per stage (spec.md C-14c, C-21, A§4.3.7) for a
+ * row or a row group: one branch-pattern field per stage (the shortcut),
+ * empty meaning the inherited pattern (shown as the placeholder), and the
+ * override as a general rule under it, for overrides a pattern can't say. *Find branches* reads the branches of the
  * repos the overrides apply to and offers them as suggestions in every
  * field (with how many repos have each, for a group).
  *
@@ -10,12 +11,35 @@
 import { Fragment, useId } from 'react';
 
 import { Disclosure } from '@/components/Disclosure';
-import { ownOverride } from '@/domain/config/inheritance';
+import { ownOverride } from '@/domain/config/ownOverride';
 
 import { branchCounts } from './branches';
 import { BranchFinder } from './BranchFinder';
 import { CommitInput } from './fields';
 import { useLoad } from './useLoad';
+
+/** A stage's override as a general rule, opened when focused. */
+function StageRule({
+  target,
+  name,
+  children,
+}: {
+  target: string | undefined;
+  name: string;
+  children: React.ReactNode;
+}): React.JSX.Element {
+  return (
+    <Disclosure
+      title={`${name} as a rule`}
+      count={0}
+      target={target}
+      className="col-span-2 ml-2 text-muted-foreground"
+      contentClassName="text-foreground"
+    >
+      {children}
+    </Disclosure>
+  );
+}
 
 export function OverrideFields({
   name,
@@ -23,6 +47,9 @@ export function OverrideFields({
   own,
   loadBranches,
   onChange,
+  target,
+  custom,
+  renderRule,
 }: {
   /** The row or group name, for labels. */
   name: string;
@@ -33,17 +60,24 @@ export function OverrideFields({
   loadBranches: () => Promise<Map<string, string[]>>;
   /** `''` clears a stage's override. */
   onChange: (stageId: string, pattern: string) => void;
+  /** The row's or group's editor-item key (`row:<id>`, `rowGroup:<id>`). */
+  target?: string;
+  /** Stages whose override is a rule no pattern says. */
+  custom?: ReadonlySet<string>;
+  /** The editor of a stage's override as a general rule. */
+  renderRule?: (stageId: string) => React.ReactNode;
 }): React.JSX.Element {
   const [found, load] = useLoad<Map<string, string[]>>();
   const listId = useId();
   const byRepo = found.kind === 'done' ? found.value : undefined;
   const branches = byRepo ? branchCounts(byRepo) : [];
-  const count = Object.keys(own).length;
+  const count = Object.keys(own).length + (custom?.size ?? 0);
   return (
     <Disclosure
-      title="Branch overrides"
+      title="Stage overrides"
       count={count}
       contentClassName="flex flex-col gap-1"
+      target={target === undefined ? undefined : `${target}:stage`}
     >
       <BranchFinder
         found={found}
@@ -84,7 +118,11 @@ export function OverrideFields({
             <CommitInput
               optional
               label={`${s.name} branch override for ${name}`}
-              placeholder={`${s.inherited} (inherited)`}
+              placeholder={
+                custom?.has(s.id)
+                  ? 'a rule (below)'
+                  : `${s.inherited} (inherited)`
+              }
               className="h-7 text-xs"
               value={ownOverride(own, s.id) ?? ''}
               list={byRepo ? listId : undefined}
@@ -92,6 +130,16 @@ export function OverrideFields({
                 onChange(s.id, pattern);
               }}
             />
+            {renderRule && (
+              <StageRule
+                name={s.name}
+                target={
+                  target === undefined ? undefined : `${target}:stage:${s.id}`
+                }
+              >
+                {renderRule(s.id)}
+              </StageRule>
+            )}
           </Fragment>
         ))}
       </div>

@@ -8,8 +8,8 @@
  *
  * @module
  */
-import { MappingSettingsSchema } from '@/domain/config/mappingSettings';
 import type { StatusSet } from '@/domain/config/statusSets';
+import { PRESET_IDS } from '@/domain/config/statusSets';
 import { findStatusSet } from '@/domain/statuses/resolve';
 
 import type {
@@ -21,7 +21,7 @@ import type {
 let nextId = 1;
 
 /** Build a minimal GitHub Actions workflow run, with sensible defaults. */
-export function makeRun(
+function makeRun(
   overrides: Partial<GithubWorkflowRun> = {},
 ): GithubWorkflowRun {
   const id = nextId++;
@@ -65,9 +65,6 @@ export function makeRunWithJobs(
   return { run: makeRun(runOverrides), jobs };
 }
 
-/** Default mapping settings (spec.md §4.3.1 defaults). */
-export const defaultMapping = MappingSettingsSchema.parse({});
-
 const preset = (id: string): StatusSet => {
   const set = findStatusSet(id);
   if (!set) throw new Error(`missing preset ${id}`);
@@ -75,5 +72,5 @@ const preset = (id: string): StatusSet => {
 };
 
 /** The bundled *GitHub deploy and test* and *Amplify* sets (A§4.3.6). */
-export const githubSet = preset('github-deploy-test');
+export const githubSet = preset(PRESET_IDS.githubDeployTest);
 export const amplifySet = preset('amplify');

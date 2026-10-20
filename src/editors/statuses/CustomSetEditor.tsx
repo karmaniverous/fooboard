@@ -1,20 +1,25 @@
 /**
  * One of the dashboard's own status sets (spec.md A§4.3.6): its name, its
- * job test (GitHub), its summary statuses and its cell statuses in order
- * (the first whose test matches wins). Changes go to the dashboard, which
+ * item rule (when its source rule reads items), its summary statuses and its cell statuses in order
+ * (the first whose rule matches wins). Changes go to the dashboard, which
  * the editor validates before saving.
  *
  * @module
  */
+import { useContext } from 'react';
+
 import { STATUS_GLYPH } from '@/board/cellView';
+import { CheckField } from '@/components/CheckField';
 import { Choice } from '@/components/Choice';
 import { Button } from '@/components/ui/button';
 import { STATUS_ICONS, type StatusSet } from '@/domain/config/statusSets';
+import { statusSetItemsKey, targetKey } from '@/editors/editTarget';
 import { move, patchAt } from '@/lib/lists';
 
 import { CommitInput } from '../fields';
+import { RuleEditor } from '../rules/RuleEditor';
+import { SourcesWithItemsContext } from '../rules/samples';
 import { addCellStatus } from './customSet';
-import { TestEditor } from './TestEditor';
 
 const iconOptions = STATUS_ICONS.map((icon) => ({
   value: icon,
@@ -31,13 +36,14 @@ export function CustomSetEditor({
   /** Absent while the set is chosen somewhere (it can't be removed). */
   onRemove?: () => void;
 }): React.JSX.Element {
-  const jobs = set.provider === 'github';
+  const jobs = useContext(SourcesWithItemsContext).includes(set.provider);
   const summaryOptions = set.summary.map((s) => ({
     value: s.id,
     label: s.name,
   }));
   return (
     <section
+      data-edit-target={targetKey({ kind: 'statusSet', id: set.id })}
       aria-label={`Status set ${set.name}`}
       className="flex flex-col gap-3 rounded border p-2"
     >
@@ -62,13 +68,15 @@ export function CustomSetEditor({
       </div>
       {jobs && (
         <div className="flex flex-col gap-1">
-          <h4 className="text-xs font-semibold">Jobs that count</h4>
-          <TestEditor
-            label="Job test"
-            jobsScope={false}
-            test={set.jobs}
-            onChange={(test) => {
-              onChange({ ...set, jobs: test });
+          <h4 className="text-xs font-semibold">Items that count</h4>
+          <RuleEditor
+            target={statusSetItemsKey(set.id)}
+            provider={set.provider}
+            scope="item"
+            label="Item rule"
+            rule={set.items}
+            onChange={(items) => {
+              onChange({ ...set, items });
             }}
           />
         </div>
@@ -110,21 +118,16 @@ export function CustomSetEditor({
                 });
               }}
             />
-            <label className="flex items-center gap-1 text-xs">
-              <input
-                type="checkbox"
-                checked={s.inProgress}
-                onChange={(e) => {
-                  onChange({
-                    ...set,
-                    summary: patchAt(set.summary, i, {
-                      inProgress: e.target.checked,
-                    }),
-                  });
-                }}
-              />
-              In progress
-            </label>
+            <CheckField
+              label="In progress"
+              checked={s.inProgress}
+              onCheckedChange={(inProgress) => {
+                onChange({
+                  ...set,
+                  summary: patchAt(set.summary, i, { inProgress }),
+                });
+              }}
+            />
           </div>
         ))}
       </div>
@@ -195,16 +198,13 @@ export function CustomSetEditor({
                     });
                   }}
                 />
-                <label className="flex items-center gap-1 text-xs">
-                  <input
-                    type="checkbox"
-                    checked={c.outlined}
-                    onChange={(e) => {
-                      update({ outlined: e.target.checked });
-                    }}
-                  />
-                  Outlined
-                </label>
+                <CheckField
+                  label="Outlined"
+                  checked={c.outlined}
+                  onCheckedChange={(outlined) => {
+                    update({ outlined });
+                  }}
+                />
                 <Button
                   size="sm"
                   variant="ghost"
@@ -242,12 +242,12 @@ export function CustomSetEditor({
                   ×
                 </Button>
               </div>
-              <TestEditor
-                label={`${c.name} test`}
-                jobsScope={jobs}
-                test={c.test}
-                onChange={(test) => {
-                  update({ test });
+              <RuleEditor
+                provider={set.provider}
+                label={`${c.name} rule`}
+                rule={c.rule}
+                onChange={(rule) => {
+                  update({ rule });
                 }}
               />
             </div>

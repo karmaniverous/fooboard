@@ -3,6 +3,8 @@
  * and the behind/diverged commit subjects in both directions. Shown in a
  * hover/focus tooltip (informational: the cell and its badge are the
  * links, C-13a) and in a touch detail sheet, which also carries the links.
+ * Problems on the cell (a window hint on an empty cell, a status-set
+ * problem, spec.md A§4.3.7) are listed under it.
  *
  * @module
  */
@@ -20,6 +22,8 @@ import {
   SheetContent,
   SheetTitle,
 } from '@/components/ui/sheet';
+import { EMPTY_STATES } from '@/domain/derivation';
+import type { Problem } from '@/domain/problems/problem';
 import type { BoardCell } from '@/engine';
 import { readmeSection } from '@/lib/site';
 
@@ -30,8 +34,11 @@ export function CellDetail({
   rowName,
   stageName,
   interactive,
+  problems = [],
 }: {
   cell: BoardCell;
+  /** Problems marked on this cell. */
+  problems?: readonly Problem[];
   rowName: string;
   stageName: string;
   /** Include links (the sheet); the hover tooltip can't be clicked. */
@@ -46,11 +53,10 @@ export function CellDetail({
       {derivation.kind === 'empty' ? (
         <div>
           {EMPTY_LABEL[derivation.state]}
-          {derivation.branch && ` (${derivation.branch})`}
           {derivation.reason && (
             <div className="text-muted-foreground">{derivation.reason}</div>
           )}
-          {interactive && derivation.state === 'needs-credential' && (
+          {interactive && derivation.state === EMPTY_STATES.needsCredential && (
             <ExternalLink
               unstyled
               href={readmeSection('credentials')}
@@ -112,6 +118,13 @@ export function CellDetail({
         >
           Open job
         </ExternalLink>
+      )}
+      {problems.length > 0 && (
+        <ul className="mt-1 text-amber-600 dark:text-amber-400">
+          {problems.map((p) => (
+            <li key={p.id}>! {p.message}</li>
+          ))}
+        </ul>
       )}
     </div>
   );

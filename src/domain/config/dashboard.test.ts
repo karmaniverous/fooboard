@@ -7,17 +7,21 @@
  */
 import { describe, expect, it } from 'vitest';
 
+import { branchRules } from '@/domain/config/placement';
+
 import { DashboardSchema } from './dashboard';
+import { PRESET_IDS } from './statusSets';
 
 describe('DashboardSchema', () => {
-  it('applies mapping, status set, group and credential defaults', () => {
+  it('applies source rule, status set, group and credential defaults', () => {
     const dashboard = DashboardSchema.parse({ id: 'd1', name: 'Dashboard 1' });
-    expect(dashboard.mapping.workflowFilter).toEqual({
-      include: [],
-      exclude: [],
+    expect(dashboard.sourceRules).toEqual({
+      github: 'github',
+      amplify: 'amplify',
     });
+    expect(dashboard.customSourceRules).toEqual([]);
     expect(dashboard.statusSets).toEqual({
-      github: 'github-deploy-test',
+      github: PRESET_IDS.githubDeployTest,
       amplify: 'amplify',
     });
     expect(dashboard.customStatusSets).toEqual([]);
@@ -94,11 +98,16 @@ describe('DashboardSchema', () => {
         id: 'd1',
         name: 'Dashboard 1',
         stages: [
-          { id: 's1', name: 'dev', branchPattern: 'dev', sourceStageId: 's2' },
+          {
+            id: 's1',
+            name: 'dev',
+            rules: branchRules('dev'),
+            sourceStageId: 's2',
+          },
           {
             id: 's2',
             name: 'prod',
-            branchPattern: 'main',
+            rules: branchRules('main'),
             sourceStageId: 's1',
           },
         ],
@@ -111,8 +120,13 @@ describe('DashboardSchema', () => {
       id: 'd1',
       name: 'Dashboard 1',
       stages: [
-        { id: 's1', name: 'dev', branchPattern: 'dev', sourceStageId: 's1' },
-        { id: 's1', name: 'prod', branchPattern: 'main' },
+        {
+          id: 's1',
+          name: 'dev',
+          rules: branchRules('dev'),
+          sourceStageId: 's1',
+        },
+        { id: 's1', name: 'prod', rules: branchRules('main') },
       ],
     });
     expect(parsed.success).toBe(false);
@@ -124,8 +138,13 @@ describe('DashboardSchema', () => {
       id: 'd1',
       name: 'Dashboard 1',
       stages: [
-        { id: 's1', name: 'dev', branchPattern: 'dev' },
-        { id: 's2', name: 'prod', branchPattern: 'main', sourceStageId: 's1' },
+        { id: 's1', name: 'dev', rules: branchRules('dev') },
+        {
+          id: 's2',
+          name: 'prod',
+          rules: branchRules('main'),
+          sourceStageId: 's1',
+        },
       ],
     });
     expect(dashboard.stages).toHaveLength(2);
@@ -190,32 +209,37 @@ describe('DashboardSchema', () => {
       stages: ['s', 's2', 's3'].map((id) => ({
         id,
         name: id,
-        branchPattern: id,
+        rules: branchRules(id),
       })),
       ...groups,
     });
     expect(result.error?.issues.map((i) => i.message)).toEqual([message]);
   });
 
-  it('rejects a status set that is unknown or for the other provider', () => {
+  it('loads unknown or other-source references (rule problems), but not a set for an unknown stage', () => {
     const bad = (extra: object) =>
       DashboardSchema.safeParse({ id: 'd', name: 'D', ...extra }).success;
-    expect(bad({ statusSets: { github: 'nope' } })).toBe(false);
-    expect(bad({ statusSets: { github: 'amplify' } })).toBe(false);
+    expect(bad({ statusSets: { github: 'nope' } })).toBe(true);
+    expect(bad({ statusSets: { github: 'amplify' } })).toBe(true);
+    expect(bad({ sourceRules: { github: 'nope', amplify: 'github' } })).toBe(
+      true,
+    );
     expect(
       bad({
-        stages: [{ id: 'dev', name: 'dev', branchPattern: 'dev' }],
+        stages: [{ id: 'dev', name: 'dev', rules: branchRules('dev') }],
         rows: [
           {
             type: 'github',
             id: 'a',
             repo: 'acme/a',
             displayName: 'a',
-            cellStatusSets: { prod: 'github-single-job' },
+            cellStatusSets: { prod: PRESET_IDS.githubSingleJob },
           },
         ],
       }),
     ).toBe(false);
-    expect(bad({ statusSets: { github: 'github-single-job' } })).toBe(true);
+    expect(bad({ statusSets: { github: PRESET_IDS.githubSingleJob } })).toBe(
+      true,
+    );
   });
 });

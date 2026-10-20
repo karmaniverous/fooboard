@@ -9,46 +9,19 @@ import { describe, expect, it } from 'vitest';
 
 import { DashboardSchema } from './dashboard';
 import {
-  effectiveBranchPattern,
-  effectiveStages,
   inheritedCredential,
   inheritedCredentials,
   rowGithubCredentialId,
 } from './inheritance';
 
-const release = { id: 'release', name: 'release', branchPattern: 'release/*' };
-const dev = { id: 'dev', name: 'dev', branchPattern: 'dev' };
 const frontend = {
   id: 'fe',
   memberIds: ['web'],
-  branchPatternOverrides: { release: 'preview/release' },
+  stageRules: {},
+  rowRules: {},
   defaultCredentials: { github: 'team' },
   statusSets: {},
 };
-
-describe('branch patterns', () => {
-  it.each([
-    ['the stage', {}, undefined, 'release/*'],
-    ['the row group', {}, frontend, 'preview/release'],
-    ['the row', { release: 'rc/*' }, frontend, 'rc/*'],
-  ])('resolve to %s', (_l, own, group, expected) => {
-    expect(effectiveBranchPattern(release, own, group)).toBe(expected);
-  });
-
-  it('rewrite only the overridden stages a row sees', () => {
-    const stages = [dev, release];
-    const web = effectiveStages(
-      { stages, rowGroups: [frontend] },
-      { id: 'web', branchPatternOverrides: {} },
-    );
-    expect(web[0]).toBe(dev);
-    expect(web[1]).toEqual({ ...release, branchPattern: 'preview/release' });
-    const api = { id: 'api', branchPatternOverrides: {} };
-    expect(effectiveStages({ stages, rowGroups: [frontend] }, api)).toEqual(
-      stages,
-    );
-  });
-});
 
 describe('credentials', () => {
   const d = DashboardSchema.parse({
@@ -102,16 +75,5 @@ describe('credentials', () => {
       'team',
       'own',
     ]);
-  });
-
-  it('ignores Object.prototype names as overrides (a stage called constructor)', () => {
-    const ctor = { id: 'constructor', name: 'c', branchPattern: 'main' };
-    expect(effectiveBranchPattern(ctor, {}, undefined)).toBe('main');
-    expect(
-      effectiveBranchPattern(ctor, {}, { branchPatternOverrides: {} }),
-    ).toBe('main');
-    expect(effectiveBranchPattern(ctor, { constructor: 'x' }, undefined)).toBe(
-      'x',
-    );
   });
 });

@@ -8,6 +8,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { DashboardSchema } from '@/domain/config/dashboard';
+import { branchRules } from '@/domain/config/placement';
 
 import { amplifyPolicy, dashboardApps } from './iamPolicy';
 
@@ -87,7 +88,7 @@ describe('dashboardApps', () => {
           ],
         },
       ],
-      stages: [{ id: 'dev', name: 'dev', branchPattern: 'dev' }],
+      stages: [{ id: 'dev', name: 'dev', rules: branchRules('dev') }],
     });
     expect(dashboardApps(dashboard)).toEqual({
       apps: [

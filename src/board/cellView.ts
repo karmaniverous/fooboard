@@ -36,8 +36,7 @@ export const STATUS_GLYPH: Record<StatusIcon, string> = {
 
 /** Text shown in an empty cell (spec.md §4.3.5). */
 export const EMPTY_LABEL: Record<EmptyCellState, string> = {
-  'no-branch': 'no branch',
-  'no-recent-runs': 'no recent runs',
+  'no-records': 'no records',
   'needs-credential': 'needs credential',
   error: 'error',
 };
@@ -45,15 +44,14 @@ export const EMPTY_LABEL: Record<EmptyCellState, string> = {
 /** Empty states at rung 0 (icons only): a short symbol; the label is in
  * the tooltip, the accessible name and the detail sheet. */
 export const EMPTY_SYMBOL: Record<EmptyCellState, string> = {
-  'no-branch': '–',
-  'no-recent-runs': '○',
+  'no-records': '○',
   'needs-credential': '?',
   error: '!',
 };
 
 /** Badge text: a count when behind, `behind/ahead` when diverged. */
 /** Counts above this show as "99+"; the tooltip has the exact numbers. */
-const BADGE_CAP = 99;
+export const BADGE_CAP = 99;
 const capCount = (n: number) =>
   n > BADGE_CAP ? `${String(BADGE_CAP)}+` : String(n);
 
@@ -71,17 +69,29 @@ export function badgeDescription(badge: NonNullable<StalenessBadge>): string {
 }
 
 /** Compact relative time: `now`, `4m`, `3h`, `2d`, `5w`. */
+const MS_PER_SECOND = 1000;
+const SECONDS_PER_MINUTE = 60;
+const MINUTES_PER_HOUR = 60;
+const HOURS_PER_DAY = 24;
+const DAYS_PER_WEEK = 7;
+
 export function relativeTime(iso: string, now: number): string {
-  const seconds = Math.max(0, Math.round((now - Date.parse(iso)) / 1000));
-  if (seconds < 60) return 'now';
-  const minutes = Math.floor(seconds / 60);
-  if (minutes < 60) return `${String(minutes)}m`;
-  const hours = Math.floor(minutes / 60);
-  if (hours < 24) return `${String(hours)}h`;
-  const days = Math.floor(hours / 24);
-  if (days < 7) return `${String(days)}d`;
-  return `${String(Math.floor(days / 7))}w`;
+  const seconds = Math.max(
+    0,
+    Math.round((now - Date.parse(iso)) / MS_PER_SECOND),
+  );
+  if (seconds < SECONDS_PER_MINUTE) return 'now';
+  const minutes = Math.floor(seconds / SECONDS_PER_MINUTE);
+  if (minutes < MINUTES_PER_HOUR) return `${String(minutes)}m`;
+  const hours = Math.floor(minutes / MINUTES_PER_HOUR);
+  if (hours < HOURS_PER_DAY) return `${String(hours)}h`;
+  const days = Math.floor(hours / HOURS_PER_DAY);
+  if (days < DAYS_PER_WEEK) return `${String(days)}d`;
+  return `${String(Math.floor(days / DAYS_PER_WEEK))}w`;
 }
 
+/** How many characters of a commit hash the board shows. */
+export const SHORT_SHA_LENGTH = 7;
+
 /** Short commit hash. */
-export const shortSha = (sha: string): string => sha.slice(0, 7);
+export const shortSha = (sha: string): string => sha.slice(0, SHORT_SHA_LENGTH);

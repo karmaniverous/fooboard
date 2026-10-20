@@ -17,6 +17,7 @@ import { MemoryRouter } from 'react-router-dom';
 import { beforeAll, describe, expect, it } from 'vitest';
 
 import { demoDashboard } from '@/demo/board';
+import { branchRules } from '@/domain/config/placement';
 import {
   type BoardModel,
   createBoardEngine,
@@ -189,7 +190,7 @@ describe('BoardGrid', () => {
     const stages = Array.from({ length: 8 }, (_, i) => ({
       id: `s${String(i)}`,
       name: `Stage ${String(i)}`,
-      branchPattern: 'main',
+      rules: branchRules('main'),
     }));
     const big = {
       ...demoDashboard,

@@ -8,6 +8,7 @@
 import { fireEvent, screen, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
+import { never } from '@/domain/model/ruleBuilders';
 import { choose } from '@/test/choose';
 
 import { setup, tab } from '../editorSectionsHarness';
@@ -32,8 +33,8 @@ describe('Statuses tab', () => {
     fireEvent.blur(name);
     const [first] = latest.current.customStatusSets[0]?.cell ?? [];
     expect(first.name).toBe('Building');
-    // A new status matches nothing: its test is JSON-only until rewritten.
-    expect(first.test).toEqual({ not: {} });
+    // A new status matches nothing until its rule is written.
+    expect(first.rule).toEqual(never);
 
     fireEvent.click(
       within(set).getByRole('button', { name: 'Move Building down' }),
@@ -41,7 +42,7 @@ describe('Statuses tab', () => {
     expect(latest.current.customStatusSets[0]?.cell[1]?.name).toBe('Building');
   });
 
-  it('writes a condition from the form as JSON Schema', () => {
+  it('edits a status rule', () => {
     const latest = setup();
     tab('Statuses');
     fireEvent.click(screen.getAllByRole('button', { name: 'Customise' })[1]);
@@ -50,14 +51,15 @@ describe('Statuses tab', () => {
     });
     const [first] = latest.current.customStatusSets[0]?.cell ?? [];
     const value = within(set).getByLabelText(
-      `${first.name} test condition 1 value`,
+      `${first.name} rule check 1 value`,
     );
-    fireEvent.change(value, { target: { value: 'FAILED' } });
+    fireEvent.change(value, { target: { value: 'fail*' } });
     fireEvent.blur(value);
-    expect(latest.current.customStatusSets[0]?.cell[0]?.test).toEqual({
-      type: 'object',
-      properties: { status: { enum: ['FAILED'] } },
-      required: ['status'],
+    expect(
+      latest.current.customStatusSets[0]?.cell[0]?.rule.checks[0],
+    ).toMatchObject({
+      path: '$.state',
+      value: 'fail*',
     });
   });
 

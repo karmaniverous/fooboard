@@ -8,6 +8,8 @@ import { fireEvent, render, screen, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
 import { DashboardSchema } from '@/domain/config/dashboard';
+import { branchRules } from '@/domain/config/placement';
+import { PRESET_IDS } from '@/domain/config/statusSets';
 
 import { legendSets } from './legendSets';
 import { StatusLegend } from './StatusLegend';
@@ -16,8 +18,8 @@ const dashboard = DashboardSchema.parse({
   id: 'd',
   name: 'D',
   stages: [
-    { id: 'dev', name: 'Dev', branchPattern: 'dev' },
-    { id: 'prod', name: 'Prod', branchPattern: 'main' },
+    { id: 'dev', name: 'Dev', rules: branchRules('dev') },
+    { id: 'prod', name: 'Prod', rules: branchRules('main') },
   ],
   rows: [
     { type: 'github', id: 'a', repo: 'acme/a', displayName: 'a' },
@@ -26,7 +28,7 @@ const dashboard = DashboardSchema.parse({
       id: 'b',
       repo: 'acme/b',
       displayName: 'b',
-      cellStatusSets: { prod: 'github-single-job' },
+      cellStatusSets: { prod: PRESET_IDS.githubSingleJob },
     },
   ],
 });
@@ -34,8 +36,8 @@ const dashboard = DashboardSchema.parse({
 describe('StatusLegend', () => {
   it('lists the sets in use once each, in board order', () => {
     expect(legendSets(dashboard).map((s) => s.id)).toEqual([
-      'github-deploy-test',
-      'github-single-job',
+      PRESET_IDS.githubDeployTest,
+      PRESET_IDS.githubSingleJob,
     ]);
   });
 

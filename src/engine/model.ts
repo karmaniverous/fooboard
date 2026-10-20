@@ -8,10 +8,7 @@
 import type { Stage } from '@/domain/config/stage';
 
 import type { CellStaleness } from './staleness';
-import { type BoardCell, type BoardModel, cellKey } from './types';
-
-/** What a provider refresh yields per cell, before staleness. */
-type CellView = Pick<BoardCell, 'derivation' | 'active'>;
+import { type BoardModel, cellKey, type CellView } from './types';
 
 /** One row's refreshed cells and their staleness, by stage id. */
 export interface RowUpdate {
@@ -26,6 +23,8 @@ export const emptyModel = (
 ): BoardModel => ({
   cells: {},
   unmapped: [],
+  problems: [],
+  amplifyBranches: [],
   budgets: Object.fromEntries(credentialIds.map((id) => [id, undefined])),
   refreshedAt: {},
 });

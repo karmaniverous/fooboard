@@ -7,6 +7,9 @@
 import { describe, expect, it } from 'vitest';
 
 import { DashboardSchema } from '@/domain/config/dashboard';
+import { branchRules } from '@/domain/config/placement';
+import { PRESET_IDS } from '@/domain/config/statusSets';
+import { branchRule } from '@/domain/rules/branch';
 
 import {
   duplicateDashboard,
@@ -32,11 +35,15 @@ describe('removing rows and stages', () => {
     name: 'D',
     rows: [{ type: 'github', id: 'r', repo: 'o/r', displayName: 'r' }],
     stages: [
-      { id: 'a', name: 'a', branchPattern: 'main' },
-      { id: 'b', name: 'b', branchPattern: 'dev', sourceStageId: 'a' },
+      { id: 'a', name: 'a', rules: branchRules('main') },
+      { id: 'b', name: 'b', rules: branchRules('dev'), sourceStageId: 'a' },
     ],
     rowGroups: [
-      { id: 'g', memberIds: ['r'], branchPatternOverrides: { a: 'x/*' } },
+      {
+        id: 'g',
+        memberIds: ['r'],
+        stageRules: { a: branchRules('x/*') },
+      },
     ],
     columnGroups: [{ id: 'cg', label: 'Prod', memberIds: ['a'] }],
   });
@@ -44,9 +51,11 @@ describe('removing rows and stages', () => {
   it('takes the emptied group, the overrides and any source use with it', () => {
     expect(removeRow(d, 'r')).toMatchObject({ rows: [], rowGroups: [] });
     const s = DashboardSchema.parse(removeStage(d, 'a'));
-    expect(s.stages).toEqual([{ id: 'b', name: 'b', branchPattern: 'dev' }]);
+    expect(s.stages).toEqual([
+      { id: 'b', name: 'b', rules: branchRules('dev') },
+    ]);
     expect(s.columnGroups).toEqual([]);
-    expect(s.rowGroups[0]?.branchPatternOverrides).toEqual({});
+    expect(s.rowGroups[0]?.stageRules).toEqual({});
   });
 
   it("drops a row's status-set choice for the removed stage, so the dashboard still saves", () => {
@@ -54,11 +63,16 @@ describe('removing rows and stages', () => {
       ...d,
       rows: d.rows.map((r) => ({
         ...r,
-        cellStatusSets: { a: 'github-single-job', b: 'github-single-job' },
+        cellStatusSets: {
+          a: PRESET_IDS.githubSingleJob,
+          b: PRESET_IDS.githubSingleJob,
+        },
       })),
     });
     const s = DashboardSchema.parse(removeStage(chosen, 'a'));
-    expect(s.rows[0]?.cellStatusSets).toEqual({ b: 'github-single-job' });
+    expect(s.rows[0]?.cellStatusSets).toEqual({
+      b: PRESET_IDS.githubSingleJob,
+    });
   });
 });
 
@@ -89,15 +103,15 @@ describe('duplicateDashboard', () => {
           repo: 'o/r',
           displayName: 'r',
           credentialId: 'c',
-          branchPatternOverrides: { s: 'rc/*' },
+          stageRules: { s: branchRule('rc/*') },
         },
       ],
-      stages: [{ id: 's', name: 's', branchPattern: 'main' }],
+      stages: [{ id: 's', name: 's', rules: branchRules('main') }],
       rowGroups: [
         {
           id: 'g',
           memberIds: ['r'],
-          branchPatternOverrides: { s: 'release/*' },
+          stageRules: { s: branchRules('release/*') },
           defaultCredentials: { github: 'c' },
         },
       ],
@@ -109,10 +123,10 @@ describe('duplicateDashboard', () => {
     expect(JSON.stringify(copy)).not.toMatch(/"c"/);
     expect(copy.defaultCredentials.github).toBe('c-new');
     expect(copy.rowGroups[0]).toMatchObject({
-      branchPatternOverrides: { s: 'release/*' },
+      stageRules: { s: branchRules('release/*') },
       defaultCredentials: { github: 'c-new' },
     });
-    expect(copy.rows[0]?.branchPatternOverrides).toEqual({ s: 'rc/*' });
+    expect(copy.rows[0]?.stageRules).toEqual({ s: branchRule('rc/*') });
     expect(d.credentials[0]?.id).toBe('c');
   });
 });

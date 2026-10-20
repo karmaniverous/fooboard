@@ -1,6 +1,6 @@
 /**
- * Tests for editor fixes from review: deleting a match test or an Amplify
- * source asks first; a failed repo list retries; the same repo can be
+ * Tests for editor fixes from review: deleting an Amplify source asks
+ * first; a failed repo list retries; the same repo can be
  * added twice; listed apps hide when the region changes.
  *
  * @module
@@ -11,40 +11,6 @@ import { describe, expect, it } from 'vitest';
 import { setup, tab } from './editorSectionsHarness';
 
 describe('editor review fixes', () => {
-  it('asks before deleting a match test, and Keep preserves it', () => {
-    const latest = setup();
-    tab('Mapping');
-    fireEvent.change(
-      screen.getByLabelText('New Only workflows matching value'),
-      {
-        target: { value: 'deploy' },
-      },
-    );
-    const filter = screen.getByRole('group', {
-      name: 'Only workflows matching',
-    });
-    fireEvent.click(within(filter).getByRole('button', { name: 'Add' }));
-    const count = latest.current.mapping.workflowFilter.include.length;
-    const del = within(filter).getByRole('button', {
-      name: `Delete Only workflows matching ${String(count)}`,
-    });
-    fireEvent.click(del);
-    expect(latest.current.mapping.workflowFilter.include).toHaveLength(count);
-    fireEvent.click(within(filter).getByRole('button', { name: 'Keep' }));
-    expect(latest.current.mapping.workflowFilter.include).toHaveLength(count);
-    fireEvent.click(
-      within(filter).getByRole('button', {
-        name: `Delete Only workflows matching ${String(count)}`,
-      }),
-    );
-    fireEvent.click(
-      within(filter).getByRole('button', { name: 'Delete deploy' }),
-    );
-    expect(latest.current.mapping.workflowFilter.include).toHaveLength(
-      count - 1,
-    );
-  });
-
   it('retries a failed repo list', async () => {
     let calls = 0;
     setup({
@@ -89,20 +55,16 @@ describe('editor review fixes', () => {
     const rows = latest.current.rows.filter((r) => r.repo === 'acme/api');
     expect(rows.map((r) => r.id)).toEqual(['api', 'api-2']);
 
-    fireEvent.change(
-      screen.getAllByLabelText('New Row key tests for api value')[0],
-      {
-        target: { value: 'deploy-a' },
-      },
-    );
     const groups = screen.getAllByRole('group', {
-      name: 'Row key tests for api',
+      name: 'Item rule for api',
     });
-    fireEvent.click(within(groups[0]).getByRole('button', { name: 'Add' }));
-    const tests = latest.current.rows
+    fireEvent.click(
+      within(groups[0]).getByRole('button', { name: 'Add check' }),
+    );
+    const checks = latest.current.rows
       .filter((r) => r.repo === 'acme/api')
-      .map((r) => (r.type === 'github' ? r.rowKeyTests.length : -1));
-    expect(tests).toEqual([1, 0]);
+      .map((r) => r.itemRule?.checks.length ?? 0);
+    expect(checks).toEqual([1, 0]);
   });
 
   it('hides listed apps when the region changes, before or after the response', async () => {

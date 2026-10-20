@@ -11,7 +11,7 @@ import { DashboardSchema } from './dashboard';
 
 /** Current config schema version. Bump when the shape changes, and add a
  * migration step in `migrate.ts`. */
-export const CURRENT_SCHEMA_VERSION = 3;
+export const CURRENT_SCHEMA_VERSION = 4;
 
 /** The versioned configuration root (spec.md C-1). */
 export const ConfigRootSchema = z.object({

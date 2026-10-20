@@ -13,6 +13,8 @@ import { MemoryRouter } from 'react-router-dom';
 import { describe, expect, it } from 'vitest';
 
 import { type Dashboard, DashboardSchema } from '@/domain/config/dashboard';
+import { branchRules } from '@/domain/config/placement';
+import { branchRule } from '@/domain/rules/branch';
 import type { EngineProviders } from '@/engine';
 import { createAppStores } from '@/storage';
 import { memoryStorage } from '@/storage/keyValue';
@@ -36,8 +38,8 @@ const start = DashboardSchema.parse({
     { type: 'github', id: 'web', repo: 'acme/web', displayName: 'web' },
   ],
   stages: [
-    { id: 'dev', name: 'dev', branchPattern: 'dev' },
-    { id: 'prod', name: 'prod', branchPattern: 'main' },
+    { id: 'dev', name: 'dev', rules: branchRules('dev') },
+    { id: 'prod', name: 'prod', rules: branchRules('main') },
   ],
 });
 
@@ -78,10 +80,10 @@ function setup(initial: Dashboard = start, draft?: EditorDraft) {
   return latest;
 }
 
-/** Open every closed *Branch overrides* section. */
+/** Open every closed *Stage overrides* section. */
 const openOverrides = () => {
   for (const t of screen.queryAllByRole('button', {
-    name: /^Branch overrides/,
+    name: /^Stage overrides/,
   }))
     if (t.getAttribute('aria-expanded') !== 'true') fireEvent.click(t);
 };
@@ -103,7 +105,8 @@ describe('row groups in the editor', () => {
       {
         id: 'group-api',
         memberIds: ['api'],
-        branchPatternOverrides: { prod: 'release/*' },
+        stageRules: { prod: branchRules('release/*') },
+        rowRules: {},
         defaultCredentials: { github: 'team' },
         statusSets: {},
       },
@@ -119,11 +122,11 @@ describe('row groups in the editor', () => {
     ).toBeInTheDocument();
 
     commit('prod branch override for api', 'rc/*');
-    expect(latest.current.rows[0]?.branchPatternOverrides).toEqual({
-      prod: 'rc/*',
+    expect(latest.current.rows[0]?.stageRules).toEqual({
+      prod: branchRule('rc/*'),
     });
     commit('prod branch override for api', '');
-    expect(latest.current.rows[0]?.branchPatternOverrides).toEqual({});
+    expect(latest.current.rows[0]?.stageRules).toEqual({});
 
     fireEvent.click(screen.getByRole('button', { name: 'Delete group' }));
     fireEvent.click(screen.getByRole('button', { name: /^Delete the group/ }));
@@ -189,8 +192,7 @@ describe('row groups in the editor', () => {
     });
     const latest = setup(grouped, {
       tab: 'Rows',
-      rowId: 'api',
-      overrideBranch: 'preview/release',
+      override: { branch: 'preview/release', rowIds: ['api'] },
     });
     const fix = screen.getByRole('group', {
       name: 'Override for preview/release',
@@ -198,13 +200,13 @@ describe('row groups in the editor', () => {
     choose(within(fix).getByLabelText('Stage to override'), 'prod');
     choose(within(fix).getByLabelText('Override scope'), 'group Frontend');
     fireEvent.click(within(fix).getByRole('button', { name: 'Apply' }));
-    expect(latest.current.rowGroups[0]?.branchPatternOverrides).toEqual({
-      prod: 'preview/release',
+    expect(latest.current.rowGroups[0]?.stageRules).toEqual({
+      prod: branchRules('preview/release'),
     });
-    expect(latest.current.rows[0]?.branchPatternOverrides).toEqual({});
+    expect(latest.current.rows[0]?.stageRules).toEqual({});
   });
 
-  it("offers every GitHub row reading the run's repo as the override target", () => {
+  it('offers every row reading the record as the override target', () => {
     const twoRows = DashboardSchema.parse({
       ...start,
       rows: [
@@ -220,18 +222,17 @@ describe('row groups in the editor', () => {
     });
     const latest = setup(twoRows, {
       tab: 'Rows',
-      rowId: 'api',
-      overrideBranch: 'hotfix/1',
+      override: { branch: 'hotfix/1', rowIds: ['api', 'api-jobs'] },
     });
     const fix = screen.getByRole('group', { name: 'Override for hotfix/1' });
     const target = within(fix).getByLabelText('Override scope');
     expect(optionsOf(target)).toEqual(['row api', 'row api-jobs']);
     choose(target, 'row api-jobs');
     fireEvent.click(within(fix).getByRole('button', { name: 'Apply' }));
-    expect(latest.current.rows[1]?.branchPatternOverrides).toEqual({
-      dev: 'hotfix/1',
+    expect(latest.current.rows[1]?.stageRules).toEqual({
+      dev: branchRule('hotfix/1'),
     });
-    expect(latest.current.rows[0]?.branchPatternOverrides).toEqual({});
+    expect(latest.current.rows[0]?.stageRules).toEqual({});
   });
 
   it("keeps a row's overrides collapsed, counting them, until opened", () => {
@@ -239,13 +240,13 @@ describe('row groups in the editor', () => {
       DashboardSchema.parse({
         ...start,
         rows: [
-          { ...start.rows[0], branchPatternOverrides: { prod: 'release/*' } },
+          { ...start.rows[0], stageRules: { prod: branchRule('release/*') } },
           start.rows[1],
         ],
       }),
     );
     const trigger = screen.getByRole('button', {
-      name: 'Branch overrides (1)',
+      name: 'Stage overrides (1)',
     });
     expect(trigger).toHaveAttribute('aria-expanded', 'false');
     expect(screen.queryByLabelText('prod branch override for api')).toBeNull();

@@ -9,9 +9,9 @@ import { describe, expect, it } from 'vitest';
 
 import { presetById } from '@/domain/statuses/presets';
 
-import { type StatusSet, StatusSetSchema } from './statusSets';
+import { PRESET_IDS, type StatusSet, StatusSetSchema } from './statusSets';
 
-const base = presetById('github-single-job');
+const base = presetById(PRESET_IDS.githubSingleJob);
 const messages = (set: StatusSet) => {
   const parsed = StatusSetSchema.safeParse(set);
   return parsed.success ? [] : parsed.error.issues.map((i) => i.message);

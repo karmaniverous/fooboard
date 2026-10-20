@@ -6,19 +6,14 @@
  *
  * @module
  */
+import { STATUS_COLORS } from '@/domain/config/colors';
 import type { Dashboard } from '@/domain/config/dashboard';
 import type { CellStatus, StatusSet } from '@/domain/config/statusSets';
+import { never } from '@/domain/model/ruleBuilders';
 import { findStatusSet } from '@/domain/statuses/resolve';
+import { freshId } from '@/lib/ids';
 
 import { setDashboardStatusSet } from './overrideSets';
-
-/** A fresh id: `base`, then `base-2`, `base-3`... not in `taken`. */
-function freshId(base: string, taken: readonly string[]): string {
-  if (!taken.includes(base)) return base;
-  let n = 2;
-  while (taken.includes(`${base}-${String(n)}`)) n += 1;
-  return `${base}-${String(n)}`;
-}
 
 /** The dashboard with a copy of set `id` it owns (not yet chosen
  * anywhere), and the copy; `undefined` for an unknown set. */
@@ -92,7 +87,7 @@ export function removeSet(dashboard: Dashboard, id: string): Dashboard {
 }
 
 /** A new cell status at the top (first match wins), counting toward the
- * set's first summary status, with a test that matches nothing until it is
+ * set's first summary status, with a rule that matches nothing until it is
  * written. */
 export function addCellStatus(set: StatusSet, name = 'New status'): StatusSet {
   const status: CellStatus = {
@@ -101,10 +96,10 @@ export function addCellStatus(set: StatusSet, name = 'New status'): StatusSet {
       set.cell.map((c) => c.id),
     ),
     name,
-    color: '#64748b',
+    color: STATUS_COLORS.added,
     summary: set.summary[0]?.id ?? '',
     outlined: false,
-    test: { not: {} },
+    rule: never,
   };
   return { ...set, cell: [status, ...set.cell] };
 }

@@ -1,8 +1,8 @@
 /**
- * Collect the Amplify jobs one row/stage cell is derived from (spec.md
- * §4.3.4): for each of the row's sources (credential + region + app), the
- * app's branches matching the stage pattern, and their newest jobs, each
- * tagged with its source so the cell can link to the right app. Also lists
+ * Read Amplify jobs (spec.md §4.3.4, A§4.3.7): for an app (credential +
+ * region + app id), the branches its source rule's branch rule chooses,
+ * and each one's newest jobs, tagged with the app so a cell can link to
+ * it. Also lists
  * the apps a credential can see across regions, for the row editor
  * (spec.md C-21: apps are picked, not typed).
  *
@@ -12,7 +12,12 @@ import type { App, Branch, JobSummary } from '@aws-sdk/client-amplify';
 
 import type { AmplifySource } from '@/domain/config/row';
 import type { AmplifyJobWithBranch } from '@/domain/derivation/types';
-import { matchesBranchPattern } from '@/domain/matching/branchPattern';
+import { asJson } from '@/domain/model/json';
+import {
+  AMPLIFY_READER_DEFAULTS,
+  type AmplifyReaderOptions,
+} from '@/domain/model/sourceRule';
+import { evaluateRule } from '@/domain/rules/check';
 
 import { AmplifyNotFoundError } from './errors';
 import type { AmplifyReader } from './reader';
@@ -21,6 +26,10 @@ import type { AmplifyReader } from './reader';
 export type ResolvedAmplifySource = Omit<AmplifySource, 'credentialId'> & {
   credentialId: string;
 };
+
+/** An app's identity on the board: who reads it, where. */
+export const appKey = (s: ResolvedAmplifySource): string =>
+  JSON.stringify([s.credentialId, s.region, s.appId]);
 
 /** Supplies the reader for a source's credential and region. */
 export type AmplifyReaderFor = (source: {
@@ -65,40 +74,53 @@ export function memoizeReaderFor(
   };
 }
 
-/** Jobs per matching branch; the cell needs only the newest, a few spare
- * cover a newer-but-undated job. */
-const JOBS_PER_BRANCH = 5;
-
-/** The collected jobs and whether any source had a matching branch. */
-export interface RowJobs {
-  jobsByBranch: AmplifyJobWithBranch[];
-  branchExists: boolean;
+/** One app's read: the jobs of the branches the branch rule chose, the
+ * whole branch list (for the branch rule's sample), and whether any
+ * branch's read came back full (as many jobs as asked for). */
+export interface AppRead {
+  jobs: AmplifyJobWithBranch[];
+  branches: Branch[];
+  full: boolean;
 }
 
-/** Gather the jobs for one Amplify row and one stage's branch pattern. */
+/** Read one app (spec.md A§4.3.7): its branch list, then the jobs of
+ * each branch the branch rule chooses. */
+export async function readAppJobs(
+  source: ResolvedAmplifySource,
+  readerFor: AmplifyReaderFor,
+  options: AmplifyReaderOptions = AMPLIFY_READER_DEFAULTS,
+): Promise<AppRead> {
+  const reader = readerFor(source);
+  const branches = await reader.listBranches(source.appId);
+  const chosen = branches
+    .filter((b) => evaluateRule(options.branches, asJson(b)))
+    .map((b) => b.branchName)
+    .filter((name): name is string => name !== undefined);
+  const tag = { region: source.region, appId: source.appId };
+  const jobs: AmplifyJobWithBranch[] = [];
+  let full = false;
+  for (const branch of chosen) {
+    const found = await reader.listJobs(
+      source.appId,
+      branch,
+      options.jobsPerBranch,
+    );
+    full ||= found.length >= options.jobsPerBranch;
+    for (const job of found) jobs.push({ source: tag, branch, job });
+  }
+  return { jobs, branches, full };
+}
+
+/** Gather the jobs of every app of one Amplify row. */
 export async function collectRowJobs(
   sources: readonly ResolvedAmplifySource[],
-  branchPattern: string,
   readerFor: AmplifyReaderFor,
-): Promise<RowJobs> {
-  const jobsByBranch: AmplifyJobWithBranch[] = [];
-  let branchExists = false;
-
-  for (const source of sources) {
-    const reader = readerFor(source);
-    const branches = (await reader.listBranches(source.appId))
-      .map((b) => b.branchName)
-      .filter((name): name is string => name !== undefined)
-      .filter((name) => matchesBranchPattern(branchPattern, name));
-    branchExists ||= branches.length > 0;
-
-    for (const branch of branches) {
-      const jobs = await reader.listJobs(source.appId, branch, JOBS_PER_BRANCH);
-      const tag = { region: source.region, appId: source.appId };
-      for (const job of jobs) jobsByBranch.push({ source: tag, branch, job });
-    }
-  }
-  return { jobsByBranch, branchExists };
+  options: AmplifyReaderOptions = AMPLIFY_READER_DEFAULTS,
+): Promise<AmplifyJobWithBranch[]> {
+  const jobs: AmplifyJobWithBranch[] = [];
+  for (const source of sources)
+    jobs.push(...(await readAppJobs(source, readerFor, options)).jobs);
+  return jobs;
 }
 
 /** List the apps one credential can see in each region. A region where

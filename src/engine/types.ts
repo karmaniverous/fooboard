@@ -5,14 +5,17 @@
  *
  * @module
  */
+import type { JSONValue } from 'json-p3';
 import { z } from 'zod';
 
+import type { Provider } from '@/domain/config/providers';
 import type {
-  AmplifyCellDerivation,
-  GithubCellDerivation,
+  CellDerivation,
   StalenessBadge,
   UnmappedReason,
 } from '@/domain/derivation';
+import type { RecordDoc } from '@/domain/model/translate';
+import type { Problem } from '@/domain/problems/problem';
 import type { AmplifyReaderFor } from '@/lib/amplify/rowJobs';
 import type { GitHubReader } from '@/lib/github';
 import type { RateLimitBudget } from '@/lib/github';
@@ -31,7 +34,7 @@ export interface CompareDetail {
 export interface BoardCell {
   rowId: string;
   stageId: string;
-  derivation: GithubCellDerivation | AmplifyCellDerivation;
+  derivation: CellDerivation;
   /** A job in the cell's run is still queued or running; drives the fast
    * poll even when the displayed status is final (e.g. a failed test with
    * a deploy still running). */
@@ -40,15 +43,28 @@ export interface BoardCell {
   compare?: CompareDetail;
 }
 
-/** A run the board couldn't place, for the Unmapped runs panel (C-15). */
+/** What a provider refresh yields per cell, before staleness. */
+export type CellView = Pick<BoardCell, 'derivation' | 'active'>;
+
+/** A record the board couldn't place, for the Unmapped panel (C-15,
+ * spec.md A§4.3.7): a GitHub run or an Amplify job. */
 export interface UnmappedRun {
-  /** `owner/name`; a run is listed once per repo, not per row. */
-  repo: string;
-  runId: number;
-  workflowName: string;
+  provider: Provider;
+  /** Unique on the board; a record is listed once per repo or app, not
+   * per row. */
+  id: string;
+  /** What was read: the repo (`owner/name`) or the Amplify app. */
+  where: string;
+  /** The run's workflow, or the Amplify job. */
+  title: string;
   branch: string | null;
   htmlUrl: string;
+  /** The translated record, to draft a check from (*Add rule*). */
+  record: RecordDoc;
+  /** The first row's reason (one row reads most repos). */
   reason: UnmappedReason;
+  /** Why each row reading the repo didn't place it (spec.md A§4.3.7). */
+  rows: { rowId: string; reason: UnmappedReason }[];
 }
 
 /** Everything the board renders for one dashboard. */
@@ -57,17 +73,23 @@ export interface BoardModel {
    * first refreshes. */
   cells: Partial<Record<string, BoardCell>>;
   unmapped: UnmappedRun[];
+  /** Problems found while reading (spec.md A§4.3.7): translation
+   * problems and window hints. */
+  problems: Problem[];
+  /** Entries of the Amplify branch lists read, for the branch rule's
+   * field picker and preview. */
+  amplifyBranches: JSONValue[];
   /** Latest known GitHub budget per credential id (spec.md C-16). */
   budgets: Record<string, RateLimitBudget | undefined>;
   /** When each row last refreshed (ms), keyed by row id. */
   refreshedAt: Record<string, number>;
 }
 
-/** The key of one cell in `BoardModel.cells`. */
-/** Ids may contain any character, so the pair is encoded unambiguously. */
 /** A cell key parsed back into its row and stage ids. */
 export const CellKeySchema = z.tuple([z.string(), z.string()]);
 
+/** The key of one cell in `BoardModel.cells`. Ids may contain any
+ * character, so the pair is encoded unambiguously. */
 export const cellKey = (rowId: string, stageId: string): string =>
   JSON.stringify([rowId, stageId]);
 

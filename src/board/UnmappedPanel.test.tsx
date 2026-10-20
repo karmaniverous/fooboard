@@ -1,6 +1,6 @@
 /**
  * Tests for the unmapped runs flow: the panel lists each run with its
- * reason, and *Add test* opens the editor on the right row with the test
+ * reason, and *Add rule* opens the editor on the right row with the rule
  * pre-filled; adding it saves the dashboard.
  *
  * @module
@@ -11,6 +11,7 @@ import { MemoryRouter } from 'react-router-dom';
 import { describe, expect, it, vi } from 'vitest';
 
 import { type Dashboard, DashboardSchema } from '@/domain/config/dashboard';
+import { UNMAPPED } from '@/domain/derivation';
 import { DashboardEditor } from '@/editors/DashboardEditor';
 import { draftFor, type EditorDraft, overrideDraftFor } from '@/editors/draft';
 import type { UnmappedRun } from '@/engine';
@@ -27,50 +28,97 @@ const dashboard = DashboardSchema.parse({
 });
 const runs: UnmappedRun[] = [
   {
-    repo: 'acme/api',
-    runId: 7,
-    workflowName: 'Deploy API',
+    provider: 'github',
+    id: 'github:acme/api#7',
+    where: 'acme/api',
+    title: 'Deploy API',
+    record: { workflow: 'Deploy API', branch: 'main' },
     branch: 'main',
     htmlUrl: 'https://github.com/acme/api/actions/runs/7',
-    reason: { kind: 'no-row-key-matches' },
+    reason: { kind: UNMAPPED.noRowMatches },
+    rows: [{ rowId: 'api', reason: { kind: UNMAPPED.noRowMatches } }],
   },
   {
-    repo: 'acme/gone',
-    runId: 8,
-    workflowName: 'Nightly',
+    provider: 'github',
+    id: 'github:acme/gone#8',
+    where: 'acme/gone',
+    title: 'Nightly',
+    record: { workflow: 'Nightly', branch: 'main' },
     branch: 'main',
     htmlUrl: 'https://github.com/acme/gone/actions/runs/8',
-    reason: { kind: 'no-row-key-matches' },
+    reason: { kind: UNMAPPED.noRowMatches },
+    rows: [],
   },
 ];
 
 describe('UnmappedPanel', () => {
-  it('lists runs with their reasons, offering Add test only where it can help', () => {
+  it('lists runs with their reasons, offering Add rule only where it can help', () => {
     render(
       <UnmappedPanel
         runs={runs}
         onAddTest={(r) => (draftFor(r, dashboard) ? vi.fn() : undefined)}
       />,
     );
-    expect(screen.getAllByText('no row key matches')).toHaveLength(2);
+    expect(screen.getAllByText('no row rule matches')).toHaveLength(2);
     expect(screen.getByRole('link', { name: 'Deploy API' })).toHaveAttribute(
       'target',
       '_blank',
     );
-    expect(screen.getAllByRole('button', { name: 'Add test' })).toHaveLength(1);
+    expect(screen.getAllByRole('button', { name: 'Add rule' })).toHaveLength(1);
+  });
+
+  it('says so when every run has a cell', () => {
+    render(<UnmappedPanel runs={[]} onAddTest={() => undefined} />);
+    expect(
+      screen.getByText('Every recent run has a cell.'),
+    ).toBeInTheDocument();
+  });
+
+  it('gives each row reading the run its own reason, by row name', () => {
+    const [first] = runs;
+    render(
+      <UnmappedPanel
+        runs={[
+          {
+            ...first,
+            rows: [
+              { rowId: 'api', reason: { kind: UNMAPPED.noRowMatches } },
+              { rowId: 'web', reason: { kind: UNMAPPED.noOrderKey } },
+            ],
+          },
+        ]}
+        rowNames={{ api: 'API' }}
+        onAddTest={() => undefined}
+      />,
+    );
+    expect(screen.getByText('API: no row rule matches')).toBeInTheDocument();
+    expect(screen.getByText('web: no order key')).toBeInTheDocument();
   });
 
   it('offers Add override only for a branch no stage matches, on a known repo', () => {
     const branchRuns: UnmappedRun[] = [
       {
         ...runs[0],
-        runId: 9,
-        reason: { kind: 'no-stage-matches-branch', branch: 'hotfix/1' },
+        id: 'github:acme/api#9',
+        reason: { kind: UNMAPPED.noStageMatches, branch: 'hotfix/1' },
+        rows: [
+          {
+            rowId: 'api',
+            reason: { kind: UNMAPPED.noStageMatches, branch: 'hotfix/1' },
+          },
+        ],
       },
       {
         ...runs[1],
-        runId: 10,
-        reason: { kind: 'no-stage-matches-branch', branch: 'x' },
+        id: 'github:acme/gone#10',
+        reason: { kind: UNMAPPED.noStageMatches, branch: 'x' },
+        // No row on the board reads it any more.
+        rows: [
+          {
+            rowId: 'gone',
+            reason: { kind: UNMAPPED.noStageMatches, branch: 'x' },
+          },
+        ],
       },
       ...runs,
     ];
@@ -126,19 +174,13 @@ describe('UnmappedPanel', () => {
         </MemoryRouter>
       </StoresContext>,
     );
-    fireEvent.click(screen.getByRole('button', { name: 'Add test' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Add rule' }));
     expect(screen.getByRole('tab', { name: 'Rows' })).toHaveAttribute(
       'aria-selected',
       'true',
     );
     expect(
-      screen.getByLabelText('New Row key tests for api value'),
-    ).toHaveValue('Deploy API');
-    fireEvent.click(screen.getByRole('button', { name: 'Add' }));
-    expect(saved.current.rows[0]).toMatchObject({
-      rowKeyTests: [
-        { field: 'workflowName', operator: 'is', value: 'Deploy API' },
-      ],
-    });
+      screen.getByRole('group', { name: 'Item rule for api' }),
+    ).toBeInTheDocument();
   });
 });

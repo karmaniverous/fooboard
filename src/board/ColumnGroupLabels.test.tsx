@@ -29,7 +29,13 @@ const FRAME = ['border-t-2', 'border-l-2', 'border-r-2'];
 
 describe('ColumnGroupLabels', () => {
   it('renders nothing when no column group has a label', () => {
-    strip([{ group: { id: 'g', memberIds: ['a'] }, start: 0, span: 1 }]);
+    strip([
+      {
+        group: { id: 'g', memberIds: ['a'], stageRules: {} },
+        start: 0,
+        span: 1,
+      },
+    ]);
     expect(screen.getByRole('grid')).toBeEmptyDOMElement();
   });
 
@@ -37,7 +43,12 @@ describe('ColumnGroupLabels', () => {
     const { container } = strip([
       { start: 0, span: 1 },
       {
-        group: { id: 'g', label: 'Preview', memberIds: ['b', 'c'] },
+        group: {
+          id: 'g',
+          label: 'Preview',
+          memberIds: ['b', 'c'],
+          stageRules: {},
+        },
         start: 1,
         span: 2,
       },

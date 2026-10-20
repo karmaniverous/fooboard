@@ -41,17 +41,24 @@ export interface CompareResult {
   aheadBy: number;
   behindBy: number;
   htmlUrl: string;
-  /** Subjects of commits `head` has that `base` lacks (newest first), up to 10. */
+  /** Subjects of commits `head` has that `base` lacks (newest first), up to `COMMIT_SUBJECTS_LISTED`. */
   aheadCommitSubjects: string[];
-  /** Subjects of commits `base` has that `head` lacks (newest first), up to 10. */
+  /** Subjects of commits `base` has that `head` lacks (newest first), up to `COMMIT_SUBJECTS_LISTED`. */
   behindCommitSubjects: string[];
 }
 
 /** Read-only access to one GitHub credential's repos (spec.md §5). */
+/** The most items GitHub's REST API returns per page. */
+export const GITHUB_PER_PAGE = 100;
+
+/** Pages of `GITHUB_PER_PAGE` needed to read `count` items. */
+export const pagesFor = (count: number): number =>
+  Math.ceil(count / GITHUB_PER_PAGE);
+
 export interface GitHubReader {
   listWorkflowRuns(
     repo: RepoRef,
-    opts?: { perPage?: number; excludePullRequests?: boolean },
+    opts?: { perPage?: number; pages?: number; excludePullRequests?: boolean },
   ): Promise<WorkflowRun[]>;
   listRunJobs(
     repo: RepoRef,
@@ -99,10 +106,13 @@ function parse<T>(schema: Parser<T>, path: string, data: unknown): T {
   }
 }
 
-/** The newest ten commit subjects of a compare (GitHub lists oldest first). */
+/** The most commit subjects a compare lists each way. */
+export const COMMIT_SUBJECTS_LISTED = 10;
+
+/** The newest commit subjects of a compare (GitHub lists oldest first). */
 function commitSubjects(result: CompareApiResult): string[] {
   return result.commits
-    .slice(-10)
+    .slice(-COMMIT_SUBJECTS_LISTED)
     .reverse()
     .map((c) => c.commit.message.split('\n')[0]);
 }
@@ -141,22 +151,26 @@ export function createGitHubReader({
   return {
     async listWorkflowRuns(
       ref,
-      { perPage = 100, excludePullRequests = true } = {},
+      { perPage = GITHUB_PER_PAGE, pages = 1, excludePullRequests = true } = {},
     ) {
-      const query = `per_page=${String(perPage)}&exclude_pull_requests=${String(excludePullRequests)}`;
-      return (
-        await get(
+      const runs: WorkflowRun[] = [];
+      for (let page = 1; page <= pages; page++) {
+        const query = `per_page=${String(perPage)}&page=${String(page)}&exclude_pull_requests=${String(excludePullRequests)}`;
+        const { workflow_runs: batch } = await get(
           repoUrl(ref, `actions/runs?${query}`),
           WorkflowRunsResponseSchema,
-        )
-      ).workflow_runs;
+        );
+        runs.push(...batch);
+        if (batch.length < perPage) break;
+      }
+      return runs;
     },
 
     listRunJobs: (ref, runId, { filter = 'latest' } = {}) =>
       getAll(
         repoUrl(
           ref,
-          `actions/runs/${String(runId)}/jobs?filter=${filter}&per_page=100`,
+          `actions/runs/${String(runId)}/jobs?filter=${filter}&per_page=${String(GITHUB_PER_PAGE)}`,
         ),
         JobsResponseSchema,
         (page) => page.jobs,
@@ -164,7 +178,7 @@ export function createGitHubReader({
 
     listWorkflows: (ref) =>
       getAll(
-        repoUrl(ref, 'actions/workflows?per_page=100'),
+        repoUrl(ref, `actions/workflows?per_page=${String(GITHUB_PER_PAGE)}`),
         WorkflowsResponseSchema,
         (page) => page.workflows,
       ),
@@ -194,14 +208,14 @@ export function createGitHubReader({
 
     listBranches: (ref) =>
       getAll(
-        repoUrl(ref, 'branches?per_page=100'),
+        repoUrl(ref, `branches?per_page=${String(GITHUB_PER_PAGE)}`),
         BranchesResponseSchema,
         asIs<Branch>,
       ),
 
     listRepos: () =>
       getAll(
-        `${API_BASE}/user/repos?per_page=100`,
+        `${API_BASE}/user/repos?per_page=${String(GITHUB_PER_PAGE)}`,
         ReposResponseSchema,
         asIs<Repo>,
       ),

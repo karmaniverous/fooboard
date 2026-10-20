@@ -1,12 +1,15 @@
 /**
- * Refresh one Amplify row (spec.md §4.3.4): per stage, the jobs across the
- * row's sources on branches matching the stage pattern, derived into a
- * cell. A source whose credential is missing or rejected makes the row
- * *needs credential*; throttling keeps the previous cells; other failures
- * show *error*.
+ * The Amplify rows sharing apps, refreshed together (spec.md A§4.3.7):
+ * each app is read once per poll however many rows use it (its branch
+ * list, then the jobs of the branches the branch rule chooses), each job
+ * translated once into a record, and records placed in each row's cells
+ * from the apps that row reads. Records kept by *keep* that land in no
+ * cell of any row reading their app are unmapped, with each row's reason;
+ * a full read gives the row's empty cells a window hint.
  *
  * @module
  */
+import type { JSONValue } from 'json-p3';
 import { objectify } from 'radash';
 
 import {
@@ -15,130 +18,178 @@ import {
 } from '@/domain/config/credentialRefs';
 import type { AmplifyRow } from '@/domain/config/row';
 import type { Stage } from '@/domain/config/stage';
-import type { StatusSet } from '@/domain/config/statusSets';
 import {
-  type AmplifyCellDerivation,
+  type CellDerivation,
   type CredentialStatus,
-  deriveAmplifyCell,
+  deriveCell,
   type ProviderFailure,
 } from '@/domain/derivation';
-import { inProgress } from '@/domain/statuses/resolved';
+import { type CellRules, placeCell } from '@/domain/model/cell';
+import { asJson } from '@/domain/model/json';
+import type { SourceRuleOf } from '@/domain/model/sourceRule';
+import type { KeyProblem, RecordDoc } from '@/domain/model/translate';
+import { evaluateRule } from '@/domain/rules/check';
+import { amplifyTranslate } from '@/domain/statuses/documents';
 import { AmplifyAuthError, AmplifyThrottledError } from '@/lib/amplify/errors';
 import {
   type AmplifyReaderFor,
-  collectRowJobs,
+  appKey,
   memoizeReaderFor,
+  readAppJobs,
   type ResolvedAmplifySource,
 } from '@/lib/amplify/rowJobs';
 
+import { amplifyUnmapped } from './amplifyUnmapped';
+import { emptyCells } from './cells';
 import { failureOutcome } from './providerOutcome';
+import type { UnmappedRun } from './types';
 
-/** A refreshed Amplify row, or throttled (keep the previous cells). */
-export type AmplifyRowRefresh =
-  | { kind: 'refreshed'; cells: Record<string, AmplifyCellDerivation> }
+export type AmplifyRowsRefresh =
+  | {
+      kind: 'refreshed';
+      /** Each row's cells, by stage id. */
+      rows: Record<string, Record<string, CellDerivation>>;
+      /** Keys the source rule couldn't translate cleanly. */
+      keyProblems: KeyProblem[];
+      unmapped: UnmappedRun[];
+      /** Rows reading an app whose read came back full. */
+      fullRows: string[];
+      /** The branch list entries read. */
+      branches: JSONValue[];
+    }
   | { kind: 'rate-limited' };
 
-/** The status set a cell in a stage uses (A§4.3.6). */
-type SetFor = (stageId: string) => StatusSet;
-
-function emptyRow(
-  stages: readonly Stage[],
-  setFor: SetFor,
-  credentialStatus: CredentialStatus,
-  providerFailure?: ProviderFailure,
-): AmplifyRowRefresh {
-  const cells = objectify(
-    stages,
-    (s) => s.id,
-    (s) =>
-      deriveAmplifyCell({
-        jobsByBranch: [],
-        set: setFor(s.id),
-        branchExists: false,
-        credentialStatus,
-        providerFailure,
-      }),
-  );
-  return { kind: 'refreshed', cells };
+export interface AmplifyRowsInput {
+  rows: readonly AmplifyRow[];
+  stages: readonly Stage[];
+  rulesFor: (row: AmplifyRow, stageId: string) => CellRules;
+  defaultsFor: (row: AmplifyRow) => DefaultCredentials;
+  readersFor: (credentialId: string) => AmplifyReaderFor | undefined;
+  source: SourceRuleOf<'amplify'>;
 }
 
-/** Refresh one Amplify row. Each source uses its own AWS key if set, else
- * the dashboard default; `readersFor(credentialId)` is `undefined` when
- * that key hasn't been entered. Any source without a usable key makes the
- * row *needs credential*. */
-export async function refreshAmplifyRow(
+/** A row's apps with their credentials, or `undefined` when one has no
+ * credential or no reader. */
+export function resolvedSources(
   row: AmplifyRow,
-  stages: readonly Stage[],
-  setFor: SetFor,
   defaults: DefaultCredentials,
-  readersFor: (credentialId: string) => AmplifyReaderFor | undefined,
-): Promise<AmplifyRowRefresh> {
-  const sources: ResolvedAmplifySource[] = [];
-  for (const source of row.sources) {
-    const credentialId = resolveCredentialId(
-      defaults,
-      'aws',
-      source.credentialId,
-    );
-    if (!credentialId) return emptyRow(stages, setFor, 'missing');
-    sources.push({ ...source, credentialId });
+  readersFor: AmplifyRowsInput['readersFor'],
+): ResolvedAmplifySource[] | undefined {
+  const out: ResolvedAmplifySource[] = [];
+  for (const s of row.sources) {
+    const credentialId = resolveCredentialId(defaults, 'aws', s.credentialId);
+    if (!credentialId || !readersFor(credentialId)) return undefined;
+    out.push({ ...s, credentialId });
   }
-  const readers = new Map(
-    sources.map((s) => [s.credentialId, readersFor(s.credentialId)]),
-  );
-  if ([...readers.values()].some((r) => r === undefined)) {
-    return emptyRow(stages, setFor, 'missing');
-  }
-  // One read per source and branch, however many stages share it.
-  const readerFor: AmplifyReaderFor = memoizeReaderFor((source) => {
-    const forCredential = readers.get(source.credentialId);
-    if (!forCredential) throw new Error('missing Amplify credential');
-    return forCredential(source);
-  });
+  return out;
+}
 
+const emptyRowCells = (
+  input: AmplifyRowsInput,
+  row: AmplifyRow,
+  credentialStatus: CredentialStatus,
+  providerFailure?: ProviderFailure,
+) =>
+  emptyCells(
+    input.stages,
+    (stageId) => input.rulesFor(row, stageId).set,
+    credentialStatus,
+    providerFailure,
+  );
+
+interface AppRecords {
+  records: RecordDoc[];
+  full: boolean;
+}
+
+export async function refreshAmplifyRows(
+  input: AmplifyRowsInput,
+): Promise<AmplifyRowsRefresh> {
+  const { source } = input;
+  const rows: Record<string, Record<string, CellDerivation>> = {};
+  const reading = new Map<string, ResolvedAmplifySource[]>();
+  for (const row of input.rows) {
+    const sources = resolvedSources(
+      row,
+      input.defaultsFor(row),
+      input.readersFor,
+    );
+    if (sources) reading.set(row.id, sources);
+    else rows[row.id] = emptyRowCells(input, row, 'missing');
+  }
+  const readerFor: AmplifyReaderFor = memoizeReaderFor((s) => {
+    const forCredential = input.readersFor(s.credentialId);
+    if (!forCredential) throw new Error('missing Amplify credential');
+    return forCredential(s);
+  });
+  const keyProblems: KeyProblem[] = [];
+  const branches: JSONValue[] = [];
+  const apps = new Map<string, AppRecords>();
   try {
-    const cells: Record<string, AmplifyCellDerivation> = {};
-    for (const stage of stages) {
-      const jobs = await collectRowJobs(
-        sources,
-        stage.branchPattern,
-        readerFor,
-      );
-      cells[stage.id] = deriveAmplifyCell({
-        ...jobs,
-        set: setFor(stage.id),
-        credentialStatus: 'ok',
+    for (const s of [...reading.values()].flat()) {
+      const key = appKey(s);
+      if (apps.has(key)) continue;
+      const read = await readAppJobs(s, readerFor, source.reader);
+      branches.push(...read.branches.map((b) => asJson(b)));
+      const translated = read.jobs.map((j) => amplifyTranslate(j, source));
+      keyProblems.push(...translated.flatMap((t) => t.problems));
+      apps.set(key, {
+        records: translated
+          .map((t) => t.record)
+          .filter((r) => evaluateRule(source.keep, r)),
+        full: read.full,
       });
     }
-    return { kind: 'refreshed', cells };
   } catch (err) {
     const outcome = failureOutcome(err, {
       isRateLimit: (e) => e instanceof AmplifyThrottledError,
       isAuth: (e) => e instanceof AmplifyAuthError,
     });
-    return outcome.kind === 'rate-limited'
-      ? outcome
-      : emptyRow(
-          stages,
-          setFor,
+    if (outcome.kind === 'rate-limited') return outcome;
+    for (const row of input.rows)
+      if (reading.has(row.id))
+        rows[row.id] = emptyRowCells(
+          input,
+          row,
           outcome.credentialStatus,
           outcome.providerFailure,
         );
+    return {
+      kind: 'refreshed',
+      rows,
+      keyProblems: [],
+      unmapped: [],
+      fullRows: [],
+      branches: [],
+    };
   }
-}
-
-/** Cell views for an Amplify row: a cell is active while its status
- * counts toward an in-progress summary (it drives the faster poll). */
-export function amplifyCellViews(
-  cells: Readonly<Record<string, AmplifyCellDerivation>>,
-): Record<string, { derivation: AmplifyCellDerivation; active: boolean }> {
-  return Object.fromEntries(
-    Object.entries(cells).map(([stageId, derivation]) => [
-      stageId,
-      {
-        derivation,
-        active: inProgress(derivation),
+  const appsOf = (rowId: string) =>
+    (reading.get(rowId) ?? []).flatMap((s) => apps.get(appKey(s)) ?? []);
+  for (const row of input.rows) {
+    if (!reading.has(row.id)) continue;
+    const records = appsOf(row.id).flatMap((a) => a.records);
+    rows[row.id] = objectify(
+      input.stages,
+      (s) => s.id,
+      (s) => {
+        const rules = input.rulesFor(row, s.id);
+        return deriveCell({
+          placed:
+            rules.stage === undefined ? undefined : placeCell(records, rules),
+          set: rules.set,
+          credentialStatus: 'ok',
+        });
       },
-    ]),
-  );
+    );
+  }
+  return {
+    kind: 'refreshed',
+    rows,
+    keyProblems,
+    unmapped: amplifyUnmapped(input, reading, apps),
+    fullRows: input.rows
+      .filter((r) => appsOf(r.id).some((a) => a.full))
+      .map((r) => r.id),
+    branches,
+  };
 }

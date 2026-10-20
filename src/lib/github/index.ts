@@ -9,5 +9,10 @@
 export { GitHubAuthError, RateLimitedError } from './errors';
 export { mapRunWithJobs, mapWorkflowRun } from './mapToDerivation';
 export { isOverPollingShare, type RateLimitBudget } from './rateLimit';
-export type { CompareResult, GitHubReader } from './reader';
+export {
+  type CompareResult,
+  GITHUB_PER_PAGE,
+  type GitHubReader,
+  pagesFor,
+} from './reader';
 export type { WorkflowRun } from './schemas';

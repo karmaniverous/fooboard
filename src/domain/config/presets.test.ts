@@ -5,12 +5,14 @@
  */
 import { describe, expect, it } from 'vitest';
 
+import { branchOf } from '@/domain/rules/branch';
+
 import { buildPresetStages, createDashboard } from './presets';
 
 describe('buildPresetStages', () => {
   it('builds the env-branches chain dev -> staging -> prod', () => {
     const stages = buildPresetStages('env-branches');
-    expect(stages.map((s) => [s.name, s.branchPattern])).toEqual([
+    expect(stages.map((s) => [s.name, branchOf(s.rules.github)])).toEqual([
       ['dev', 'dev'],
       ['staging', 'staging'],
       ['prod', 'main'],
@@ -24,7 +26,7 @@ describe('buildPresetStages', () => {
 
   it('builds the gitflow-ish chain dev -> test -> prod', () => {
     const stages = buildPresetStages('gitflow-ish');
-    expect(stages.map((s) => [s.name, s.branchPattern])).toEqual([
+    expect(stages.map((s) => [s.name, branchOf(s.rules.github)])).toEqual([
       ['dev', 'develop'],
       ['test', 'release/**'],
       ['prod', 'main'],
@@ -43,7 +45,7 @@ describe('buildPresetStages', () => {
     const bali = stages.find((s) => s.name === 'bali');
     const release = stages.find((s) => s.name === 'release');
     const prod = stages.find((s) => s.name === 'prod');
-    expect(bali?.branchPattern).toBe('preview/bali');
+    expect(branchOf(bali?.rules.amplify)).toBe('preview/bali');
     expect(bali?.sourceStageId).toBe(dev.id);
     expect(release?.sourceStageId).toBe(dev.id);
     expect(prod?.sourceStageId).toBe(release?.id);

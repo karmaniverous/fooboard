@@ -9,6 +9,9 @@
  * @module
  */
 import { type Dashboard, DashboardSchema } from '@/domain/config/dashboard';
+import { branchRules } from '@/domain/config/placement';
+import { ITEM_NAME_PATH } from '@/domain/model/keys';
+import { all, is } from '@/domain/model/ruleBuilders';
 
 /** Credential reference ids the demo providers answer for. */
 const DEMO_GITHUB_CREDENTIAL = 'demo-github';
@@ -56,13 +59,7 @@ const github = DEMO_GITHUB_REPOS.map((name) => ({
   displayName: name,
   ...(name === DEMO_KEYED_REPO
     ? {
-        rowKeyTests: [
-          {
-            field: 'jobName' as const,
-            operator: 'contains' as const,
-            value: name,
-          },
-        ],
+        itemRule: all(is(ITEM_NAME_PATH, `*${name}*`)),
       }
     : {}),
 }));
@@ -84,32 +81,32 @@ export const demoDashboard: Dashboard = DashboardSchema.parse({
     {
       id: 'bali',
       name: 'Bali',
-      branchPattern: 'preview/bali',
+      rules: branchRules('preview/bali'),
       sourceStageId: 'dev',
     },
     {
       id: 'spokane',
       name: 'Spokane',
-      branchPattern: 'preview/spokane',
+      rules: branchRules('preview/spokane'),
       sourceStageId: 'dev',
     },
     {
       id: 'texas',
       name: 'Texas',
-      branchPattern: 'preview/texas',
+      rules: branchRules('preview/texas'),
       sourceStageId: 'dev',
     },
-    { id: 'dev', name: 'Dev', branchPattern: 'dev' },
+    { id: 'dev', name: 'Dev', rules: branchRules('dev') },
     {
       id: 'release',
       name: 'Release',
-      branchPattern: 'release/*',
+      rules: branchRules('release/*'),
       sourceStageId: 'dev',
     },
     {
       id: 'prod',
       name: 'Prod',
-      branchPattern: 'main',
+      rules: branchRules('main'),
       sourceStageId: 'release',
     },
   ],
@@ -125,7 +122,7 @@ export const demoDashboard: Dashboard = DashboardSchema.parse({
       id: 'frontend',
       label: 'Frontend',
       memberIds: amplify.map((r) => r.id),
-      branchPatternOverrides: { release: 'preview/release' },
+      stageRules: { release: branchRules('preview/release') },
       // The frontends' AWS key is the group's, not the dashboard's (C-1a).
       defaultCredentials: { aws: DEMO_AWS_CREDENTIAL },
     },

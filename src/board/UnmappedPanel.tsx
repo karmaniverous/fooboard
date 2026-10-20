@@ -1,7 +1,8 @@
 /**
- * Unmapped runs (spec.md C-15): recent runs the board could not place,
- * with why, a link to each run, and *Add test* to open the editor on the
- * fix, pre-filled.
+ * Unmapped records (spec.md C-15, A§4.3.7): recent GitHub runs and
+ * Amplify jobs the board could not place, with why (per row, when several
+ * read its repo or app), a link to each, and *Add rule* to open the
+ * editor on the fix.
  *
  * @module
  */
@@ -14,8 +15,11 @@ export function UnmappedPanel({
   runs,
   onAddTest,
   onAddOverride,
+  rowNames,
 }: {
   runs: readonly UnmappedRun[];
+  /** Row display names by id, for per-row reasons. */
+  rowNames?: Readonly<Record<string, string>>;
   /** Absent when there's no fix to pre-fill for this run. */
   onAddTest: (run: UnmappedRun) => (() => void) | undefined;
   /** For a branch no stage matches: a branch-pattern override instead of
@@ -36,15 +40,15 @@ export function UnmappedPanel({
         const override = onAddOverride?.(run);
         return (
           <li
-            key={`${run.repo}-${String(run.runId)}`}
+            key={run.id}
             className="flex flex-col gap-1 rounded-md border p-2"
           >
             <div className="flex items-center gap-2">
               <ExternalLink href={run.htmlUrl} className="font-medium">
-                {run.workflowName}
+                {run.title}
               </ExternalLink>
               <span className="text-xs text-muted-foreground">
-                {run.repo}
+                {run.where}
                 {run.branch ? ` · ${run.branch}` : ''}
               </span>
               {add && (
@@ -54,7 +58,7 @@ export function UnmappedPanel({
                   className="ml-auto"
                   onClick={add}
                 >
-                  Add test
+                  Add rule
                 </Button>
               )}
               {override && (
@@ -68,9 +72,20 @@ export function UnmappedPanel({
                 </Button>
               )}
             </div>
-            <span className="text-xs">
-              {describeUnmappedReason(run.reason)}
-            </span>
+            {run.rows.length > 1 ? (
+              <ul className="text-xs">
+                {run.rows.map(({ rowId, reason }) => (
+                  <li key={rowId}>
+                    {rowNames?.[rowId] ?? rowId}:{' '}
+                    {describeUnmappedReason(reason)}
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <span className="text-xs">
+                {describeUnmappedReason(run.reason)}
+              </span>
+            )}
           </li>
         );
       })}

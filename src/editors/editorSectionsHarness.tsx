@@ -9,6 +9,7 @@ import { useState } from 'react';
 import { MemoryRouter } from 'react-router-dom';
 
 import { type Dashboard, DashboardSchema } from '@/domain/config/dashboard';
+import { branchRules } from '@/domain/config/placement';
 import type { EngineProviders } from '@/engine';
 import { amplifyApp } from '@/lib/amplify/sdkShapes';
 import type { GitHubReader } from '@/lib/github/reader';
@@ -32,8 +33,8 @@ const start = DashboardSchema.parse({
     { type: 'github', id: 'web', repo: 'acme/web', displayName: 'web' },
   ],
   stages: [
-    { id: 'dev', name: 'dev', branchPattern: 'dev' },
-    { id: 'prod', name: 'prod', branchPattern: 'main' },
+    { id: 'dev', name: 'dev', rules: branchRules('dev') },
+    { id: 'prod', name: 'prod', rules: branchRules('main') },
   ],
 });
 

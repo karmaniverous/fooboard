@@ -11,12 +11,12 @@ import { Choice } from '@/components/Choice';
 import { Disclosure } from '@/components/Disclosure';
 import type { Dashboard } from '@/domain/config/dashboard';
 import type { RowGroup } from '@/domain/config/groups';
-import type { Row } from '@/domain/config/row';
 import {
+  type Provider,
   PROVIDER_LABELS,
-  STATUS_PROVIDERS,
-  type StatusProvider,
-} from '@/domain/config/statusSets';
+  PROVIDERS,
+} from '@/domain/config/providers';
+import type { Row } from '@/domain/config/row';
 import { findStatusSet, inheritedStatusSetId } from '@/domain/statuses/resolve';
 
 import {
@@ -32,14 +32,14 @@ const nameOf = (dashboard: Dashboard, id: string) =>
 /** The provider's sets, after an *inherit* option naming `inherited`. */
 const withInherit = (
   dashboard: Dashboard,
-  provider: StatusProvider,
+  provider: Provider,
   inherited: string,
 ) => [
   { value: '', label: `Inherit (${nameOf(dashboard, inherited)})` },
   ...setOptions(dashboard, provider),
 ];
 
-const PROVIDERS = STATUS_PROVIDERS.map((p) => [p, PROVIDER_LABELS[p]] as const);
+const PROVIDER_OPTIONS = PROVIDERS.map((p) => [p, PROVIDER_LABELS[p]] as const);
 
 export function GroupStatusSets({
   dashboard,
@@ -54,7 +54,7 @@ export function GroupStatusSets({
 }): React.JSX.Element {
   return (
     <div className="flex flex-wrap items-center gap-1">
-      {PROVIDERS.map(([provider, noun]) => (
+      {PROVIDER_OPTIONS.map(([provider, noun]) => (
         <Choice
           key={provider}
           label={`${noun} status set for ${name}`}

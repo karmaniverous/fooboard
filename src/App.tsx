@@ -4,6 +4,7 @@
  *
  * @module
  */
+import { lazy, Suspense } from 'react';
 import { Route, Routes } from 'react-router-dom';
 
 import { AppNavProvider } from '@/components/AppNavProvider';
@@ -12,12 +13,23 @@ import { Header } from '@/components/Header';
 import { ThemeProvider } from '@/components/ThemeProvider';
 import { useViewportWidthVar } from '@/lib/useViewportWidthVar';
 import { PINNED_FULL } from '@/lib/utils';
-import { DashboardPage } from '@/pages/DashboardPage';
-import { DemoPage } from '@/pages/DemoPage';
 import { Home } from '@/pages/Home';
-import { AmplifySpikePage } from '@/pages/spike/AmplifySpikePage';
-import { GithubSpikePage } from '@/pages/spike/GithubSpikePage';
 import { useStores } from '@/storage/storesContext';
+
+// Board and spike pages load on first visit, so the home page doesn't wait
+// for the board, editors and readers.
+const DashboardPage = lazy(async () => ({
+  default: (await import('@/pages/DashboardPage')).DashboardPage,
+}));
+const DemoPage = lazy(async () => ({
+  default: (await import('@/pages/DemoPage')).DemoPage,
+}));
+const AmplifySpikePage = lazy(async () => ({
+  default: (await import('@/pages/spike/AmplifySpikePage')).AmplifySpikePage,
+}));
+const GithubSpikePage = lazy(async () => ({
+  default: (await import('@/pages/spike/GithubSpikePage')).GithubSpikePage,
+}));
 
 /** Pages other than boards are as wide as the window, so their text wraps
  * instead of widening the shell (which grows only for a wide board). */
@@ -44,34 +56,42 @@ export default function App(): React.JSX.Element {
             </p>
           )}
           <main className="flex-1">
-            <Routes>
-              <Route
-                path="/"
-                element={
-                  <Page>
-                    <Home />
-                  </Page>
-                }
-              />
-              <Route path="/demo" element={<DemoPage />} />
-              <Route path="/d/:id" element={<DashboardPage />} />
-              <Route
-                path="/spike/amplify"
-                element={
-                  <Page>
-                    <AmplifySpikePage />
-                  </Page>
-                }
-              />
-              <Route
-                path="/spike/github"
-                element={
-                  <Page>
-                    <GithubSpikePage />
-                  </Page>
-                }
-              />
-            </Routes>
+            <Suspense
+              fallback={
+                <p role="status" className="p-5 text-sm text-muted-foreground">
+                  Loading…
+                </p>
+              }
+            >
+              <Routes>
+                <Route
+                  path="/"
+                  element={
+                    <Page>
+                      <Home />
+                    </Page>
+                  }
+                />
+                <Route path="/demo" element={<DemoPage />} />
+                <Route path="/d/:id" element={<DashboardPage />} />
+                <Route
+                  path="/spike/amplify"
+                  element={
+                    <Page>
+                      <AmplifySpikePage />
+                    </Page>
+                  }
+                />
+                <Route
+                  path="/spike/github"
+                  element={
+                    <Page>
+                      <GithubSpikePage />
+                    </Page>
+                  }
+                />
+              </Routes>
+            </Suspense>
           </main>
           <Footer />
         </div>

@@ -1,76 +1,81 @@
 /**
- * Unmapped-run reasons (spec.md C-15): why a recent run on a dashboard's
- * repos was not placed in any cell. `pull_request`/`pull_request_target`
- * runs are always excluded (spec.md §4.3.1) and are never "unmapped"; a run
- * that fails the workflow filter is bucketed with "no stage matches
- * branch", since from the mapping engine's view it never becomes a
- * candidate for any stage either way. Pure; no network.
+ * Unmapped records (spec.md C-15, A§4.3.7): why a kept record lands in no
+ * cell of any row reading its repo or app. Records dropped by *keep* were
+ * filtered on purpose and are never unmapped. Pure.
  *
  * @module
  */
-import type { MappingSettings } from '@/domain/config/mappingSettings';
-import type { MatchTest } from '@/domain/config/matchTest';
-import { githubRunDocument } from '@/domain/statuses/documents';
 
-import { isCandidateRun, isExcludedEvent } from './candidateRuns';
-import type { GithubRunWithJobs } from './types';
+import { type CellRules, counted } from '@/domain/model/cell';
+import { textOf } from '@/domain/model/json';
+import type { RecordDoc } from '@/domain/model/translate';
+import { evaluateRule } from '@/domain/rules/check';
+
+/** Why a record is unmapped. */
+export const UNMAPPED = {
+  noStageMatches: 'no-stage-matches',
+  noRowMatches: 'no-row-matches',
+  noItemCounts: 'no-item-counts',
+  noOrderKey: 'no-order-key',
+} as const;
 
 export type UnmappedReason =
-  | { kind: 'no-stage-matches-branch'; branch: string }
-  | { kind: 'no-relevant-job' }
-  | { kind: 'no-row-key-matches' };
+  | { kind: typeof UNMAPPED.noStageMatches; branch?: string }
+  | { kind: typeof UNMAPPED.noRowMatches }
+  | { kind: typeof UNMAPPED.noItemCounts }
+  | { kind: typeof UNMAPPED.noOrderKey };
 
-/** Human-readable text for the Unmapped runs panel (spec.md C-15). */
+/** Text for the Unmapped panel. */
 export function describeUnmappedReason(reason: UnmappedReason): string {
   switch (reason.kind) {
-    case 'no-stage-matches-branch':
-      return `no stage matches branch "${reason.branch}"`;
-    case 'no-relevant-job':
-      return 'no job its status set covers';
-    case 'no-row-key-matches':
-      return 'no row key matches';
+    case 'no-stage-matches':
+      return reason.branch === undefined
+        ? 'no stage rule matches'
+        : `no stage rule matches branch "${reason.branch}"`;
+    case 'no-row-matches':
+      return 'no row rule matches';
+    case 'no-item-counts':
+      return 'no item counts';
+    case 'no-order-key':
+      return 'no order key';
   }
 }
 
-/** What classification needs of a row reading the run's repo (repo
- * membership is the caller's responsibility: pass only those rows). */
-export interface RowKeyInput {
-  rowKeyTests: readonly MatchTest[];
-  /** The row's effective branch patterns, one per stage (C-14c). */
-  branchPatterns: readonly string[];
-  /** The job test of the status set those cells use (A§4.3.6). */
-  jobTest: Record<string, unknown>;
-}
-
-/**
- * Classify why `entry` (a run with its jobs) was not placed in any cell,
- * given the rows reading its repo. Returns `undefined` if the run **is**
- * mapped to at least one row and stage, meaning it should not appear in
- * the Unmapped runs panel.
- */
-export function classifyUnmappedRun(
-  entry: GithubRunWithJobs,
-  rows: readonly RowKeyInput[],
-  mapping: MappingSettings,
+/** Why `record` lands in none of `cells`, or `undefined` when it lands in
+ * one. Without its items read (`itemsKnown` false) only the stage and
+ * row rules can say. */
+export function unmappedReason(
+  record: RecordDoc,
+  cells: readonly CellRules[],
+  itemsKnown: boolean,
 ): UnmappedReason | undefined {
-  if (isExcludedEvent(entry.run.event)) return undefined;
-
-  // Only rows whose own (effective) patterns take the branch can place it.
-  const branchRows = rows.filter((row) =>
-    row.branchPatterns.some((p) => isCandidateRun(entry, mapping, p)),
+  if (cells.some((c) => (record[c.order] ?? null) === null))
+    return { kind: 'no-order-key' };
+  const staged = cells.filter(
+    (c) => c.stage !== undefined && evaluateRule(c.stage, record),
   );
-  if (branchRows.length === 0) {
-    return {
-      kind: 'no-stage-matches-branch',
-      branch: entry.run.headBranch ?? '',
-    };
+  if (staged.length === 0)
+    return { kind: 'no-stage-matches', branch: textOf(record.branch) };
+  const rowed = staged.filter((c) => evaluateRule(c.record, record));
+  if (rowed.length === 0) return { kind: 'no-row-matches' };
+  if (!itemsKnown) return undefined;
+  return rowed.some((c) => counted(record, c.items, c.set.items))
+    ? undefined
+    : { kind: 'no-item-counts' };
+}
+
+/** Why each row reading `record`'s repo or app leaves it unplaced, or
+ * `undefined` when one of them places it (or none reads it). */
+export function rowReasons(
+  record: RecordDoc,
+  rows: readonly { rowId: string; cells: readonly CellRules[] }[],
+  itemsKnown: boolean,
+): { rowId: string; reason: UnmappedReason }[] | undefined {
+  const reasons: { rowId: string; reason: UnmappedReason }[] = [];
+  for (const { rowId, cells } of rows) {
+    const reason = unmappedReason(record, cells, itemsKnown);
+    if (!reason) return undefined;
+    reasons.push({ rowId, reason });
   }
-  // Placed when a row whose patterns take the branch sees a job its status
-  // set covers (A§4.3.6).
-  const sees = (row: RowKeyInput, keys: readonly MatchTest[]) =>
-    githubRunDocument(entry, keys, row.jobTest) !== undefined;
-  if (!branchRows.some((row) => sees(row, [])))
-    return { kind: 'no-relevant-job' };
-  if (branchRows.some((row) => sees(row, row.rowKeyTests))) return undefined;
-  return { kind: 'no-row-key-matches' };
+  return reasons.length > 0 ? reasons : undefined;
 }

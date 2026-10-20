@@ -1,139 +1,127 @@
 /**
- * Refresh the GitHub rows that read one repository with one token (spec.md
- * §4.3.2-4.3.5). Several rows can share a repo (keyed monorepo rows), so
- * runs and branches are read once per repo, and each run's jobs at most
- * once, however many rows and stages need them. Unmapped runs are judged
- * against every row on the repo, so a run another row shows isn't
- * reported. Provider errors become cell states: a missing or rejected
- * token shows *needs credential*, rate limiting keeps the previous cells,
- * anything else shows *error*.
+ * One GitHub repo's refresh (spec.md A§4.3.7): read its recent runs once,
+ * translate each into a record with the GitHub source rule, and place
+ * records in every cell of the rows reading it, newest first by the order
+ * key. A run's jobs are read only when a cell needs them (its rules test
+ * items, or the run passes its record and stage rules), and once per run.
  *
  * @module
  */
-import { objectify } from 'radash';
+import type { JSONValue } from 'json-p3';
+import { mapValues, objectify } from 'radash';
 
-import type { MappingSettings } from '@/domain/config/mappingSettings';
 import type { GithubRow } from '@/domain/config/row';
 import type { Stage } from '@/domain/config/stage';
-import type { StatusSet } from '@/domain/config/statusSets';
 import {
-  classifyUnmappedRun,
   type CredentialStatus,
-  deriveGithubCell,
-  type GithubCellDerivation,
-  type GithubRunWithJobs,
-  isCandidateRun,
+  deriveCell,
+  type GithubWorkflowRun,
+  isExcludedEvent,
   type ProviderFailure,
+  rowReasons,
 } from '@/domain/derivation';
-import { matchesBranchPattern } from '@/domain/matching/branchPattern';
-import { inProgress } from '@/domain/statuses/resolved';
 import {
+  type CellRules,
+  needsItems,
+  placeCell,
+  placed,
+  ruleNeedsItems,
+} from '@/domain/model/cell';
+import { asJson } from '@/domain/model/json';
+import type { SourceRuleOf } from '@/domain/model/sourceRule';
+import {
+  compareOrder,
+  type KeyProblem,
+  type RecordDoc,
+  translate,
+} from '@/domain/model/translate';
+import { evaluateRule } from '@/domain/rules/check';
+import {
+  GITHUB_PER_PAGE,
   GitHubAuthError,
   type GitHubReader,
   mapRunWithJobs,
   mapWorkflowRun,
+  pagesFor,
   RateLimitedError,
   type WorkflowRun,
 } from '@/lib/github';
 
+import { cellView, emptyCells } from './cells';
 import { failureOutcome } from './providerOutcome';
-import type { UnmappedRun } from './types';
+import type { CellView, UnmappedRun } from './types';
 
-/** A branch in the repo, dated by its newest run (REST branches carry no
- * date; branches without runs date to the epoch). */
-export interface DatedBranch {
+/** A branch and when it last ran, for branch suggestions. */
+interface DatedBranch {
   name: string;
   updatedAt: string;
 }
 
-/** One derived cell and whether it is still in progress (polled fast). */
-interface CellView {
-  derivation: GithubCellDerivation;
-  active: boolean;
-}
-
-/** Refreshed rows of one repo: cells keyed by row then stage. */
 export interface GithubRepoRefresh {
   kind: 'refreshed';
   rows: Record<string, Record<string, CellView>>;
   unmapped: UnmappedRun[];
   branches: DatedBranch[];
+  /** Keys the source rule couldn't translate cleanly. */
+  keyProblems: KeyProblem[];
+  /** Did the read return as many runs as the source rule reads? */
+  full: boolean;
 }
 
-/** Rate limited: keep showing the previous cells (spec.md §4.3.5). */
 export interface GithubRepoRateLimited {
   kind: 'rate-limited';
 }
 
-/** `owner/name` → the reader's repo reference. */
 export const repoRef = (repo: string): { owner: string; repo: string } => {
   const [owner = '', name = ''] = repo.split('/');
   return { owner, repo: name };
 };
 
-/** The stages as one row sees them (effective branch patterns, C-14c). */
-export type StagesFor = (row: GithubRow) => readonly Stage[];
+/** A cell's rules (placement, status set, order key). */
+type RulesFor = (row: GithubRow, stageId: string) => CellRules;
 
-/** The status set a row's cell in a stage uses (A§4.3.6). */
-export type SetFor = (row: GithubRow, stageId: string) => StatusSet;
+/** What a GitHub refresh needs besides the reader. */
+export interface GithubRepoInput {
+  rows: readonly GithubRow[];
+  /** Every row reading the repo (for Unmapped). */
+  repoRows: readonly GithubRow[];
+  stages: readonly Stage[];
+  rulesFor: RulesFor;
+  source: SourceRuleOf<'github'>;
+}
 
-/** Every cell of every row shows the same empty state. */
 function emptyRows(
-  rows: readonly GithubRow[],
-  stagesFor: StagesFor,
-  setFor: SetFor,
-  mapping: MappingSettings,
+  input: GithubRepoInput,
   credentialStatus: CredentialStatus,
   providerFailure?: ProviderFailure,
 ): GithubRepoRefresh {
   const cellsOf = (row: GithubRow) =>
-    objectify(
-      stagesFor(row),
-      (s) => s.id,
-      (s): CellView => ({
-        active: false,
-        derivation: deriveGithubCell({
-          runs: [],
-          mapping,
-          set: setFor(row, s.id),
-          branchPattern: s.branchPattern,
-          rowKeyTests: row.rowKeyTests,
-          branchExists: false,
-          credentialStatus,
-          providerFailure,
-        }),
-      }),
+    mapValues(
+      emptyCells(
+        input.stages,
+        (stageId) => input.rulesFor(row, stageId).set,
+        credentialStatus,
+        providerFailure,
+      ),
+      cellView,
     );
   return {
     kind: 'refreshed',
-    rows: objectify(rows, (r) => r.id, cellsOf),
+    rows: objectify(input.rows, (r) => r.id, cellsOf),
     unmapped: [],
     branches: [],
+    keyProblems: [],
+    full: false,
   };
 }
 
-/** Refresh `rows` (one repo, one token). `repoRows` are all the
- * dashboard's rows on that repo, for unmapped classification. `reader` is
- * `undefined` if the token is missing. */
 export async function refreshGithubRepo(
-  rows: readonly GithubRow[],
-  repoRows: readonly GithubRow[],
-  /** The stages as each row sees them (effective patterns, C-14c). */
-  stagesFor: StagesFor,
-  setFor: SetFor,
-  mapping: MappingSettings,
+  input: GithubRepoInput,
   reader: GitHubReader | undefined,
 ): Promise<GithubRepoRefresh | GithubRepoRateLimited> {
-  if (!reader) return emptyRows(rows, stagesFor, setFor, mapping, 'missing');
+  if (!reader) return emptyRows(input, 'missing');
   try {
-    return await refreshWith(
-      rows,
-      repoRows,
-      stagesFor,
-      setFor,
-      mapping,
-      reader,
-    );
+    return await refreshWith(input, reader);
   } catch (err) {
     const outcome = failureOutcome(err, {
       isRateLimit: (e) => e instanceof RateLimitedError,
@@ -141,146 +129,134 @@ export async function refreshGithubRepo(
     });
     return outcome.kind === 'rate-limited'
       ? outcome
-      : emptyRows(
-          rows,
-          stagesFor,
-          setFor,
-          mapping,
-          outcome.credentialStatus,
-          outcome.providerFailure,
-        );
+      : emptyRows(input, outcome.credentialStatus, outcome.providerFailure);
   }
 }
 
+interface Candidate {
+  run: WorkflowRun;
+  mapped: GithubWorkflowRun;
+  /** The record without jobs, for rules that don't test items. */
+  shallow: RecordDoc;
+}
+
 async function refreshWith(
-  rows: readonly GithubRow[],
-  repoRows: readonly GithubRow[],
-  stagesFor: StagesFor,
-  setFor: SetFor,
-  mapping: MappingSettings,
+  input: GithubRepoInput,
   reader: GitHubReader,
 ): Promise<GithubRepoRefresh> {
-  const repo = rows[0]?.repo ?? '';
+  const { source } = input;
+  const { runs, excludePullRequests: excludePrs } = source.reader;
+  const repo = input.rows[0]?.repo ?? '';
   const ref = repoRef(repo);
-  const raw = await reader.listWorkflowRuns(ref, {
-    perPage: 100,
-    excludePullRequests: true,
-  });
-  const runs: GithubRunWithJobs[] = raw.map((r) => ({
-    run: mapWorkflowRun(r),
-    jobs: [],
-  }));
+  const raw = (
+    await reader.listWorkflowRuns(ref, {
+      perPage: GITHUB_PER_PAGE,
+      pages: pagesFor(runs),
+      excludePullRequests: true,
+    })
+  ).slice(0, runs);
+  const keepDeep = ruleNeedsItems(source.keep);
+  const keyProblems: KeyProblem[] = [];
+  const order = (r: RecordDoc): JSONValue => r[source.order] ?? null;
+  const candidates: Candidate[] = raw
+    .filter((r) => !(excludePrs && isExcludedEvent(r.event)))
+    .map((r) => {
+      const mapped = mapWorkflowRun(r);
+      const translated = translate(source, asJson({ run: mapped, jobs: [] }));
+      keyProblems.push(
+        ...translated.problems.filter((p) => p.scope === 'record'),
+      );
+      const shallow = translated.record;
+      return { run: r, mapped, shallow };
+    })
+    // Keep, when it can judge a run without its jobs; otherwise below.
+    .filter((c) => keepDeep || evaluateRule(source.keep, c.shallow))
+    .sort((a, b) => compareOrder(order(b.shallow), order(a.shallow)));
   const branchNames = (await reader.listBranches(ref)).map((b) => b.name);
 
-  const fetched = new Map<number, Promise<GithubRunWithJobs>>();
-  const withJobs = (run: WorkflowRun): Promise<GithubRunWithJobs> => {
-    let entry = fetched.get(run.id);
-    if (!entry) {
-      entry = reader
+  const fetched = new Map<number, Promise<RecordDoc>>();
+  const full = (run: WorkflowRun): Promise<RecordDoc> => {
+    let pending = fetched.get(run.id);
+    if (!pending) {
+      pending = reader
         .listRunJobs(ref, run.id, { filter: 'latest' })
-        .then((jobs) => mapRunWithJobs(run, jobs));
-      fetched.set(run.id, entry);
+        .then((jobs) => {
+          const t = translate(source, asJson(mapRunWithJobs(run, jobs)));
+          keyProblems.push(...t.problems.filter((p) => p.scope === 'item'));
+          return t.record;
+        });
+      fetched.set(run.id, pending);
     }
-    return entry;
+    return pending;
   };
 
   const cellFor = async (row: GithubRow, stage: Stage): Promise<CellView> => {
-    const input = {
-      mapping,
-      set: setFor(row, stage.id),
-      branchPattern: stage.branchPattern,
-      rowKeyTests: row.rowKeyTests,
-      branchExists: branchNames.some((b) =>
-        matchesBranchPattern(stage.branchPattern, b),
-      ),
-      credentialStatus: 'ok' as const,
-    };
-    // Newest first, through the whole fetched window (spec.md §4.3.2): jobs are
-    // read only until a run with a relevant job decides the cell.
-    const candidates = raw.filter((_, i) =>
-      isCandidateRun(runs[i], mapping, stage.branchPattern),
-    );
-    const seen: GithubRunWithJobs[] = [];
-    let derivation = deriveGithubCell({ ...input, runs: seen });
-    for (const run of candidates) {
-      seen.push(await withJobs(run));
-      derivation = deriveGithubCell({ ...input, runs: seen });
-      if (derivation.kind === 'ok') break;
+    const rules = input.rulesFor(row, stage.id);
+    const set = rules.set;
+    let found: ReturnType<typeof placeCell>;
+    if (rules.stage !== undefined) {
+      const deep = needsItems(rules);
+      for (const c of candidates) {
+        if (!deep && !placed(c.shallow, rules)) continue;
+        const record = await full(c.run);
+        if (keepDeep && !evaluateRule(source.keep, record)) continue;
+        found = placeCell([record], rules);
+        if (found) break;
+      }
     }
-    return { derivation, active: inProgress(derivation) };
+    return cellView(deriveCell({ placed: found, set, credentialStatus: 'ok' }));
   };
 
   const result: Record<string, Record<string, CellView>> = {};
-  for (const row of rows) {
+  for (const row of input.rows) {
     const cells: Record<string, CellView> = {};
-    for (const stage of stagesFor(row))
+    for (const stage of input.stages)
       cells[stage.id] = await cellFor(row, stage);
     result[row.id] = cells;
   }
 
-  const settled = new Map<number, GithubRunWithJobs>();
-  for (const [id, entry] of fetched) settled.set(id, await entry);
+  const rulesByRow = input.repoRows.map((row) => ({
+    rowId: row.id,
+    cells: input.stages.map((s) => input.rulesFor(row, s.id)),
+  }));
+  const unmapped: UnmappedRun[] = [];
+  for (const c of candidates) {
+    const pending = fetched.get(c.run.id);
+    const record = pending ? await pending : c.shallow;
+    const reasons = rowReasons(record, rulesByRow, pending !== undefined);
+    if (!reasons) continue;
+    const [{ reason }] = reasons;
+    unmapped.push({
+      provider: 'github',
+      id: `github:${repo}#${String(c.run.id)}`,
+      where: repo,
+      title: c.mapped.workflowName,
+      branch: c.mapped.headBranch,
+      htmlUrl: c.mapped.htmlUrl,
+      record,
+      reason,
+      rows: reasons,
+    });
+  }
   return {
     kind: 'refreshed',
     rows: result,
-    unmapped: unmappedRuns(
-      repo,
-      repoRows,
-      stagesFor,
-      setFor,
-      mapping,
-      runs,
-      settled,
+    unmapped,
+    branches: datedBranches(
+      branchNames,
+      candidates.map((c) => c.mapped),
     ),
-    branches: datedBranches(branchNames, runs),
+    keyProblems,
+    full: raw.length >= runs,
   };
 }
 
-/** Runs no row on the repo could place. Branch reasons need no jobs;
- * job-based reasons are reported only for runs whose jobs were fetched
- * (older candidates are superseded, not unmapped). */
-function unmappedRuns(
-  repo: string,
-  repoRows: readonly GithubRow[],
-  stagesFor: StagesFor,
-  setFor: SetFor,
-  mapping: MappingSettings,
-  runs: readonly GithubRunWithJobs[],
-  fetched: ReadonlyMap<number, GithubRunWithJobs>,
-): UnmappedRun[] {
-  // One input per row and stage: each cell may use its own status set.
-  const rowInputs = repoRows.flatMap((row) =>
-    stagesFor(row).map((s) => ({
-      rowKeyTests: row.rowKeyTests,
-      branchPatterns: [s.branchPattern],
-      jobTest: setFor(row, s.id).jobs,
-    })),
-  );
-  return runs.flatMap((entry) => {
-    const full = fetched.get(entry.run.id);
-    const reason = classifyUnmappedRun(full ?? entry, rowInputs, mapping);
-    if (!reason) return [];
-    if (reason.kind !== 'no-stage-matches-branch' && !full) return [];
-    return [
-      {
-        repo,
-        runId: entry.run.id,
-        workflowName: entry.run.workflowName,
-        branch: entry.run.headBranch,
-        htmlUrl: entry.run.htmlUrl,
-        reason,
-      },
-    ];
-  });
-}
-
-/** Date each branch by its newest run (runs arrive newest first). */
 function datedBranches(
   names: readonly string[],
-  runs: readonly GithubRunWithJobs[],
+  runs: readonly GithubWorkflowRun[],
 ): DatedBranch[] {
   const newest = new Map<string, string>();
-  for (const { run } of runs) {
+  for (const run of runs) {
     if (run.headBranch && !newest.has(run.headBranch)) {
       newest.set(run.headBranch, run.createdAt);
     }

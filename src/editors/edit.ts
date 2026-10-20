@@ -9,6 +9,7 @@ import { omit } from 'radash';
 import { mapCredentialRefs } from '@/credentials/dashboardCredentials';
 import type { Dashboard } from '@/domain/config/dashboard';
 import type { GithubRow } from '@/domain/config/row';
+import { freshId } from '@/lib/ids';
 
 import { tidyGroups } from './groupEdit';
 
@@ -19,11 +20,7 @@ export function uniqueId(base: string, taken: Iterable<string>): string {
       .toLowerCase()
       .replace(/[^a-z0-9]+/g, '-')
       .replace(/^-|-$/g, '') || 'item';
-  const used = new Set(taken);
-  if (!used.has(slug)) return slug;
-  let n = 2;
-  while (used.has(`${slug}-${String(n)}`)) n++;
-  return `${slug}-${String(n)}`;
+  return freshId(slug, taken);
 }
 
 /** A GitHub row for a picked repo: the display name defaults to the repo
@@ -41,8 +38,7 @@ export function rowFromRepo(
     ),
     repo: fullName,
     displayName: name,
-    rowKeyTests: [],
-    branchPatternOverrides: {},
+    stageRules: {},
     cellStatusSets: {},
   };
 }
@@ -90,11 +86,11 @@ export function removeRow(dashboard: Dashboard, id: string): Dashboard {
  * rows and row groups (C-14c), rows' status-set choices for its cells
  * (A§4.3.6), and its column-group membership. */
 export function removeStage(dashboard: Dashboard, id: string): Dashboard {
-  const drop = <T extends { branchPatternOverrides: Record<string, string> }>(
+  const drop = <T extends { stageRules: Record<string, unknown> }>(
     x: T,
   ): T => ({
     ...x,
-    branchPatternOverrides: omit(x.branchPatternOverrides, [id]),
+    stageRules: omit(x.stageRules, [id]),
   });
   return tidyGroups(
     {

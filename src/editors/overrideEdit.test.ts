@@ -8,6 +8,8 @@
 import { describe, expect, it } from 'vitest';
 
 import { DashboardSchema } from '@/domain/config/dashboard';
+import { branchRules } from '@/domain/config/placement';
+import { branchRule } from '@/domain/rules/branch';
 
 import {
   carriesSettings,
@@ -21,20 +23,20 @@ const base = DashboardSchema.parse({
   name: 'd',
   credentials: [{ id: 'tok', kind: 'github', label: 'tok' }],
   rows: [{ type: 'github', id: 'a', repo: 'o/a', displayName: 'a' }],
-  stages: [{ id: 'prod', name: 'prod', branchPattern: 'main' }],
+  stages: [{ id: 'prod', name: 'prod', rules: branchRules('main') }],
   rowGroups: [{ id: 'g', memberIds: ['a'] }],
 });
 
 describe('override editing', () => {
   it('sets a trimmed override and clears it with an empty pattern', () => {
     const row = setRowOverride(base, 'a', 'prod', ' develop ');
-    expect(row.rows[0]?.branchPatternOverrides).toEqual({ prod: 'develop' });
-    expect(
-      setRowOverride(row, 'a', 'prod', ' ').rows[0]?.branchPatternOverrides,
-    ).toEqual({});
+    expect(row.rows[0]?.stageRules).toEqual({ prod: branchRule('develop') });
+    expect(setRowOverride(row, 'a', 'prod', ' ').rows[0]?.stageRules).toEqual(
+      {},
+    );
     const group = setRowGroupOverride(base, 'g', 'prod', 'release/*');
-    expect(group.rowGroups[0]?.branchPatternOverrides).toEqual({
-      prod: 'release/*',
+    expect(group.rowGroups[0]?.stageRules).toEqual({
+      prod: branchRules('release/*'),
     });
   });
 

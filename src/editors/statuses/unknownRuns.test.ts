@@ -9,36 +9,30 @@
 import { describe, expect, it } from 'vitest';
 
 import { DashboardSchema } from '@/domain/config/dashboard';
+import { branchRules } from '@/domain/config/placement';
+import { PRESET_IDS } from '@/domain/config/statusSets';
+import { never } from '@/domain/model/ruleBuilders';
+import type { RecordDoc } from '@/domain/model/translate';
 import { classify } from '@/domain/statuses/classify';
-import type { GithubRunDocument } from '@/domain/statuses/documents';
 import { statusSetFor } from '@/domain/statuses/resolve';
 import { UNKNOWN } from '@/domain/statuses/resolved';
 import { type BoardCell, cellKey } from '@/engine';
 
 import { addStatusFor, unknownCells } from './unknownRuns';
 
-const run: GithubRunDocument = {
+const run: RecordDoc = {
   workflow: 'Release',
   event: 'push',
   branch: 'main',
-  attempt: 1,
-  jobs: [
-    {
-      name: 'publish',
-      status: 'completed',
-      conclusion: 'skipped',
-      startedAt: null,
-      completedAt: null,
-    },
-  ],
+  items: [{ name: 'publish', state: 'skipped', time: '', link: '' }],
 };
 
 const base = DashboardSchema.parse({
   id: 'd',
   name: 'D',
   stages: [
-    { id: 'dev', name: 'Dev', branchPattern: 'dev' },
-    { id: 'prod', name: 'Prod', branchPattern: 'main' },
+    { id: 'dev', name: 'Dev', rules: branchRules('dev') },
+    { id: 'prod', name: 'Prod', rules: branchRules('main') },
   ],
   rows: [
     { type: 'github', id: 'web', repo: 'acme/web', displayName: 'web' },
@@ -47,7 +41,7 @@ const base = DashboardSchema.parse({
       id: 'api',
       repo: 'acme/api',
       displayName: 'api',
-      cellStatusSets: { prod: 'github-single-job' },
+      cellStatusSets: { prod: PRESET_IDS.githubSingleJob },
     },
   ],
 });
@@ -98,7 +92,7 @@ describe('addStatusFor', () => {
     const api = next.rows[1];
     expect(api.cellStatusSets.prod).toBe('custom-github');
     // Other cells and the dashboard keep their sets.
-    expect(next.statusSets.github).toBe('github-deploy-test');
+    expect(next.statusSets.github).toBe(PRESET_IDS.githubDeployTest);
     const set = statusSetFor(next, api, 'prod');
     expect(classify(run, set)?.id).toBe(set.cell[0]?.id);
     expect(set.cell[0]?.name).toBe('New status');
@@ -127,7 +121,7 @@ describe('addStatusFor', () => {
       'row',
       {
         rows: [
-          { ...base.rows[0], statusSet: 'github-single-job' },
+          { ...base.rows[0], statusSet: PRESET_IDS.githubSingleJob },
           base.rows[1],
         ],
       },
@@ -139,7 +133,7 @@ describe('addStatusFor', () => {
           {
             id: 'g',
             memberIds: ['web'],
-            statusSets: { github: 'github-single-job' },
+            statusSets: { github: PRESET_IDS.githubSingleJob },
           },
         ],
       },
@@ -151,21 +145,15 @@ describe('addStatusFor', () => {
       stageId: 'dev',
       document: run,
     });
-    expect(next.statusSets.github).toBe('github-deploy-test');
+    expect(next.statusSets.github).toBe(PRESET_IDS.githubDeployTest);
     expect(statusSetFor(next, next.rows[0], 'dev').id).toBe('custom-github');
     expect(statusSetFor(next, next.rows[1], 'dev').id).toBe(
-      'github-deploy-test',
+      PRESET_IDS.githubDeployTest,
     );
   });
 
   it("drafts from an Amplify job's status, or matches nothing for an unreadable document", () => {
-    const job = {
-      branch: 'main',
-      status: 'CANCELLING',
-      commitId: 'a',
-      startTime: null,
-      endTime: null,
-    };
+    const job = { branch: 'main', state: 'cancelled', commit: 'a' };
     const amplify = addStatusFor(base, {
       rowId: 'web',
       stageId: 'dev',
@@ -178,7 +166,7 @@ describe('addStatusFor', () => {
       stageId: 'dev',
       document: 42,
     });
-    expect(odd.customStatusSets[0]?.cell[0]?.test).toEqual({ not: {} });
+    expect(odd.customStatusSets[0]?.cell[0]?.rule).toEqual(never);
   });
 
   it('leaves the dashboard alone for a row it does not have', () => {
@@ -190,27 +178,15 @@ describe('addStatusFor', () => {
   it.each([
     [
       'a GitHub job still running (no conclusion)',
-      'github',
       {
         ...run,
-        jobs: [{ ...run.jobs[0], status: 'in_progress', conclusion: null }],
+        items: [{ name: 'publish', state: null, time: '', link: '' }],
       },
     ],
-    [
-      'an Amplify job with no status',
-      'amplify',
-      {
-        branch: 'main',
-        status: null,
-        commitId: null,
-        startTime: null,
-        endTime: null,
-      },
-    ],
-  ])('drafts a status that matches %s', (_, kind, document) => {
+    ['an Amplify job with no status', { branch: 'main', state: null }],
+  ])('drafts a status that matches %s', (_, document) => {
     const next = addStatusFor(base, { rowId: 'web', stageId: 'dev', document });
     const [added] = next.customStatusSets[0]?.cell ?? [];
     expect(classify(document, { cell: [added] })?.id).toBe(added.id);
-    expect(kind).toBeTruthy();
   });
 });

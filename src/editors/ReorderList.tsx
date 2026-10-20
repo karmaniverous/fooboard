@@ -22,6 +22,7 @@ export function ReorderList<T>({
   onDrop,
   onStep,
   children,
+  targetOf,
 }: {
   items: readonly T[];
   keyOf: (item: T) => string;
@@ -35,6 +36,8 @@ export function ReorderList<T>({
   onStep: (item: T, delta: -1 | 1) => (() => void) | undefined;
   /** The item's own fields. */
   children: (item: T) => React.ReactNode;
+  /** The item's editor-item key, for the editor to open on. */
+  targetOf?: (item: T) => string;
 }): React.JSX.Element {
   const [dragging, setDragging] = useState<number | null>(null);
   return (
@@ -46,6 +49,7 @@ export function ReorderList<T>({
         return (
           <li
             key={keyOf(item)}
+            data-edit-target={targetOf?.(item)}
             className={cn(
               'flex flex-col gap-2 rounded-md border p-2',
               dragging === index && 'opacity-50',

@@ -7,11 +7,7 @@
  */
 import { describe, expect, it } from 'vitest';
 
-import {
-  computeStaleness,
-  deriveStalenessBadge,
-  resolveStalenessBranch,
-} from './staleness';
+import { computeStaleness, deriveStalenessBadge } from './staleness';
 
 describe('computeStaleness', () => {
   it('returns undefined when there is nothing to compare', () => {
@@ -39,46 +35,6 @@ describe('computeStaleness', () => {
 
   it('is not behind when only the cell is ahead (nothing to promote)', () => {
     expect(computeStaleness({ aheadBy: 0, behindBy: 4 })).toBeUndefined();
-  });
-});
-
-describe('resolveStalenessBranch', () => {
-  it("prefers the cell's run branch when it has one", () => {
-    expect(
-      resolveStalenessBranch({
-        runBranch: 'release/24.3',
-        pattern: 'release/**',
-      }),
-    ).toBe('release/24.3');
-  });
-
-  it('falls back to the literal pattern branch when it exists and there is no run', () => {
-    expect(
-      resolveStalenessBranch({ pattern: 'main', literalBranchExists: true }),
-    ).toBe('main');
-  });
-
-  it('returns undefined for a literal pattern whose branch does not exist', () => {
-    expect(
-      resolveStalenessBranch({ pattern: 'main', literalBranchExists: false }),
-    ).toBeUndefined();
-  });
-
-  it('falls back to the most recently updated matching branch for a glob', () => {
-    const result = resolveStalenessBranch({
-      pattern: 'release/**',
-      matchingBranches: [
-        { name: 'release/24.2', updatedAt: '2026-09-01T00:00:00Z' },
-        { name: 'release/24.3', updatedAt: '2026-10-01T00:00:00Z' },
-      ],
-    });
-    expect(result).toBe('release/24.3');
-  });
-
-  it('returns undefined for a glob with no matching branches', () => {
-    expect(
-      resolveStalenessBranch({ pattern: 'release/**', matchingBranches: [] }),
-    ).toBeUndefined();
   });
 });
 
