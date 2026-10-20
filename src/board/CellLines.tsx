@@ -5,6 +5,8 @@
  * @module
  */
 
+import { Fragment } from 'react';
+
 import { cn } from '@/lib/utils';
 
 import { gapStyle } from './cellStyles';
@@ -33,7 +35,7 @@ export function Lines({
   items: Keyed[];
 }): React.JSX.Element {
   const line = 'flex min-w-0 items-center overflow-hidden whitespace-nowrap';
-  const lines: React.ReactNode[][] = [[lead]];
+  const lines: React.ReactNode[][] = [[<Fragment key="lead">{lead}</Fragment>]];
   for (const item of items) {
     const n = lineOf[item.key] ?? 0;
     while (lines.length <= n) lines.push([]);
