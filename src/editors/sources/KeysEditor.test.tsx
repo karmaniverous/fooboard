@@ -15,6 +15,7 @@ import { copy, give } from '@/domain/model/ruleBuilders';
 import type { KeyDef } from '@/domain/model/sourceRule';
 import { always } from '@/domain/rules/always';
 import { choose } from '@/test/choose';
+import { expand } from '@/test/openItem';
 
 import { KeysEditor } from './KeysEditor';
 
@@ -27,7 +28,8 @@ const ROW = `${KEY} translation 1`;
 const renderKeys = (keys: KeyDef[]) => {
   const onChange = vi.fn<(keys: KeyDef[]) => void>();
   render(<KeysEditor title={TITLE} keys={keys} onChange={onChange} />);
-  fireEvent.click(screen.getByText(`${TITLE} (${String(keys.length)})`));
+  // Each key opens from its header (one at a time).
+  for (const k of keys.slice(0, 1)) expand(k.name);
   return onChange;
 };
 

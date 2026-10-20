@@ -10,6 +10,7 @@
  */
 import { useContext } from 'react';
 
+import { Disclosure } from '@/components/Disclosure';
 import type { Dashboard } from '@/domain/config/dashboard';
 import { groupOf, type RowGroup } from '@/domain/config/groups';
 import { ownOverride } from '@/domain/config/ownOverride';
@@ -46,6 +47,14 @@ interface Props {
   providers: EngineProviders;
   onChange: (dashboard: Dashboard) => void;
 }
+
+/** How many of a group's settings are set (shown on its closed
+ * section): default credentials, row rules, status sets, overrides. */
+const groupSettingsCount = (g: RowGroup): number =>
+  Object.values(g.defaultCredentials).filter(Boolean).length +
+  Object.values(g.rowRules).filter(Boolean).length +
+  Object.values(g.statusSets).filter(Boolean).length +
+  Object.keys(g.stageRules).length;
 
 /** A stage's own branch pattern, if its rules are one. */
 const stagePattern = (s: Stage): string =>
@@ -146,11 +155,15 @@ function RowGroupSettings({
   const name = group.label ?? 'this group';
   const withItems = useContext(SourcesWithItemsContext);
   return (
-    <div
-      className="flex flex-col gap-1 rounded border border-dashed p-1 text-xs"
-      data-edit-target={targetKey({ kind: 'rowGroup', id: group.id })}
+    // Shared by every member and edited less often than the row's own
+    // fields: closed until opened, or opened by a fix inside it.
+    <Disclosure
+      title={`Group settings: ${name}`}
+      count={groupSettingsCount(group)}
+      target={targetKey({ kind: 'rowGroup', id: group.id })}
+      className="rounded border border-dashed px-1 py-0.5"
+      contentClassName="flex flex-col gap-1 py-1"
     >
-      <span className="font-semibold">Group settings: {name}</span>
       <div className="flex flex-wrap items-center gap-1">
         {(
           [
@@ -245,6 +258,6 @@ function RowGroupSettings({
           onChange(setRowGroupOverride(dashboard, group.id, stageId, pattern));
         }}
       />
-    </div>
+    </Disclosure>
   );
 }

@@ -14,6 +14,7 @@ import { useContext } from 'react';
 
 import { ConfirmButton } from '@/components/ConfirmButton';
 import type { Dashboard } from '@/domain/config/dashboard';
+import { groupOf } from '@/domain/config/groups';
 import { inheritedCredential } from '@/domain/config/inheritance';
 import type { Row } from '@/domain/config/row';
 import { ITEM_NAME_PATH } from '@/domain/model/keys';
@@ -31,6 +32,10 @@ import { RowGrouping } from './RowGrouping';
 import { AddSource, AmplifyPicker } from './rowPickers';
 import { RuleEditor } from './rules/RuleEditor';
 import { SourcesWithItemsContext } from './rules/samples';
+
+/** A row's header summary: its repo, and its kind if not GitHub. */
+const rowSummary = (row: Row): string =>
+  `${row.type === 'amplify' ? 'Amplify · ' : ''}${row.repo}`;
 
 export function RowsEditor({
   dashboard,
@@ -57,7 +62,12 @@ export function RowsEditor({
         items={dashboard.rows}
         keyOf={(r) => r.id}
         nameOf={(r) => r.displayName}
+        summaryOf={rowSummary}
         targetOf={(r) => `row:${r.id}`}
+        holdsTargets={(r) => {
+          const group = groupOf(dashboard.rowGroups, r.id);
+          return group ? [targetKey({ kind: 'rowGroup', id: group.id })] : [];
+        }}
         {...listHandlers(dashboard, 'rows', onChange)}
         onRemove={(r) => {
           onChange(removeRow(dashboard, r.id));
@@ -65,20 +75,14 @@ export function RowsEditor({
       >
         {(row) => (
           <div className="flex flex-col gap-2 text-xs">
-            <div className="flex items-center gap-1">
-              <CommitInput
-                label={`Display name for ${row.repo}`}
-                className="h-8 text-xs"
-                value={row.displayName}
-                onCommit={(displayName) => {
-                  replaceRow({ ...row, displayName });
-                }}
-              />
-              <span className="shrink-0 text-muted-foreground">
-                {row.type === 'amplify' ? 'Amplify · ' : ''}
-                {row.repo}
-              </span>
-            </div>
+            <CommitInput
+              label={`Display name for ${row.repo}`}
+              className="h-8 text-xs"
+              value={row.displayName}
+              onCommit={(displayName) => {
+                replaceRow({ ...row, displayName });
+              }}
+            />
             <CredentialSelect
               dashboard={dashboard}
               kind="github"

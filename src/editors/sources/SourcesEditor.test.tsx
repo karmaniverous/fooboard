@@ -13,6 +13,7 @@ import { describe, expect, it } from 'vitest';
 import { type Dashboard, DashboardSchema } from '@/domain/config/dashboard';
 import { give } from '@/domain/model/ruleBuilders';
 import { MAX_AMPLIFY_JOBS_PER_BRANCH } from '@/domain/model/sourceRule';
+import { expand } from '@/test/openItem';
 
 import { itemsWherePath } from '../rules/itemsWhere';
 import { customiseSource } from './customSource';
@@ -43,11 +44,13 @@ describe('SourcesEditor', () => {
     const saved: Dashboard[] = [];
     render(<Harness saved={saved} />);
     const before = start.customSourceRules[0]?.keys.length ?? 0;
-    fireEvent.click(screen.getByText(`Record keys (${String(before)})`));
+    expand('GitHub (custom)');
+    expect(screen.getByText(`Record keys (${String(before)})`)).toBeVisible();
     fireEvent.click(screen.getAllByText('Add key')[0]);
     expect(custom(saved)?.keys).toHaveLength(before + 1);
     const name = custom(saved)?.keys[before]?.name ?? '';
-    fireEvent.click(screen.getAllByText('Add translation')[before]);
+    // The new key opens on its own (the only one open).
+    fireEvent.click(screen.getByText('Add translation'));
     expect(custom(saved)?.keys[before]?.translations).toEqual([give('')]);
     const value = screen.getByLabelText(`${name} translation 1 value`);
     fireEvent.change(value, { target: { value: 'x' } });
@@ -61,6 +64,7 @@ describe('SourcesEditor', () => {
     const saved: Dashboard[] = [];
     render(<Harness saved={saved} />);
     const label = 'GitHub (custom) keep rule';
+    expand('GitHub (custom)');
     fireEvent.change(screen.getByLabelText(`${label} item glob`), {
       target: { value: 'deploy*' },
     });

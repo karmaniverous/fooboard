@@ -96,7 +96,7 @@ export interface EditFocus {
 export const EditFocusContext = createContext<EditFocus>({ focus: [] });
 
 /** Is the item with `key` focused, or does it hold the focused item? */
-const isFocused = (focus: readonly string[], key: string): boolean =>
+export const isFocused = (focus: readonly string[], key: string): boolean =>
   focus.some((f) => f === key || f.startsWith(`${key}:`));
 
 /** {@link isFocused} for the editor's current focus. */

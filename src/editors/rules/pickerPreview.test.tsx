@@ -14,6 +14,8 @@ import { describe, expect, it, vi } from 'vitest';
 import { UNKNOWN_STATUS_ID } from '@/domain/config/statusSets';
 import { BUILTIN_SOURCES } from '@/domain/model/builtinSources';
 import { all, exists, is } from '@/domain/model/ruleBuilders';
+import { OPEN_ITEM } from '@/test/openItem';
+import { expand } from '@/test/openItem';
 
 import { CustomSourceEditor } from '../sources/CustomSourceEditor';
 import { KeysEditor } from '../sources/KeysEditor';
@@ -81,7 +83,7 @@ describe('previews over real data', () => {
         onChange={vi.fn()}
       />,
     );
-    fireEvent.click(screen.getByText('Record keys (1)'));
+    expand('event');
     expect(
       screen.getByText('Rule matches 1 of 2 raw runs'),
     ).toBeInTheDocument();
@@ -95,6 +97,7 @@ describe('previews over real data', () => {
         value={[{ branchName: 'main' }, { branchName: 'feature/x' }]}
       >
         <CustomSourceEditor
+          item={OPEN_ITEM}
           chosen
           rule={{
             ...amplify,

@@ -21,6 +21,8 @@ import { memoryStorage } from '@/storage/keyValue';
 import { StoresContext } from '@/storage/storesContext';
 import { choose, optionsOf } from '@/test/choose';
 import { fakeGitHubReader, ghBranch } from '@/test/fakeReaders';
+import { keyboardDrag } from '@/test/keyboardDrag';
+import { expand } from '@/test/openItem';
 
 import { DashboardEditor } from './DashboardEditor';
 import type { EditorDraft } from './draft';
@@ -98,7 +100,9 @@ const commit = (label: string, value: string) => {
 describe('row groups in the editor', () => {
   it("starts a group from a row; members show the group's settings as inherited", () => {
     const latest = setup();
+    expand('api');
     choose(screen.getByLabelText('Group of api'), 'New group from api');
+    fireEvent.click(screen.getByRole('button', { name: /^Group settings/ }));
     choose(screen.getByLabelText('GitHub token for this group'), 'team');
     commit('prod branch override for this group', 'release/*');
     expect(latest.current.rowGroups).toEqual([
@@ -136,15 +140,15 @@ describe('row groups in the editor', () => {
 
   it("finds a row's branches and offers them in its fields, not as a list", async () => {
     setup();
+    expand('api');
     openOverrides();
     fireEvent.click(
       screen.getAllByRole('button', {
         name: 'Find branches',
       })[0],
     );
-    expect(await screen.findByRole('status')).toHaveTextContent(
-      '2 branches found',
-    );
+    // (By text: the drag-and-drop announcer is a status region too.)
+    expect(await screen.findByText(/^2 branches found/)).toBeInTheDocument();
     expect(screen.queryByRole('list', { name: 'Branches found' })).toBeNull();
     const options = [...document.querySelectorAll('datalist option')];
     expect(options.map((o) => o.getAttribute('value'))).toEqual([
@@ -157,23 +161,17 @@ describe('row groups in the editor', () => {
     ).toHaveAttribute('list');
   });
 
-  it('drags a row across a group edge into the group, and steps it back out', () => {
+  it('drags a row across a group edge into the group, and steps it back out', async () => {
     const latest = setup(
       DashboardSchema.parse({
         ...start,
         rowGroups: [{ id: 'g', memberIds: ['api'] }],
       }),
     );
-    const items = screen
-      .getAllByRole('listitem')
-      .filter((li) => li.querySelector(':scope > div > [draggable]'));
-    const api = items.at(0);
-    const web = items.at(1);
-    const grip = web?.querySelector('[draggable]');
-    if (!grip || !api) throw new Error('drag handles not found');
-    fireEvent.dragStart(grip, { dataTransfer: { effectAllowed: '' } });
-    fireEvent.dragOver(api);
-    fireEvent.drop(api);
+    await keyboardDrag(
+      screen.getByRole('button', { name: 'Drag web to reorder' }),
+      -1,
+    );
     expect(latest.current.rows.map((r) => r.id)).toEqual(['web', 'api']);
     expect(latest.current.rowGroups[0]?.memberIds).toEqual(['web', 'api']);
 
@@ -192,6 +190,7 @@ describe('row groups in the editor', () => {
     });
     const latest = setup(grouped, {
       tab: 'Rows',
+      focus: ['row:api:override', 'row:api'],
       override: { branch: 'preview/release', rowIds: ['api'] },
     });
     const fix = screen.getByRole('group', {
@@ -222,6 +221,7 @@ describe('row groups in the editor', () => {
     });
     const latest = setup(twoRows, {
       tab: 'Rows',
+      focus: ['row:api:override', 'row:api'],
       override: { branch: 'hotfix/1', rowIds: ['api', 'api-jobs'] },
     });
     const fix = screen.getByRole('group', { name: 'Override for hotfix/1' });
@@ -245,6 +245,7 @@ describe('row groups in the editor', () => {
         ],
       }),
     );
+    expand('api');
     const trigger = screen.getByRole('button', {
       name: 'Stage overrides (1)',
     });

@@ -20,6 +20,7 @@ import { memoryStorage } from '@/storage/keyValue';
 import { StoresContext } from '@/storage/storesContext';
 import { optionsOf } from '@/test/choose';
 import { fakeGitHubReader, ghBranch, ghRepo } from '@/test/fakeReaders';
+import { expand } from '@/test/openItem';
 
 import { DashboardEditor } from './DashboardEditor';
 
@@ -157,6 +158,7 @@ describe('DashboardEditor', () => {
   it('offers only source stages that keep the chain acyclic', () => {
     setup();
     tab('Stages');
+    expand('dev');
     const source = screen.getByLabelText('Source stage of dev');
     expect(optionsOf(source)).toEqual(['No source stage']); // prod already sources from dev
   });

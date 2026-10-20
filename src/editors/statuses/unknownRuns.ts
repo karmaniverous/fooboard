@@ -121,20 +121,32 @@ export function addStatusFor(
   dashboard: Dashboard,
   cell: Pick<UnknownCell, 'rowId' | 'stageId' | 'document'>,
 ): Dashboard {
+  return addStatusWhere(dashboard, cell).dashboard;
+}
+
+/** `addStatusFor`, and where the status went (to open it), if anywhere. */
+export function addStatusWhere(
+  dashboard: Dashboard,
+  cell: Pick<UnknownCell, 'rowId' | 'stageId' | 'document'>,
+): { dashboard: Dashboard; setId?: string; statusId?: string } {
   const row = dashboard.rows.find((r) => r.id === cell.rowId);
-  if (!row) return dashboard;
+  if (!row) return { dashboard };
   const used = statusSetFor(dashboard, row, cell.stageId);
   const owned = dashboard.customStatusSets.some((s) => s.id === used.id);
   const copied = owned ? undefined : copySet(dashboard, used.id);
   const next = copied
     ? chooseAt(copied.dashboard, row, cell.stageId, copied.copy.id)
     : dashboard;
-  return updateSet(next, copied?.copy.id ?? used.id, (set) => {
+  const setId = copied?.copy.id ?? used.id;
+  let statusId: string | undefined;
+  const result = updateSet(next, setId, (set) => {
     const added = addCellStatus(set);
     const [first, ...rest] = added.cell;
+    statusId = first.id;
     return {
       ...added,
       cell: [{ ...first, rule: draftRule(cell.document) }, ...rest],
     };
   });
+  return { dashboard: result, setId, statusId };
 }

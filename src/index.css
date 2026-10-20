@@ -64,8 +64,13 @@ body,
     --background: #ffffff;
     --foreground: #0a0a0a;
     --muted: #f5f5f5;
-    --muted-foreground: #737373;
-    --border: #e5e5e5;
+    /* Muted text: at least 4.5:1 on the background, muted and chrome
+       surfaces; borders and field outlines at least 3:1 (WCAG 1.4.3,
+       1.4.11; theme.test.ts checks both modes). */
+    --muted-foreground: #6b6b6b;
+    --border: #858585;
+    /* The hatched cell fill: a texture, not a boundary, so it stays quiet. */
+    --hatch: #e5e5e5;
     --primary: #171717;
     --primary-foreground: #fafafa;
     --accent: #f5f5f5;
@@ -99,7 +104,8 @@ body,
     --foreground: #fafafa;
     --muted: #262626;
     --muted-foreground: #a3a3a3;
-    --border: #262626;
+    --border: #737373;
+    --hatch: #262626;
     --primary: #fafafa;
     --primary-foreground: #0a0a0a;
     --accent: #3a3a3a;
@@ -129,6 +135,6 @@ body {
   background-image: repeating-linear-gradient(
     135deg,
     transparent 0 6px,
-    var(--color-border) 6px 8px
+    var(--hatch) 6px 8px
   );
 }

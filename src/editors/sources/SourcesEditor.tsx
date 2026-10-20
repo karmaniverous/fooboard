@@ -19,6 +19,7 @@ import {
 import { BUILTIN_SOURCES } from '@/domain/model/builtinSources';
 import type { Problem } from '@/domain/problems/problem';
 
+import { useAccordion } from '../useAccordion';
 import {
   chooseSource,
   customiseSource,
@@ -43,6 +44,16 @@ export function SourcesEditor({
   /** Problems fixed on this tab (window hints, translation problems). */
   hints?: readonly Problem[];
 }): React.JSX.Element {
+  // A custom rule's editor-item key is its source's, while it is chosen.
+  const accordion = useAccordion(
+    dashboard.customSourceRules.map((r) => ({
+      key: r.id,
+      targets:
+        dashboard.sourceRules[r.provider] === r.id
+          ? [`source:${r.provider}`]
+          : [],
+    })),
+  );
   return (
     <div className="flex flex-col gap-3 text-sm">
       <p className="text-xs text-muted-foreground">
@@ -94,6 +105,7 @@ export function SourcesEditor({
         <CustomSourceEditor
           key={rule.id}
           rule={rule}
+          item={accordion.itemProps(rule.id)}
           chosen={dashboard.sourceRules[rule.provider] === rule.id}
           onChange={(next) => {
             onChange(updateSource(dashboard, next));

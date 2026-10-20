@@ -14,6 +14,8 @@ import { PRESET_IDS } from '@/domain/config/statusSets';
 import { PRESET_SUMMARY_IDS } from '@/domain/statuses/presetRules';
 import { presetById } from '@/domain/statuses/presets';
 import { choose } from '@/test/choose';
+import { OPEN_ITEM } from '@/test/openItem';
+import { expand } from '@/test/openItem';
 
 import { CustomSetEditor } from './CustomSetEditor';
 
@@ -22,7 +24,14 @@ function setup(initial: StatusSet, onRemove?: () => void) {
   function Harness() {
     const [set, setSet] = useState(initial);
     latest.current = set;
-    return <CustomSetEditor set={set} onChange={setSet} onRemove={onRemove} />;
+    return (
+      <CustomSetEditor
+        item={OPEN_ITEM}
+        set={set}
+        onChange={setSet}
+        onRemove={onRemove}
+      />
+    );
   }
   render(<Harness />);
   return latest;
@@ -43,7 +52,8 @@ describe('CustomSetEditor', () => {
     });
 
     const [first] = latest.current.cell;
-    const status = screen.getByRole('group', {
+    expand(first.name);
+    const status = screen.getByRole('region', {
       name: `Cell status ${first.name}`,
     });
     fireEvent.click(within(status).getByRole('checkbox', { name: 'Outlined' }));
@@ -68,6 +78,7 @@ describe('CustomSetEditor', () => {
     });
 
     const [a, b] = latest.current.cell;
+    expand(a.name);
     choose(screen.getByLabelText(`${a.name} icon`), '? unknown');
     expect(latest.current.cell[0].icon).toBe('unknown');
     choose(screen.getByLabelText(`${a.name} icon`), 'Summary icon');

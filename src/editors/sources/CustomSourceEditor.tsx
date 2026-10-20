@@ -11,8 +11,12 @@ import { useContext } from 'react';
 
 import { CheckField } from '@/components/CheckField';
 import { Choice } from '@/components/Choice';
+import {
+  CollapsibleItem,
+  type ItemOpenState,
+} from '@/components/CollapsibleItem';
 import { Button } from '@/components/ui/button';
-import type { Provider } from '@/domain/config/providers';
+import { type Provider, PROVIDER_LABELS } from '@/domain/config/providers';
 import {
   MAX_AMPLIFY_JOBS_PER_BRANCH,
   MAX_GITHUB_RUNS,
@@ -76,8 +80,11 @@ export function CustomSourceEditor({
   onChange,
   onRemove,
   chosen,
+  item,
 }: {
   rule: SourceRule;
+  /** Open or collapsed to its header (one at a time: the owner's). */
+  item: ItemOpenState;
   /** Is it the rule its source uses (the one the editor opens on)? */
   chosen: boolean;
   onChange: (rule: SourceRule) => void;
@@ -88,20 +95,13 @@ export function CustomSourceEditor({
   const branches = useContext(BranchSamplesContext);
   const target = chosen ? `source:${rule.provider}` : undefined;
   return (
-    <section
-      data-edit-target={target}
-      aria-label={`Source rule ${rule.name}`}
-      className="flex flex-col gap-2 rounded-md border p-3"
-    >
-      <div className="flex items-center gap-2">
-        <CommitInput
-          label="Source rule name"
-          className="h-9 w-64"
-          value={rule.name}
-          onCommit={(name) => {
-            onChange({ ...rule, name });
-          }}
-        />
+    <CollapsibleItem
+      {...item}
+      name={rule.name}
+      summary={PROVIDER_LABELS[rule.provider]}
+      target={target}
+      label={`Source rule ${rule.name}`}
+      actions={
         <Button
           size="sm"
           variant="outline"
@@ -110,124 +110,135 @@ export function CustomSourceEditor({
         >
           Remove
         </Button>
-      </div>
-      <h4 className="text-xs font-semibold">Records</h4>
-      <KeysEditor
-        title="Record keys"
-        keys={rule.keys}
-        samples={raw.records}
-        noun={RAW_NOUNS[rule.provider]}
-        target={target}
-        onChange={(keys) => {
-          onChange({ ...rule, keys });
-        }}
-      />
-      {rule.items && (
-        <>
-          <label className="flex items-center gap-2 text-xs">
-            Items from
-            <CommitInput
-              label="Items path"
-              className="h-9 w-56 font-mono"
-              value={rule.items.path}
-              onCommit={(path) => {
-                if (path && rule.items)
-                  onChange({ ...rule, items: { ...rule.items, path } });
-              }}
-            />
-          </label>
-          <KeysEditor
-            title="Item keys"
-            keys={rule.items.keys}
-            samples={raw.items}
-            noun="raw items"
-            target={target}
-            onChange={(keys) => {
-              if (rule.items)
-                onChange({ ...rule, items: { ...rule.items, keys } });
-            }}
-          />
-        </>
-      )}
-      <label className="flex items-center gap-2 text-xs">
-        Newest by
-        <Choice
-          label="Order key"
-          value={rule.order}
-          options={rule.keys.map((k) => ({ value: k.name, label: k.name }))}
-          onValueChange={(order) => {
-            onChange({ ...rule, order });
+      }
+    >
+      <div className="flex flex-col gap-2">
+        <CommitInput
+          label="Source rule name"
+          className="h-9 w-64"
+          value={rule.name}
+          onCommit={(name) => {
+            onChange({ ...rule, name });
           }}
         />
-      </label>
-      <h4 className="text-xs font-semibold">Records to keep</h4>
-      <RuleEditor
-        label={`${rule.name} keep rule`}
-        rule={rule.keep}
-        provider={rule.provider}
-        onChange={(keep) => {
-          onChange({ ...rule, keep });
-        }}
-      />
-      <h4 className="text-xs font-semibold">What to read</h4>
-      {rule.provider === 'github' ? (
-        <div className="flex flex-wrap items-center gap-3 text-xs">
-          <CheckField
-            label="Skip pull-request runs"
-            checked={rule.reader.excludePullRequests}
-            onCheckedChange={(excludePullRequests) => {
-              onChange({
-                ...rule,
-                reader: { ...rule.reader, excludePullRequests },
-              });
-            }}
-          />
-          <span className="flex items-center gap-1">
-            Runs per repo
-            <NumberField
-              label="Runs per repo"
-              value={rule.reader.runs}
-              min={MIN_READ}
-              max={MAX_GITHUB_RUNS}
-              onCommit={(runs) => {
-                onChange({ ...rule, reader: { ...rule.reader, runs } });
+        <h4 className="text-xs font-semibold">Records</h4>
+        <KeysEditor
+          title="Record keys"
+          keys={rule.keys}
+          samples={raw.records}
+          noun={RAW_NOUNS[rule.provider]}
+          target={target}
+          onChange={(keys) => {
+            onChange({ ...rule, keys });
+          }}
+        />
+        {rule.items && (
+          <>
+            <label className="flex items-center gap-2 text-xs">
+              Items from
+              <CommitInput
+                label="Items path"
+                className="h-9 w-56 font-mono"
+                value={rule.items.path}
+                onCommit={(path) => {
+                  if (path && rule.items)
+                    onChange({ ...rule, items: { ...rule.items, path } });
+                }}
+              />
+            </label>
+            <KeysEditor
+              title="Item keys"
+              keys={rule.items.keys}
+              samples={raw.items}
+              noun="raw items"
+              target={target}
+              onChange={(keys) => {
+                if (rule.items)
+                  onChange({ ...rule, items: { ...rule.items, keys } });
               }}
             />
-          </span>
-          <span className="text-muted-foreground">
-            {requestsText(rule.reader.runs)}
-          </span>
-        </div>
-      ) : (
-        <div className="flex flex-col gap-1 text-xs">
-          <span className="flex items-center gap-1">
-            Jobs per branch
-            <NumberField
-              label="Jobs per branch"
-              value={rule.reader.jobsPerBranch}
-              min={MIN_READ}
-              max={MAX_AMPLIFY_JOBS_PER_BRANCH}
-              onCommit={(jobsPerBranch) => {
+          </>
+        )}
+        <label className="flex items-center gap-2 text-xs">
+          Newest by
+          <Choice
+            label="Order key"
+            value={rule.order}
+            options={rule.keys.map((k) => ({ value: k.name, label: k.name }))}
+            onValueChange={(order) => {
+              onChange({ ...rule, order });
+            }}
+          />
+        </label>
+        <h4 className="text-xs font-semibold">Records to keep</h4>
+        <RuleEditor
+          label={`${rule.name} keep rule`}
+          rule={rule.keep}
+          provider={rule.provider}
+          onChange={(keep) => {
+            onChange({ ...rule, keep });
+          }}
+        />
+        <h4 className="text-xs font-semibold">What to read</h4>
+        {rule.provider === 'github' ? (
+          <div className="flex flex-wrap items-center gap-3 text-xs">
+            <CheckField
+              label="Skip pull-request runs"
+              checked={rule.reader.excludePullRequests}
+              onCheckedChange={(excludePullRequests) => {
                 onChange({
                   ...rule,
-                  reader: { ...rule.reader, jobsPerBranch },
+                  reader: { ...rule.reader, excludePullRequests },
                 });
               }}
             />
-          </span>
-          <span>Branches to read (every branch when empty)</span>
-          <RuleEditor
-            label={`${rule.name} branch rule`}
-            rule={rule.reader.branches}
-            newPath="$.branchName"
-            documents={branches}
-            noun="branches"
-            onChange={(branches) => {
-              onChange({ ...rule, reader: { ...rule.reader, branches } });
-            }}
-          />
-        </div>
-      )}
-    </section>
+            <span className="flex items-center gap-1">
+              Runs per repo
+              <NumberField
+                label="Runs per repo"
+                value={rule.reader.runs}
+                min={MIN_READ}
+                max={MAX_GITHUB_RUNS}
+                onCommit={(runs) => {
+                  onChange({ ...rule, reader: { ...rule.reader, runs } });
+                }}
+              />
+            </span>
+            <span className="text-muted-foreground">
+              {requestsText(rule.reader.runs)}
+            </span>
+          </div>
+        ) : (
+          <div className="flex flex-col gap-1 text-xs">
+            <span className="flex items-center gap-1">
+              Jobs per branch
+              <NumberField
+                label="Jobs per branch"
+                value={rule.reader.jobsPerBranch}
+                min={MIN_READ}
+                max={MAX_AMPLIFY_JOBS_PER_BRANCH}
+                onCommit={(jobsPerBranch) => {
+                  onChange({
+                    ...rule,
+                    reader: { ...rule.reader, jobsPerBranch },
+                  });
+                }}
+              />
+            </span>
+            <span>Branches to read (every branch when empty)</span>
+            <RuleEditor
+              label={`${rule.name} branch rule`}
+              rule={rule.reader.branches}
+              newPath="$.branchName"
+              documents={branches}
+              noun="branches"
+              onChange={(branches) => {
+                onChange({ ...rule, reader: { ...rule.reader, branches } });
+              }}
+            />
+          </div>
+        )}
+      </div>
+    </CollapsibleItem>
   );
 }

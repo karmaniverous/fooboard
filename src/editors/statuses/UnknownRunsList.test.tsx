@@ -7,6 +7,8 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
+import { expand } from '@/test/openItem';
+
 import type { UnknownCell } from './unknownRuns';
 import { UnknownRunsList } from './UnknownRunsList';
 
@@ -31,6 +33,9 @@ describe('UnknownRunsList', () => {
     const onAddStatus = vi.fn();
     render(<UnknownRunsList unknown={[cell]} onAddStatus={onAddStatus} />);
     expect(screen.getByText('Runs no status matches (1)')).toBeInTheDocument();
+    // The document shows once the run is opened.
+    expect(screen.queryByText(/"workflow": "Release"/)).toBeNull();
+    expand('api · Prod');
     expect(screen.getByText(/"workflow": "Release"/)).toBeInTheDocument();
     fireEvent.click(
       screen.getByRole('button', { name: 'Add status for api Prod' }),

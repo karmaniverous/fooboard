@@ -10,6 +10,7 @@ import { describe, expect, it } from 'vitest';
 
 import { never } from '@/domain/model/ruleBuilders';
 import { choose } from '@/test/choose';
+import { expand } from '@/test/openItem';
 
 import { setup, tab } from '../editorSectionsHarness';
 
@@ -25,7 +26,8 @@ describe('Statuses tab', () => {
     expect(within(set).getByRole('button', { name: 'Remove' })).toBeDisabled();
 
     fireEvent.click(within(set).getByRole('button', { name: 'Add status' }));
-    const added = within(set).getByRole('group', {
+    // A new status opens.
+    const added = within(set).getByRole('region', {
       name: 'Cell status New status',
     });
     const name = within(added).getByLabelText('Cell status 1 name');
@@ -50,6 +52,7 @@ describe('Statuses tab', () => {
       name: 'Status set Amplify (custom)',
     });
     const [first] = latest.current.customStatusSets[0]?.cell ?? [];
+    expand(first.name);
     const value = within(set).getByLabelText(
       `${first.name} rule check 1 value`,
     );

@@ -11,6 +11,8 @@ import { describe, expect, it } from 'vitest';
 
 import { PRESET_IDS } from '@/domain/config/statusSets';
 import { choose } from '@/test/choose';
+import { keyboardDrag } from '@/test/keyboardDrag';
+import { expand } from '@/test/openItem';
 
 import { setup, tab } from './editorSectionsHarness';
 
@@ -42,6 +44,7 @@ describe('editor sections', () => {
   it('creates a labelled column group from a stage', () => {
     const latest = setup();
     tab('Stages');
+    expand('prod');
     choose(screen.getByLabelText('Group of prod'), 'New group from prod');
     const label = screen.getByLabelText('Label of the group of prod');
     fireEvent.change(label, { target: { value: 'Production' } });
@@ -56,15 +59,13 @@ describe('editor sections', () => {
     ]);
   });
 
-  it('reorders by dragging an item onto another', () => {
+  it('reorders by dragging an item onto another', async () => {
     const latest = setup();
     tab('Stages');
-    const items = screen.getAllByRole('listitem');
-    const grip = items[0]?.querySelector('[draggable]');
-    if (!grip || !items[1]) throw new Error('drag handles not found');
-    fireEvent.dragStart(grip, { dataTransfer: { effectAllowed: '' } });
-    fireEvent.dragOver(items[1]);
-    fireEvent.drop(items[1]);
+    await keyboardDrag(
+      screen.getByRole('button', { name: 'Drag dev to reorder' }),
+      1,
+    );
     expect(latest.current.stages.map((s) => s.id)).toEqual(['prod', 'dev']);
   });
 

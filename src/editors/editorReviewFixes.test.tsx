@@ -55,16 +55,13 @@ describe('editor review fixes', () => {
     const rows = latest.current.rows.filter((r) => r.repo === 'acme/api');
     expect(rows.map((r) => r.id)).toEqual(['api', 'api-2']);
 
-    const groups = screen.getAllByRole('group', {
-      name: 'Item rule for api',
-    });
-    fireEvent.click(
-      within(groups[0]).getByRole('button', { name: 'Add check' }),
-    );
+    // The new row opens (one row at a time); its rule is its own.
+    const group = screen.getByRole('group', { name: 'Item rule for api' });
+    fireEvent.click(within(group).getByRole('button', { name: 'Add check' }));
     const checks = latest.current.rows
       .filter((r) => r.repo === 'acme/api')
       .map((r) => r.itemRule?.checks.length ?? 0);
-    expect(checks).toEqual([1, 0]);
+    expect(checks).toEqual([0, 1]);
   });
 
   it('hides listed apps when the region changes, before or after the response', async () => {

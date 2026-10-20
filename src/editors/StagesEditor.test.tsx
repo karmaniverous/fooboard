@@ -13,6 +13,7 @@ import { type Dashboard, DashboardSchema } from '@/domain/config/dashboard';
 import { branchRules } from '@/domain/config/placement';
 import type { EngineProviders } from '@/engine';
 import { choose, optionsOf } from '@/test/choose';
+import { expand } from '@/test/openItem';
 
 import { StagesEditor } from './StagesEditor';
 
@@ -62,6 +63,7 @@ const commit = (label: string, value: string) => {
 describe('StagesEditor', () => {
   it('renames a stage and writes its branch pattern as its stage rules', () => {
     const latest = setup();
+    expand('dev');
     commit('Name of dev', 'develop');
     expect(latest.current.stages[0]?.name).toBe('develop');
     commit('Branch pattern of develop', 'release/*');
@@ -73,10 +75,13 @@ describe('StagesEditor', () => {
 
   it('offers only source stages that make no cycle, and clears one', () => {
     const latest = setup();
+    expand('dev');
     const devSource = screen.getByLabelText('Source stage of dev');
     expect(optionsOf(devSource)).toEqual(['No source stage']);
+    expand('prod');
     choose(screen.getByLabelText('Source stage of prod'), 'No source stage');
     expect(latest.current.stages[1]?.sourceStageId).toBeUndefined();
+    expand('dev');
     choose(screen.getByLabelText('Source stage of dev'), 'Source: prod');
     expect(latest.current.stages[0]?.sourceStageId).toBe('prod');
   });
