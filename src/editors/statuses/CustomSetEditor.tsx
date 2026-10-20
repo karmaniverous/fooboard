@@ -25,6 +25,7 @@ import { patchAt } from '@/lib/lists';
 import { CommitInput } from '../fields';
 import { RuleEditor } from '../rules/RuleEditor';
 import { SourcesWithItemsContext } from '../rules/samples';
+import type { OpenRequest } from '../useAccordion';
 import { CellStatusList } from './CellStatusList';
 
 const iconOptions = STATUS_ICONS.map((icon) => ({
@@ -37,8 +38,11 @@ export function CustomSetEditor({
   onChange,
   onRemove,
   item,
+  openStatus,
 }: {
   set: StatusSet;
+  /** A cell status to open (one just added to this set). */
+  openStatus?: OpenRequest;
   /** Open or collapsed to its header (one at a time: the owner's). */
   item: ItemOpenState;
   onChange: (set: StatusSet) => void;
@@ -143,6 +147,7 @@ export function CustomSetEditor({
           set={set}
           onChange={onChange}
           iconOptions={iconOptions}
+          openStatus={openStatus}
         />
       </div>
     </CollapsibleItem>

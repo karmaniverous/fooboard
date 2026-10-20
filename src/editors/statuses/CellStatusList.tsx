@@ -16,20 +16,24 @@ import { move, patchAt } from '@/lib/lists';
 
 import { CommitInput } from '../fields';
 import { RuleEditor } from '../rules/RuleEditor';
-import { useAccordion } from '../useAccordion';
+import { type OpenRequest, useAccordion } from '../useAccordion';
 import { addCellStatus } from './customSet';
 
 export function CellStatusList({
   set,
   onChange,
   iconOptions,
+  openStatus,
 }: {
   set: StatusSet;
   onChange: (set: StatusSet) => void;
   iconOptions: readonly ChoiceOption<StatusIcon>[];
+  /** A status to open and scroll to (one just added from outside). */
+  openStatus?: OpenRequest;
 }): React.JSX.Element {
   const accordion = useAccordion(
     set.cell.map((c) => ({ key: c.id, targets: [] })),
+    openStatus,
   );
   const summaryOptions = set.summary.map((s) => ({
     value: s.id,

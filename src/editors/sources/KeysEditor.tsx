@@ -22,6 +22,7 @@ import { patchAt } from '@/lib/lists';
 import { CommitInput } from '../fields';
 import { RuleEditor } from '../rules/RuleEditor';
 import { useAccordion } from '../useAccordion';
+import { useItemIds } from '../useItemIds';
 
 const MODES = [
   { value: 'value', label: 'gives' },
@@ -123,12 +124,13 @@ export function KeysEditor({
 }): React.JSX.Element {
   const keyTarget = (name: string) =>
     target === undefined ? undefined : `${target}:key:${name}`;
-  // Names may repeat while being edited: the position keeps keys apart.
-  const itemKey = (i: number, name: string) => `${String(i)}:${name}`;
+  // Names may repeat while being edited: each key has its own id, kept
+  // through renames and through deleting or adding others.
+  const { ids, added, removed } = useItemIds(keys.length);
   const accordion = useAccordion(
     keys.map((k, i) => {
       const own = keyTarget(k.name);
-      return { key: itemKey(i, k.name), targets: own ? [own] : [] };
+      return { key: ids[i] ?? '', targets: own ? [own] : [] };
     }),
   );
   return (
@@ -138,8 +140,8 @@ export function KeysEditor({
       </h5>
       {keys.map((key, i) => (
         <CollapsibleItem
-          key={i}
-          {...accordion.itemProps(itemKey(i, key.name))}
+          key={ids[i]}
+          {...accordion.itemProps(ids[i] ?? '')}
           name={key.name}
           summary={translationCount(key.translations.length)}
           label={`${title}: ${key.name}`}
@@ -151,6 +153,7 @@ export function KeysEditor({
               variant="ghost"
               aria-label={`Delete key ${key.name}`}
               onClick={() => {
+                removed(i);
                 onChange(keys.filter((_, j) => j !== i));
               }}
             >
@@ -214,6 +217,7 @@ export function KeysEditor({
         variant="outline"
         className="self-start"
         onClick={() => {
+          added();
           onChange([
             ...keys,
             { name: `key${String(keys.length + 1)}`, translations: [] },

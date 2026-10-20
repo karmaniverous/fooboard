@@ -6,18 +6,20 @@
  *
  * @module
  */
+import { useState } from 'react';
+
 import { Choice } from '@/components/Choice';
 import { Button } from '@/components/ui/button';
 import type { Dashboard } from '@/domain/config/dashboard';
 import { PROVIDER_LABELS, PROVIDERS } from '@/domain/config/providers';
 import { targetKey } from '@/editors/editTarget';
-import { useAccordion } from '@/editors/useAccordion';
+import { type OpenRequest, useAccordion } from '@/editors/useAccordion';
 
 import { customise, removeSet, setInUse, updateSet } from './customSet';
 import { CustomSetEditor } from './CustomSetEditor';
 import { setDashboardStatusSet } from './overrideSets';
 import { setOptions } from './statusSetOptions';
-import { addStatusFor, type UnknownCell } from './unknownRuns';
+import { addStatusWhere, type UnknownCell } from './unknownRuns';
 import { UnknownRunsList } from './UnknownRunsList';
 
 const PROVIDER_OPTIONS = PROVIDERS.map((provider) => ({
@@ -35,11 +37,17 @@ export function StatusSetsEditor({
   /** The board's cells whose run matched no status. */
   unknown?: readonly UnknownCell[];
 }): React.JSX.Element {
+  // A status added for an Unknown run opens, with its set.
+  const [opened, setOpened] = useState<{
+    set: OpenRequest;
+    status: OpenRequest;
+  }>();
   const accordion = useAccordion(
     dashboard.customStatusSets.map((s) => ({
       key: s.id,
       targets: [targetKey({ kind: 'statusSet', id: s.id })],
     })),
+    opened?.set,
   );
   return (
     <div className="flex flex-col gap-3 text-sm">
@@ -79,7 +87,11 @@ export function StatusSetsEditor({
       <UnknownRunsList
         unknown={unknown}
         onAddStatus={(c) => {
-          onChange(addStatusFor(dashboard, c));
+          const added = addStatusWhere(dashboard, c);
+          const { setId, statusId } = added;
+          if (setId !== undefined && statusId !== undefined)
+            setOpened({ set: { key: setId }, status: { key: statusId } });
+          onChange(added.dashboard);
         }}
       />
       {dashboard.customStatusSets.map((set) => (
@@ -87,6 +99,7 @@ export function StatusSetsEditor({
           key={set.id}
           set={set}
           item={accordion.itemProps(set.id)}
+          openStatus={opened?.set.key === set.id ? opened.status : undefined}
           onChange={(next) => {
             onChange(updateSet(dashboard, set.id, () => next));
           }}
