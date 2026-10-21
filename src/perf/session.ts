@@ -56,6 +56,9 @@ export interface TimingSession {
   stop(): void;
   /** Requests recorded so far (until the full board). */
   requests(): readonly RequestRecord[];
+  /** When each request that may be stray for a later board settled: the
+   * load's, and any (e.g. polling) that settled after the board closed. */
+  settled(): readonly number[];
 }
 
 /** Does `row` need `call`'s read? GitHub reads are per repo and token (a
@@ -101,6 +104,8 @@ export function createTimingSession(input: TimingSessionInput): TimingSession {
     dashboard.stages.map((s) => cellKey(r.id, s.id)),
   );
   const records: RequestRecord[] = [];
+  /** When requests made after the full board settled, once it closed. */
+  const settledAfterClose: number[] = [];
   let firstCell: Moment | undefined;
   let fullBoard: Moment | undefined;
   let stopped = false;
@@ -112,9 +117,15 @@ export function createTimingSession(input: TimingSessionInput): TimingSession {
   });
 
   const record = (call: RequestCall, start: number, outcome: string) => {
-    // Polling after the full board isn't part of the load.
-    if (fullBoard) return;
     const end = clock();
+    // Polling after the full board isn't part of the load, but once the
+    // board has closed, what still settles may be stray for the next one.
+    // (Its engine stops before the next board's starts, so polling while
+    // it's open is never stray, and needn't be kept.)
+    if (fullBoard) {
+      if (stopped) settledAfterClose.push(end);
+      return;
+    }
     const rowIds = dashboard.rows
       .filter((row) => rowNeeds(dashboard, row, call))
       .map((row) => row.id);
@@ -185,5 +196,6 @@ export function createTimingSession(input: TimingSessionInput): TimingSession {
       if (firstCell && !fullBoard) sink.report(summary());
     },
     requests: () => records,
+    settled: () => [...records.map((r) => r.end), ...settledAfterClose],
   };
 }

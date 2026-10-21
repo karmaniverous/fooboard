@@ -6,6 +6,7 @@ import { demoDashboard } from '@/demo/board';
 import type { Dashboard } from '@/domain/config/dashboard';
 import { createBoardEngine, demoProviders } from '@/engine';
 import { emptyModel } from '@/engine/model';
+import type { EngineProviders } from '@/engine/types';
 
 import type { TimingSink } from './session';
 import type { TimingSummary } from './summary';
@@ -15,6 +16,9 @@ import {
   type PageTiming,
   useDevBoardTiming,
 } from './useDevBoardTiming';
+
+/** The demo's GitHub token, as its board names it. */
+const DEMO_TOKEN = 'demo-github';
 
 /** A board like `useBoardEngine`'s: each mount times its own engine. */
 function useTimedBoard(dashboard: Dashboard, options: DevTimingOptions) {
@@ -112,6 +116,57 @@ describe('useDevBoardTiming', () => {
     rerender({ model: engine.getModel() });
     // The newer session still receives commits and reports its board.
     expect(reports).toHaveLength(1);
+  });
+
+  it("counts a closed board's polling that settles later as stray for the next", async () => {
+    const page: PageTiming = { boardShown: true, stopped: [] };
+    const reports: TimingSummary[] = [];
+    let now = 0;
+    const { result, rerender } = renderHook(
+      ({ model }) =>
+        useDevBoardTiming(model, {
+          ...capturing(page, reports),
+          clock: () => (now += 1),
+        }),
+      { initialProps: { model: emptyModel() } },
+    );
+    // A poll of the first board that is still running when it closes.
+    let settle: () => void = () => undefined;
+    const polled = new Promise<never[]>((resolve) => {
+      settle = () => {
+        resolve([]);
+      };
+    });
+    const inner = demoProviders();
+    const demoReader = inner.github(DEMO_TOKEN);
+    if (!demoReader) throw new Error('demo reader');
+    const providers: EngineProviders = {
+      ...inner,
+      github: () => ({ ...demoReader, listRepos: () => polled }),
+    };
+    const engine = createBoardEngine({ dashboard: demoDashboard, providers });
+    await engine.refreshAll();
+    const full = engine.getModel();
+
+    const first = result.current(demoDashboard, providers);
+    const reader = first.providers.github(DEMO_TOKEN);
+    await reader?.listWorkflowRuns({ owner: 'acme', repo: 'api-core' });
+    rerender({ model: full });
+    expect(reports).toHaveLength(1);
+    const poll = reader?.listRepos();
+    first.stop();
+    result.current(demoDashboard, demoProviders());
+    settle();
+    await poll;
+    rerender({ model: { ...full } });
+
+    expect(reports).toHaveLength(2);
+    // Stray for the second board, and not part of the first board's load.
+    expect(reports[1]?.notes).toContainEqual(
+      expect.stringMatching(/^1 requests ran meanwhile/),
+    );
+    expect(reports[0]?.requests.total).toBe(1);
+    expect(page.stopped[0]?.requests()).toHaveLength(1);
   });
 
   describe('with the browser defaults', () => {

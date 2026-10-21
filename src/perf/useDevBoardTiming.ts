@@ -64,7 +64,7 @@ function navigationType(): string {
 
 /** Requests that settled after `since` for boards no longer shown. */
 const strayAfter = (page: PageTiming, since: number): number =>
-  page.stopped.flatMap((s) => s.requests()).filter((r) => r.end > since).length;
+  page.stopped.flatMap((s) => s.settled()).filter((end) => end > since).length;
 
 /** Overrides of the browser's page state, sink and clock, for tests. */
 export interface DevTimingOptions {
