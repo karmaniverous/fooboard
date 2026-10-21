@@ -19,6 +19,9 @@ function recording(): { around: Around; calls: RequestCall[] } {
 
 const ref = { owner: 'acme', repo: 'api-core' };
 
+/** Fresh readers a factory hands out in the fresh-reader case. */
+const FRESH_READERS = 50;
+
 describe('wrapProviders', () => {
   it('passes GitHub reads through unchanged, describing each request', async () => {
     const inner = demoProviders(() => 0);
@@ -132,6 +135,35 @@ describe('wrapProviders', () => {
     expect(forKey?.(east)).not.toBe(
       forKey?.({ credentialId: 'k', region: 'eu-west-1' }),
     );
+  });
+
+  it('wraps each fresh reader a factory returns, once per reader', async () => {
+    // The demo's factory returns a fresh Amplify reader on every lookup:
+    // each gets its own wrapper, and a reader looked up again keeps its own.
+    const inner = demoProviders(() => 0);
+    const innerFor = inner.amplify('k');
+    if (!innerFor) throw new Error('demo reader');
+    const source = { credentialId: 'k', region: 'us-east-1' };
+    const readers = Array.from({ length: FRESH_READERS }, () =>
+      innerFor(source),
+    );
+    let next = 0;
+    const replaying: EngineProviders = {
+      ...inner,
+      amplify: () => () => readers[next++ % readers.length] ?? innerFor(source),
+    };
+    const { around, calls } = recording();
+    const forKey = wrapProviders(replaying, around).amplify('k');
+    if (!forKey) throw new Error('demo reader');
+    const first = readers.map(() => forKey(source));
+    const again = readers.map(() => forKey(source));
+    expect(new Set(first).size).toBe(FRESH_READERS);
+    again.forEach((wrapped, i) => {
+      expect(wrapped).toBe(first[i]);
+    });
+    // Every wrapper still describes its requests.
+    await first[FRESH_READERS - 1]?.listApps();
+    expect(calls).toEqual([expect.objectContaining({ kind: 'listApps' })]);
   });
 
   it('settles as the request does', async () => {

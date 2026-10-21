@@ -99,13 +99,16 @@ function wrapAmplifyReader(
 
 /** `providers` with every reader's requests passed through `around`.
  * Readers are wrapped once each, so a reader's identity stays stable for
- * the engine (one wrapped reader per credential, and per region). */
+ * the engine (one wrapped reader per credential, and per region). The
+ * wrappers are held weakly: a factory may return a fresh reader on each
+ * lookup (the demo's Amplify readers do), and a reader no longer used
+ * shouldn't be kept alive by its wrapper. */
 export function wrapProviders(
   providers: EngineProviders,
   around: Around,
 ): EngineProviders {
-  const github = new Map<GitHubReader, GitHubReader>();
-  const amplify = new Map<AmplifyReader, AmplifyReader>();
+  const github = new WeakMap<GitHubReader, GitHubReader>();
+  const amplify = new WeakMap<AmplifyReader, AmplifyReader>();
   return {
     github: (credentialId) => {
       const reader = providers.github(credentialId);
