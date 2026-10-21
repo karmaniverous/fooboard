@@ -12,17 +12,19 @@ import type { z } from 'zod';
 import { DashboardSchema } from '@/domain/config/dashboard';
 import { DashboardPage } from '@/pages/DashboardPage';
 import { type AppStores, createAppStores } from '@/storage';
-import { memoryStorage } from '@/storage/keyValue';
+import { type KeyValueStore, memoryStorage } from '@/storage/keyValue';
 import { StoresContext } from '@/storage/storesContext';
 
 /** What stands in for the home page, so leaving the board shows. */
 export const HOME_TEXT = 'home';
 
-/** The page for `dashboard`, saved in fresh stores; returns the stores. */
+/** The page for `dashboard`, saved in fresh stores over `device`;
+ * returns the stores. */
 export function renderDashboardPage(
   dashboard: z.input<typeof DashboardSchema>,
+  device: KeyValueStore = memoryStorage(),
 ): AppStores {
-  const stores = createAppStores(memoryStorage());
+  const stores = createAppStores(device);
   const saved = DashboardSchema.parse(dashboard);
   stores.config.saveDashboard(saved);
   render(

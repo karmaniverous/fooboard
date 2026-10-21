@@ -187,28 +187,6 @@ describe('createGitHubReader', () => {
     ]);
   });
 
-  it('listWorkflows parses workflow names', async () => {
-    const url =
-      'https://api.github.com/repos/acme/api-core/actions/workflows?per_page=100';
-    const { fetchImpl } = fakeFetch({
-      [url]: () =>
-        jsonResponse({
-          total_count: 1,
-          workflows: [
-            {
-              id: 1,
-              name: 'CI',
-              path: '.github/workflows/ci.yml',
-              state: 'active',
-            },
-          ],
-        }),
-    });
-    const reader = createGitHubReader({ token: 't', fetchImpl });
-    const workflows = await reader.listWorkflows(repo);
-    expect(workflows[0].name).toBe('CI');
-  });
-
   it('exposes the budget and token expiration from the underlying client', async () => {
     const url =
       'https://api.github.com/repos/acme/api-core/actions/runs?per_page=100&page=1&exclude_pull_requests=true';

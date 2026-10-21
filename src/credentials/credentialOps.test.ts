@@ -1,19 +1,20 @@
 /**
  * Tests for two-store credential operations: a failed configuration write
  * leaves no orphaned secret, removal never loses a secret before the
- * configuration is saved, and duplicating works with missing secrets.
+ * configuration is saved, duplicating works with missing secrets, and a
+ * secret that can't be cleared is reported with how to remove it.
  *
  * @module
  */
 import { describe, expect, it } from 'vitest';
 
-import { DashboardSchema } from '@/domain/config/dashboard';
+import { type Dashboard, DashboardSchema } from '@/domain/config/dashboard';
 import { duplicateDashboard } from '@/editors/edit';
 import {
   createCredentialStore,
   type CredentialStore,
 } from '@/storage/credentialStore';
-import { memoryStorage } from '@/storage/keyValue';
+import { type KeyValueStore, memoryStorage } from '@/storage/keyValue';
 
 import {
   addWithSecret,
@@ -116,5 +117,51 @@ describe('credential operations', () => {
     ).toThrow('quota exceeded');
     expect(storedIds(store, [newId])).toEqual([]);
     expect(store.get('gh')).toEqual(secret);
+  });
+});
+
+/** A device store that refuses to remove anything, so secrets can't be
+ * forgotten. */
+const stuck = (): KeyValueStore => ({
+  ...memoryStorage(),
+  removeItem: () => {
+    throw new Error('storage refused the removal');
+  },
+});
+
+describe('credential operations whose cleanup fails', () => {
+  it.each<[string, (store: CredentialStore, d: Dashboard) => unknown]>([
+    [
+      'adding, when the save fails',
+      (store, d) =>
+        addWithSecret(
+          store,
+          failingSave,
+          d,
+          { kind: 'github', label: 'x' },
+          secret,
+          true,
+        ),
+    ],
+    ['removing', (store, d) => removeWithSecret(store, okSave, d, 'gh')],
+    [
+      'duplicating, when the save fails',
+      (store, d) =>
+        saveDuplicate(store, failingSave, (rekey) =>
+          duplicateDashboard(d, 'd2', 'D (copy)', rekey),
+        ),
+    ],
+    [
+      'deleting a dashboard',
+      (store, d) => {
+        deleteWithSecrets(store, okSave, d);
+      },
+    ],
+  ])('says how to remove the leftovers after %s', (_label, run) => {
+    const store = createCredentialStore(stuck());
+    const d = withGh(store);
+    expect(() => run(store, d)).toThrow(
+      /clear this site.s data in your browser.s settings/,
+    );
   });
 });

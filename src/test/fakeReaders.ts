@@ -17,7 +17,6 @@ export const fakeGitHubReader = (
 ): GitHubReader => ({
   listWorkflowRuns: notFaked('listWorkflowRuns'),
   listRunJobs: notFaked('listRunJobs'),
-  listWorkflows: notFaked('listWorkflows'),
   matchingRefs: notFaked('matchingRefs'),
   compare: notFaked('compare'),
   listBranches: notFaked('listBranches'),

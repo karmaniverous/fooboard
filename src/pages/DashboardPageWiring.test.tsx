@@ -3,16 +3,20 @@
  * problems (or reads *Notes* when there are only notes), *Fix* opens the
  * editor on the problem's tab, *Customise* saves an editable copy of a
  * built-in and opens it, *Dismiss* hides a problem for good, and the
- * editor opens at General, where the dashboard can be deleted.
+ * editor opens at General, where the dashboard can be deleted, its device
+ * preferences with it.
  *
  * @module
  */
 import { fireEvent, screen, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
+import { DevicePreferencesSchema } from '@/domain/config/devicePreferences';
 import { branchRules } from '@/domain/config/placement';
 import { builtinSourceFor } from '@/domain/model/builtinSources';
 import { BUILTIN_KEYS } from '@/domain/model/keys';
+import { memoryStorage, readJson } from '@/storage/keyValue';
+import { DEVICE_PREFERENCES_KEY } from '@/storage/preferencesStore';
 import { HOME_TEXT, renderDashboardPage } from '@/test/renderDashboardPage';
 
 const githubRow = {
@@ -132,13 +136,23 @@ describe('DashboardPage editor', () => {
     expect(selectedTab()).toBe('General');
   });
 
-  it('deletes the dashboard from General', () => {
-    const stores = renderDashboardPage({ id: 'x', name: 'Gone' });
+  it('deletes the dashboard from General, with its device preferences', () => {
+    const device = memoryStorage();
+    const stores = renderDashboardPage({ id: 'x', name: 'Gone' }, device);
+    stores.preferences.setView('x', { density: 'compact' });
+    stores.preferences.setView('kept', { density: 'compact' });
+    const dashboardsWithPreferences = () =>
+      Object.keys(
+        DevicePreferencesSchema.parse(readJson(device, DEVICE_PREFERENCES_KEY))
+          .dashboards,
+      );
+    expect(dashboardsWithPreferences()).toEqual(['x', 'kept']);
     fireEvent.click(screen.getByRole('button', { name: 'Edit' }));
     fireEvent.click(screen.getByRole('button', { name: 'Delete dashboard' }));
     fireEvent.click(screen.getByRole('button', { name: 'Delete Gone' }));
     const loaded = stores.config.load();
     expect(loaded.kind === 'ok' && loaded.root.dashboards).toEqual([]);
+    expect(dashboardsWithPreferences()).toEqual(['kept']);
     expect(screen.getByText(HOME_TEXT)).toBeVisible();
   });
 });

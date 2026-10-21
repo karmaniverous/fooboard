@@ -133,6 +133,29 @@ describe('DashboardSchema', () => {
     expect(parsed.error?.issues[0]?.message).toBe('duplicate stage id: s1');
   });
 
+  it('rejects duplicate row ids, whatever the rows read', () => {
+    const parsed = DashboardSchema.safeParse({
+      id: 'd1',
+      name: 'Dashboard 1',
+      rows: [
+        { type: 'github', id: 'r', repo: 'acme/api', displayName: 'api' },
+        {
+          type: 'amplify',
+          id: 'r',
+          repo: 'acme/web',
+          displayName: 'web',
+          sources: [{ region: 'us-east-1', appId: 'a1' }],
+        },
+      ],
+    });
+    expect(parsed.error?.issues).toEqual([
+      expect.objectContaining({
+        message: 'duplicate row id: r',
+        path: ['rows', 1, 'id'],
+      }),
+    ]);
+  });
+
   it('accepts an acyclic source-stage chain', () => {
     const dashboard = DashboardSchema.parse({
       id: 'd1',

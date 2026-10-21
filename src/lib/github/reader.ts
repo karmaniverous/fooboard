@@ -22,10 +22,8 @@ import {
   RateLimitResponseSchema,
   type Repo,
   ReposResponseSchema,
-  type Workflow,
   type WorkflowRun,
   WorkflowRunsResponseSchema,
-  WorkflowsResponseSchema,
 } from './schemas';
 
 const API_BASE = 'https://api.github.com';
@@ -65,7 +63,6 @@ export interface GitHubReader {
     runId: number,
     opts?: { filter?: 'latest' | 'all' },
   ): Promise<Job[]>;
-  listWorkflows(repo: RepoRef): Promise<Workflow[]>;
   matchingRefs(repo: RepoRef, prefix: string): Promise<MatchingRef[]>;
   compare(repo: RepoRef, base: string, head: string): Promise<CompareResult>;
   listBranches(repo: RepoRef): Promise<Branch[]>;
@@ -174,13 +171,6 @@ export function createGitHubReader({
         ),
         JobsResponseSchema,
         (page) => page.jobs,
-      ),
-
-    listWorkflows: (ref) =>
-      getAll(
-        repoUrl(ref, `actions/workflows?per_page=${String(GITHUB_PER_PAGE)}`),
-        WorkflowsResponseSchema,
-        (page) => page.workflows,
       ),
 
     matchingRefs: (ref, prefix) =>

@@ -199,15 +199,6 @@ export function createDemoGitHubReader(
             .find((d) => d.run.id === runId)
             ?.jobs(startMs, clock()) ?? [],
       ),
-    listWorkflows: (ref) =>
-      call(ref, 'workflows', () => [
-        {
-          id: 1,
-          name: 'Deploy',
-          path: '.github/workflows/deploy.yml',
-          state: 'active',
-        },
-      ]),
     matchingRefs: (ref, prefix) =>
       call(ref, 'refs', () =>
         demoBranches(ref.repo)
