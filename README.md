@@ -290,7 +290,14 @@ Only the maintainer releases and deploys. Two long-running branches feed the hos
 1. pushes the numbered branch `release/x.y.z`;
 2. moves `preview/release` to that commit (`git push --force-with-lease`, no merge commit), so release.fooboard.dev always shows the latest release. The move is a fast-forward in the normal case; the force keeps `preview/release` exactly equal to the release if anything else landed there, and the lease (taken just after a fetch) refuses to overwrite a push that races the release.
 
-**Deploy to production.** Open a PR from `release/x.y.z` into `prod` and merge it. release-it never touches `prod`. The _prod PR from release/x.y.z_ check fails any PR into `prod` whose head isn't a stable `release/x.y.z` branch of this repo.
+**Deploy to production.** Open a PR from `release/x.y.z` into `prod` and merge it. release-it never touches `prod`. The _prod PR from release/x.y.z_ check fails any PR into `prod` whose head isn't a stable `release/x.y.z` branch of this repo. It runs on `pull_request_target`, so its workflow always comes from `prod` and a PR can't edit away the guard that checks it; it never checks out or runs PR code.
+
+**Bootstrapping the prod check.** Because the check's workflow is read from `prod`, it only appears once a release that contains `.github/workflows/prod-pr.yml` has been merged into `prod`. Until then, don't make it a required check, or no PR into `prod` could merge. Two ways in:
+
+- _(recommended)_ Open the first release PR into `prod` as usual. It runs without the guard (CI still runs) and brings the workflow file with it. Once it's merged, the check runs on every later PR into `prod`; make it required in `prod`'s branch protection then.
+- Or push the workflow file to `prod` once as an admin, then require the check before the first release PR.
+
+The first way needs no direct push to `prod`, so `prod` never holds a commit that didn't come through a reviewed release PR, and the file it adds is exactly the one released and tested on `main`. The only exposure is that one PR, which the maintainer opens from `release/x.y.z` by hand anyway.
 
 **Prereleases.** `npm run release:pre` (from any branch) tags a prerelease such as `0.2.0-0`, creates a GitHub prerelease and pushes `release/0.2.0-0`, but leaves `preview/release` alone: the preview site only ever shows a stable release, and a prerelease can't be PR'd into `prod`.
 
