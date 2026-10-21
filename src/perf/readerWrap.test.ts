@@ -1,0 +1,126 @@
+import { describe, expect, it } from 'vitest';
+
+import { demoProviders } from '@/engine';
+import type { EngineProviders } from '@/engine/types';
+
+import { type Around, type RequestCall, wrapProviders } from './readerWrap';
+
+/** An `around` that records each call and passes it through. */
+function recording(): { around: Around; calls: RequestCall[] } {
+  const calls: RequestCall[] = [];
+  return {
+    calls,
+    around: (call, run) => {
+      calls.push(call);
+      return run();
+    },
+  };
+}
+
+const ref = { owner: 'acme', repo: 'api-core' };
+
+describe('wrapProviders', () => {
+  it('passes GitHub reads through unchanged, describing each request', async () => {
+    const inner = demoProviders(() => 0);
+    const { around, calls } = recording();
+    const reader = wrapProviders(inner, around).github('tok');
+    const plain = inner.github('tok');
+    if (!reader || !plain) throw new Error('demo reader');
+
+    expect(await reader.listWorkflowRuns(ref)).toEqual(
+      await plain.listWorkflowRuns(ref),
+    );
+    await reader.listRunJobs(ref, 1000);
+    await reader.listBranches(ref);
+    await reader.compare(ref, 'dev', 'main');
+    await reader.listWorkflows(ref);
+    await reader.matchingRefs(ref, 'preview/');
+    await reader.listRepos();
+    await reader.readRateLimit();
+    // Synchronous reads aren't requests.
+    expect(reader.getBudget()).toEqual(plain.getBudget());
+    expect(reader.getTokenExpiration()).toBeUndefined();
+
+    expect(calls.map((c) => c.kind)).toEqual([
+      'listWorkflowRuns',
+      'listRunJobs',
+      'listBranches',
+      'compare',
+      'listWorkflows',
+      'matchingRefs',
+      'listRepos',
+      'readRateLimit',
+    ]);
+    expect(calls[0]).toEqual({
+      provider: 'github',
+      kind: 'listWorkflowRuns',
+      credentialId: 'tok',
+      repo: 'acme/api-core',
+    });
+    expect(calls.at(-1)).toEqual({
+      provider: 'github',
+      kind: 'readRateLimit',
+      credentialId: 'tok',
+    });
+  });
+
+  it('passes Amplify reads through, naming the credential, region and app', async () => {
+    const { around, calls } = recording();
+    const readerFor = wrapProviders(
+      demoProviders(() => 0),
+      around,
+    ).amplify('key');
+    if (!readerFor) throw new Error('demo reader');
+    const reader = readerFor({ credentialId: 'key', region: 'us-east-1' });
+    const branches = await reader.listBranches('d1demomarketing');
+    expect(branches.length).toBeGreaterThan(0);
+    await reader.listJobs('d1demomarketing', 'dev', 5);
+    await reader.listApps();
+    await reader.getJob('d1demomarketing', 'dev', '1');
+    expect(calls).toEqual([
+      {
+        provider: 'amplify',
+        kind: 'listBranches',
+        credentialId: 'key',
+        region: 'us-east-1',
+        appId: 'd1demomarketing',
+      },
+      expect.objectContaining({ kind: 'listJobs', appId: 'd1demomarketing' }),
+      {
+        provider: 'amplify',
+        kind: 'listApps',
+        credentialId: 'key',
+        region: 'us-east-1',
+      },
+      expect.objectContaining({ kind: 'getJob' }),
+    ]);
+  });
+
+  it('keeps a missing credential missing and a reader stable', () => {
+    const none: EngineProviders = {
+      github: () => undefined,
+      amplify: () => undefined,
+    };
+    const { around } = recording();
+    const wrappedNone = wrapProviders(none, around);
+    expect(wrappedNone.github('x')).toBeUndefined();
+    expect(wrappedNone.amplify('x')).toBeUndefined();
+
+    const wrapped = wrapProviders(
+      demoProviders(() => 0),
+      around,
+    );
+    expect(wrapped.github('a')).toBe(wrapped.github('a'));
+  });
+
+  it('settles as the request does', async () => {
+    // The demo's flaky-svc repo answers 502.
+    const reader = wrapProviders(
+      demoProviders(() => 0),
+      recording().around,
+    ).github('t');
+    await expect(
+      reader?.listWorkflowRuns({ owner: 'acme', repo: 'flaky-svc' }),
+    ).rejects.toThrow('502');
+  });
+});
