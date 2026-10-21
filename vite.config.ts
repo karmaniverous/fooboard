@@ -2,7 +2,9 @@
  * Vite config: React + Tailwind v4 static browser app served from the site
  * root (`base: '/'`), which client-side routes such as `/spike/amplify`
  * require: a relative base would resolve assets against the route path on
- * deep links. Vitest extends this config (see `vitest.config.ts`).
+ * deep links. A production build fails if it contains the development
+ * timing instrumentation (`vite/noDevInstrumentation.ts`). Vitest extends
+ * this config (see `vitest.config.ts`).
  *
  * @module
  */
@@ -11,6 +13,8 @@ import path from 'node:path';
 import tailwindcss from '@tailwindcss/vite';
 import react from '@vitejs/plugin-react';
 import { defineConfig } from 'vite';
+
+import { noDevInstrumentation } from './vite/noDevInstrumentation.ts';
 
 /** Heavy, rarely-changing vendor code, each group its own cacheable chunk:
  * React, the AWS SDK, the UI kit (Radix, dnd-kit, icons) and the data libraries
@@ -31,7 +35,7 @@ function manualChunks(id: string): string | undefined {
 }
 
 export default defineConfig({
-  plugins: [react(), tailwindcss()],
+  plugins: [react(), tailwindcss(), noDevInstrumentation()],
   resolve: {
     alias: {
       '@': path.resolve(import.meta.dirname, './src'),

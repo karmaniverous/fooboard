@@ -2,7 +2,8 @@
  * React binding for the board engine (spec.md §8 step 7): creates the
  * engine for a dashboard, starts polling while mounted, and re-renders on
  * every published model. Also ticks a clock once a minute so relative
- * times stay current between refreshes.
+ * times stay current between refreshes. In development builds each
+ * engine is timed (spec.md §3.5, `src/perf`).
  *
  * @module
  */
@@ -16,6 +17,8 @@ import {
   type EngineProviders,
   githubCredentialIds,
 } from '@/engine';
+import { IDLE_INTERVAL_MS } from '@/engine/scheduler';
+import { useBoardTiming } from '@/perf';
 
 export function useBoardEngine(
   dashboard: Dashboard,
@@ -32,9 +35,14 @@ export function useBoardEngine(
     setModel(emptyModel(githubCredentialIds(dashboard)));
   }
   const [now, setNow] = useState(() => Date.now());
+  const startTiming = useBoardTiming(model);
 
   useEffect(() => {
-    const engine = createBoardEngine({ dashboard, providers });
+    const timing = startTiming(dashboard, providers);
+    const engine = createBoardEngine({
+      dashboard,
+      providers: timing.providers,
+    });
     const unsubscribe = engine.subscribe((next) => {
       setModel(next);
       setNow(Date.now());
@@ -43,13 +51,16 @@ export function useBoardEngine(
     return () => {
       unsubscribe();
       engine.stop();
+      timing.stop();
     };
-  }, [dashboard, providers]);
+  }, [dashboard, providers, startTiming]);
 
   useEffect(() => {
     const id = setInterval(() => {
       setNow(Date.now());
-    }, 60_000);
+      // Relative times read in minutes; between refreshes, tick at the
+      // idle polling interval (one minute).
+    }, IDLE_INTERVAL_MS);
     return () => {
       clearInterval(id);
     };

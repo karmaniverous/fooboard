@@ -304,7 +304,7 @@ This path needs no direct push to `prod`, so `prod` never holds a commit that di
 
 ## Contributing
 
-Development setup, commands and standards are in [CONTRIBUTING.md](./CONTRIBUTING.md).
+Development setup, commands and standards are in [CONTRIBUTING.md](./CONTRIBUTING.md). In the dev server, boards are timed and a summary is printed to the browser console; `/demo?latency=300` simulates network latency on the demo; production builds contain none of it. See [Timing (development builds)](./CONTRIBUTING.md#timing-development-builds).
 
 ## License
 

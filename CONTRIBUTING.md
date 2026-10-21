@@ -61,6 +61,7 @@ These checks **start from the code the PR touched**. That is the point of depart
 ## Code conventions
 
 - **TypeScript, strict.** No `any`; use `unknown` and narrow. No narrowing type assertions (`as X`, `as unknown as X`): parse, guard or build a complete value instead (ESLint `no-unsafe-type-assertion`). Test fakes too: `src/test/fakeReaders.ts` and `src/lib/amplify/sdkShapes.ts` build typed readers and SDK shapes.
+- **No magic values.** Every number, interval, limit and default is a named constant with a doc comment saying what it is and why it has that value (e.g. `IDLE_INTERVAL_MS`, `GITHUB_PER_PAGE`). Inline literals are fine only where the meaning is self-evident (`0`, `1`, an index, a CSS class).
 - **Zod schemas are the source of truth** for data shapes; derive types with `z.infer`.
 - **Don't reinvent the wheel: use [`radash`](https://radash-docs.vercel.app)** for general-purpose utilities (grouping, sorting, picking max/min, uniqueness, deep cloning, retries, debouncing and the like) instead of hand-rolled helpers. Write a local helper only when radash has nothing suitable, and say why in a comment.
 - **Ports and adapters**: pure domain logic in `src/domain`; providers behind interfaces; React components render and hold UI state only.
@@ -78,6 +79,14 @@ fooboard is static and browser-only; credentials never leave the user's browser 
 - Never commit, log or print credentials, and never put them in error messages, fixtures or screenshots.
 - Credentials are stored only where the user chooses: session memory, or local storage under _Remember on this device_.
 - No third-party or inline scripts, cookies or telemetry.
+
+## Timing (development builds)
+
+In the dev server (`npm run dev`) every board is timed (`src/perf`): each request's duration (including any wait in its credential's queue) and outcome, the requests each row needed, and the time to the first status cell and to the full board, from the board opening and, for the first board after a page load, from the page loading. Marks and measures named `fooboard-timing:*` appear in the browser's performance panel; when the board is full, a collapsed `fooboard-timing` group in the console summarises the load against the spec's performance targets (named constants in `src/perf/targets.ts`).
+
+- **Demo latency:** the demo answers at once; open `/demo?latency=300` to delay every demo request by 300 ms, the latency the demo targets assume.
+- **Stray requests:** requests still running for a board no longer shown settle while the next board loads, sharing the credentials' queues, so the summary notes how many did. In development React starts each board's engine twice and discards the first, whose requests still run; a board closed while polling leaves its reads in flight too. Polling after the full board is never part of a board's own load.
+- **Production:** none of this is built. `import.meta.env.DEV` is `false` there, so `src/perf/index.ts` exports pass-throughs, and the build fails if `fooboard-timing` appears in its output (`vite/noDevInstrumentation.ts`).
 
 ## Browser spikes
 
