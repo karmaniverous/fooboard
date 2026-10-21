@@ -93,8 +93,11 @@ describe('summarise', () => {
       firstCell: { sinceOpen: 1_200, sinceLoad: 1_900 },
       fullBoard: { sinceOpen: 6_000, sinceLoad: 6_700 },
     });
-    expect(summary.targets.map((t) => t.maxMs)).toEqual(
-      PERFORMANCE_TARGETS.map((t) => t.maxMs),
+    // Every target is listed, judged or not (here the reload and real
+    // board ones aren't).
+    expect(summary.targets).toHaveLength(PERFORMANCE_TARGETS.length);
+    expect(summary.targets.filter((t) => t.met === undefined)).toHaveLength(
+      PERFORMANCE_TARGETS.length - 2,
     );
     expect(measured(summary)).toEqual([
       expect.objectContaining({

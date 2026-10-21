@@ -111,6 +111,27 @@ describe('wrapProviders', () => {
       around,
     );
     expect(wrapped.github('a')).toBe(wrapped.github('a'));
+
+    // One inner Amplify reader per source: one wrapped reader for it.
+    const inner = demoProviders(() => 0);
+    const innerFor = inner.amplify('k');
+    if (!innerFor) throw new Error('demo reader');
+    const fixed = new Map(
+      ['us-east-1', 'eu-west-1'].map((region) => [
+        region,
+        innerFor({ credentialId: 'k', region }),
+      ]),
+    );
+    const stable: EngineProviders = {
+      ...inner,
+      amplify: () => (source) => fixed.get(source.region) ?? innerFor(source),
+    };
+    const forKey = wrapProviders(stable, around).amplify('k');
+    const east = { credentialId: 'k', region: 'us-east-1' };
+    expect(forKey?.(east)).toBe(forKey?.(east));
+    expect(forKey?.(east)).not.toBe(
+      forKey?.({ credentialId: 'k', region: 'eu-west-1' }),
+    );
   });
 
   it('settles as the request does', async () => {

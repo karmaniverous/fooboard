@@ -17,10 +17,8 @@ import {
   type EngineProviders,
   githubCredentialIds,
 } from '@/engine';
+import { IDLE_INTERVAL_MS } from '@/engine/scheduler';
 import { useBoardTiming } from '@/perf';
-
-/** How often relative times are refreshed between polls (ms). */
-const CLOCK_TICK_MS = 60_000;
 
 export function useBoardEngine(
   dashboard: Dashboard,
@@ -60,7 +58,9 @@ export function useBoardEngine(
   useEffect(() => {
     const id = setInterval(() => {
       setNow(Date.now());
-    }, CLOCK_TICK_MS);
+      // Relative times read in minutes; between refreshes, tick at the
+      // idle polling interval (one minute).
+    }, IDLE_INTERVAL_MS);
     return () => {
       clearInterval(id);
     };

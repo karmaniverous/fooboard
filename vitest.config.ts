@@ -10,7 +10,7 @@
  */
 import { defineConfig, mergeConfig } from 'vitest/config';
 
-import viteConfig from './vite.config';
+import viteConfig from './vite.config.ts';
 
 export default mergeConfig(
   viteConfig,
@@ -29,8 +29,12 @@ export default mergeConfig(
         enabled: true,
         provider: 'v8',
         reporter: ['text', 'lcov'],
-        include: ['src/**/*.{ts,tsx}'],
-        exclude: ['src/**/*.test.{ts,tsx}', 'src/main.tsx'],
+        include: ['src/**/*.{ts,tsx}', 'vite/**/*.ts'],
+        exclude: [
+          'src/**/*.test.{ts,tsx}',
+          'vite/**/*.test.ts',
+          'src/main.tsx',
+        ],
       },
     },
   }),

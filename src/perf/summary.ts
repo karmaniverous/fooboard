@@ -83,14 +83,14 @@ export interface TimingSummary {
   notes: string[];
 }
 
-/** The median of `values` (0 for none). */
+/** The median of `values` (0 for none). Local: radash has no median. */
 export function median(values: readonly number[]): number {
+  if (values.length === 0) return 0;
   const sorted = sort([...values], (v) => v);
   const mid = Math.floor(sorted.length / 2);
-  if (sorted.length === 0) return 0;
-  return sorted.length % 2
-    ? (sorted[mid] ?? 0)
-    : ((sorted[mid - 1] ?? 0) + (sorted[mid] ?? 0)) / 2;
+  // The middle value, or the middle two for an even count.
+  const middle = sorted.slice(sorted.length % 2 ? mid : mid - 1, mid + 1);
+  return sum(middle) / middle.length;
 }
 
 const duration = (r: RequestRecord): number => r.end - r.start;
@@ -98,22 +98,21 @@ const duration = (r: RequestRecord): number => r.end - r.start;
 /** Requests grouped by provider and kind, most time first. */
 export function kindStats(records: readonly RequestRecord[]): KindStats[] {
   const groups = group(records, (r) => `${r.call.provider} ${r.call.kind}`);
-  const stats = Object.values(groups).flatMap((list = []) => {
-    const first = list.at(0);
-    if (!first) return [];
-    const ms = list.map(duration);
-    return [
-      {
-        provider: first.call.provider,
-        kind: first.call.kind,
+  // Every group has at least one record; its first names the group.
+  const stats = Object.values(groups).flatMap((list = []) =>
+    list.slice(0, 1).map(({ call }) => {
+      const ms = list.map(duration);
+      return {
+        provider: call.provider,
+        kind: call.kind,
         count: list.length,
         failed: list.filter((r) => r.outcome !== OK_OUTCOME).length,
         medianMs: median(ms),
         maxMs: Math.max(...ms),
         totalMs: sum(ms),
-      },
-    ];
-  });
+      };
+    }),
+  );
   return sort(stats, (s) => s.totalMs, true);
 }
 

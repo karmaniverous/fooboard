@@ -48,10 +48,18 @@ export interface PageTiming {
 /** The page's timing state in the app (tests pass their own). */
 const sharedPage: PageTiming = { boardShown: false, stopped: [] };
 
-/** How the page loaded (`navigate`, `reload`, `back_forward`). */
+/** How a page loaded when the browser gives no navigation entry. */
+const DEFAULT_NAVIGATION = 'navigate';
+
+/** How the page loaded (`navigate`, `reload`, `back_forward`). Read
+ * structurally: `PerformanceNavigationTiming` isn't defined everywhere. */
 function navigationType(): string {
-  const [entry] = performance.getEntriesByType('navigation');
-  return entry instanceof PerformanceNavigationTiming ? entry.type : 'navigate';
+  const entry = performance.getEntriesByType('navigation').at(0);
+  return entry !== undefined &&
+    'type' in entry &&
+    typeof entry.type === 'string'
+    ? entry.type
+    : DEFAULT_NAVIGATION;
 }
 
 /** Requests that settled after `since` for boards no longer shown. */

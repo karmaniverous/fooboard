@@ -11,9 +11,10 @@
 import { useEffect, useRef, useState } from 'react';
 
 import type { BoardModel } from '@/engine';
+import { IDLE_INTERVAL_MS } from '@/engine/scheduler';
 
 /** At most this often (the idle polling interval). */
-const LAYOUT_DATA_INTERVAL_MS = 60_000;
+const LAYOUT_DATA_INTERVAL_MS = IDLE_INTERVAL_MS;
 
 const filled = (m: BoardModel) => Object.keys(m.cells).length;
 

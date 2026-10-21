@@ -74,7 +74,7 @@ const onlyRows = (model: BoardModel, rowIds: string[]): BoardModel => ({
   ),
 });
 
-function setup(pageLoad?: string) {
+function setup(pageLoad?: string, dashboard = demoDashboard) {
   let now = 1_000;
   const reports: TimingSummary[] = [];
   const sink: TimingSink & { marks: string[]; measures: string[] } = {
@@ -85,7 +85,7 @@ function setup(pageLoad?: string) {
     report: (s) => reports.push(s),
   };
   const session = createTimingSession({
-    dashboard: demoDashboard,
+    dashboard,
     kind: 'demo',
     demoLatencyMs: 300,
     ...(pageLoad ? { pageLoad } : {}),
@@ -112,16 +112,26 @@ describe('createTimingSession', () => {
       return Promise.reject(new GitHubAuthError('runs'));
     });
     await expect(failure).rejects.toBeInstanceOf(GitHubAuthError);
+    // A rejection that isn't an Error is recorded too, and passed on as is.
+    const thrown: unknown = 'plain string';
+    await expect(
+      session.around(github('acme/orders'), (): Promise<never> => {
+        throw thrown;
+      }),
+    ).rejects.toBe('plain string');
     expect(
       session.requests().map((r) => [r.end - r.start, r.outcome, r.rowIds]),
     ).toEqual([
       [250, 'ok', ['api-core']],
       [40, 'GitHubAuthError', ['legacy-billing']],
+      [0, 'Error', ['orders']],
     ]);
-    expect(sink.measures).toEqual([
-      `${TIMING_NAMES.request} github listWorkflowRuns`,
-      `${TIMING_NAMES.request} github listWorkflowRuns`,
-    ]);
+    expect(sink.measures).toEqual(
+      Array.from(
+        { length: 3 },
+        () => `${TIMING_NAMES.request} github listWorkflowRuns`,
+      ),
+    );
   });
 
   it('marks the first status cell, then reports once at the full board', async () => {
@@ -150,6 +160,17 @@ describe('createTimingSession', () => {
     );
   });
 
+  it('reports a full board with no status cell, without a first cell', async () => {
+    const model = await fullModel();
+    // Every cell of this board is an error (its token is rejected).
+    const board = { ...demoDashboard, rows: [rowById('legacy-billing')] };
+    const { session, reports } = setup(undefined, board);
+    session.committed(model);
+    expect(reports).toHaveLength(1);
+    expect(reports[0]?.firstCell).toBeUndefined();
+    expect(reports[0]?.fullBoard).toBeDefined();
+  });
+
   it('leaves polling after the full board out of the load', async () => {
     const model = await fullModel();
     const { session } = setup();
@@ -157,7 +178,6 @@ describe('createTimingSession', () => {
     session.committed(model);
     await session.around(github('acme/api-core'), () => Promise.resolve(2));
     expect(session.requests()).toHaveLength(1);
-    expect(session.isFull()).toBe(true);
   });
 
   it('reports a board closed part-way, but not one never shown', async () => {
@@ -166,7 +186,9 @@ describe('createTimingSession', () => {
     unseen.session.committed(emptyModel());
     unseen.session.stop();
     expect(unseen.reports).toEqual([]);
-    expect(unseen.session.isStopped()).toBe(true);
+    // Stopped: a later full board isn't reported either.
+    unseen.session.committed(model);
+    expect(unseen.reports).toEqual([]);
 
     const partial = setup();
     partial.session.committed(onlyRows(model, ['api-core']));

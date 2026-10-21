@@ -40,7 +40,7 @@ export interface TimingSessionInput {
   clock: () => number;
   sink: TimingSink;
   /** Requests made meanwhile for boards no longer shown. */
-  strayRequests?: () => number;
+  strayRequests: () => number;
 }
 
 export interface TimingSession {
@@ -50,10 +50,8 @@ export interface TimingSession {
   committed(model: BoardModel): void;
   /** The board closed (its engine stopped). */
   stop(): void;
-  /** Requests recorded so far, and whether the board is shown and full. */
+  /** Requests recorded so far (until the full board). */
   requests(): readonly RequestRecord[];
-  isStopped(): boolean;
-  isFull(): boolean;
 }
 
 /** Does `row` need `call`'s read? GitHub reads are per repo and token (a
@@ -79,8 +77,11 @@ export function rowNeeds(
  * target only after every read and compare (spec.md §2.6). */
 const isFinal = (cell: BoardCell | undefined): boolean => cell !== undefined;
 
+/** The outcome of a rejection that isn't an `Error`. */
+const UNKNOWN_FAILURE = 'Error';
+
 const outcomeOf = (err: unknown): string =>
-  err instanceof Error ? err.name : 'Error';
+  err instanceof Error ? err.name : UNKNOWN_FAILURE;
 
 export function createTimingSession(input: TimingSessionInput): TimingSession {
   const { dashboard, clock, sink } = input;
@@ -138,7 +139,7 @@ export function createTimingSession(input: TimingSessionInput): TimingSession {
       ...(firstCell ? { firstCell } : {}),
       ...(fullBoard ? { fullBoard } : {}),
       records,
-      strayRequests: input.strayRequests?.() ?? 0,
+      strayRequests: input.strayRequests(),
     });
 
   return {
@@ -173,7 +174,5 @@ export function createTimingSession(input: TimingSessionInput): TimingSession {
       if (firstCell && !fullBoard) sink.report(summary());
     },
     requests: () => records,
-    isStopped: () => stopped,
-    isFull: () => fullBoard !== undefined,
   };
 }

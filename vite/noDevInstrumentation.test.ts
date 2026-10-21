@@ -36,6 +36,28 @@ describe('noDevInstrumentation', () => {
     isPreview: false,
   });
 
+  it('fails the build naming the files that contain the marker', () => {
+    const { generateBundle } = noDevInstrumentation(MARKER);
+    if (typeof generateBundle !== 'function')
+      throw new Error('generateBundle is a function');
+    const context = {
+      error: (message: string): never => {
+        throw new Error(message);
+      },
+    };
+    const run = (code: string) => {
+      const bundle = { 'a.js': { type: 'chunk', fileName: 'a.js', code } };
+      // The hook reads only `this.error` and the bundle.
+      Reflect.apply(generateBundle, context, [{}, bundle, false]);
+    };
+    expect(() => {
+      run('clean');
+    }).not.toThrow();
+    expect(() => {
+      run(`"${MARKER}:open"`);
+    }).toThrow(/production bundle: a\.js/);
+  });
+
   it('applies to production builds only', () => {
     const { apply } = noDevInstrumentation(MARKER);
     if (typeof apply !== 'function') throw new Error('apply is a function');
