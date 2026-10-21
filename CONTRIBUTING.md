@@ -25,10 +25,10 @@ npm run knip         # find unused files, dependencies and exports
 ## Workflow
 
 - **One PR at a time.** Each PR ships a meaningful block of features. Never work on two PRs in parallel; start the next from an up-to-date `main` after the previous one is merged.
-- **Branches** are named `feature/<slug>` (lefthook enforces the prefix).
+- **Branches** are named `feature/<slug>` (lefthook enforces the prefix; the hook lists the other prefixes). `preview/release` and `prod` are long-running deploy branches: don't commit to them.
 - **Commit and push** after every green commit. Before every push, check the branch's PR state with `gh pr list --head <branch> --state all --json number,state` (without `--state all`, merged and closed PRs are hidden and the branch looks PR-free). Look at the **newest** PR on the branch: if it is merged or closed, stop. A merged branch takes new work only through a new PR opened from it, by agreement; once that follow-up PR is open, pushing to it is fine.
 - **Open the PR as a draft early** so progress is visible; mark it ready only after the pre-review checks below.
-- **Only the maintainer merges, deploys and releases.** Don't edit `CHANGELOG.md` by hand; it is generated at release.
+- **Only the maintainer merges, deploys and releases** (see the README, [Releasing and deployment](./README.md#releasing-and-deployment)). Don't edit `CHANGELOG.md` by hand; it is generated at release.
 
 ## Quality gate (every commit)
 

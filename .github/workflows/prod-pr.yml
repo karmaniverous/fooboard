@@ -1,0 +1,33 @@
+name: Prod PR
+
+# prod (fooboard.dev) takes code only by PR from a numbered, stable release
+# branch (release/x.y.z) in this repo. Make the job below a required check on
+# prod. See README, "Releasing and deployment".
+
+on:
+  pull_request:
+    branches: [prod]
+    types: [opened, edited, reopened, synchronize]
+
+permissions: {}
+
+jobs:
+  head-branch:
+    name: prod PR from release/x.y.z
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check the head branch
+        env:
+          HEAD_REF: ${{ github.head_ref }}
+          HEAD_REPO: ${{ github.event.pull_request.head.repo.full_name }}
+          BASE_REPO: ${{ github.repository }}
+        run: |
+          if [ "$HEAD_REPO" != "$BASE_REPO" ]; then
+            echo "::error::PRs into prod must come from a branch in $BASE_REPO, not $HEAD_REPO."
+            exit 1
+          fi
+          if ! [[ "$HEAD_REF" =~ ^release/[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "::error::PRs into prod must come from a stable release/x.y.z branch, not $HEAD_REF."
+            exit 1
+          fi
+          echo "$HEAD_REF may be merged into prod."
