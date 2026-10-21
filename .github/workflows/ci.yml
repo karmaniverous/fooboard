@@ -1,14 +1,17 @@
 name: CI
 
-# Runs every quality gate on each PR & push to main, on each supported Node
-# major. Keep the steps in sync with the release-it `after:init` hooks in
-# package.json, and the Node versions in sync with `engines.node`.
+# Runs every quality gate on each PR (into main or prod) & push to main, on
+# each supported Node major. Keep the steps in sync with the release-it
+# `after:init` hooks in package.json, and the Node versions in sync with
+# `engines.node`.
 
 on:
   push:
     branches: [main]
   pull_request:
-    branches: [main]
+    branches: [main, prod]
+    # `edited` reruns the checks when a PR is retargeted (e.g. to prod).
+    types: [opened, synchronize, reopened, edited]
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}

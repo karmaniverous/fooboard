@@ -1,0 +1,50 @@
+name: Prod PR
+
+# prod (fooboard.dev) takes code only by PR from a numbered, stable release
+# branch (release/x.y.z) in this repo. Make the job below a required check on
+# prod. See README, "Releasing and deployment".
+#
+# Security: this runs on pull_request_target, so GitHub takes the workflow
+# from the base branch (prod), not from the PR. A PR therefore can't edit
+# or delete the guard that checks it. In exchange the job must never check
+# out, build or run PR code, and it gets no token permissions. PR fields
+# reach the script only through env variables, never by ${{ }}
+# interpolation into `run:`, so a crafted branch name can't inject shell.
+#
+# Bootstrap: because the workflow comes from prod, the check only runs once
+# a release carrying this file has been merged into prod. See README.
+#
+# `edited` re-checks a PR when it is retargeted to prod.
+
+on:
+  pull_request_target:
+    branches: [prod]
+    types: [opened, edited, reopened, synchronize]
+
+permissions: {}
+
+jobs:
+  head-branch:
+    name: prod PR from release/x.y.z
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check the head branch
+        env:
+          HEAD_REF: ${{ github.event.pull_request.head.ref }}
+          HEAD_REPO: ${{ github.event.pull_request.head.repo.full_name }}
+          BASE_REF: ${{ github.event.pull_request.base.ref }}
+          BASE_REPO: ${{ github.repository }}
+        run: |
+          if [ "$BASE_REF" != "prod" ]; then
+            echo "Base is $BASE_REF, not prod: nothing to check."
+            exit 0
+          fi
+          if [ "$HEAD_REPO" != "$BASE_REPO" ]; then
+            echo "::error::PRs into prod must come from a branch in $BASE_REPO, not $HEAD_REPO."
+            exit 1
+          fi
+          if ! [[ "$HEAD_REF" =~ ^release/[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "::error::PRs into prod must come from a stable release/x.y.z branch, not $HEAD_REF."
+            exit 1
+          fi
+          echo "$HEAD_REF may be merged into prod."

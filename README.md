@@ -30,6 +30,7 @@ fooboard shows the deployment state of every repo × stage at a glance. Paste a 
 - [Credentials](#credentials)
 - [Header, menu and footer](#header-menu-and-footer)
 - [Your data](#your-data)
+- [Releasing and deployment](#releasing-and-deployment)
 - [Contributing](#contributing)
 - [License](#license)
 
@@ -274,6 +275,32 @@ Everything stays in this browser:
 - **Reset** clears fooboard's data, and only fooboard's.
 
 See [PRIVACY.md](./PRIVACY.md).
+
+## Releasing and deployment
+
+Only the maintainer releases and deploys. Two long-running branches feed the hosted sites through Amplify Hosting:
+
+| Branch            | Site                                      | Updated by                                              |
+| ----------------- | ----------------------------------------- | ------------------------------------------------------- |
+| `preview/release` | release.fooboard.dev (password-protected) | `npm run release`, which moves it to the newest release |
+| `prod`            | fooboard.dev                              | a PR from a `release/x.y.z` branch, and nothing else    |
+
+**Release.** On an up-to-date `main`, run `npm run release`. release-it runs the quality gate, bumps the version, writes `CHANGELOG.md`, commits, tags, pushes `main`, creates the GitHub release, then:
+
+1. pushes the numbered branch `release/x.y.z`;
+2. moves `preview/release` to that commit (`git push --force-with-lease`, no merge commit), so release.fooboard.dev always shows the latest release. The move is a fast-forward in the normal case; the force keeps `preview/release` exactly equal to the release if anything else landed there, and the lease (taken just after a fetch) refuses to overwrite a push that races the release.
+
+**Deploy to production.** Open a PR from `release/x.y.z` into `prod` and merge it. release-it never touches `prod`. The _prod PR from release/x.y.z_ check fails any PR into `prod` whose head isn't a stable `release/x.y.z` branch of this repo. It runs on `pull_request_target`, so its workflow always comes from `prod` and a PR can't edit away the guard that checks it; it never checks out or runs PR code.
+
+**Bootstrapping the prod check.** Because the check's workflow is read from `prod`, it only appears once a release that contains `.github/workflows/prod-pr.yml` has been merged into `prod`. The first release PR into `prod` therefore goes through without the guard (CI still runs on it) and brings the workflow file with it. After it merges, the check runs on every later PR into `prod`, and the maintainer makes _prod PR from release/x.y.z_ a required check in `prod`'s branch protection, alongside _quality (node 22)_ and _quality (node 24)_. Don't require it before then, or no PR into `prod` could merge.
+
+This path needs no direct push to `prod`, so `prod` never holds a commit that didn't come through a release PR, and the guard it adds is exactly the file released and tested on `main`. The only unguarded PR is that first one, which the maintainer opens from `release/x.y.z` by hand.
+
+**Prereleases.** `npm run release:pre` (from any branch) tags a prerelease such as `0.2.0-0`, creates a GitHub prerelease and pushes `release/0.2.0-0`, but leaves `preview/release` alone: the preview site only ever shows a stable release, and a prerelease can't be PR'd into `prod`.
+
+**Hotfixes.** Normally fix on `main` and release again. When `main` holds work that mustn't ship yet, branch `hotfix/<slug>` from the `release/x.y.z` branch, fix it there, run `npm run release -- --no-git.requireBranch` from the hotfix branch (this cuts `release/x.y.(z+1)` and moves `preview/release`), PR that into `prod`, then merge the hotfix branch back into `main` by PR.
+
+**`.env.local`.** `npm run release` loads `.env.local` with dotenvx. It needs `GITHUB_TOKEN` (a token that can create releases on this repo) for release-it's GitHub release; copy `.env.local.template` to start. Other local-only variables, such as validation credentials, may live there too. `.env.local` is gitignored: never commit it or paste its contents.
 
 ## Contributing
 

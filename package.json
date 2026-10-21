@@ -98,6 +98,8 @@
       "after:release": [
         "git switch -c release/${version}",
         "git push -u origin release/${version}",
+        "git fetch origin preview/release",
+        "${isPreRelease ? 'echo Prerelease: preview/release not moved' : 'git push --force-with-lease=preview/release origin release/' + version + ':preview/release'}",
         "git switch ${branchName}"
       ],
       "after:bump": [

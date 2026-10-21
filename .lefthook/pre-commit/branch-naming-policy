@@ -2,13 +2,15 @@
 #!/bin/sh
 
 BRANCH=$(git rev-parse --abbrev-ref HEAD)
-REGEX="^(head|main|(bugfix|chore|ci|docs|feature|hotfix|perf|refactor|revert|style|test)\/[-_a-zA-Z0-9]+|release\/[0-9]+\.[0-9]+\.[0-9]+)(-[_a-zA-Z0-9]+)?$"
+REGEX="^(head|main|prod|preview\/release|(bugfix|chore|ci|docs|feature|hotfix|perf|refactor|revert|style|test)\/[-_a-zA-Z0-9]+|release\/[0-9]+\.[0-9]+\.[0-9]+)(-[_a-zA-Z0-9]+)?$"
 
 if ! [[ $BRANCH =~ $REGEX ]]; then
   echo "$BRANCH"
   echo ""
   echo "Invalid branch name. Valid patterns:"
   echo "- main"
+  echo "- preview/release            Long-running: latest release (release.fooboard.dev)"
+  echo "- prod                       Long-running: production (fooboard.dev), PRs from release/* only"
   echo "- bugfix/[-_a-zA-Z0-9]+     Bug fixes"
   echo "- chore/[-_a-zA-Z0-9]+     Maintenance & config"
   echo "- ci/[-_a-zA-Z0-9]+        CI/CD pipeline changes"
