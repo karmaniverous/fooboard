@@ -1,0 +1,94 @@
+/**
+ * Typed reads of the query cache (spec.md §3.1): what each request's
+ * query holds once it lands, and a snapshot of one query's state, so the
+ * board model derives from the cache without awaiting anything. The data
+ * types follow the keys: the query function stores what each call
+ * returns.
+ *
+ * @module
+ */
+import type {
+  App,
+  Branch as AmplifyBranch,
+  JobSummary,
+} from '@aws-sdk/client-amplify';
+import type { QueryClient } from '@tanstack/query-core';
+
+import type {
+  Branch,
+  CompareApiResult,
+  Fetched,
+  Job,
+  Repo,
+  WorkflowRun,
+} from '@/lib/github';
+
+import {
+  amplifyKey,
+  type AmplifyRequest,
+  githubKey,
+  type GithubRequest,
+} from './keys';
+
+/** What each GitHub call's query holds. */
+export interface GithubData {
+  runs: Fetched<WorkflowRun[]>;
+  jobs: Fetched<Job[]>;
+  compare: Fetched<CompareApiResult>;
+  branches: Fetched<Branch[]>;
+  repos: Fetched<Repo[]>;
+}
+
+/** What each Amplify call's query holds. */
+export interface AmplifyData {
+  branches: Fetched<AmplifyBranch[]>;
+  jobs: Fetched<JobSummary[]>;
+  apps: Fetched<App[]>;
+}
+
+/** One query as the board model sees it. */
+export interface Snapshot<T> {
+  data: T | undefined;
+  error: unknown;
+  /** The latest fetch failed (data, if any, is from before). */
+  failed: boolean;
+  /** When the data last landed (ms; 0 when never). */
+  updatedAt: number;
+}
+
+const EMPTY: Snapshot<never> = {
+  data: undefined,
+  error: null,
+  failed: false,
+  updatedAt: 0,
+};
+
+function snapshot<T>(
+  client: QueryClient,
+  key: readonly unknown[],
+): Snapshot<T> {
+  const state = client.getQueryState<T>(key);
+  if (!state) return EMPTY;
+  return {
+    data: state.data,
+    error: state.error,
+    failed: state.status === 'error',
+    updatedAt: state.dataUpdatedAt,
+  };
+}
+
+/** A GitHub query's snapshot. */
+export const githubSnapshot = <R extends GithubRequest>(
+  client: QueryClient,
+  credentialId: string,
+  request: R,
+): Snapshot<GithubData[R['call']]> =>
+  snapshot(client, githubKey(credentialId, request));
+
+/** An Amplify query's snapshot. */
+export const amplifySnapshot = <R extends AmplifyRequest>(
+  client: QueryClient,
+  credentialId: string,
+  request: R,
+): Snapshot<AmplifyData[R['call']]> =>
+  snapshot(client, amplifyKey(credentialId, request));

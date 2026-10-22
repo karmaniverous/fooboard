@@ -1,10 +1,10 @@
 /**
  * Amplify read port: the read-only calls fooboard makes (spec.md C-6:
  * `ListApps`, `ListBranches`, `ListJobs`, `GetJob`) behind a narrow
- * interface, plus the AWS SDK adapter that implements it. Every call goes
- * through the credential's serial queue (one request in flight per
- * credential, shared with every region it reads) and is mapped to a typed
- * error. Callers depend on `AmplifyReader`, not on the SDK.
+ * interface, plus the AWS SDK adapter that implements it. Every call is
+ * mapped to a typed error; the SDK makes one attempt (`maxAttempts: 1`), so
+ * retries and throttling follow the query layer's policy and limiter
+ * (spec.md §3.1). Callers depend on `AmplifyReader`, not on the SDK.
  *
  * @module
  */
@@ -20,9 +20,7 @@ import {
   ListJobsCommand,
 } from '@aws-sdk/client-amplify';
 
-import { SerialQueue } from '@/lib/queue/serialQueue';
-
-import { AmplifyThrottledError, toAmplifyError } from './errors';
+import { toAmplifyError } from './errors';
 
 /** Read-only access to one AWS account's Amplify apps in one region. */
 export interface AmplifyReader {
@@ -51,8 +49,6 @@ export interface AmplifyReaderConfig {
   region: string;
   accessKeyId: string;
   secretAccessKey: string;
-  /** The credential's queue; pass the same one for every region. */
-  queue?: SerialQueue;
   /** Defaults to a real `AmplifyClient`. */
   client?: AmplifySender;
 }
@@ -61,29 +57,32 @@ export interface AmplifyReaderConfig {
  * accept at most 50 (`ListApps` allows 100). */
 const PAGE_SIZE = 50;
 
+/** The SDK's attempts per call (spec.md §3.1): one, so its own retries
+ * (up to 3 by default, with their own back-off) never hold a limiter slot
+ * or bypass the query layer's retry policy. */
+export const AMPLIFY_MAX_ATTEMPTS = 1;
+
 /** Create an `AmplifyReader` backed by the AWS SDK (SigV4, browser-safe). */
 export function createAmplifyReader({
   region,
   accessKeyId,
   secretAccessKey,
-  queue = new SerialQueue(),
   client = new AmplifyClient({
     region,
     credentials: { accessKeyId, secretAccessKey },
+    maxAttempts: AMPLIFY_MAX_ATTEMPTS,
   }),
 }: AmplifyReaderConfig): AmplifyReader {
-  const call = <T>(operation: string, task: () => Promise<T>): Promise<T> =>
-    queue.enqueue(async () => {
-      try {
-        return await task();
-      } catch (err) {
-        const mapped = toAmplifyError(err, operation);
-        if (mapped instanceof AmplifyThrottledError) {
-          queue.pauseUntil(Date.now() + mapped.retryAfterMs);
-        }
-        throw mapped;
-      }
-    });
+  const call = async <T>(
+    operation: string,
+    task: () => Promise<T>,
+  ): Promise<T> => {
+    try {
+      return await task();
+    } catch (err) {
+      throw toAmplifyError(err, operation);
+    }
+  };
 
   /** Follow `nextToken` until `limit` items or the last page. */
   async function paged<T>(

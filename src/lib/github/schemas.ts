@@ -27,6 +27,9 @@ const WorkflowRunSchema = z.object({
   /** What triggered the run, e.g. `push`, `pull_request` (spec.md §4.3.1:
    * `pull_request`/`pull_request_target` runs are excluded). */
   event: z.string(),
+  /** The run's repo as GitHub names it now: a renamed repo's runs carry
+   * the new name (Decision 26). */
+  repository: z.object({ full_name: z.string() }).optional(),
 });
 export type WorkflowRun = z.infer<typeof WorkflowRunSchema>;
 
@@ -103,15 +106,3 @@ export type Repo = z.infer<typeof RepoSchema>;
 
 /** `GET /user/repos` response: a plain array, paginated. */
 export const ReposResponseSchema = z.array(RepoSchema);
-
-/** `GET /rate_limit`: only the `core` (REST) resource is read. */
-export const RateLimitResponseSchema = z.object({
-  resources: z.object({
-    core: z.object({
-      limit: z.number(),
-      remaining: z.number(),
-      reset: z.number(),
-      used: z.number(),
-    }),
-  }),
-});

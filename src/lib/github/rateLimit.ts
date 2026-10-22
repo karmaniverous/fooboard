@@ -2,8 +2,9 @@
  * GitHub rate-limit budget tracking (spec.md C-16): parse
  * `X-RateLimit-Limit/Remaining/Reset/Used` from a response, report `'low'`
  * once remaining budget drops under a configurable threshold (default 10%
- * of the limit) so the poll scheduler can slow down, and compute when to
- * resume after a `Retry-After` or primary-limit reset.
+ * of the limit) for the battery, say when a token is past its polling
+ * share (its rows then poll slower), and compute when to resume after a
+ * `Retry-After` or primary-limit reset.
  *
  * @module
  */
@@ -25,9 +26,9 @@ export interface RateLimitBudget {
 /** Fraction of `limit` at or under which the budget is reported `'low'`. */
 const LOW_BUDGET_FRACTION = 0.1;
 
-/** A budget from its numbers (rate-limit headers, or the `rate_limit`
- * endpoint's `core` resource), flagged low at 10% left. */
-export function budgetFrom({
+/** A budget from the rate-limit headers' numbers, flagged low at 10%
+ * left. */
+function budgetFrom({
   limit,
   remaining,
   reset,
@@ -99,6 +100,8 @@ export function isRateLimitResponse(status: number, headers: Headers): boolean {
 
 /** Has this credential used more than half its hourly budget? Polling backs
  * off past this point so other tools keep headroom (spec.md C-16). */
-export function isOverPollingShare(budget: RateLimitBudget): boolean {
-  return budget.used > budget.limit / 2;
+export function isOverPollingShare(
+  budget: RateLimitBudget | undefined,
+): boolean {
+  return budget !== undefined && budget.used > budget.limit / 2;
 }
