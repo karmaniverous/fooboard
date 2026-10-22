@@ -1,7 +1,8 @@
 /**
- * Demo GitHub provider (spec.md C-23): implements the `GitHubReader` port
- * from the demo scenarios, returning REST-shaped payloads so the real
- * mapping and derivation code runs unchanged. Two rows fail on purpose
+ * Demo GitHub provider (spec.md C-23): implements the `GitHubApi` request
+ * port from the demo scenarios, returning REST-shaped payloads so the real
+ * query layer, mapping and derivation code run unchanged. A run is in
+ * progress while any of its jobs is. Two rows fail on purpose
  * (`legacy-billing`: rejected credential; `flaky-svc`: server error), and
  * three runs are deliberately unmapped, one per reason (a `hotfix/*`
  * branch, a lint-only run, and another service's deploy in the keyed row's
@@ -11,12 +12,17 @@
  */
 import { alphabetical } from 'radash';
 
+import type { Fetched, GitHubApi, RepoRef } from '@/lib/github/api';
 import { GitHubAuthError, GitHubHttpError } from '@/lib/github/errors';
 import type { RateLimitBudget } from '@/lib/github/rateLimit';
-import type { GitHubReader, RepoRef } from '@/lib/github/reader';
 import type { Job, WorkflowRun } from '@/lib/github/schemas';
 
-import { DEMO_GITHUB_REPOS, DEMO_KEYED_REPO, DEMO_STAGE_IDS } from './board';
+import {
+  DEMO_GITHUB_REPOS,
+  DEMO_KEYED_REPO,
+  DEMO_STAGE_IDS,
+  demoDashboard,
+} from './board';
 import {
   type DemoJobState,
   jobStates,
@@ -150,7 +156,6 @@ function demoBranches(repo: string): string[] {
   ).map((id) => stageBranch(id));
 }
 
-/** Create the demo GitHub reader; `clock` drives scenario progress. */
 /** Plausible commit messages for the demo's richest detail (C-13 rung 5). */
 const DEMO_MESSAGES = [
   'Fix flaky checkout test',
@@ -161,23 +166,55 @@ const DEMO_MESSAGES = [
   'Release notes for 24.3',
 ];
 
-export function createDemoGitHubReader(
+/** A demo answer: never a 304, never paginated. */
+const fetched = <T>(data: T): Fetched<T> => ({
+  notModified: false,
+  data,
+  etag: null,
+  hasNext: false,
+  redirected: false,
+});
+
+/** `run` as GitHub reports it at `jobs`' states: in progress while any
+ * job is; else completed, failed if any job failed. */
+function runAt(run: WorkflowRun, jobs: readonly Job[]): WorkflowRun {
+  if (jobs.some((j) => j.status !== 'completed'))
+    return { ...run, status: 'in_progress', conclusion: null };
+  const failed = jobs.find((j) => j.conclusion !== 'success');
+  return { ...run, conclusion: failed?.conclusion ?? run.conclusion };
+}
+
+/** Is `base...head` a cell compared with its source stage (the forward
+ * compare), rather than the source compared with the cell? */
+function isForward(base: string, head: string): boolean {
+  const cell = stageForBranch(base);
+  const source = demoDashboard.stages.find((s) => s.id === cell)?.sourceStageId;
+  return source !== undefined && source === stageForBranch(head);
+}
+
+/** The demo's token budget at `now`: plenty left. */
+const demoBudget = (now: number): RateLimitBudget => ({
+  limit: 5000,
+  remaining: 4870,
+  reset: Math.floor(now / 1000) + 3600,
+  used: 130,
+  status: 'ok',
+});
+
+/** Create the demo GitHub request port; `clock` drives scenario
+ * progress, and every answer reports the demo budget to `onBudget`. */
+export function createDemoGitHubApi(
   clock: () => number = Date.now,
-): GitHubReader {
+  onBudget: (budget: RateLimitBudget) => void = () => undefined,
+): GitHubApi {
   const startMs = clock();
-  const budget = (): RateLimitBudget => ({
-    limit: 5000,
-    remaining: 4870,
-    reset: Math.floor(clock() / 1000) + 3600,
-    used: 130,
-    status: 'ok',
-  });
   const guard = ({ repo }: RepoRef, path: string): void => {
     if (repo === 'legacy-billing') throw new GitHubAuthError(path);
     if (repo === 'flaky-svc') throw new GitHubHttpError(path, 502);
   };
   const call = <T>(ref: RepoRef, path: string, fn: () => T): Promise<T> => {
     try {
+      onBudget(demoBudget(clock()));
       guard(ref, path);
       return Promise.resolve(fn());
     } catch (err) {
@@ -186,18 +223,28 @@ export function createDemoGitHubReader(
       );
     }
   };
+  const subjects = (n: number, branch: string) =>
+    Array.from({ length: n }, (_, i) => ({
+      sha: sha(i + branch.length),
+      commit: { message: `${branch} change ${String(i + 1)}` },
+    }));
 
   return {
-    listWorkflowRuns: (ref) =>
-      call(ref, 'runs', () => demoRuns(ref.repo, startMs).map((d) => d.run)),
-    listRunJobs: (ref, runId) =>
-      call(
-        ref,
-        'jobs',
-        () =>
+    runsPage: (ref) =>
+      call(ref, 'runs', () =>
+        fetched(
+          demoRuns(ref.repo, startMs).map((d) =>
+            runAt(d.run, d.jobs(startMs, clock())),
+          ),
+        ),
+      ),
+    jobsPage: (ref, runId) =>
+      call(ref, 'jobs', () =>
+        fetched(
           demoRuns(ref.repo, startMs)
             .find((d) => d.run.id === runId)
             ?.jobs(startMs, clock()) ?? [],
+        ),
       ),
     matchingRefs: (ref, prefix) =>
       call(ref, 'refs', () =>
@@ -208,46 +255,45 @@ export function createDemoGitHubReader(
             object: { sha: sha(b.length) },
           })),
       ),
-    // Called as compare(cell branch...source branch) (spec.md §4.3.5):
-    // `aheadBy` counts source commits the cell lacks, i.e. how far behind.
+    // `cell...source` (spec.md §2.7): `ahead_by` counts source commits
+    // the cell lacks (how far behind); the reverse compare lists the
+    // cell's own commits.
     compare: (ref, base, head) =>
       call(ref, 'compare', () => {
-        const stageId = stageForBranch(base);
+        const forward = isForward(base, head);
+        const stageId = stageForBranch(forward ? base : head);
         const { behind, ahead } = stageId
           ? stalenessCounts(scenarioFor(ref.repo, stageId))
           : { behind: 0, ahead: 0 };
-        const subjects = (n: number, branch: string): string[] =>
-          Array.from(
-            { length: n },
-            (_, i) => `${branch} change ${String(i + 1)}`,
-          );
-        return {
-          aheadBy: behind,
-          behindBy: ahead,
-          htmlUrl: `https://github.com/acme/${ref.repo}/compare/${base}...${head}`,
-          aheadCommitSubjects: subjects(behind, head),
-          behindCommitSubjects: subjects(ahead, base),
-        };
+        const [aheadBy, behindBy] = forward ? [behind, ahead] : [ahead, behind];
+        return fetched({
+          ahead_by: aheadBy,
+          behind_by: behindBy,
+          html_url: `https://github.com/acme/${ref.repo}/compare/${base}...${head}`,
+          commits: subjects(aheadBy, head),
+        });
       }),
-    listBranches: (ref) =>
+    branchesPage: (ref) =>
       call(ref, 'branches', () =>
-        demoBranches(ref.repo).map((name) => ({
-          name,
-          commit: { sha: sha(name.length) },
-        })),
+        fetched(
+          demoBranches(ref.repo).map((name) => ({
+            name,
+            commit: { sha: sha(name.length) },
+          })),
+        ),
       ),
-    listRepos: () =>
-      Promise.resolve(
-        DEMO_GITHUB_REPOS.map((name) => ({
-          full_name: `acme/${name}`,
-          name,
-          private: true,
-          html_url: `https://github.com/acme/${name}`,
-          owner: { login: 'acme' },
-        })),
+    reposPage: () =>
+      call({ owner: 'acme', repo: '' }, 'repos', () =>
+        fetched(
+          DEMO_GITHUB_REPOS.map((name) => ({
+            full_name: `acme/${name}`,
+            name,
+            private: true,
+            html_url: `https://github.com/acme/${name}`,
+            owner: { login: 'acme' },
+          })),
+        ),
       ),
-    getBudget: budget,
-    readRateLimit: () => Promise.resolve(budget()),
     getTokenExpiration: () => undefined,
   };
 }

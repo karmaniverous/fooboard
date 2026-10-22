@@ -10,8 +10,8 @@
 import { group, sort, sum } from 'radash';
 
 import type { Provider } from '@/domain/config/providers';
+import type { RequestCall } from '@/query/instrument';
 
-import type { RequestCall } from './readerWrap';
 import {
   type BoardKind,
   DEMO_TARGET_LATENCY_MS,

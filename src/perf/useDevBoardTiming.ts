@@ -1,6 +1,7 @@
 /**
- * Development aid (spec.md §3.5): the board's timing hook. Each engine the
- * board starts gets a timing session wrapping its providers; a layout
+ * Development aid (spec.md §3.5): the board's timing hook. Each board
+ * model the board starts gets a timing session around every request the
+ * query layer sends; a layout
  * effect tells the session when a model is committed to the DOM, so the
  * first cell and the full board are timed as the user sees them. Only
  * development builds use it (see `index.ts`).
@@ -11,28 +12,25 @@ import { useCallback, useLayoutEffect, useRef } from 'react';
 
 import { demoDashboard } from '@/demo/board';
 import type { Dashboard } from '@/domain/config/dashboard';
-import type { BoardModel, EngineProviders } from '@/engine/types';
+import type { BoardModel } from '@/engine/types';
+import type { Around } from '@/query/instrument';
 
 import { browserSink } from './consoleSink';
 import { demoLatencyMs } from './demoLatency';
-import { wrapProviders } from './readerWrap';
 import {
   createTimingSession,
   type TimingSession,
   type TimingSink,
 } from './session';
 
-/** One engine's timing: its wrapped providers, and the end of its board. */
+/** One board's timing: around each request, and the end of its board. */
 interface BoardTiming {
-  providers: EngineProviders;
+  around: Around;
   stop(): void;
 }
 
-/** Starts timing an engine for `dashboard` reading through `providers`. */
-export type StartTiming = (
-  dashboard: Dashboard,
-  providers: EngineProviders,
-) => BoardTiming;
+/** Starts timing a board model for `dashboard`. */
+export type StartTiming = (dashboard: Dashboard) => BoardTiming;
 
 /** Stopped sessions kept to count requests still running for them. */
 const STOPPED_SESSIONS_KEPT = 4;
@@ -75,7 +73,7 @@ export interface DevTimingOptions {
   navigation?: () => string;
 }
 
-/** Time each engine the board starts (development builds). */
+/** Time each board model the board starts (development builds). */
 export function useDevBoardTiming(
   model: BoardModel,
   options: DevTimingOptions = {},
@@ -87,7 +85,7 @@ export function useDevBoardTiming(
     current.current?.committed(model);
   }, [model]);
 
-  return useCallback((dashboard, providers) => {
+  return useCallback((dashboard) => {
     const {
       page = sharedPage,
       clock = () => performance.now(),
@@ -119,7 +117,7 @@ export function useDevBoardTiming(
     });
     current.current = session;
     return {
-      providers: wrapProviders(providers, session.around),
+      around: session.around,
       stop: () => {
         session.stop();
         page.stopped = [...page.stopped, session].slice(-STOPPED_SESSIONS_KEPT);

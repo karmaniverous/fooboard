@@ -1,7 +1,7 @@
 /**
  * Development aid (spec.md §3.5): the timing session of one board load,
- * from the engine starting to the full board. It times every request the
- * engine's providers make (as {@link Around}), attributes each to the rows
+ * from the board model starting to the full board. It times every request
+ * the query layer sends (as {@link Around}), attributes each to the rows
  * that needed it, notes the commit of the first non-empty status cell and
  * of the full board, and then reports the summary. Pure apart from its
  * injected clock and sink.
@@ -16,8 +16,8 @@ import {
 } from '@/domain/config/inheritance';
 import type { Row } from '@/domain/config/row';
 import { type BoardCell, type BoardModel, cellKey } from '@/engine/types';
+import type { Around, RequestCall } from '@/query/instrument';
 
-import type { Around, RequestCall } from './readerWrap';
 import {
   type Moment,
   OK_OUTCOME,
@@ -87,9 +87,10 @@ export function rowNeeds(
   );
 }
 
-/** A cell the current engine has published is final: it publishes a
- * target only after every read and compare (spec.md §2.6). */
-const isFinal = (cell: BoardCell | undefined): boolean => cell !== undefined;
+/** A cell is final once it is settled: not provisional, and its compares
+ * have answered (Decision 30). */
+const isFinal = (cell: BoardCell | undefined): boolean =>
+  cell?.settled === true;
 
 /** The outcome of a rejection that isn't an `Error`. */
 const UNKNOWN_FAILURE = 'Error';

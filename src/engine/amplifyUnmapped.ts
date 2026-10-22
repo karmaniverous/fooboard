@@ -9,11 +9,11 @@
 import { PROVIDER_LABELS } from '@/domain/config/providers';
 import type { AmplifyRow } from '@/domain/config/row';
 import { rowReasons } from '@/domain/derivation';
+import type { CellRules } from '@/domain/model/cell';
 import { isJsonObject, textOf } from '@/domain/model/json';
 import type { RecordDoc } from '@/domain/model/translate';
 import { appKey, type ResolvedAmplifySource } from '@/lib/amplify/rowJobs';
 
-import type { AmplifyRowsInput } from './amplifyRow';
 import type { UnmappedRun } from './types';
 
 /** Job id, app and branch of an Amplify record, from its raw data. */
@@ -33,7 +33,11 @@ function rawJob(record: RecordDoc): {
 }
 
 export function amplifyUnmapped(
-  input: Pick<AmplifyRowsInput, 'rows' | 'stages' | 'rulesFor'>,
+  input: {
+    rows: readonly AmplifyRow[];
+    stages: readonly { id: string }[];
+    rulesFor: (row: AmplifyRow, stageId: string) => CellRules;
+  },
   reading: ReadonlyMap<string, readonly ResolvedAmplifySource[]>,
   apps: ReadonlyMap<string, { records: readonly RecordDoc[] }>,
 ): UnmappedRun[] {

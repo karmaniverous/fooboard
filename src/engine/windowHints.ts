@@ -15,15 +15,19 @@ import { windowHint } from '@/domain/problems/runtime';
  * read with `source`. */
 export function windowHints(
   rows: Readonly<
-    Record<string, Readonly<Record<string, { derivation: CellDerivation }>>>
+    Record<
+      string,
+      Readonly<Partial<Record<string, { derivation: CellDerivation }>>>
+    >
   >,
   source: SourceRule,
 ): Problem[] {
   return Object.entries(rows).flatMap(([rowId, cells]) =>
     Object.entries(cells)
       .filter(
-        ([, { derivation: d }]) =>
-          d.kind === 'empty' && d.state === EMPTY_STATES.noRecords,
+        ([, cell]) =>
+          cell?.derivation.kind === 'empty' &&
+          cell.derivation.state === EMPTY_STATES.noRecords,
       )
       .map(([stageId]) => windowHint({ rowId, stageId }, source)),
   );
