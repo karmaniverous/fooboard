@@ -60,7 +60,7 @@ const PAGE_SIZE = 50;
 /** The SDK's attempts per call (spec.md §3.1): one, so its own retries
  * (up to 3 by default, with their own back-off) never hold a limiter slot
  * or bypass the query layer's retry policy. */
-export const AMPLIFY_MAX_ATTEMPTS = 1;
+const AMPLIFY_MAX_ATTEMPTS = 1;
 
 /** Create an `AmplifyReader` backed by the AWS SDK (SigV4, browser-safe). */
 export function createAmplifyReader({
