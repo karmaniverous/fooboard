@@ -20,6 +20,7 @@ import { computeGroup, type GroupEntry, planGroups } from './groups';
 import { emptyModel, githubCredentialIds } from './model';
 import { createObserverSet, mergeNeeds } from './observers';
 import { type DeriveEnv, deriveRow, type RowEntry } from './rowDerive';
+import { failedRow } from './rowFailure';
 import { type BoardModel, cellKey } from './types';
 
 /** The query actions that change what a row derives. */
@@ -95,6 +96,16 @@ export function createBoardModel({
     for (const listener of listeners) listener();
   };
 
+  /** A row's entry; an exception in deriving it shows on its cells as
+   * *Error* and as a dismissable problem (Decision 25). */
+  const deriveSafely = (row: Dashboard['rows'][number]): RowEntry => {
+    try {
+      return deriveRow(derive, dashboard, row);
+    } catch (err) {
+      return failedRow(dashboard, row, err, rows.get(row.id));
+    }
+  };
+
   const flush = () => {
     scheduled = false;
     if (destroyed) return;
@@ -107,7 +118,7 @@ export function createBoardModel({
         rows.delete(rowId);
         continue;
       }
-      const entry = deriveRow(derive, dashboard, row);
+      const entry = deriveSafely(row);
       rows.set(rowId, entry);
       for (const group of entry.groups) touched.add(group);
     }
