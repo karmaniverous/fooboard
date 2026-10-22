@@ -2,7 +2,8 @@
  * Tests for two-store credential operations: a failed configuration write
  * leaves no orphaned secret, removal never loses a secret before the
  * configuration is saved, duplicating works with missing secrets, and a
- * secret that can't be cleared is reported with how to remove it.
+ * secret that can't be cleared is reported with how to remove it, while a
+ * tab-only secret is dropped all the same.
  *
  * @module
  */
@@ -14,7 +15,8 @@ import {
   createCredentialStore,
   type CredentialStore,
 } from '@/storage/credentialStore';
-import { type KeyValueStore, memoryStorage } from '@/storage/keyValue';
+import { memoryStorage } from '@/storage/keyValue';
+import { CLEAR_EVERYTHING_STEPS, refusingDevice } from '@/test/refusingDevice';
 
 import {
   addWithSecret,
@@ -41,6 +43,19 @@ const withGh = (store: CredentialStore) => {
     name: 'D',
     credentials: [{ id: 'gh', kind: 'github', label: 'gh' }],
     defaultCredentials: { github: 'gh' },
+  });
+};
+
+/** `withGh` plus a tab-only credential, `tab`. */
+const withTabOnly = (store: CredentialStore) => {
+  const d = withGh(store);
+  store.set('tab', secret, false);
+  return DashboardSchema.parse({
+    ...d,
+    credentials: [
+      ...d.credentials,
+      { id: 'tab', kind: 'github', label: 'tab' },
+    ],
   });
 };
 
@@ -120,15 +135,6 @@ describe('credential operations', () => {
   });
 });
 
-/** A device store that refuses to remove anything, so secrets can't be
- * forgotten. */
-const stuck = (): KeyValueStore => ({
-  ...memoryStorage(),
-  removeItem: () => {
-    throw new Error('storage refused the removal');
-  },
-});
-
 describe('credential operations whose cleanup fails', () => {
   it.each<[string, (store: CredentialStore, d: Dashboard) => unknown]>([
     [
@@ -157,11 +163,35 @@ describe('credential operations whose cleanup fails', () => {
         deleteWithSecrets(store, okSave, d);
       },
     ],
+    [
+      'removing a tab-only credential',
+      (store, d) => removeWithSecret(store, okSave, d, 'tab'),
+    ],
   ])('says how to remove the leftovers after %s', (_label, run) => {
-    const store = createCredentialStore(stuck());
-    const d = withGh(store);
-    expect(() => run(store, d)).toThrow(
-      /clear this site.s data in your browser.s settings/,
-    );
+    const { device, refuse } = refusingDevice();
+    const store = createCredentialStore(device);
+    const d = withTabOnly(store);
+    refuse();
+    expect(() => run(store, d)).toThrow(CLEAR_EVERYTHING_STEPS);
   });
+
+  it.each<[string, (store: CredentialStore, d: Dashboard) => unknown]>([
+    ['removing it', (store, d) => removeWithSecret(store, okSave, d, 'tab')],
+    [
+      'deleting its dashboard',
+      (store, d) => {
+        deleteWithSecrets(store, okSave, d);
+      },
+    ],
+  ])(
+    'drops a tab-only secret after %s, though the device refuses',
+    (_label, run) => {
+      const { device, refuse } = refusingDevice();
+      const store = createCredentialStore(device);
+      const d = withTabOnly(store);
+      refuse();
+      expect(() => run(store, d)).toThrow();
+      expect(store.get('tab')).toBeUndefined();
+    },
+  );
 });

@@ -36,7 +36,7 @@ Anyone with access to your browser profile can read what is stored in it, includ
 
 - _Forget_ removes one credential from this browser.
 - Deleting a dashboard removes it, its view settings and its credentials from this browser.
-- Clearing your browser's data for the site removes all of fooboard's data from this browser, and nothing else.
+- To remove all of fooboard's data from this browser, and nothing else, close every fooboard tab, then clear this site's data in your browser's settings. Closing the tabs drops the credentials held in their memory.
 
 Removing data from fooboard does not revoke credentials at GitHub or AWS: [revoke them there](./README.md#revoking-a-credential) too.
 

@@ -26,11 +26,12 @@ import {
   removeCredential,
 } from './dashboardCredentials';
 
-/** How to remove secrets a failed cleanup left in this browser: the
- * browser's own control for the site's data, until fooboard has *Reset*
- * (spec.md N3). Ends every cleanup-failure message. */
+/** How to remove secrets a failed cleanup left in this browser, until
+ * fooboard has *Reset* (spec.md N3): close its tabs, which drops the
+ * secrets held in their memory, then use the browser's own control for the
+ * site's data. Ends every cleanup-failure message. */
 const LEFTOVER_SECRETS_HINT =
-  "To remove them, clear this site's data in your browser's settings; that removes all of fooboard's data here, dashboards included.";
+  "To remove them, close every fooboard tab, then clear this site's data in your browser's settings; that removes all of fooboard's data here, dashboards included.";
 
 /** Forget `ids`, collecting (not throwing) failures. */
 function forgetAll(store: CredentialStore, ids: readonly string[]): unknown[] {

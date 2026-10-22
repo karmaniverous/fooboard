@@ -272,7 +272,7 @@ Everything stays in this browser:
 - **Dashboards** are saved under a versioned format; older saves are upgraded when they load, and data that can't be read is reported and never overwritten.
 - **Zoom, density and theme** are saved on each device. Deleting a dashboard removes its settings on this device too.
 - **Tokens and keys** are kept only for the current tab unless you tick _Remember on this device_. _Forget_ removes one.
-- **To clear everything** fooboard keeps, clear this site's data in your browser's settings.
+- **To clear everything** fooboard keeps, close every fooboard tab, then clear this site's data in your browser's settings. Closing the tabs drops the tokens and keys held in their memory.
 
 See [PRIVACY.md](./PRIVACY.md).
 
