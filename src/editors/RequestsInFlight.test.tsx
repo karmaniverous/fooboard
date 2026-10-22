@@ -101,4 +101,18 @@ describe('RequestsInFlight', () => {
     fireEvent.blur(field);
     expect(latest.current.settings.requestsInFlight.github).toBe(12);
   });
+
+  it('shows a value changed from outside, such as an undo', () => {
+    const at = (github: number): Dashboard => ({
+      ...board,
+      settings: { requestsInFlight: { github, aws: 10 } },
+    });
+    const { rerender } = render(
+      <RequestsInFlight dashboard={at(10)} onChange={() => undefined} />,
+    );
+    rerender(
+      <RequestsInFlight dashboard={at(25)} onChange={() => undefined} />,
+    );
+    expect(screen.getByRole('spinbutton', { name: GITHUB })).toHaveValue(25);
+  });
 });

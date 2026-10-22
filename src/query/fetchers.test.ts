@@ -149,4 +149,16 @@ describe('createQueryFn', () => {
       { provider: 'github', kind: 'runs', credentialId: 'gh', repo: REPO },
     ]);
   });
+
+  it('leaves the other pages alone when a later page lands with new data', async () => {
+    const reposPage = vi.fn<GitHubApi['reposPage']>((page) =>
+      Promise.resolve(
+        fetched([ghRepo(`acme/p${String(page)}`)], { hasNext: page < 3 }),
+      ),
+    );
+    const { client } = setup(fakeGitHubApi({ reposPage }));
+    for (const page of [1, 2, 3]) await client.query({ queryKey: repos(page) });
+    await client.refetchQueries({ queryKey: repos(2) });
+    expect(client.getQueryState(repos(3))?.isInvalidated).toBe(false);
+  });
 });

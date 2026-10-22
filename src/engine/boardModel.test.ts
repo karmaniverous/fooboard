@@ -179,4 +179,74 @@ describe('createBoardModel', () => {
     await settle(env, board);
     expect(models.length).toBe(published);
   });
+
+  it('stops listening to the cache and budgets once destroyed', async () => {
+    const env = demoEnv();
+    const heard: number[] = [];
+    const subscribe = env.budgets.subscribe.bind(env.budgets);
+    env.budgets.subscribe = (listener) =>
+      subscribe(() => {
+        heard.push(1);
+        listener();
+      });
+    const board = createBoardModel({ dashboard: demoDashboard, env });
+    await settle(env, board);
+    expect(env.client.getQueryCache().hasListeners()).toBe(true);
+    board.destroy();
+    expect(env.client.getQueryCache().hasListeners()).toBe(false);
+    const before = heard.length;
+    env.budgets.note('demo-github', {
+      limit: 5000,
+      remaining: 1,
+      reset: 0,
+      used: 4999,
+      status: 'low',
+    });
+    expect(heard.length).toBe(before);
+  });
+
+  it('does nothing for a change that lands as it is destroyed', async () => {
+    const { env, board } = recorded();
+    await settle(env, board);
+    const query = env.client
+      .getQueryCache()
+      .getAll()
+      .find((q) => q.getObserversCount() > 0);
+    if (!query) throw new Error('no observed query');
+    env.client.setQueryData(query.queryKey, query.state.data);
+    board.destroy();
+    await Promise.resolve();
+    expect(observed(env)).toBe(0);
+  });
+
+  it('drops the Unmapped runs of a repo or app no row reads any more', async () => {
+    const { env, board } = recorded();
+    const before = await settle(env, board);
+    const run = before.unmapped.at(0);
+    if (!run) throw new Error('the demo has no Unmapped runs');
+    const readers = new Set(run.rows.map((r) => r.rowId));
+    board.setDashboard({
+      ...demoDashboard,
+      rows: demoDashboard.rows.filter((r) => !readers.has(r.id)),
+    });
+    expect(board.getModel().unmapped.map((u) => u.id)).not.toContain(run.id);
+    board.destroy();
+  });
+
+  it('re-derives the rows a removed query fed', async () => {
+    const { env, board, models } = recorded();
+    await settle(env, board);
+    const row = demoDashboard.rows.find((r) => r.type === 'github');
+    if (row?.type !== 'github') throw new Error('no GitHub row');
+    const shown = (m: BoardModel) =>
+      Object.values(m.cells).some((c) => c?.rowId === row.id);
+    expect(shown(board.getModel())).toBe(true);
+    const published = models.length;
+    env.client.removeQueries({
+      queryKey: ['github', 'demo-github', { call: 'runs', repo: row.repo }],
+    });
+    await Promise.resolve();
+    expect(models.slice(published).some((m) => !shown(m))).toBe(true);
+    board.destroy();
+  });
 });
