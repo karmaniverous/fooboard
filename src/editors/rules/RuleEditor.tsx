@@ -4,8 +4,9 @@
  * run (a bad path or regex) says why under its row. With real data for
  * the rule (the board's records for its source, or raw samples for a
  * source rule's translation and branch rules), each check and the rule
- * show how many they match, the path field suggests their paths, and the
- * field picker shows one as a tree. *Only items where* is offered when
+ * show how many they match, the path field suggests their paths, the
+ * field picker shows one as a tree, and a glob or regex check whose path
+ * finds an object or array in any of them says to test a field inside it. *Only items where* is offered when
  * the source has items; a check drafted from a record (*Add rule*) is
  * offered to add.
  *
@@ -25,6 +26,7 @@ import {
   checkProblem,
   evaluateCheck,
   evaluateRule,
+  findsObjectOrArray,
 } from '@/domain/rules/check';
 import { PATH_IDENTIFIER } from '@/domain/rules/path';
 import { type Check, CheckSchema, type Rule } from '@/domain/rules/schema';
@@ -139,6 +141,7 @@ export function RuleEditor({
           listId={listId}
           pickFrom={docs[0]}
           matched={count((d) => evaluateCheck(c, d))}
+          findsObjectOrArray={findsObjectOrArray(c, docs)}
           onChange={(change) => {
             onChange({ ...rule, checks: patchAt(checks, i, change) });
           }}

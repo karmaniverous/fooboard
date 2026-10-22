@@ -1,7 +1,8 @@
 /**
  * Tests for one check of a rule: each control reports just its change,
  * *Ignore case* hides for `exists`, the match count gives way to a
- * problem, and the field picker writes the path.
+ * problem, the field picker writes the path, and the object or array hint
+ * describes the path field.
  *
  * @module
  */
@@ -10,7 +11,7 @@ import type { JSONValue } from 'json-p3';
 import { describe, expect, it, vi } from 'vitest';
 
 import { is } from '@/domain/model/ruleBuilders';
-import { checkProblem } from '@/domain/rules/check';
+import { checkProblem, OBJECT_OR_ARRAY_HINT } from '@/domain/rules/check';
 import type { Check } from '@/domain/rules/schema';
 import { choose } from '@/test/choose';
 
@@ -18,7 +19,10 @@ import { CheckRow } from './CheckRow';
 
 const LABEL = 'Check 1';
 
-const renderRow = (check: Check, extra: { pickFrom?: JSONValue } = {}) => {
+const renderRow = (
+  check: Check,
+  extra: { pickFrom?: JSONValue; findsObjectOrArray?: boolean } = {},
+) => {
   const onChange = vi.fn();
   const onRemove = vi.fn();
   render(
@@ -27,6 +31,7 @@ const renderRow = (check: Check, extra: { pickFrom?: JSONValue } = {}) => {
       check={check}
       listId={undefined}
       matched="2 of 3"
+      findsObjectOrArray={false}
       onChange={onChange}
       onRemove={onRemove}
       {...extra}
@@ -64,6 +69,21 @@ describe('CheckRow', () => {
     renderRow(bad);
     expect(screen.getByRole('alert')).toHaveTextContent(problem);
     expect(screen.queryByText('2 of 3')).toBeNull();
+  });
+
+  it('describes the path field with the object or array hint', () => {
+    renderRow(is('$.head', 'main'), { findsObjectOrArray: true });
+    expect(screen.getByLabelText(`${LABEL} path`)).toHaveAccessibleDescription(
+      OBJECT_OR_ARRAY_HINT,
+    );
+  });
+
+  it('shows no hint, and no description, otherwise', () => {
+    renderRow(is('$.branch', 'main'));
+    expect(screen.queryByText(OBJECT_OR_ARRAY_HINT)).toBeNull();
+    expect(screen.getByLabelText(`${LABEL} path`)).not.toHaveAttribute(
+      'aria-describedby',
+    );
   });
 
   it('writes a path picked from a real record', () => {

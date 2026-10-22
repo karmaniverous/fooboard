@@ -3,7 +3,9 @@
  * numbers and booleans are tested as text; objects and arrays only by
  * *exists*. *Every* fails when the path finds nothing. NOT negates a check
  * that could run; a check that can't (bad path, bad or over-long regex)
- * never matches, NOT or not, and is reported by `checkProblem`. Pure.
+ * never matches, NOT or not, and is reported by `checkProblem`. A glob or
+ * regex check whose path finds an object or array gets
+ * `OBJECT_OR_ARRAY_HINT` in the editor (`findsObjectOrArray`). Pure.
  *
  * @module
  */
@@ -98,6 +100,32 @@ export function evaluateRule(rule: Rule, document: JSONValue): boolean {
   return rule.combine === 'and'
     ? rule.checks.every(pass)
     : rule.checks.some(pass);
+}
+
+/** What the rule editor says under a glob or regex check whose path
+ * finds an object or array (`findsObjectOrArray`). */
+export const OBJECT_OR_ARRAY_HINT =
+  "This path finds an object or array, which glob and regex can't test: test a field inside it.";
+
+/** An object or array: a value only *exists* can test. */
+const isObjectOrArray = (value: JSONValue): boolean =>
+  typeof value === 'object' && value !== null;
+
+/**
+ * Does glob or regex `check` have a path that finds an object or array in
+ * any of `documents`? Any one such value counts, whatever the quantifier:
+ * under *any* it can never match, so it is silently passed over; under
+ * *every* it fails the check. Either way the user meant a field inside it.
+ * An *exists* check, a path that doesn't parse and no documents find none.
+ */
+export function findsObjectOrArray(
+  check: Check,
+  documents: readonly JSONValue[],
+): boolean {
+  if (check.operator === 'exists') return false;
+  const path = compilePath(check.path);
+  if (!path.ok) return false;
+  return documents.some((d) => valuesAt(path.query, d).some(isObjectOrArray));
 }
 
 /** Every problem in `rule`'s checks. */
