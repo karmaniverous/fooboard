@@ -18,19 +18,27 @@ class AmplifyReaderError extends Error {
 
   constructor(message: string, operation: string) {
     super(message);
-    this.name = new.target.name;
     this.operation = operation;
   }
 }
 
 /** The app (or branch/job) doesn't exist for this credential and region. */
-export class AmplifyNotFoundError extends AmplifyReaderError {}
+export class AmplifyNotFoundError extends AmplifyReaderError {
+  /** Literal, so it survives minification (the board shows it). */
+  override readonly name = 'AmplifyNotFoundError';
+}
 
 /** The credential was rejected: missing, wrong, expired or not permitted. */
-export class AmplifyAuthError extends AmplifyReaderError {}
+export class AmplifyAuthError extends AmplifyReaderError {
+  /** Literal, so it survives minification (the board shows it). */
+  override readonly name = 'AmplifyAuthError';
+}
 
 /** AWS throttled the request; retry after `retryAfterMs`. */
 export class AmplifyThrottledError extends AmplifyReaderError {
+  /** Literal, so it survives minification (the board shows it). */
+  override readonly name = 'AmplifyThrottledError';
+
   readonly retryAfterMs: number;
 
   constructor(message: string, operation: string, retryAfterMs: number) {
