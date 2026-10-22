@@ -88,7 +88,7 @@ In the dev server (`npm run dev`) every board is timed (`src/perf`): each reques
 
 - **Demo latency:** the demo answers at once; open `/demo?latency=300` to delay every demo request by 300 ms, the latency the demo targets assume.
 - **Stray requests:** requests still running for a board no longer shown settle while the next board loads, sharing the credentials' queues, so the summary notes how many did. In development React starts each board's model twice and discards the first, whose requests still run; a board closed while polling leaves its reads in flight too. Polling after the full board is never part of a board's own load.
-- **Production:** none of this is built. `import.meta.env.DEV` is `false` there, so `src/perf/index.ts` exports pass-throughs, and the build fails if `fooboard-timing` appears in its output (`vite/noDevInstrumentation.ts`). The same check keeps out the TanStack Query Devtools, which `src/query/QueryProvider.tsx` imports lazily in development only.
+- **Production:** none of this is built. `import.meta.env.DEV` is `false` there, so `DEV_AIDS` (`src/lib/devAids.ts`) is `false`: `src/perf/index.ts` exports pass-throughs and `src/query/QueryProvider.tsx` never loads the TanStack Query Devtools (imported lazily, in development only). The build fails if `fooboard-timing` or the Devtools appear in its output (`vite/noDevInstrumentation.ts`). Tests run with neither.
 
 ## Browser spikes
 
