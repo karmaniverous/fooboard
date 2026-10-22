@@ -86,7 +86,7 @@ export const keyOf = (need: { key: unknown }): string =>
 export const jobsRequest = (
   repo: string,
   run: Pick<WorkflowRun, 'id' | 'run_attempt'>,
-): GithubRequest => ({
+): Extract<GithubRequest, { call: 'jobs' }> => ({
   call: 'jobs',
   repo,
   runId: run.id,

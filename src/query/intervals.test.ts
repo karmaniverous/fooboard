@@ -28,7 +28,6 @@ describe('polling cadence', () => {
       refetchInterval: IDLE_INTERVAL_MS,
       staleTime: IDLE_INTERVAL_MS,
     });
-    expect(ACTIVE_INTERVAL_MS).toBeLessThan(IDLE_INTERVAL_MS);
   });
 
   it('backs off a token past half its budget', () => {

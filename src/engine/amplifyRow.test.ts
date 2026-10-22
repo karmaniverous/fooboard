@@ -77,6 +77,45 @@ const seedRow = async (
 };
 
 describe('deriveAmplifyRow', () => {
+  it('marks cells read before the board opened as refreshing', async () => {
+    const client = new QueryClient();
+    await seedRow(client, 'marketing-site');
+    const row = rowOf('marketing-site');
+    const fresh = deriveAmplifyRow(ctx(client), row);
+    const older = deriveAmplifyRow(
+      { ...ctx(client), openedAt: Date.now() + 1 },
+      row,
+    );
+    const cells = Object.values(older.cells);
+    expect(cells.length).toBeGreaterThan(0);
+    expect(cells.every((c) => c?.refreshing === true)).toBe(true);
+    expect(Object.values(fresh.cells).some((c) => c?.refreshing)).toBe(false);
+  });
+
+  it('shows a cell no stage rule places as empty once its reads landed', async () => {
+    const client = new QueryClient();
+    const row = rowOf('marketing-site');
+    const stageless: AmplifyContext = {
+      ...ctx(client),
+      rulesFor: (r, stageId) => ({
+        ...cellRulesFor(demoDashboard, r, stageId),
+        stage: undefined,
+      }),
+    };
+    await seedRow(client, 'marketing-site', true);
+    expect(deriveAmplifyRow(stageless, row).cells).toEqual({});
+    await seedRow(client, 'marketing-site');
+    const out = deriveAmplifyRow(stageless, row);
+    expect(Object.keys(out.cells)).toEqual(
+      demoDashboard.stages.map((s) => s.id),
+    );
+    for (const cell of Object.values(out.cells))
+      expect(cell).toMatchObject({
+        pending: false,
+        derivation: { kind: 'empty' },
+      });
+  });
+
   it('needs each app branch list first, showing nothing yet', () => {
     const out = deriveAmplifyRow(
       ctx(new QueryClient()),

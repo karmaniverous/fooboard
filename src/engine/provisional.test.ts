@@ -60,10 +60,12 @@ describe('provisionalCell', () => {
     );
   });
 
-  it('shows nothing for a conclusion no summary status covers', () => {
-    expect(
-      provisionalCell(presetSet, run('completed', 'skipped'), record),
-    ).toBeUndefined();
+  it.each([
+    ['skipped', { status: 'completed', conclusion: 'skipped' }],
+    ['no conclusion yet', { status: 'completed', conclusion: null }],
+    ['no status or conclusion', { status: null, conclusion: null }],
+  ])('shows nothing for a run with %s', (_, state) => {
+    expect(provisionalCell(presetSet, state, record)).toBeUndefined();
   });
 
   it('takes a custom set’s status of the same name, case aside', () => {

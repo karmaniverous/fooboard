@@ -9,6 +9,8 @@
  */
 import { describe, expect, it, vi } from 'vitest';
 
+import { response } from '@/test/fetchResponse';
+
 import {
   GitHubAuthError,
   GitHubForbiddenError,
@@ -19,21 +21,6 @@ import {
   RateLimitedError,
 } from './errors';
 import { type FetchLike, GitHubHttpClient } from './httpClient';
-
-/** Statuses the Fetch `Response` constructor forbids a body on. */
-const NULL_BODY_STATUSES = new Set([204, 205, 304]);
-
-function response(
-  status: number,
-  body: unknown,
-  headers: Record<string, string> = {},
-): Response {
-  const hasBody = body !== undefined && !NULL_BODY_STATUSES.has(status);
-  return new Response(
-    hasBody ? (typeof body === 'string' ? body : JSON.stringify(body)) : null,
-    { status, headers },
-  );
-}
 
 const once =
   (res: Response | (() => Promise<Response>)): FetchLike =>

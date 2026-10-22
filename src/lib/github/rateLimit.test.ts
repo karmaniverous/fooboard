@@ -81,6 +81,24 @@ describe('computeRetryAt', () => {
   it('waits a minute when neither header is present', () => {
     expect(computeRetryAt(headers({}), now)).toBe(now + 60_000);
   });
+
+  it.each(['-5', 'Infinity', 'soon'])(
+    'ignores a Retry-After of %s, falling back to the reset',
+    (value) => {
+      expect(
+        computeRetryAt(
+          headers({ 'retry-after': value, 'x-ratelimit-reset': '2000' }),
+          now,
+        ),
+      ).toBe(2_000_000);
+    },
+  );
+
+  it('ignores an unreadable reset, waiting a minute', () => {
+    expect(computeRetryAt(headers({ 'x-ratelimit-reset': 'x' }), now)).toBe(
+      now + 60_000,
+    );
+  });
 });
 
 describe('isRateLimitResponse', () => {

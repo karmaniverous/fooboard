@@ -1,14 +1,14 @@
 /**
  * Tests for the query provider (spec.md §3.1): components below it read
- * the environment it was given, and the Devtools never render in tests
- * (development builds only; the production build check keeps them out of
- * the bundle).
+ * the environment it was given; the Devtools load lazily in development
+ * and never render in tests (the production build check keeps them out
+ * of the bundle).
  *
  * @module
  */
 import { useQueryClient } from '@tanstack/react-query';
 import { render, screen } from '@testing-library/react';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import { testQueryEnv } from '@/test/queryEnv';
 
@@ -44,6 +44,30 @@ describe('QueryProvider', () => {
     );
     expect(container.innerHTML).toBe('<p>board</p>');
     expect(document.querySelector('.tsqd-parent-container')).toBeNull();
+  });
+
+  it('loads the Devtools lazily in development', async () => {
+    vi.stubEnv('DEV', true);
+    vi.stubEnv('MODE', 'development');
+    vi.resetModules();
+    // The real Devtools render nothing unless NODE_ENV is development.
+    vi.doMock('@tanstack/react-query-devtools', () => ({
+      ReactQueryDevtools: () => <aside>devtools</aside>,
+    }));
+    try {
+      const { QueryProvider: DevProvider } = await import('./QueryProvider');
+      render(
+        <DevProvider env={testQueryEnv()}>
+          <p>board</p>
+        </DevProvider>,
+      );
+      expect(screen.getByText('board')).toBeInTheDocument();
+      expect(await screen.findByText('devtools')).toBeInTheDocument();
+    } finally {
+      vi.doUnmock('@tanstack/react-query-devtools');
+      vi.unstubAllEnvs();
+      vi.resetModules();
+    }
   });
 
   it('refuses a consumer outside any provider', () => {
