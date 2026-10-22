@@ -68,12 +68,18 @@ A cell can carry a **badge**: _behind_ (amber, with a count) when its branch is 
 
 An **empty cell** says why: _no records_, _needs credential_ (with a link to [Credentials](#credentials)) or _error_. A **warning marker** (!) on a row or stage header, or beside the board's name for board-wide problems, means a rule there has a problem (a group's problems mark its members; a status set's problems mark the rows whose cells use it); hover it to read them, click it to open the editor at the problem. A cell's own problems (such as a hint to read more) are listed in its detail. _Problems (N)_ in the toolbar lists every problem with _Fix_ to open the editor at the exact item, and notes on what the rule check couldn't decide; when there are only notes it reads _Notes (N)_.
 
+**Loading.** A board fills as answers arrive: each repo's runs first, then each run's jobs, then the behind counts. Until a cell's jobs land it can show **provisional**: dashed, in the look of the summary status its run implies (_Running_ for a queued, waiting, requested, pending or in-progress run; _Failing_, _Cancelled_ or _OK_ from a finished run's conclusion), taken by name from the cell's status set, or a plain dashed outline when the set has no status of that name. A cell showing earlier data while newer data loads carries a pulsing corner dot (**refreshing**). Neither mark changes a cell's size. Answers are kept for the page, so an edit, or opening a board again, shows what is known at once and reads only what is due; a GitHub answer that hasn't changed costs no request budget.
+
+**Polling.** A row polls every 5 s while one of its cells is in progress (a provisional _Running_ included) and every 60 s otherwise, four times slower for a token past half its budget, and nothing polls while the tab is hidden; coming back reads only what fell due. A finished run's jobs are never read again. When GitHub says a token is rate-limited, or AWS throttles a key, fooboard pauses that credential until the provider says to retry (AWS's suggested delay, else 5 s).
+
+**Errors.** A repo GitHub can't find (or an Amplify app that's gone) shows _error_ with a problem on its row; an expired or revoked token shows _needs credential_; either way, nothing cached is shown in its place. A renamed repo keeps its data and gets a "renamed to" problem. One failing Amplify app affects only the rows that read it.
+
 - **Details**: hover a cell (or focus it from the keyboard) for its status, branch, commit and time; on a touch screen, tap for a detail sheet. Clicking a cell opens the job on GitHub (or the Amplify console).
 - **Groups**: rows and stages can be grouped, with a line at each group's edges. A column group is framed, its name at its left; group names stay in view as the board scrolls.
 - **Fitting the screen**: columns share the window's width, and each cell shows as much detail as fits. Zoom with Ctrl/⌘ + wheel, a pinch, the toolbar buttons or `+` `-` `0`; zooming out fits more, zooming in shows more. _Default_, _Comfortable_ and _Compact_ density change the padding.
 - **Legend**: _Legend_ shows each status set the board’s cells use, with its statuses as cells show them.
-- **Summary**: a count for each summary status the cells show (for the built-in sets: _Failing_, _Running_, _Cancelled_, _OK_; _Unknown_ last), then behind and diverged cells; a cell polls faster while its status is running; click one to show only those cells, again to clear.
-- **Request budget**: a battery for each GitHub token the board uses shows the requests left this hour (grey until first read); its tooltip names the token and says when the budget resets. Reading it costs nothing. fooboard slows its polling as a token's budget runs down, and pauses while the tab is hidden.
+- **Summary**: a count for each summary status the cells show (for the built-in sets: _Failing_, _Running_, _Cancelled_, _OK_; _Unknown_ last), then behind and diverged cells; click one to show only those cells, again to clear. A provisional cell (see _Loading_ below) counts toward no chip and matches no filter until its jobs land.
+- **Request budget**: a battery for each GitHub token the board uses shows the requests left this hour; its tooltip names the token and says when the budget resets. It is grey and empty until the board's first GitHub response with that token: fooboard reads the budget from the headers of answers it already gets and never asks for it separately, so it costs nothing. fooboard polls four times slower for a token past half its hourly budget.
 
 ## Editing a dashboard
 
@@ -81,7 +87,7 @@ An **empty cell** says why: _no records_, _needs credential_ (with a link to [Cr
 
 _Edit_ (on the board) opens the editor, with these tabs:
 
-- **General**: rename, duplicate or delete the dashboard.
+- **General**: rename, duplicate or delete the dashboard, and set its **requests in flight**: how many requests each credential may have running at once in this tab, for GitHub and AWS separately (1 to 100, 10 by default). A change applies at once and reads nothing again. Higher fills the board faster; a burst can trigger GitHub's secondary rate limits or AWS throttling, after which fooboard pauses that credential (see _Polling_). The limit is per credential per tab: two tabs on the same token can each have that many running.
 - **Rows**: add GitHub rows from the repos a token can see (the dashboard's default token unless you choose another; the row keeps the one you chose), or Amplify rows from the apps your AWS key lists. A credential choice offers the default it inherits first, as _Dashboard default (name)_ or _Group default (name)_, then the other credentials of that kind. A row can use its own credentials, its own row rule (e.g. one deployable unit in a repo), and its own rule for any stage (an **override**). An Amplify row can read more than one app (_Add source_, say for an app in another AWS account); each source has the same AWS key choice as when it was added, which you can change at any time.
 - **Stages**: add stages, each with a rule saying which records belong in it (the presets test the branch); set each stage's source (for the behind/diverged badges).
 - **Sources**: the source rules for GitHub and Amplify, including what to read (GitHub: skip pull-request runs, which still count toward what is read, and runs per repo, 100 by default and up to 500, each 100 one request per repo per poll; Amplify: jobs per branch, 20 by default and up to 100, and which branches). When a read comes back full, each of its rows' cells showing _no records_ gets a hint to read more, since the stage's last run or job may be older than what was read. Amplify reads every branch by default, which makes more AWS calls than reading only stage branches; narrow it with the branch rule; see [Rules](#rules).
@@ -269,7 +275,7 @@ As the window narrows, buttons move into the menu from the right, then the tagli
 
 Everything stays in this browser:
 
-- **Dashboards** are saved under a versioned format; older saves are upgraded when they load, and data that can't be read is reported and never overwritten.
+- **Dashboards** are saved under a versioned format; older saves are upgraded when they load, and data that can't be read is reported and never overwritten. The first save after an upgrade keeps a copy of the old save (e.g. `fooboard:config.v4`) until the next save succeeds.
 - **Zoom, density and theme** are saved on each device. Deleting a dashboard removes its settings on this device too.
 - **Tokens and keys** are kept only for the current tab unless you tick _Remember on this device_. _Forget_ removes one.
 - **To clear everything** fooboard keeps, close every fooboard tab, then clear this site's data in your browser's settings. Closing the tabs drops the tokens and keys held in their memory.
@@ -304,7 +310,7 @@ This path needs no direct push to `prod`, so `prod` never holds a commit that di
 
 ## Contributing
 
-Development setup, commands and standards are in [CONTRIBUTING.md](./CONTRIBUTING.md). In the dev server, boards are timed and a summary is printed to the browser console; `/demo?latency=300` simulates network latency on the demo; production builds contain none of it. See [Timing (development builds)](./CONTRIBUTING.md#timing-development-builds).
+Development setup, commands and standards are in [CONTRIBUTING.md](./CONTRIBUTING.md). In the dev server, the TanStack Query Devtools show every query, boards are timed and a summary is printed to the browser console; `/demo?latency=300` simulates network latency on the demo; production builds contain none of it. See [Timing (development builds)](./CONTRIBUTING.md#timing-development-builds).
 
 ## License
 
