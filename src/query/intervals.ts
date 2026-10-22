@@ -1,9 +1,10 @@
 /**
- * Polling cadence and freshness (spec.md §3.1, Decisions 3 and 29): root
- * queries poll every 5 s while a cell they feed is in progress and every
- * 60 s otherwise, four times slower for a GitHub token past half its
- * hourly budget; compares poll at the idle interval; a completed
- * attempt's jobs never refetch. A query's `staleTime` equals its current
+ * Polling cadence and freshness (spec.md §3.1, Decisions 3, 29 and 45):
+ * root queries poll every 5 s while a cell they feed is in progress and
+ * every 60 s otherwise; an in-progress run's jobs every 5 s; compares at
+ * the idle interval; each four times slower for a GitHub token past half
+ * its hourly budget (Decision 45 item 4). A completed attempt's jobs
+ * never refetch. A query's `staleTime` equals its current
  * `refetchInterval`, so focus and reconnect refetch only what is due.
  *
  * @module

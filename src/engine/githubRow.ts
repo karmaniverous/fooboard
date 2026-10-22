@@ -50,9 +50,9 @@ import { provisionalCell } from './provisional';
 import type { CellView } from './types';
 
 /** Runs per cell whose jobs load at once on a cold cache (Decision 29
- * item 8),
- * set from measurement on a 16-repo board at 10 requests in flight: 1
- * filled it in 27 s with 228 requests, 2 in 37 s (327), 3 in 47 s (411).
+ * item 8), set from measurement on a 16-repo board at 10 requests in
+ * flight: 1 filled it in 27 s with 228 requests, 2 in 37 s (327), 3 in
+ * 47 s (411). Confirmed by Decision 45 item 2 and rechecked in N8.
  * The stages of a row share candidates, so reading ahead mostly reads
  * jobs no cell needs and queues them in front of those it does. */
 export const COLD_CANDIDATES_PER_STAGE = 1;
