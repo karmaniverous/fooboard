@@ -16,6 +16,7 @@ import { DashboardSchema } from '@/domain/config/dashboard';
 import { branchRules } from '@/domain/config/placement';
 import { RESERVED_KEYS } from '@/domain/model/keys';
 import { envRender } from '@/test/envRender';
+import { focusElement } from '@/test/focus';
 import { expand, itemTrigger } from '@/test/openItem';
 
 import { DashboardEditor } from './DashboardEditor';
@@ -63,7 +64,7 @@ describe('headers', () => {
     expect(trigger).toHaveAttribute('aria-expanded', 'false');
     // A native button: Enter and Space click it, opening the item and
     // tying the header to its body.
-    trigger.focus();
+    focusElement(trigger);
     expect(trigger).toHaveFocus();
     fireEvent.click(trigger);
     expect(trigger).toHaveAttribute('aria-expanded', 'true');

@@ -20,6 +20,7 @@ import { StoresContext } from '@/storage/storesContext';
 import { optionsOf } from '@/test/choose';
 import { envRender } from '@/test/envRender';
 import { fakeGitHubApi, fetched, ghBranch, ghRepo } from '@/test/fakeReaders';
+import { focusElement } from '@/test/focus';
 import { expand } from '@/test/openItem';
 
 import { DashboardEditor } from './DashboardEditor';
@@ -197,7 +198,7 @@ describe('Create a dashboard', () => {
   it('saves a field being edited when another tab is chosen', () => {
     const latest = setup();
     const input = screen.getByLabelText('Dashboard name');
-    input.focus();
+    focusElement(input);
     fireEvent.change(input, { target: { value: 'Platform' } });
     tab('Rows');
     expect(latest.current.name).toBe('Platform');
