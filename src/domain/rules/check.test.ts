@@ -2,7 +2,8 @@
  * Tests for checks and rules: each operator on scalars, null, objects and
  * arrays; any/every (every failing on nothing); NOT; RFC 9535 filters;
  * checks that can't run never matching (NOT included) and saying why; and
- * AND/OR rules, an empty rule matching everything.
+ * AND/OR rules, an empty rule matching everything; and which glob or
+ * regex paths find an object or array.
  *
  * @module
  */
@@ -12,6 +13,7 @@ import {
   checkProblem,
   evaluateCheck,
   evaluateRule,
+  findsObjectOrArray,
   ruleProblems,
 } from './check';
 import { MAX_REGEX_LENGTH } from './path';
@@ -147,5 +149,29 @@ describe('evaluateRule', () => {
   it('lists the problems of its checks', () => {
     const rule = RuleSchema.parse({ checks: [deploy, { path: '$[' }] });
     expect(ruleProblems(rule)).toHaveLength(1);
+  });
+});
+
+describe('findsObjectOrArray', () => {
+  it.each([
+    ['an object', { path: '$.meta' }, true],
+    ['an array', { path: '$.items' }, true],
+    ['objects among several values', { path: '$.items[*]' }, true],
+    ['one object among scalars', { path: '$.*', quantifier: 'every' }, true],
+    ['a scalar', { path: '$.workflow' }, false],
+    ['scalars inside an array', { path: '$.items[*].name' }, false],
+    ['null', { path: '$.conclusion' }, false],
+    ['nothing', { path: '$.missing' }, false],
+    ['an object, with regex', { path: '$.meta', operator: 'regex' }, true],
+    ['an object, with exists', { path: '$.meta', operator: 'exists' }, false],
+    ['a path that does not parse', { path: '$[' }, false],
+  ] as const)('%s: %s', (_, c, expected) => {
+    expect(findsObjectOrArray(check(c), [run])).toBe(expected);
+  });
+
+  it('looks across every document, and needs one', () => {
+    const meta = check({ path: '$.meta' });
+    expect(findsObjectOrArray(meta, [{ meta: 'x' }, run])).toBe(true);
+    expect(findsObjectOrArray(meta, [])).toBe(false);
   });
 });
