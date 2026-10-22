@@ -8,8 +8,8 @@
 import { describe, expect, it, vi } from 'vitest';
 
 import { DashboardSchema } from '@/domain/config/dashboard';
-import type { EngineProviders } from '@/engine';
-import { fakeGitHubReader, ghBranch } from '@/test/fakeReaders';
+import { fakeGitHubApi, fetched, ghBranch } from '@/test/fakeReaders';
+import { testQueryEnv } from '@/test/queryEnv';
 
 import { branchCounts, discoverBranches, patternPreview } from './branches';
 
@@ -33,29 +33,32 @@ describe('discoverBranches', () => {
         { id: 'g', memberIds: ['b'], defaultCredentials: { github: 'team' } },
       ],
     });
-    const listBranches = vi.fn(({ repo }: { repo: string }) =>
-      Promise.resolve([ghBranch(`${repo}-main`)]),
+    const branchesPage = vi.fn(({ repo }: { repo: string }) =>
+      Promise.resolve(fetched([ghBranch(`${repo}-main`)])),
     );
     const read: string[] = [];
-    const providers: EngineProviders = {
+    const env = testQueryEnv({
       github: (id) => {
         read.push(id);
         return id === 'org' || id === 'team'
-          ? fakeGitHubReader({ listBranches })
+          ? fakeGitHubApi({ branchesPage })
           : undefined;
       },
       amplify: () => undefined,
-    };
-    const found = await discoverBranches(dashboard, providers);
+    });
+    const found = await discoverBranches(dashboard, env);
     expect([...found]).toEqual([
       ['acme/a', ['a-main']],
       ['acme/b', ['b-main']],
       ['acme/c', ['c-main']],
     ]);
-    expect(read).toEqual(['org', 'team', 'org']);
+    // Each repo is read with the token its row inherits.
+    expect(branchesPage).toHaveBeenCalledTimes(3);
+    expect(new Set(read)).toEqual(new Set(['org', 'team']));
 
     const noToken = { ...dashboard, defaultCredentials: {}, rowGroups: [] };
-    expect((await discoverBranches(noToken, providers)).size).toBe(0);
+    const env2 = testQueryEnv({ github: () => undefined });
+    expect((await discoverBranches(noToken, env2)).size).toBe(0);
   });
 });
 

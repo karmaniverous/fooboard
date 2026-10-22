@@ -63,6 +63,7 @@ describe('CellDetail', () => {
       derivation: { kind: 'empty', state: EMPTY_STATES.noRecords },
       active: false,
       badge: undefined,
+      settled: true,
     };
     render(
       <CellDetail

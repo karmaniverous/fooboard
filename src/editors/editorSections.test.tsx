@@ -33,7 +33,7 @@ describe('editor sections', () => {
   });
 
   it('reports a repo list that fails to load', async () => {
-    setup({ listRepos: () => Promise.reject(new Error('Bad credentials')) });
+    setup({ reposPage: () => Promise.reject(new Error('Bad credentials')) });
     tab('Rows');
     fireEvent.click(screen.getByRole('button', { name: 'Add a GitHub row' }));
     expect(await screen.findByRole('alert')).toHaveTextContent(

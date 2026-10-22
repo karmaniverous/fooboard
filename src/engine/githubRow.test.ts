@@ -1,124 +1,216 @@
 /**
- * Tests for refreshing a GitHub repo's cells (spec.md A§4.3.7): a cell's
- * record is the newest with a counted item anywhere in what was read,
- * however many newer runs have none; the source rule's keep rule drops
- * records (judged on items when it tests them); reports whether the read
- * came back full.
+ * Tests for deriving a GitHub row from the cache (spec.md §3.1, Decisions
+ * 26 and 37): what it needs before anything lands, provisional cells from
+ * the run alone, final cells once jobs land, the cached placement shown
+ * refreshing while a newer run's jobs load, the cold-cache window of jobs
+ * requests, failures of the runs and jobs reads, renamed repos, paging and
+ * polling cadence.
  *
  * @module
  */
+import { QueryClient } from '@tanstack/query-core';
 import { describe, expect, it } from 'vitest';
 
-import { demoDashboard } from '@/demo/board';
-import { createDemoGitHubReader } from '@/demo/github';
-import { cellRulesFor } from '@/domain/config/cellRules';
-import { EMPTY_STATES } from '@/domain/derivation';
-import { all, exists, is, not } from '@/domain/model/ruleBuilders';
-import type { SourceRuleOf } from '@/domain/model/sourceRule';
-import { sourceRuleFor } from '@/domain/model/sources';
-import type { GitHubReader } from '@/lib/github/reader';
+import {
+  ACTIVE_INTERVAL_MS,
+  BUDGET_BACKOFF,
+  IDLE_INTERVAL_MS,
+  SETTLED,
+} from '@/query/intervals';
+import {
+  DEMO_TOKEN,
+  demoContext,
+  demoGithubRow,
+  demoJobs,
+  demoRuns,
+  jobsRequest,
+  seedDemoRepo,
+  seedJobs,
+  seedRuns,
+} from '@/test/githubCache';
 
-import { refreshGithubRepo } from './githubRow';
+import { COLD_CANDIDATES_PER_STAGE, deriveGithubRow } from './githubRow';
+import type { Need } from './need';
 
-describe('refreshGithubRepo', () => {
-  it('looks past many newer runs without a relevant job', async () => {
-    const demo = createDemoGitHubReader(() => 0);
-    const LINT_RUNS = 12;
-    const reader: GitHubReader = {
-      ...demo,
-      listWorkflowRuns: async (ref, options) => {
-        const runs = await demo.listWorkflowRuns(ref, options);
-        const dev = runs.find((r) => r.head_branch === 'dev');
-        if (!dev) throw new Error('no dev run in the demo');
-        const lint = Array.from({ length: LINT_RUNS }, (_, i) => ({
-          ...dev,
-          id: 50_000 + i,
-          name: 'Lint',
-          created_at: new Date(
-            Date.parse(dev.created_at) + (i + 1) * 1000,
-          ).toISOString(),
-        }));
-        return [...lint.reverse(), ...runs];
-      },
-      listRunJobs: async (ref, runId, options) => {
-        if (runId < 50_000) return demo.listRunJobs(ref, runId, options);
-        const [template] = await demo.listRunJobs(ref, 1000, options);
-        return [{ ...template, id: runId * 10, run_id: runId, name: 'lint' }];
-      },
+const REPO = 'acme/api-core';
+const row = demoGithubRow('api-core');
+const runsKey = (page = 1) =>
+  JSON.stringify(['github', DEMO_TOKEN, { call: 'runs', repo: REPO, page }]);
+const keyOf = (n: { key: unknown }) => JSON.stringify(n.key);
+/** The jobs needs, with the run each one reads. */
+const jobsNeeds = (needs: Need[]) =>
+  needs.flatMap((need) =>
+    need.key[0] === 'github' && need.key[2].call === 'jobs'
+      ? [{ need, runId: need.key[2].runId }]
+      : [],
+  );
+
+describe('deriveGithubRow', () => {
+  it('shows nothing and needs the first runs page before anything lands', () => {
+    const client = new QueryClient();
+    const out = deriveGithubRow(demoContext(client, REPO), row);
+    expect(out.cells).toEqual({});
+    expect(out.needs.map(keyOf)).toEqual([runsKey()]);
+    expect(out.needs[0]?.freshness.refetchInterval).toBe(IDLE_INTERVAL_MS);
+  });
+
+  it('shows provisional cells from the runs alone, not counted as final', async () => {
+    const client = new QueryClient();
+    seedRuns(client, REPO, await demoRuns(REPO));
+    const out = deriveGithubRow(demoContext(client, REPO), row);
+    const dev = out.cells.dev;
+    expect(dev?.provisional).toBeDefined();
+    expect(dev?.pending).toBe(true);
+    expect(dev?.derivation.kind).toBe('ok');
+    // Jobs are asked for, a few runs per cell at most.
+    const stages = Object.keys(out.cells).length;
+    expect(jobsNeeds(out.needs).length).toBeGreaterThan(0);
+    expect(jobsNeeds(out.needs).length).toBeLessThanOrEqual(
+      COLD_CANDIDATES_PER_STAGE * Math.max(stages, 1),
+    );
+  });
+
+  it('gives a provisional Running cell the fast poll', async () => {
+    const client = new QueryClient();
+    const runs = (await demoRuns(REPO)).map((r) =>
+      r.head_branch === 'dev'
+        ? { ...r, status: 'waiting', conclusion: null }
+        : r,
+    );
+    seedRuns(client, REPO, runs);
+    const out = deriveGithubRow(demoContext(client, REPO), row);
+    expect(out.cells.dev?.derivation).toMatchObject({
+      status: { summary: { inProgress: true } },
+    });
+    expect(out.cells.dev?.active).toBe(true);
+    expect(out.needs[0]?.freshness.refetchInterval).toBe(ACTIVE_INTERVAL_MS);
+  });
+
+  it('derives final cells once every needed run has its jobs', async () => {
+    const client = new QueryClient();
+    const runs = await seedDemoRepo(client, REPO);
+    const out = deriveGithubRow(demoContext(client, REPO), row);
+    expect(out.cells.dev).toMatchObject({
+      pending: false,
+      derivation: { kind: 'ok', status: { icon: 'success' } },
+    });
+    expect(out.cells.dev?.provisional).toBeUndefined();
+    // A completed run's jobs never poll; a running one's poll fast.
+    const byRun = new Map(runs.map((r) => [r.id, r]));
+    for (const { need, runId } of jobsNeeds(out.needs)) {
+      const run = byRun.get(runId);
+      expect(need.freshness).toEqual(
+        run?.status === 'completed'
+          ? SETTLED
+          : {
+              refetchInterval: ACTIVE_INTERVAL_MS,
+              staleTime: ACTIVE_INTERVAL_MS,
+            },
+      );
+      expect(need.version).toBe(run?.status);
+    }
+  });
+
+  it('reads a re-run attempt’s own jobs, not the earlier attempt’s', async () => {
+    const client = new QueryClient();
+    const runs = await seedDemoRepo(client, REPO);
+    const dev = runs.find((r) => r.head_branch === 'dev');
+    if (!dev) throw new Error('no dev run');
+    const rerun = { ...dev, run_attempt: (dev.run_attempt ?? 1) + 1 };
+    seedRuns(
+      client,
+      REPO,
+      runs.map((r) => (r.id === dev.id ? rerun : r)),
+    );
+    const out = deriveGithubRow(demoContext(client, REPO), row);
+    const attempts = jobsNeeds(out.needs)
+      .filter(({ runId }) => runId === dev.id)
+      .map(({ need }) => need.key[2]);
+    expect(attempts).toContainEqual(jobsRequest(REPO, rerun));
+    expect(attempts).not.toContainEqual(jobsRequest(REPO, dev));
+    expect(out.cells.dev?.pending).toBe(true);
+  });
+
+  it('shows the cached placement, refreshing, while a newer run loads', async () => {
+    const client = new QueryClient();
+    const runs = await seedDemoRepo(client, REPO);
+    const dev = runs.find((r) => r.head_branch === 'dev');
+    if (!dev) throw new Error('no dev run');
+    const newer = {
+      ...dev,
+      id: 99_999,
+      created_at: new Date(Date.parse(dev.created_at) + 60_000).toISOString(),
     };
-    const row = demoDashboard.rows.find((r) => r.id === 'api-core');
-    if (row?.type !== 'github') throw new Error('api-core is not a GitHub row');
-    const result = await refreshGithubRepo(
-      {
-        rows: [row],
-        repoRows: [row],
-        stages: demoDashboard.stages,
-        rulesFor: (r, stageId) => cellRulesFor(demoDashboard, r, stageId),
-        source: sourceRuleFor(demoDashboard, 'github'),
-      },
-      reader,
+    seedRuns(client, REPO, [newer, ...runs]);
+    const out = deriveGithubRow(demoContext(client, REPO), row);
+    expect(out.cells.dev).toMatchObject({
+      refreshing: true,
+      pending: true,
+      derivation: { kind: 'ok', status: { icon: 'success' } },
+    });
+    expect(out.needs.map(keyOf)).toContain(
+      JSON.stringify(['github', DEMO_TOKEN, jobsRequest(REPO, newer)]),
     );
-    if (result.kind !== 'refreshed') throw new Error(result.kind);
-    expect(result.rows['api-core'].dev.derivation).toMatchObject({
-      kind: 'ok',
-      status: { icon: 'success' },
+  });
+
+  it('looks past newer runs whose jobs place nothing', async () => {
+    const client = new QueryClient();
+    const runs = await seedDemoRepo(client, REPO);
+    const dev = runs.find((r) => r.head_branch === 'dev');
+    if (!dev) throw new Error('no dev run');
+    const template = (await demoJobs(REPO, dev.id)).at(0);
+    if (!template) throw new Error('no job');
+    const lint = Array.from({ length: 12 }, (_, i) => ({
+      ...dev,
+      id: 50_000 + i,
+      name: 'Lint',
+      created_at: new Date(
+        Date.parse(dev.created_at) + (i + 1) * 1000,
+      ).toISOString(),
+    }));
+    for (const run of lint)
+      seedJobs(client, REPO, run, [
+        { ...template, id: run.id, run_id: run.id, name: 'lint' },
+      ]);
+    seedRuns(client, REPO, [...lint.reverse(), ...runs]);
+    const out = deriveGithubRow(demoContext(client, REPO), row);
+    expect(out.cells.dev).toMatchObject({
+      pending: false,
+      derivation: { kind: 'ok', status: { icon: 'success' } },
     });
   });
 
-  const row = demoDashboard.rows.find((r) => r.id === 'api-core');
-  const refresh = async (
-    source: SourceRuleOf<'github'>,
-    reader: GitHubReader,
-  ) => {
-    if (row?.type !== 'github') throw new Error('api-core is not a GitHub row');
-    const result = await refreshGithubRepo(
-      {
-        rows: [row],
-        repoRows: [row],
-        stages: demoDashboard.stages,
-        rulesFor: (r, stageId) => cellRulesFor(demoDashboard, r, stageId),
-        source,
-      },
-      reader,
+  it('reads the next runs page only while the window needs it', async () => {
+    const client = new QueryClient();
+    const runs = await demoRuns(REPO);
+    seedRuns(client, REPO, runs, { hasNext: true });
+    const ctx = demoContext(client, REPO);
+    const wide = {
+      ...ctx,
+      source: { ...ctx.source, reader: { ...ctx.source.reader, runs: 200 } },
+    };
+    expect(deriveGithubRow(wide, row).needs.map(keyOf)).toContain(runsKey(2));
+    const narrow = {
+      ...ctx,
+      source: { ...ctx.source, reader: { ...ctx.source.reader, runs: 100 } },
+    };
+    expect(deriveGithubRow(narrow, row).needs.map(keyOf)).not.toContain(
+      runsKey(2),
     );
-    if (result.kind !== 'refreshed') throw new Error(result.kind);
-    return result;
-  };
-
-  it('drops records the keep rule rejects, on record keys or items', async () => {
-    const reader = createDemoGitHubReader(() => 0);
-    const builtin = sourceRuleFor(demoDashboard, 'github');
-    const plain = await refresh(builtin, reader);
-    expect(plain.rows['api-core'].dev.derivation.kind).toBe('ok');
-    const noDev = await refresh(
-      { ...builtin, keep: all(not(is('$.branch', 'dev'))) },
-      reader,
-    );
-    expect(noDev.rows['api-core'].dev.derivation).toMatchObject({
-      kind: 'empty',
-      state: EMPTY_STATES.noRecords,
-    });
-    const noItems = await refresh(
-      { ...builtin, keep: all(exists("$.items[?@.name == 'nothing']")) },
-      reader,
-    );
-    expect(noItems.rows['api-core'].dev.derivation).toMatchObject({
-      kind: 'empty',
-      state: EMPTY_STATES.noRecords,
-    });
-    expect(plain.full).toBe(false);
   });
 
-  it('reports a full read when the reader returns as many runs as the rule reads', async () => {
-    const demo = createDemoGitHubReader(() => 0);
-    const builtin = sourceRuleFor(demoDashboard, 'github');
-    const runs = (
-      await demo.listWorkflowRuns({ owner: 'acme', repo: 'api-core' })
-    ).length;
-    const result = await refresh(
-      { ...builtin, reader: { ...builtin.reader, runs } },
-      demo,
+  it('marks data older than the board as refreshing, and backs off over budget', async () => {
+    const client = new QueryClient();
+    await seedDemoRepo(client, REPO);
+    const out = deriveGithubRow(
+      demoContext(client, REPO, { openedAt: Date.now() + 1, overBudget: true }),
+      row,
     );
-    expect(result.full).toBe(true);
+    expect(Object.values(out.cells).every((c) => c?.refreshing)).toBe(true);
+    const interval = out.needs[0]?.freshness.refetchInterval;
+    expect([
+      IDLE_INTERVAL_MS * BUDGET_BACKOFF,
+      ACTIVE_INTERVAL_MS * BUDGET_BACKOFF,
+    ]).toContain(interval);
   });
 });

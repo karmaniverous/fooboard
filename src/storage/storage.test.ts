@@ -9,6 +9,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { demoDashboard } from '@/demo/board';
+import { CURRENT_SCHEMA_VERSION } from '@/domain/config/root';
 import { refusingDevice } from '@/test/refusingDevice';
 
 import { createConfigStore } from './configStore';
@@ -27,7 +28,7 @@ describe('config store', () => {
     const store = createConfigStore(memoryStorage());
     expect(store.load()).toEqual({
       kind: 'ok',
-      root: { schemaVersion: 4, dashboards: [] },
+      root: { schemaVersion: CURRENT_SCHEMA_VERSION, dashboards: [] },
     });
     const second = { ...demoDashboard, id: 'second', name: 'Second' };
     store.saveDashboard(demoDashboard);

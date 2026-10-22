@@ -8,20 +8,22 @@
  *
  * @module
  */
-import { fireEvent, render, screen, within } from '@testing-library/react';
+import { fireEvent, screen, within } from '@testing-library/react';
 import { useState } from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { describe, expect, it } from 'vitest';
+
+const render = envRender();
 
 import { type Dashboard, DashboardSchema } from '@/domain/config/dashboard';
 import { branchRules } from '@/domain/config/placement';
 import { BUILTIN_SOURCES } from '@/domain/model/builtinSources';
 import { all, is } from '@/domain/model/ruleBuilders';
 import { problem } from '@/domain/problems/problem';
-import type { EngineProviders } from '@/engine';
 import { createAppStores } from '@/storage';
 import { memoryStorage } from '@/storage/keyValue';
 import { StoresContext } from '@/storage/storesContext';
+import { envRender } from '@/test/envRender';
 import { expand } from '@/test/openItem';
 
 import { DashboardEditor } from './DashboardEditor';
@@ -42,10 +44,6 @@ const start = DashboardSchema.parse({
   rowGroups: [{ id: 'g', label: 'Front', memberIds: ['web'] }],
   stages: [{ id: 'dev', name: 'Dev', rules: branchRules('dev') }],
 });
-const providers: EngineProviders = {
-  github: () => undefined,
-  amplify: () => undefined,
-};
 
 function setup(
   initial: Dashboard,
@@ -58,7 +56,6 @@ function setup(
     return (
       <DashboardEditor
         dashboard={d}
-        providers={providers}
         draft={draft}
         onChange={(next) => {
           latest.current = next;

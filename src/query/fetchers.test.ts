@@ -1,0 +1,152 @@
+/**
+ * Tests for the fetch layer (spec.md §3.1, §3.3, Decision 21): each GitHub
+ * request is conditional on the ETag kept in the cached data and a 304
+ * reuses it; a first page that lands with new data invalidates the list's
+ * later pages; GitHub rate limits and Amplify throttles pause the
+ * credential's limiter before its slot frees; a credential without a
+ * secret fails with `MissingCredentialError`; every request runs through
+ * the instrumentation hook.
+ *
+ * @module
+ */
+import { QueryClient } from '@tanstack/query-core';
+import { describe, expect, it, vi } from 'vitest';
+
+import { AmplifyThrottledError } from '@/lib/amplify/errors';
+import type { GitHubApi } from '@/lib/github';
+import { RateLimitedError } from '@/lib/github/errors';
+import {
+  fakeAmplifyReader,
+  fakeGitHubApi,
+  fetched,
+  ghRepo,
+} from '@/test/fakeReaders';
+
+import { createQueryFn, MissingCredentialError } from './fetchers';
+import { type Around, passThrough, type RequestCall } from './instrument';
+import { amplifyKey, githubKey } from './keys';
+import { createLimiters } from './limiters';
+
+const NOW = 1_000_000;
+const REPO = 'acme/api';
+const runs = (page: number) =>
+  githubKey('gh', { call: 'runs', repo: REPO, page });
+const repos = (page: number) => githubKey('gh', { call: 'repos', page });
+
+/** A client whose queries fetch through `api` (or none) for every token. */
+function setup(
+  api: GitHubApi | undefined,
+  { around = passThrough }: { around?: Around } = {},
+) {
+  const limiters = createLimiters({ now: () => NOW });
+  const client = new QueryClient({
+    defaultOptions: {
+      queries: {
+        retry: false,
+        queryFn: createQueryFn({
+          providers: {
+            github: () => api,
+            amplify: () => () =>
+              fakeAmplifyReader({
+                listApps: () =>
+                  Promise.reject(
+                    new AmplifyThrottledError('slow down', 'ListApps', 7_000),
+                  ),
+              }),
+            fingerprint: () => 'secret',
+          },
+          limiters,
+          now: () => NOW,
+          around: () => around,
+        }),
+      },
+    },
+  });
+  return { client, limiters };
+}
+
+describe('createQueryFn', () => {
+  it('sends the cached ETag and reuses the cached data on a 304', async () => {
+    const reposPage = vi
+      .fn<GitHubApi['reposPage']>()
+      .mockResolvedValueOnce(fetched([ghRepo('acme/api')], { etag: 'e1' }))
+      .mockResolvedValueOnce({ notModified: true });
+    const { client } = setup(fakeGitHubApi({ reposPage }));
+    const first = await client.query({ queryKey: repos(1) });
+    await client.refetchQueries({ queryKey: repos(1) });
+    expect(reposPage).toHaveBeenNthCalledWith(1, 1, undefined);
+    expect(reposPage).toHaveBeenNthCalledWith(2, 1, 'e1');
+    expect(client.getQueryData(repos(1))).toBe(first);
+  });
+
+  it('invalidates later pages when the first page lands with new data', async () => {
+    const reposPage = vi
+      .fn<GitHubApi['reposPage']>()
+      .mockResolvedValueOnce(
+        fetched([ghRepo('acme/a')], { etag: 'e1', hasNext: true }),
+      )
+      .mockResolvedValueOnce(fetched([ghRepo('acme/b')], { etag: 'p2' }))
+      .mockResolvedValueOnce({ notModified: true })
+      .mockResolvedValueOnce(
+        fetched([ghRepo('acme/new')], { etag: 'e2', hasNext: true }),
+      );
+    const { client } = setup(fakeGitHubApi({ reposPage }));
+    await client.query({ queryKey: repos(1) });
+    await client.query({ queryKey: repos(2) });
+    const pageTwo = () => client.getQueryState(repos(2))?.isInvalidated;
+
+    await client.refetchQueries({ queryKey: repos(1) }); // 304
+    expect(pageTwo()).toBe(false);
+    await client.refetchQueries({ queryKey: repos(1) }); // new data
+    expect(pageTwo()).toBe(true);
+  });
+
+  it('pauses the token at GitHub’s reset on a rate limit', async () => {
+    const retryAt = NOW + 60_000;
+    const { client, limiters } = setup(
+      fakeGitHubApi({
+        runsPage: () => Promise.reject(new RateLimitedError('runs', retryAt)),
+      }),
+    );
+    await expect(client.query({ queryKey: runs(1) })).rejects.toThrow(
+      RateLimitedError,
+    );
+    expect(limiters.for('github', 'gh').stats().pausedUntil).toBe(retryAt);
+  });
+
+  it('pauses the AWS key for the delay a throttle suggests', async () => {
+    const { client, limiters } = setup(undefined);
+    await expect(
+      client.query({
+        queryKey: amplifyKey('aws', { call: 'apps', region: 'eu-west-1' }),
+      }),
+    ).rejects.toThrow(AmplifyThrottledError);
+    expect(limiters.for('amplify', 'aws').stats().pausedUntil).toBe(
+      NOW + 7_000,
+    );
+    expect(limiters.for('github', 'aws').stats().pausedUntil).toBe(0);
+  });
+
+  it('fails a request for a credential without a secret', async () => {
+    const { client } = setup(undefined);
+    await expect(client.query({ queryKey: runs(1) })).rejects.toBeInstanceOf(
+      MissingCredentialError,
+    );
+  });
+
+  it('runs every request through the instrumentation hook', async () => {
+    const calls: RequestCall[] = [];
+    const around: Around = (call, run) => {
+      calls.push(call);
+      return run();
+    };
+    const { client } = setup(
+      fakeGitHubApi({ runsPage: () => Promise.resolve(fetched([])) }),
+      { around },
+    );
+    await client.query({ queryKey: runs(1) });
+    expect(calls).toEqual([
+      { provider: 'github', kind: 'runs', credentialId: 'gh', repo: REPO },
+    ]);
+  });
+});

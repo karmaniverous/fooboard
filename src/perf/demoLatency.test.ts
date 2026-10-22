@@ -1,12 +1,12 @@
 import { describe, expect, it } from 'vitest';
 
-import { demoProviders } from '@/engine';
+import type { RequestCall } from '@/query/instrument';
 
 import {
   DEMO_LATENCY_MAX_MS,
   DEMO_LATENCY_PARAM,
   demoLatencyMs,
-  withLatency,
+  latencyAround,
 } from './demoLatency';
 
 describe('demoLatencyMs', () => {
@@ -30,27 +30,30 @@ describe('demoLatencyMs', () => {
   });
 });
 
-describe('withLatency', () => {
-  it('waits the latency before each request, then answers as before', async () => {
-    const inner = demoProviders(() => 0);
+const call: RequestCall = {
+  provider: 'github',
+  kind: 'runs',
+  credentialId: 't',
+  repo: 'acme/api',
+};
+
+describe('latencyAround', () => {
+  it('waits the latency before each request, then answers as it does', async () => {
     const events: string[] = [];
     const wait = (ms: number) => {
       events.push(`wait ${String(ms)}`);
       return Promise.resolve();
     };
-    const slow = withLatency(inner, 300, wait);
-    const ref = { owner: 'acme', repo: 'api-core' };
-    const runs = await slow.github('t')?.listWorkflowRuns(ref);
-    events.push('answered');
-    expect(runs).toEqual(await inner.github('t')?.listWorkflowRuns(ref));
-    await slow
-      .amplify('k')?.({ credentialId: 'k', region: 'us-east-1' })
-      .listBranches('d1demomarketing');
-    expect(events).toEqual(['wait 300', 'answered', 'wait 300']);
+    const around = latencyAround(300, wait);
+    const answer = await around?.(call, () => {
+      events.push('request');
+      return Promise.resolve(42);
+    });
+    expect(answer).toBe(42);
+    expect(events).toEqual(['wait 300', 'request']);
   });
 
-  it('leaves the providers untouched without latency', () => {
-    const inner = demoProviders(() => 0);
-    expect(withLatency(inner, 0)).toBe(inner);
+  it('is absent without latency', () => {
+    expect(latencyAround(0)).toBeUndefined();
   });
 });

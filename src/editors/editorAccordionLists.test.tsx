@@ -7,13 +7,15 @@
  *
  * @module
  */
-import { fireEvent, render, screen, within } from '@testing-library/react';
+import { fireEvent, screen, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
+
+const render = envRender();
 
 import { DashboardSchema } from '@/domain/config/dashboard';
 import { branchRules } from '@/domain/config/placement';
 import { RESERVED_KEYS } from '@/domain/model/keys';
-import type { EngineProviders } from '@/engine';
+import { envRender } from '@/test/envRender';
 import { expand, itemTrigger } from '@/test/openItem';
 
 import { DashboardEditor } from './DashboardEditor';
@@ -24,11 +26,6 @@ import { UnknownRunsList } from './statuses/UnknownRunsList';
 
 const isOpen = (name: string) =>
   itemTrigger(name).getAttribute('aria-expanded') === 'true';
-
-const providers: EngineProviders = {
-  github: () => undefined,
-  amplify: () => undefined,
-};
 
 const board = customiseSource(
   DashboardSchema.parse({
@@ -52,7 +49,6 @@ const open = (draft: EditorDraft) =>
   render(
     <DashboardEditor
       dashboard={board}
-      providers={providers}
       draft={draft}
       onChange={() => undefined}
     />,

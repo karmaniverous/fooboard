@@ -8,8 +8,9 @@
  */
 import { describe, expect, it } from 'vitest';
 
-import { migrate } from './migrate';
+import { addSettings, FIRST_VERSION, migrate } from './migrate';
 import { CURRENT_SCHEMA_VERSION } from './root';
+import { defaultSettings } from './settings';
 
 describe('migrate', () => {
   it('validates and returns current data, defaulting missing dashboards', () => {
@@ -49,6 +50,40 @@ describe('migrate', () => {
     );
     expect(seen).toEqual([1, 2]);
     expect(out.schemaVersion).toBe(CURRENT_SCHEMA_VERSION);
+  });
+
+  it('migrates v4 to v5, giving each dashboard default settings', () => {
+    const v4 = {
+      schemaVersion: FIRST_VERSION,
+      dashboards: [
+        { id: 'a', name: 'A' },
+        {
+          id: 'b',
+          name: 'B',
+          settings: { requestsInFlight: { github: 3, aws: 4 } },
+        },
+      ],
+    };
+    const out = migrate(v4);
+    expect(out.schemaVersion).toBe(CURRENT_SCHEMA_VERSION);
+    expect(out.dashboards.map((d) => d.settings)).toEqual([
+      defaultSettings(),
+      { requestsInFlight: { github: 3, aws: 4 } },
+    ]);
+    expect(out.dashboards.map((d) => d.name)).toEqual(['A', 'B']);
+  });
+
+  it('writes the v5 settings in the step itself, not leaving them to schema defaults', () => {
+    // Frozen in time: a later default must not change what v4 data became.
+    const own = { requestsInFlight: { github: 3, aws: 4 } };
+    expect(
+      addSettings({ dashboards: [{ id: 'a' }, { id: 'b', settings: own }] }),
+    ).toEqual({
+      dashboards: [
+        { id: 'a', settings: defaultSettings() },
+        { id: 'b', settings: own },
+      ],
+    });
   });
 
   it('refuses a version with no step to the next', () => {

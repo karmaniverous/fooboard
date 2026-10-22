@@ -8,28 +8,18 @@ import { fireEvent, render, screen } from '@testing-library/react';
 import { beforeAll, describe, expect, it } from 'vitest';
 
 import { demoDashboard } from '@/demo/board';
-import {
-  type BoardModel,
-  createBoardEngine,
-  demoProviders,
-  emptyModel,
-} from '@/engine';
+import { type BoardModel, emptyModel } from '@/engine';
 import { createAppStores } from '@/storage';
 import { memoryStorage } from '@/storage/keyValue';
 import { StoresContext } from '@/storage/storesContext';
+import { fullModel } from '@/test/boardModel';
 
 import { BoardViewport } from './BoardViewport';
 import { useBoardView } from './useBoardView';
 
 let demoModel: BoardModel = emptyModel();
 beforeAll(async () => {
-  const engine = createBoardEngine({
-    dashboard: demoDashboard,
-    providers: demoProviders(() => 0),
-    visibility: { isHidden: () => false, onChange: () => () => undefined },
-  });
-  await engine.refreshAll();
-  demoModel = engine.getModel();
+  demoModel = await fullModel(demoDashboard);
 });
 
 function Harness({

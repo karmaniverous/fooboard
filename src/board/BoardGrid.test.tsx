@@ -18,12 +18,8 @@ import { beforeAll, describe, expect, it } from 'vitest';
 
 import { demoDashboard } from '@/demo/board';
 import { branchRules } from '@/domain/config/placement';
-import {
-  type BoardModel,
-  createBoardEngine,
-  demoProviders,
-  emptyModel,
-} from '@/engine';
+import { type BoardModel, emptyModel } from '@/engine';
+import { fullModel } from '@/test/boardModel';
 
 import { BoardGrid } from './BoardGrid';
 import type { Layout } from './layout';
@@ -49,13 +45,7 @@ const testLayout: Layout = {
 let model: BoardModel;
 
 beforeAll(async () => {
-  const engine = createBoardEngine({
-    dashboard: demoDashboard,
-    providers: demoProviders(() => 0),
-    visibility: { isHidden: () => false, onChange: () => () => undefined },
-  });
-  await engine.refreshAll();
-  model = engine.getModel();
+  model = await fullModel(demoDashboard);
 });
 
 // The detail sheet links to the credential guide, so render inside a router.

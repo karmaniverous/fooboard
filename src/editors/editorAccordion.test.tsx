@@ -5,12 +5,14 @@
  *
  * @module
  */
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
+
+const render = envRender();
 
 import { DashboardSchema } from '@/domain/config/dashboard';
 import { branchRules } from '@/domain/config/placement';
-import type { EngineProviders } from '@/engine';
+import { envRender } from '@/test/envRender';
 import { expand, itemTrigger } from '@/test/openItem';
 
 import { DashboardEditor } from './DashboardEditor';
@@ -70,15 +72,10 @@ describe('the editor opened on a fix', () => {
       { id: 'prod', name: 'prod', rules: branchRules('main') },
     ],
   });
-  const providers: EngineProviders = {
-    github: () => undefined,
-    amplify: () => undefined,
-  };
   const open = (draft: EditorDraft) =>
     render(
       <DashboardEditor
         dashboard={dashboard}
-        providers={providers}
         draft={draft}
         onChange={() => undefined}
       />,
@@ -103,7 +100,6 @@ describe('the editor opened on a fix', () => {
     rerender(
       <DashboardEditor
         dashboard={dashboard}
-        providers={providers}
         draft={{ tab: 'Rows', focus: ['row:web'] }}
         onChange={() => undefined}
       />,

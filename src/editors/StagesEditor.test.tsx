@@ -5,14 +5,16 @@
  *
  * @module
  */
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, screen } from '@testing-library/react';
 import { useState } from 'react';
 import { describe, expect, it } from 'vitest';
 
+const render = envRender();
+
 import { type Dashboard, DashboardSchema } from '@/domain/config/dashboard';
 import { branchRules } from '@/domain/config/placement';
-import type { EngineProviders } from '@/engine';
 import { choose, optionsOf } from '@/test/choose';
+import { envRender } from '@/test/envRender';
 import { expand } from '@/test/openItem';
 
 import { StagesEditor } from './StagesEditor';
@@ -30,10 +32,6 @@ const start = DashboardSchema.parse({
     },
   ],
 });
-const providers: EngineProviders = {
-  github: () => undefined,
-  amplify: () => undefined,
-};
 
 function setup() {
   const latest = { current: start };
@@ -42,7 +40,6 @@ function setup() {
     return (
       <StagesEditor
         dashboard={d}
-        providers={providers}
         onChange={(next) => {
           latest.current = next;
           setD(next);

@@ -1,7 +1,8 @@
 /**
- * Tests for `runGithubSpike` against a fake `GitHubReader`: the ETag verdict
- * from budget before/after the repeated request, compare head selection,
- * and skipping jobs when there are no runs.
+ * Tests for `runGithubSpike` against a fake `GitHubApi`: the ETag verdict
+ * from the budget before/after the repeated request (sent with the first
+ * response's ETag), compare head selection, and skipping jobs when there
+ * are no runs.
  *
  * @module
  */
@@ -9,7 +10,7 @@ import { describe, expect, it, vi } from 'vitest';
 
 import type { RateLimitBudget } from '@/lib/github/rateLimit';
 import type { MatchingRef, WorkflowRun } from '@/lib/github/schemas';
-import { fakeGitHubReader } from '@/test/fakeReaders';
+import { fakeGitHubApi, fetched } from '@/test/fakeReaders';
 
 import { runGithubSpike } from './runGithubSpike';
 
@@ -35,8 +36,8 @@ const run: WorkflowRun = {
   event: 'push',
 };
 
-/** A fake reader plus handles on the spies the tests assert on. */
-function fakeReader({
+/** A fake port plus handles on the spies the tests assert on. */
+function fakeApi({
   runs = [run],
   refs = [{ ref: 'refs/heads/release/24.3', object: { sha: 'abc' } }],
   budgets = [budget(100), budget(100)],
@@ -45,38 +46,33 @@ function fakeReader({
   refs?: MatchingRef[];
   budgets?: (RateLimitBudget | undefined)[];
 } = {}) {
-  const getBudget = vi.fn<() => RateLimitBudget | undefined>();
-  for (const b of budgets) getBudget.mockReturnValueOnce(b);
-  const listRunJobs = vi.fn(() =>
-    Promise.resolve([
-      {
-        id: 1,
-        run_id: 7,
-        name: 'deploy',
-        status: 'completed',
-        conclusion: 'success',
-        html_url: null,
-      },
-    ]),
+  const budgetSeen = vi.fn<() => RateLimitBudget | undefined>();
+  for (const b of budgets) budgetSeen.mockReturnValueOnce(b);
+  const runsPage = vi.fn(() =>
+    Promise.resolve(fetched(runs, { etag: '"runs"' })),
+  );
+  const jobsPage = vi.fn(() =>
+    Promise.resolve(
+      fetched([
+        {
+          id: 1,
+          run_id: 7,
+          name: 'deploy',
+          status: 'completed',
+          conclusion: 'success',
+          html_url: null,
+        },
+      ]),
+    ),
   );
   const matchingRefs = vi.fn(() => Promise.resolve(refs));
   const compare = vi.fn(() =>
-    Promise.resolve({
-      aheadBy: 2,
-      behindBy: 1,
-      htmlUrl: '',
-      aheadCommitSubjects: [],
-      behindCommitSubjects: [],
-    }),
+    Promise.resolve(
+      fetched({ ahead_by: 2, behind_by: 1, html_url: '', commits: [] }),
+    ),
   );
-  const reader = fakeGitHubReader({
-    listWorkflowRuns: vi.fn(() => Promise.resolve(runs)),
-    listRunJobs,
-    matchingRefs,
-    compare,
-    getBudget,
-  });
-  return { reader, listRunJobs, matchingRefs, compare };
+  const api = fakeGitHubApi({ runsPage, jobsPage, matchingRefs, compare });
+  return { api, budgetSeen, runsPage, jobsPage, matchingRefs, compare };
 }
 
 const target = { owner: 'acme', repo: 'api-core' };
@@ -92,14 +88,20 @@ describe('runGithubSpike', () => {
     ['a spent budget means it was not', [budget(100), budget(99)], false],
     ['no budget headers means unknown', [undefined, undefined], undefined],
   ])('%s', async (_label, budgets, expected) => {
-    const { reader } = fakeReader({ budgets });
-    const result = await runGithubSpike(reader, target);
+    const { api, budgetSeen } = fakeApi({ budgets });
+    const result = await runGithubSpike(api, budgetSeen, target);
     expect(result.notModifiedHonoured).toBe(expected);
   });
 
+  it("repeats the runs request with the first response's ETag", async () => {
+    const { api, budgetSeen, runsPage } = fakeApi();
+    await runGithubSpike(api, budgetSeen, target);
+    expect(runsPage).toHaveBeenLastCalledWith(repoRef, 1, '"runs"');
+  });
+
   it('compares main against the first matching branch', async () => {
-    const { reader, matchingRefs, compare } = fakeReader();
-    const result = await runGithubSpike(reader, {
+    const { api, budgetSeen, matchingRefs, compare } = fakeApi();
+    const result = await runGithubSpike(api, budgetSeen, {
       ...target,
       branchPrefix: 'release/',
     });
@@ -109,16 +111,16 @@ describe('runGithubSpike', () => {
   });
 
   it('falls back to main...main with the main prefix when nothing matches', async () => {
-    const { reader, matchingRefs, compare } = fakeReader({ refs: [] });
-    await runGithubSpike(reader, { ...target, branchPrefix: '' });
+    const { api, budgetSeen, matchingRefs, compare } = fakeApi({ refs: [] });
+    await runGithubSpike(api, budgetSeen, { ...target, branchPrefix: '' });
     expect(matchingRefs).toHaveBeenCalledWith(repoRef, 'main');
     expect(compare).toHaveBeenCalledWith(repoRef, 'main', 'main');
   });
 
   it('skips the jobs call when there are no runs', async () => {
-    const { reader, listRunJobs } = fakeReader({ runs: [] });
-    const result = await runGithubSpike(reader, target);
-    expect(listRunJobs).not.toHaveBeenCalled();
+    const { api, budgetSeen, jobsPage } = fakeApi({ runs: [] });
+    const result = await runGithubSpike(api, budgetSeen, target);
+    expect(jobsPage).not.toHaveBeenCalled();
     expect(result.newestRunJobs).toEqual([]);
   });
 });

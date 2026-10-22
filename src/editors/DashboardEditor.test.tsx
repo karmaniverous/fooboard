@@ -6,20 +6,20 @@
  *
  * @module
  */
-import { fireEvent, render, screen, within } from '@testing-library/react';
+import { fireEvent, screen, within } from '@testing-library/react';
 import { useState } from 'react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { describe, expect, it } from 'vitest';
 
 import { type Dashboard, DashboardSchema } from '@/domain/config/dashboard';
 import { branchRules } from '@/domain/config/placement';
-import type { EngineProviders } from '@/engine';
 import { Home } from '@/pages/Home';
 import { createAppStores } from '@/storage';
 import { memoryStorage } from '@/storage/keyValue';
 import { StoresContext } from '@/storage/storesContext';
 import { optionsOf } from '@/test/choose';
-import { fakeGitHubReader, ghBranch, ghRepo } from '@/test/fakeReaders';
+import { envRender } from '@/test/envRender';
+import { fakeGitHubApi, fetched, ghBranch, ghRepo } from '@/test/fakeReaders';
 import { expand } from '@/test/openItem';
 
 import { DashboardEditor } from './DashboardEditor';
@@ -28,18 +28,24 @@ const branches: Record<string, string[]> = {
   api: ['main', 'release/24.3', 'release/24.2'],
   web: ['main', 'release/24.3'],
 };
-const reader = fakeGitHubReader({
-  listRepos: () =>
+const reader = fakeGitHubApi({
+  reposPage: () =>
     Promise.resolve(
-      ['acme/api', 'acme/web', 'acme/docs'].map((fullName) => ghRepo(fullName)),
+      fetched(
+        ['acme/api', 'acme/web', 'acme/docs'].map((fullName) =>
+          ghRepo(fullName),
+        ),
+      ),
     ),
-  listBranches: ({ repo }) =>
-    Promise.resolve((branches[repo] ?? []).map((name) => ghBranch(name, 'x'))),
+  branchesPage: ({ repo }) =>
+    Promise.resolve(
+      fetched((branches[repo] ?? []).map((name) => ghBranch(name, 'x'))),
+    ),
 });
-const providers: EngineProviders = {
+const render = envRender({
   github: () => reader,
   amplify: () => undefined,
-};
+});
 
 const start = DashboardSchema.parse({
   id: 'd',
@@ -68,7 +74,6 @@ function setup() {
     return (
       <DashboardEditor
         dashboard={d}
-        providers={providers}
         onChange={(next) => {
           latest.current = next;
           setD(next);

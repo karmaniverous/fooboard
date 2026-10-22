@@ -4,9 +4,10 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { demoDashboard } from '@/demo/board';
 import type { Dashboard } from '@/domain/config/dashboard';
-import { createBoardEngine, demoProviders } from '@/engine';
+import { createBoardModel } from '@/engine';
 import { emptyModel } from '@/engine/model';
-import type { EngineProviders } from '@/engine/types';
+import type { RequestCall } from '@/query/instrument';
+import { demoEnv, fullModel } from '@/test/boardModel';
 
 import type { TimingSink } from './session';
 import type { TimingSummary } from './summary';
@@ -17,23 +18,33 @@ import {
   useDevBoardTiming,
 } from './useDevBoardTiming';
 
-/** The demo's GitHub token, as its board names it. */
-const DEMO_TOKEN = 'demo-github';
+/** How long the demo board may take to fill at its simulated latency,
+ * with the whole suite running alongside. */
+const FILL_TIMEOUT_MS = 10_000;
 
-/** A board like `useBoardEngine`'s: each mount times its own engine. */
+/** A request of the demo's GitHub token. */
+const runsCall: RequestCall = {
+  provider: 'github',
+  kind: 'runs',
+  credentialId: 'demo-github',
+  repo: 'acme/api-core',
+};
+
+/** A board like `useBoardModel`'s: each mount times its own model. */
 function useTimedBoard(dashboard: Dashboard, options: DevTimingOptions) {
   const [model, setModel] = useState(emptyModel);
   const start = useDevBoardTiming(model, options);
   useEffect(() => {
-    const timing = start(dashboard, demoProviders());
-    const engine = createBoardEngine({
-      dashboard,
-      providers: timing.providers,
+    const timing = start(dashboard);
+    const env = demoEnv();
+    env.setAround(timing.around);
+    const board = createBoardModel({ dashboard, env });
+    const unsubscribe = board.subscribe(() => {
+      setModel(board.getModel());
     });
-    const unsubscribe = engine.subscribe(setModel);
-    void engine.refreshAll();
     return () => {
       unsubscribe();
+      board.destroy();
       timing.stop();
     };
   }, [dashboard, start]);
@@ -64,9 +75,12 @@ describe('useDevBoardTiming', () => {
         navigation: () => 'reload',
       }),
     );
-    await waitFor(() => {
-      expect(reports).toHaveLength(1);
-    });
+    await waitFor(
+      () => {
+        expect(reports).toHaveLength(1);
+      },
+      { timeout: FILL_TIMEOUT_MS },
+    );
     const [summary] = reports;
     expect(summary).toMatchObject({
       kind: 'demo',
@@ -87,9 +101,12 @@ describe('useDevBoardTiming', () => {
     const { unmount } = renderHook(() =>
       useTimedBoard(other, capturing(page, reports)),
     );
-    await waitFor(() => {
-      expect(reports).toHaveLength(1);
-    });
+    await waitFor(
+      () => {
+        expect(reports).toHaveLength(1);
+      },
+      { timeout: FILL_TIMEOUT_MS },
+    );
     expect(reports[0]?.pageLoad).toBeUndefined();
     expect(reports[0]?.kind).toBe('real');
     expect(reports[0]?.demoLatencyMs).toBe(0);
@@ -105,15 +122,10 @@ describe('useDevBoardTiming', () => {
       ({ model }) => useDevBoardTiming(model, capturing(page, reports)),
       { initialProps: { model: emptyModel() } },
     );
-    const older = result.current(demoDashboard, demoProviders());
-    result.current(demoDashboard, demoProviders());
+    const older = result.current(demoDashboard);
+    result.current(demoDashboard);
     older.stop();
-    const engine = createBoardEngine({
-      dashboard: demoDashboard,
-      providers: demoProviders(),
-    });
-    await engine.refreshAll();
-    rerender({ model: engine.getModel() });
+    rerender({ model: await fullModel(demoDashboard) });
     // The newer session still receives commits and reports its board.
     expect(reports).toHaveLength(1);
   });
@@ -137,25 +149,15 @@ describe('useDevBoardTiming', () => {
         resolve([]);
       };
     });
-    const inner = demoProviders();
-    const demoReader = inner.github(DEMO_TOKEN);
-    if (!demoReader) throw new Error('demo reader');
-    const providers: EngineProviders = {
-      ...inner,
-      github: () => ({ ...demoReader, listRepos: () => polled }),
-    };
-    const engine = createBoardEngine({ dashboard: demoDashboard, providers });
-    await engine.refreshAll();
-    const full = engine.getModel();
+    const full = await fullModel(demoDashboard);
 
-    const first = result.current(demoDashboard, providers);
-    const reader = first.providers.github(DEMO_TOKEN);
-    await reader?.listWorkflowRuns({ owner: 'acme', repo: 'api-core' });
+    const first = result.current(demoDashboard);
+    await first.around(runsCall, () => Promise.resolve([]));
     rerender({ model: full });
     expect(reports).toHaveLength(1);
-    const poll = reader?.listRepos();
+    const poll = first.around({ ...runsCall, kind: 'repos' }, () => polled);
     first.stop();
-    result.current(demoDashboard, demoProviders());
+    result.current(demoDashboard);
     settle();
     await poll;
     rerender({ model: { ...full } });
@@ -193,9 +195,12 @@ describe('useDevBoardTiming', () => {
           page: { boardShown: false, stopped: [] },
         }),
       );
-      await waitFor(() => {
-        expect(headlines).toHaveLength(1);
-      });
+      await waitFor(
+        () => {
+          expect(headlines).toHaveLength(1);
+        },
+        { timeout: FILL_TIMEOUT_MS },
+      );
       // A page with no navigation entry counts as a fresh navigation.
       expect(headlines[0]).toContain('from page navigate');
       expect(headlines[0]).toContain('(demo,');
@@ -231,9 +236,12 @@ describe('useDevBoardTiming', () => {
       const page: PageTiming = { boardShown: false, stopped: [] };
       // No `navigation` override: the hook reads the entry above.
       renderHook(() => useTimedBoard(demoDashboard, capturing(page, reports)));
-      await waitFor(() => {
-        expect(reports).toHaveLength(1);
-      });
+      await waitFor(
+        () => {
+          expect(reports).toHaveLength(1);
+        },
+        { timeout: FILL_TIMEOUT_MS },
+      );
       expect(reports[0]?.pageLoad).toBe('reload');
     });
   });

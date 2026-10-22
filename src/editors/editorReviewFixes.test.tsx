@@ -8,24 +8,18 @@
 import { act, fireEvent, screen, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
+import { fetched, ghRepo } from '@/test/fakeReaders';
+
 import { setup, tab } from './editorSectionsHarness';
 
 describe('editor review fixes', () => {
   it('retries a failed repo list', async () => {
     let calls = 0;
     setup({
-      listRepos: () =>
+      reposPage: () =>
         ++calls === 1
           ? Promise.reject(new Error('Bad gateway'))
-          : Promise.resolve([
-              {
-                full_name: 'acme/api',
-                name: 'api',
-                private: false,
-                html_url: '',
-                owner: { login: 'acme' },
-              },
-            ]),
+          : Promise.resolve(fetched([ghRepo('acme/api')])),
     });
     tab('Rows');
     fireEvent.click(screen.getByRole('button', { name: 'Add a GitHub row' }));
@@ -38,16 +32,7 @@ describe('editor review fixes', () => {
 
   it('adds the same repo twice as independent rows', async () => {
     const latest = setup({
-      listRepos: () =>
-        Promise.resolve([
-          {
-            full_name: 'acme/api',
-            name: 'api',
-            private: false,
-            html_url: '',
-            owner: { login: 'acme' },
-          },
-        ]),
+      reposPage: () => Promise.resolve(fetched([ghRepo('acme/api')])),
     });
     tab('Rows');
     fireEvent.click(screen.getByRole('button', { name: 'Add a GitHub row' }));

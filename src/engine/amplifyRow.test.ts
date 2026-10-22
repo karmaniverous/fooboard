@@ -1,212 +1,146 @@
 /**
- * Tests for `refreshAmplifyRow`'s failure handling: a missing credential,
- * a rejected one, throttling (keep previous cells) and other errors; the
- * source rule's keep rule drops records.
+ * Tests for deriving an Amplify row from the cache (spec.md §3.1): its
+ * apps' branch lists then each chosen branch's jobs, cells shown as soon
+ * as a landed record places them (unsettled until every read lands), no
+ * credential means Needs credential, and a failed app read shows on the
+ * rows reading that app only (Amplify's NotFoundException as not found).
  *
  * @module
  */
+import { QueryClient } from '@tanstack/query-core';
 import { describe, expect, it } from 'vitest';
-import { vi } from 'vitest';
 
-import type { DefaultCredentials } from '@/domain/config/credentialRefs';
-import { branchRules } from '@/domain/config/placement';
+import { createDemoAmplifyReaderFor } from '@/demo/amplify';
+import { DEMO_AMPLIFY_APPS, demoDashboard } from '@/demo/board';
+import { cellRulesFor } from '@/domain/config/cellRules';
+import { inheritedCredentials } from '@/domain/config/inheritance';
 import type { AmplifyRow } from '@/domain/config/row';
-import type { Stage } from '@/domain/config/stage';
 import { EMPTY_STATES } from '@/domain/derivation';
-import { amplifySet } from '@/domain/derivation/testFixtures';
-import { builtinSourceFor } from '@/domain/model/builtinSources';
-import type { CellRules } from '@/domain/model/cell';
-import { all, is, not } from '@/domain/model/ruleBuilders';
-import type { SourceRuleOf } from '@/domain/model/sourceRule';
-import { always } from '@/domain/rules/always';
-import { AmplifyAuthError, AmplifyThrottledError } from '@/lib/amplify/errors';
-import type { AmplifyReader } from '@/lib/amplify/reader';
-import type { AmplifyReaderFor } from '@/lib/amplify/rowJobs';
-import { amplifyBranch, amplifyJobSummary } from '@/lib/amplify/sdkShapes';
-import { fakeAmplifyReader } from '@/test/fakeReaders';
+import { sourceRuleFor } from '@/domain/model/sources';
+import { AmplifyNotFoundError } from '@/lib/amplify/errors';
+import { chosenBranches } from '@/lib/amplify/rowJobs';
+import { amplifyKey } from '@/query/keys';
+import { fetched } from '@/test/fakeReaders';
 
-import { refreshAmplifyRows } from './amplifyRow';
+import { type AmplifyContext, deriveAmplifyRow } from './amplifyRow';
+import { NOT_FOUND } from './providerOutcome';
 
-/** One row's refresh through the shared-app refresh, as its cells. */
-async function refreshAmplifyRow(
-  row: AmplifyRow,
-  stages: readonly Stage[],
-  rulesFor: (stageId: string) => CellRules,
-  defaults: DefaultCredentials,
-  readersFor: (id: string) => AmplifyReaderFor | undefined,
-  source: SourceRuleOf<'amplify'> = amplifySource,
+const AWS = 'demo-aws';
+const readerFor = createDemoAmplifyReaderFor(() => 0);
+const source = sourceRuleFor(demoDashboard, 'amplify');
+
+const rowOf = (id: string): AmplifyRow => {
+  const row = demoDashboard.rows.find((r) => r.id === id);
+  if (row?.type !== 'amplify') throw new Error(`${id} is not an Amplify row`);
+  return row;
+};
+
+const ctx = (client: QueryClient, hasReader = true): AmplifyContext => ({
+  client,
+  stages: demoDashboard.stages,
+  rulesFor: (row, stageId) => cellRulesFor(demoDashboard, row, stageId),
+  defaultsFor: (row) => inheritedCredentials(demoDashboard, row.id),
+  hasReader: () => hasReader,
+  source,
+  openedAt: 0,
+});
+
+/** Seed one demo app's branch list and, unless `branchesOnly`, its jobs. */
+async function seedApp(
+  client: QueryClient,
+  region: string,
+  appId: string,
+  branchesOnly = false,
 ) {
-  const result = await refreshAmplifyRows({
-    rows: [row],
-    stages,
-    rulesFor: (_, stageId) => rulesFor(stageId),
-    defaultsFor: () => defaults,
-    readersFor,
-    source,
-  });
-  return result.kind === 'rate-limited'
-    ? result
-    : { kind: result.kind, cells: result.rows[row.id] };
+  const reader = readerFor({ credentialId: AWS, region });
+  const branches = await reader.listBranches(appId);
+  client.setQueryData(
+    amplifyKey(AWS, { call: 'branches', region, appId }),
+    fetched(branches),
+  );
+  if (branchesOnly) return;
+  const max = source.reader.jobsPerBranch;
+  for (const branch of chosenBranches(branches, source.reader))
+    client.setQueryData(
+      amplifyKey(AWS, { call: 'jobs', region, appId, branch, max }),
+      fetched(await reader.listJobs(appId, branch, max)),
+    );
 }
 
-const row: AmplifyRow = {
-  type: 'amplify',
-  id: 'site',
-  repo: 'acme/site',
-  displayName: 'site',
-  sources: [{ credentialId: 'aws', region: 'us-east-1', appId: 'a1' }],
-  stageRules: {},
-  cellStatusSets: {},
+const seedRow = async (
+  client: QueryClient,
+  id: keyof typeof DEMO_AMPLIFY_APPS,
+  branchesOnly = false,
+) => {
+  for (const s of DEMO_AMPLIFY_APPS[id])
+    await seedApp(client, s.region, s.appId, branchesOnly);
 };
-const stages = [{ id: 'prod', name: 'Prod', rules: branchRules('main') }];
-const defaults = {};
-const amplifySource = builtinSourceFor('amplify');
-const rulesFor = (stageId: string): CellRules => ({
-  record: always,
-  items: always,
-  stage: stages.find((s) => s.id === stageId)?.rules.amplify,
-  set: amplifySet,
-  order: 'started',
-});
 
-const failing = (err: Error) => () =>
-  ({
-    listApps: () => Promise.reject(err),
-    listBranches: () => Promise.reject(err),
-    listJobs: () => Promise.reject(err),
-    getJob: () => Promise.reject(err),
-  }) satisfies AmplifyReader;
-
-describe('refreshAmplifyRow', () => {
-  it('shows needs credential when no source has a key and there is no default', async () => {
-    const keyless: AmplifyRow = {
-      ...row,
-      sources: [{ region: 'us-east-1', appId: 'a1' }],
-    };
-    const result = await refreshAmplifyRow(
-      keyless,
-      stages,
-      rulesFor,
-      defaults,
-      () => failing(new Error('never called')),
+describe('deriveAmplifyRow', () => {
+  it('needs each app branch list first, showing nothing yet', () => {
+    const out = deriveAmplifyRow(
+      ctx(new QueryClient()),
+      rowOf('marketing-site'),
     );
-    expect(result).toMatchObject({
-      cells: { prod: { state: EMPTY_STATES.needsCredential } },
-    });
+    expect(out.cells).toEqual({});
+    expect(out.needs.map((n) => n.key[2].call)).toEqual(['branches']);
   });
 
-  it('shows needs credential when the key is missing', async () => {
-    const result = await refreshAmplifyRow(
-      row,
-      stages,
-      rulesFor,
-      defaults,
-      () => undefined,
+  it('needs a jobs query per chosen branch once the list lands', async () => {
+    const client = new QueryClient();
+    await seedRow(client, 'marketing-site', true);
+    const out = deriveAmplifyRow(ctx(client), rowOf('marketing-site'));
+    const maxes = out.needs.flatMap(({ key: [, , request] }) =>
+      request.call === 'jobs' && 'max' in request ? [request.max] : [],
     );
-    expect(result).toMatchObject({
-      kind: 'refreshed',
-      cells: { prod: { kind: 'empty', state: EMPTY_STATES.needsCredential } },
-    });
+    expect(maxes.length).toBeGreaterThan(0);
+    expect(new Set(maxes)).toEqual(new Set([source.reader.jobsPerBranch]));
   });
 
-  it('shows needs credential when AWS rejects the key', async () => {
-    const result = await refreshAmplifyRow(
-      row,
-      stages,
-      rulesFor,
-      defaults,
-      () => failing(new AmplifyAuthError('denied', 'ListBranches')),
-    );
-    expect(result).toMatchObject({
-      cells: { prod: { state: EMPTY_STATES.needsCredential } },
+  it('derives settled cells once every read lands', async () => {
+    const client = new QueryClient();
+    await seedRow(client, 'marketing-site');
+    const out = deriveAmplifyRow(ctx(client), rowOf('marketing-site'));
+    expect(out.cells.prod).toMatchObject({
+      pending: false,
+      derivation: { kind: 'ok', status: { icon: 'failure' } },
     });
+    expect(out.refreshedAt).toBeGreaterThan(0);
   });
 
-  it('keeps the previous cells while throttled', async () => {
-    const result = await refreshAmplifyRow(
-      row,
-      stages,
-      rulesFor,
-      defaults,
-      () =>
-        failing(new AmplifyThrottledError('slow down', 'ListBranches', 5_000)),
+  it('shows Needs credential without a secret for its key', () => {
+    const out = deriveAmplifyRow(
+      ctx(new QueryClient(), false),
+      rowOf('marketing-site'),
     );
-    expect(result).toEqual({ kind: 'rate-limited' });
+    expect(out.cells.prod?.derivation).toMatchObject({
+      state: EMPTY_STATES.needsCredential,
+    });
+    expect(out.needs).toEqual([]);
   });
 
-  it('shows error with the reason for other failures', async () => {
-    const result = await refreshAmplifyRow(
-      row,
-      stages,
-      rulesFor,
-      defaults,
-      () => failing(new Error('socket hang up')),
-    );
-    expect(result).toMatchObject({
-      cells: { prod: { kind: 'empty', state: 'error' } },
-    });
-  });
-});
-
-describe('refreshAmplifyRow request count', () => {
-  it('lists each source once, however many stages it has', async () => {
-    const listBranches = vi.fn(() =>
-      Promise.resolve([
-        amplifyBranch({ branchName: 'main' }),
-        amplifyBranch({ branchName: 'dev' }),
-      ]),
-    );
-    const listJobs = vi.fn(() => Promise.resolve([]));
-    const reader = fakeAmplifyReader({ listBranches, listJobs });
-    const twoSources: AmplifyRow = {
-      ...row,
-      sources: [
-        { region: 'us-east-1', appId: 'a1', credentialId: 'aws' },
-        { region: 'eu-west-1', appId: 'a2', credentialId: 'aws' },
-      ],
-    };
-    const sixStages = ['dev', 'test', 'staging', 'main', 'main', 'dev'].map(
-      (branch, i) => ({
-        id: `s${String(i)}`,
-        name: 's',
-        rules: branchRules(branch),
-      }),
-    );
-    await refreshAmplifyRow(
-      twoSources,
-      sixStages,
-      rulesFor,
-      defaults,
-      () => () => reader,
-    );
-    expect(listBranches).toHaveBeenCalledTimes(2);
-    // main and dev, per source: four job lists, not one per stage.
-    expect(listJobs).toHaveBeenCalledTimes(4);
-  });
-});
-
-describe('refreshAmplifyRow keep', () => {
-  it('drops records the keep rule rejects', async () => {
-    const reader = fakeAmplifyReader({
-      listBranches: () =>
-        Promise.resolve([amplifyBranch({ branchName: 'main' })]),
-      listJobs: () =>
-        Promise.resolve([
-          amplifyJobSummary({
-            jobId: '1',
-            status: 'SUCCEED',
-            startTime: new Date('2026-10-16T00:00:00Z'),
-          }),
-        ]),
-    });
-    const refresh = (keep = always) =>
-      refreshAmplifyRow(row, stages, rulesFor, defaults, () => () => reader, {
-        ...amplifySource,
-        keep,
-      });
-    expect(await refresh()).toMatchObject({ cells: { prod: { kind: 'ok' } } });
-    expect(await refresh(all(not(is('$.branch', 'main'))))).toMatchObject({
-      cells: { prod: { kind: 'empty', state: EMPTY_STATES.noRecords } },
-    });
+  it('shows a missing app as not found on its own rows only', async () => {
+    const client = new QueryClient();
+    await seedRow(client, 'marketing-site');
+    await seedRow(client, 'partner-portal');
+    const site = DEMO_AMPLIFY_APPS['marketing-site'].at(0);
+    if (!site) throw new Error('no app');
+    await client
+      .query({
+        queryKey: amplifyKey(AWS, {
+          call: 'branches',
+          region: site.region,
+          appId: site.appId,
+        }),
+        queryFn: () =>
+          Promise.reject(new AmplifyNotFoundError('gone', 'ListBranches')),
+        retry: false,
+      })
+      .catch(() => undefined);
+    const broken = deriveAmplifyRow(ctx(client), rowOf('marketing-site'));
+    expect(broken.cells.prod?.derivation).toMatchObject({ reason: NOT_FOUND });
+    expect(broken.problems).toHaveLength(1);
+    const other = deriveAmplifyRow(ctx(client), rowOf('partner-portal'));
+    expect(other.cells.prod?.derivation.kind).toBe('ok');
   });
 });

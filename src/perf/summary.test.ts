@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
-import type { RequestCall } from './readerWrap';
+import type { RequestCall } from '@/query/instrument';
+
 import {
   kindStats,
   median,

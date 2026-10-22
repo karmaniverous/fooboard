@@ -7,14 +7,16 @@
  *
  * @module
  */
-import { fireEvent, render, screen, within } from '@testing-library/react';
+import { fireEvent, screen, within } from '@testing-library/react';
 import { useState } from 'react';
 import { describe, expect, it } from 'vitest';
+
+const render = envRender();
 
 import { type Dashboard, DashboardSchema } from '@/domain/config/dashboard';
 import { branchRules } from '@/domain/config/placement';
 import type { KeyDef } from '@/domain/model/sourceRule';
-import type { EngineProviders } from '@/engine';
+import { envRender } from '@/test/envRender';
 import { expand, itemTrigger } from '@/test/openItem';
 
 import { DashboardEditor } from './DashboardEditor';
@@ -37,14 +39,9 @@ const board = DashboardSchema.parse({
 
 describe('a fix on a row group', () => {
   it('opens its settings in a member row already open', () => {
-    const providers: EngineProviders = {
-      github: () => undefined,
-      amplify: () => undefined,
-    };
     const view = (draft: EditorDraft) => (
       <DashboardEditor
         dashboard={board}
-        providers={providers}
         draft={draft}
         onChange={() => undefined}
       />
