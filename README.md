@@ -82,7 +82,7 @@ An **empty cell** says why: _no records_, _needs credential_ (with a link to [Cr
 _Edit_ (on the board) opens the editor, with these tabs:
 
 - **General**: rename, duplicate or delete the dashboard.
-- **Rows**: add GitHub rows from the repos a token can see (the dashboard's default token unless you choose another; the row keeps the one you chose), or Amplify rows from the apps your AWS key lists. A credential choice offers the default it inherits first, as _Dashboard default (name)_ or _Group default (name)_, then the other credentials of that kind. A row can use its own credentials, its own row rule (e.g. one deployable unit in a repo), and its own rule for any stage (an **override**).
+- **Rows**: add GitHub rows from the repos a token can see (the dashboard's default token unless you choose another; the row keeps the one you chose), or Amplify rows from the apps your AWS key lists. A credential choice offers the default it inherits first, as _Dashboard default (name)_ or _Group default (name)_, then the other credentials of that kind. A row can use its own credentials, its own row rule (e.g. one deployable unit in a repo), and its own rule for any stage (an **override**). An Amplify row can read more than one app (_Add source_, say for an app in another AWS account); each source has the same AWS key choice as when it was added, which you can change at any time.
 - **Stages**: add stages, each with a rule saying which records belong in it (the presets test the branch); set each stage's source (for the behind/diverged badges).
 - **Sources**: the source rules for GitHub and Amplify, including what to read (GitHub: skip pull-request runs, which still count toward what is read, and runs per repo, 100 by default and up to 500, each 100 one request per repo per poll; Amplify: jobs per branch, 20 by default and up to 100, and which branches). When a read comes back full, each of its rows' cells showing _no records_ gets a hint to read more, since the stage's last run or job may be older than what was read. Amplify reads every branch by default, which makes more AWS calls than reading only stage branches; narrow it with the branch rule; see [Rules](#rules).
 - **Statuses**: the status set GitHub rows and Amplify rows use; see [Rules](#rules).
@@ -104,7 +104,7 @@ Everything fooboard knows about GitHub, Amplify or your pipeline is a rule you c
 - **exists**: the path finds a value that isn't null;
 - **ignore case** (default on), **any** or **every** value the path finds, and **NOT**.
 
-A **rule** is one or more checks joined by **AND** (default) or **OR**. Null counts as missing; numbers are tested as text. The branch presets test the branch with regexes, so `preview/*` stops at `/` and needs at least one character after `preview/`. Regexes are limited to 500 characters; a badly written one in a board you import can still slow the page.
+A **rule** is one or more checks joined by **AND** (default) or **OR**. Null counts as missing; numbers are tested as text. The branch presets test the branch with regexes, so `preview/*` stops at `/` and needs at least one character after `preview/`. Regexes are limited to 500 characters; a badly written one can still slow the page.
 
 **Three kinds of rule.**
 
@@ -270,9 +270,9 @@ As the window narrows, buttons move into the menu from the right, then the tagli
 Everything stays in this browser:
 
 - **Dashboards** are saved under a versioned format; older saves are upgraded when they load, and data that can't be read is reported and never overwritten.
-- **Zoom, density and theme** are saved on each device.
+- **Zoom, density and theme** are saved on each device. Deleting a dashboard removes its settings on this device too.
 - **Tokens and keys** are kept only for the current tab unless you tick _Remember on this device_. _Forget_ removes one.
-- **Reset** clears fooboard's data, and only fooboard's.
+- **To clear everything** fooboard keeps, close every fooboard tab, then clear this site's data in your browser's settings. Closing the tabs drops the tokens and keys held in their memory.
 
 See [PRIVACY.md](./PRIVACY.md).
 

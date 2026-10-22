@@ -56,21 +56,6 @@ export const JobsResponseSchema = z.object({
   jobs: z.array(JobSchema),
 });
 
-/** A workflow definition, used to resolve workflow names for the filter. */
-const WorkflowSchema = z.object({
-  id: z.number(),
-  name: z.string(),
-  path: z.string(),
-  state: z.string(),
-});
-export type Workflow = z.infer<typeof WorkflowSchema>;
-
-/** `GET /repos/{owner}/{repo}/actions/workflows` response envelope. */
-export const WorkflowsResponseSchema = z.object({
-  total_count: z.number(),
-  workflows: z.array(WorkflowSchema),
-});
-
 /** One ref returned by matching-refs (spec.md 4.3.5: "no branch" check). */
 const MatchingRefSchema = z.object({
   ref: z.string(),

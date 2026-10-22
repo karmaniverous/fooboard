@@ -9,6 +9,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { demoDashboard } from '@/demo/board';
+import { refusingDevice } from '@/test/refusingDevice';
 
 import { createConfigStore } from './configStore';
 import { createCredentialStore } from './credentialStore';
@@ -138,6 +139,20 @@ describe('credential store', () => {
     store.set('gh', token, true);
     store.forget('gh');
     expect(store.get('gh')).toBeUndefined();
+  });
+
+  it('forgets a tab-only secret even when the device refuses the removal', () => {
+    const { device, refuse } = refusingDevice();
+    const store = createCredentialStore(device);
+    store.set('gh', token, false);
+    const seen: string[] = [];
+    store.subscribe((id) => seen.push(id));
+    refuse();
+    expect(() => {
+      store.forget('gh');
+    }).toThrow('storage refused the removal');
+    expect(store.get('gh')).toBeUndefined();
+    expect(seen).toEqual(['gh']);
   });
 
   it('copies as an independent secret with the same storage choice', () => {

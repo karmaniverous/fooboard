@@ -4,15 +4,14 @@
  * to the repo without its owner; the row keeps the chosen token), or
  * an Amplify row by choosing credential, region and app (listed via
  * `ListApps`); rename, reorder, remove; per-row token override, row key
- * and item rules (item rules when its source rule reads items), extra
- * Amplify sources, the row's group, its stage-rule overrides, and its
+ * and item rules (item rules when its source rule reads items), an
+ * Amplify row's sources and their AWS keys, the row's group, its stage-rule overrides, and its
  * group's overrides and default credentials.
  *
  * @module
  */
 import { useContext } from 'react';
 
-import { ConfirmButton } from '@/components/ConfirmButton';
 import type { Dashboard } from '@/domain/config/dashboard';
 import { groupOf } from '@/domain/config/groups';
 import { inheritedCredential } from '@/domain/config/inheritance';
@@ -22,6 +21,7 @@ import { always, unlessAlways } from '@/domain/rules/always';
 import { targetKey } from '@/editors/editTarget';
 import type { EngineProviders } from '@/engine';
 
+import { AmplifySources } from './AmplifySources';
 import { CredentialSelect } from './CredentialSelect';
 import { removeRow, rowFromRepo } from './edit';
 import { CommitInput } from './fields';
@@ -29,7 +29,7 @@ import { listHandlers } from './groupEdit';
 import { ReorderList } from './ReorderList';
 import { RepoPicker } from './RepoPicker';
 import { RowGrouping } from './RowGrouping';
-import { AddSource, AmplifyPicker } from './rowPickers';
+import { AmplifyPicker } from './rowPickers';
 import { RuleEditor } from './rules/RuleEditor';
 import { SourcesWithItemsContext } from './rules/samples';
 
@@ -144,40 +144,11 @@ export function RowsEditor({
               </div>
             )}
             {row.type === 'amplify' && (
-              <div className="flex flex-col gap-1">
-                <span className="font-semibold">Sources</span>
-                {row.sources.map((s, i) => (
-                  <div
-                    key={`${s.region}-${s.appId}`}
-                    className="flex items-center gap-2"
-                  >
-                    <span>
-                      {s.appId} in {s.region}
-                    </span>
-                    {row.sources.length > 1 && (
-                      <ConfirmButton
-                        confirmLabel={`Delete source ${s.appId}`}
-                        onConfirm={() => {
-                          replaceRow({
-                            ...row,
-                            sources: row.sources.filter((_, j) => j !== i),
-                          });
-                        }}
-                      >
-                        Delete source
-                      </ConfirmButton>
-                    )}
-                  </div>
-                ))}
-                <AddSource
-                  dashboard={dashboard}
-                  name={row.displayName}
-                  inherited={inheritedCredential(dashboard, row.id, 'aws')}
-                  onAdd={(source) => {
-                    replaceRow({ ...row, sources: [...row.sources, source] });
-                  }}
-                />
-              </div>
+              <AmplifySources
+                dashboard={dashboard}
+                row={row}
+                onChange={replaceRow}
+              />
             )}
             <RowGrouping
               dashboard={dashboard}

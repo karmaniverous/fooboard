@@ -1,7 +1,8 @@
 /**
  * The editor's General tab (spec.md C-21): rename, the dashboard's
  * default row rules and item rules (item rules only for sources whose
- * source rule reads items, A§4.3.7), duplicate and delete.
+ * source rule reads items, A§4.3.7), duplicate and delete (which also
+ * drops the dashboard's device preferences and its credentials' secrets).
  *
  * @module
  */
@@ -31,7 +32,7 @@ export function GeneralEditor({
   dashboard: Dashboard;
   onChange: (dashboard: Dashboard) => void;
 }): React.JSX.Element {
-  const { config, credentials } = useStores();
+  const { config, credentials, preferences } = useStores();
   const navigate = useNavigate();
   const [error, run] = useActionError();
   const withItems = useContext(SourcesWithItemsContext);
@@ -106,6 +107,7 @@ export function GeneralEditor({
                 credentials,
                 (id) => {
                   config.removeDashboard(id);
+                  preferences.forget(id);
                 },
                 dashboard,
               );

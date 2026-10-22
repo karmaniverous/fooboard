@@ -10,9 +10,9 @@ Everything fooboard keeps stays **in your browser**, on the device you are using
 
 | What | Where | How long |
 | --- | --- | --- |
-| Your dashboards (names, rows, stages, rules, colours, groups) | Browser local storage | Until you delete them, choose _Reset_, or clear your browser's site data |
+| Your dashboards (names, rows, stages, rules, colours, groups) | Browser local storage | Until you delete them or clear your browser's data for the site |
 | Zoom, density and theme | Browser local storage | The same |
-| GitHub tokens and AWS keys | The page's memory only, or local storage if you tick _Remember on this device_ | Until the tab closes (memory), or until you _Forget_ them, choose _Reset_ or clear site data (remembered) |
+| GitHub tokens and AWS keys | The page's memory only, or local storage if you tick _Remember on this device_ | Until the tab closes (memory), or until you _Forget_ them or clear the site's data (remembered) |
 
 fooboard has no server of its own, no accounts, no database, no cookies, no analytics, no advertising and no third-party scripts. Nothing you enter is sent to us.
 
@@ -35,8 +35,8 @@ Anyone with access to your browser profile can read what is stored in it, includ
 ## Removing your data
 
 - _Forget_ removes one credential from this browser.
-- _Reset_ removes all of fooboard's data from this browser, and nothing else.
-- Clearing your browser's data for the site does the same.
+- Deleting a dashboard removes it, its view settings and its credentials from this browser.
+- To remove all of fooboard's data from this browser, and nothing else, close every fooboard tab, then clear this site's data in your browser's settings. Closing the tabs drops the credentials held in their memory.
 
 Removing data from fooboard does not revoke credentials at GitHub or AWS: [revoke them there](./README.md#revoking-a-credential) too.
 

@@ -8,7 +8,8 @@
  * - removing writes the configuration first, then forgets the secret.
  *
  * Errors propagate to the caller (which reports them); cleanup failures
- * are attached to the error, never the secret itself.
+ * are attached to the error, never the secret itself, and the message says
+ * how to remove what was left (`LEFTOVER_SECRETS_HINT`).
  *
  * @module
  */
@@ -24,6 +25,13 @@ import {
   newCredentialId,
   removeCredential,
 } from './dashboardCredentials';
+
+/** How to remove secrets a failed cleanup left in this browser, until
+ * fooboard has *Reset* (spec.md N3): close its tabs, which drops the
+ * secrets held in their memory, then use the browser's own control for the
+ * site's data. Ends every cleanup-failure message. */
+const LEFTOVER_SECRETS_HINT =
+  "To remove them, close every fooboard tab, then clear this site's data in your browser's settings; that removes all of fooboard's data here, dashboards included.";
 
 /** Forget `ids`, collecting (not throwing) failures. */
 function forgetAll(store: CredentialStore, ids: readonly string[]): unknown[] {
@@ -51,7 +59,7 @@ function saveOrRollBack(
     if (cleanup.length > 0) {
       throw new AggregateError(
         [err, ...cleanup],
-        'Saving failed, and some new credentials could not be removed from this browser. Use Reset to clear them.',
+        `Saving failed, and some new credentials could not be removed from this browser. ${LEFTOVER_SECRETS_HINT}`,
         { cause: err },
       );
     }
@@ -106,7 +114,7 @@ export function removeWithSecret(
   if (failures.length > 0) {
     throw new AggregateError(
       failures,
-      'The credential was removed from the dashboard, but its secret could not be cleared from this browser. Use Reset to clear it.',
+      `The credential was removed from the dashboard, but its secret could not be cleared from this browser. ${LEFTOVER_SECRETS_HINT}`,
     );
   }
   return next;
@@ -139,7 +147,7 @@ export function saveDuplicate(
     if (cleanup.length > 0) {
       throw new AggregateError(
         [err, ...cleanup],
-        'Duplicating failed, and some copied credentials could not be removed from this browser. Use Reset to clear them.',
+        `Duplicating failed, and some copied credentials could not be removed from this browser. ${LEFTOVER_SECRETS_HINT}`,
         { cause: err },
       );
     }
@@ -161,7 +169,7 @@ export function deleteWithSecrets(
   if (failures.length > 0) {
     throw new AggregateError(
       failures,
-      'The dashboard was deleted, but some of its credentials could not be cleared from this browser. Use Reset to clear them.',
+      `The dashboard was deleted, but some of its credentials could not be cleared from this browser. ${LEFTOVER_SECRETS_HINT}`,
     );
   }
 }

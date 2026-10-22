@@ -1,7 +1,7 @@
 /**
- * Tests for the home page's storage failures: unreadable configuration
- * offers no *Create* (it couldn't be saved), and a refused write when
- * creating is reported with the name kept for retry.
+ * Tests for the home page: it offers only what is built (no import yet);
+ * unreadable configuration offers no *Create* (it couldn't be saved), and
+ * a refused write when creating is reported with the name kept for retry.
  *
  * @module
  */
@@ -24,6 +24,16 @@ const renderHome = (store: KeyValueStore) => {
     </StoresContext>,
   );
 };
+
+describe('Home', () => {
+  it('invites creating a dashboard, and not importing one', () => {
+    renderHome(memoryStorage());
+    expect(
+      screen.getByText(/Create a dashboard to get started\./),
+    ).toBeVisible();
+    expect(screen.queryByText(/import/i)).toBeNull();
+  });
+});
 
 describe('Home storage failures', () => {
   it('offers no Create when the saved configuration is unreadable', () => {

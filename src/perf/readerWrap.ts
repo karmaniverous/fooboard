@@ -56,8 +56,6 @@ function wrapGitHubReader(
       around(call('listRunJobs', ref), () =>
         reader.listRunJobs(ref, runId, opts),
       ),
-    listWorkflows: (ref) =>
-      around(call('listWorkflows', ref), () => reader.listWorkflows(ref)),
     matchingRefs: (ref, prefix) =>
       around(call('matchingRefs', ref), () => reader.matchingRefs(ref, prefix)),
     compare: (ref, base, head) =>

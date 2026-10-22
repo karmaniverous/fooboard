@@ -1,7 +1,7 @@
 /**
- * Home page: empty-state placeholder. The real first-run flow (create or
- * import a dashboard, spec.md C-22) lands in a later PR; this scaffold
- * ships only the shell.
+ * Home page: the saved dashboards (or a note that they can't be read),
+ * creating a dashboard, and the demo. Importing a dashboard (spec.md N6)
+ * and the first-run flow (N7) come later, so the page offers neither.
  *
  * @module
  */
@@ -55,8 +55,7 @@ export function Home(): React.JSX.Element {
       <p className="text-sm text-muted-foreground">
         fooboard shows the deployment state of every repo &times; stage at a
         glance, filled in from GitHub Actions runs and Amplify jobs &mdash; no
-        workflow changes required. Create a dashboard or import one to get
-        started.
+        workflow changes required. Create a dashboard to get started.
       </p>
       {loaded.kind === 'ok' && <CreateDashboard />}
       <Link to="/demo" className={buttonVariants({ variant: 'outline' })}>

@@ -1,7 +1,7 @@
 /**
- * The row editor's Amplify pickers (spec.md C-21): the Amplify app picker
- * (via `ListApps`) and extra Amplify sources. The GitHub repo picker is in
- * `RepoPicker`.
+ * The row editor's Amplify app picker (spec.md C-21, via `ListApps`). The
+ * GitHub repo picker is in `RepoPicker`; an Amplify row's sources are
+ * edited in `AmplifySources`.
  *
  * @module
  */
@@ -14,10 +14,13 @@ import type { Dashboard } from '@/domain/config/dashboard';
 import type { AmplifyRow } from '@/domain/config/row';
 import type { EngineProviders } from '@/engine';
 
-import { CredentialSelect, type Inherited } from './CredentialSelect';
+import { CredentialSelect } from './CredentialSelect';
 import { repoFromUrl, uniqueId } from './edit';
 import { LoadStatus } from './LoadStatus';
 import { useLoadFor } from './useLoad';
+
+/** The region the app picker lists first: AWS's default region. */
+const DEFAULT_PICKER_REGION = 'us-east-1';
 
 export function AmplifyPicker({
   dashboard,
@@ -29,7 +32,7 @@ export function AmplifyPicker({
   onAdd: (row: AmplifyRow) => void;
 }): React.JSX.Element {
   const [credentialId, setCredentialId] = useState<string | undefined>();
-  const [region, setRegion] = useState('us-east-1');
+  const [region, setRegion] = useState(DEFAULT_PICKER_REGION);
   // Results and the add action use the key and region they were listed
   // with; changing either hides them until the list is fetched again.
   const [apps, load] = useLoadFor<
@@ -140,68 +143,5 @@ export function AmplifyPicker({
         </ul>
       )}
     </div>
-  );
-}
-
-export function AddSource({
-  dashboard,
-  onAdd,
-  name,
-  inherited,
-}: {
-  dashboard: Dashboard;
-  name: string;
-  /** What an unset key inherits: the row's group's or the dashboard's. */
-  inherited: Inherited;
-  onAdd: (source: AmplifyRow['sources'][number]) => void;
-}): React.JSX.Element {
-  const [credentialId, setCredentialId] = useState<string | undefined>();
-  const [region, setRegion] = useState('');
-  const [appId, setAppId] = useState('');
-  return (
-    <form
-      className="flex flex-wrap items-center gap-1"
-      onSubmit={(e) => {
-        e.preventDefault();
-        onAdd({ credentialId, region: region.trim(), appId: appId.trim() });
-        setRegion('');
-        setAppId('');
-      }}
-    >
-      <CredentialSelect
-        dashboard={dashboard}
-        kind="aws"
-        value={credentialId}
-        onChange={setCredentialId}
-        inherited={inherited}
-        label={`AWS key for a new ${name} source`}
-      />
-      <Input
-        aria-label={`Region for a new ${name} source`}
-        placeholder="Region"
-        className="h-8 text-xs"
-        value={region}
-        onChange={(e) => {
-          setRegion(e.target.value);
-        }}
-      />
-      <Input
-        aria-label={`App ID for a new ${name} source`}
-        placeholder="App ID"
-        className="h-8 text-xs"
-        value={appId}
-        onChange={(e) => {
-          setAppId(e.target.value);
-        }}
-      />
-      <Button
-        type="submit"
-        size="sm"
-        variant="outline"
-        disabled={!region.trim() || !appId.trim()}
-      >
-        Add source
-      </Button>
-    </form>
   );
 }

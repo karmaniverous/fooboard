@@ -19,7 +19,8 @@ import {
 
 import { KEY_PREFIX, type KeyValueStore, readJson } from './keyValue';
 
-const KEY = `${KEY_PREFIX}device`;
+/** The storage key holding every device preference. */
+export const DEVICE_PREFERENCES_KEY = `${KEY_PREFIX}device`;
 
 export interface PreferencesStore {
   /** A dashboard's view settings, defaults filled in. */
@@ -41,7 +42,7 @@ export function createPreferencesStore(store: KeyValueStore): PreferencesStore {
   const load = (): DevicePreferences => {
     let raw: unknown;
     try {
-      raw = readJson(store, KEY);
+      raw = readJson(store, DEVICE_PREFERENCES_KEY);
     } catch {
       raw = undefined;
     }
@@ -57,7 +58,7 @@ export function createPreferencesStore(store: KeyValueStore): PreferencesStore {
   // revoked access), keep working with the in-memory value.
   const save = (prefs: DevicePreferences): void => {
     try {
-      store.setItem(KEY, JSON.stringify(prefs));
+      store.setItem(DEVICE_PREFERENCES_KEY, JSON.stringify(prefs));
     } catch {
       // best effort
     }

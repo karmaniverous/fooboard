@@ -36,7 +36,6 @@ describe('wrapProviders', () => {
     await reader.listRunJobs(ref, 1000);
     await reader.listBranches(ref);
     await reader.compare(ref, 'dev', 'main');
-    await reader.listWorkflows(ref);
     await reader.matchingRefs(ref, 'preview/');
     await reader.listRepos();
     await reader.readRateLimit();
@@ -49,7 +48,6 @@ describe('wrapProviders', () => {
       'listRunJobs',
       'listBranches',
       'compare',
-      'listWorkflows',
       'matchingRefs',
       'listRepos',
       'readRateLimit',

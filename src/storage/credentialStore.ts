@@ -77,9 +77,14 @@ export function createCredentialStore(device: KeyValueStore): CredentialStore {
       changed(id);
     },
     forget: (id) => {
-      device.removeItem(keyFor(id));
+      // The session copy first, and subscribers told even if the device
+      // refuses: a failed device removal must not keep a tab-only secret.
       session.removeItem(keyFor(id));
-      changed(id);
+      try {
+        device.removeItem(keyFor(id));
+      } finally {
+        changed(id);
+      }
     },
     copy: (fromId, toId) => {
       const secret = store.get(fromId);
