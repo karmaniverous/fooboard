@@ -16,6 +16,7 @@ import {
   isLaterPage,
   priorityOf,
   QueryKeySchema,
+  roleOf,
 } from './keys';
 
 const REPO = 'acme/api';
@@ -53,19 +54,35 @@ describe('query keys', () => {
     expect(QueryKeySchema.safeParse(['github', 'gh']).success).toBe(false);
   });
 
-  it('runs dependent reads (jobs, compares) behind root reads', () => {
-    expect(priorityOf(jobs(1))).toBe('dependent');
+  it('names each request a lookup, a root read or a dependent read', () => {
+    expect(roleOf(jobs(1))).toBe('dependent');
     expect(
-      priorityOf(
+      roleOf(
         githubKey('gh', { call: 'compare', repo: REPO, base: 'a', head: 'b' }),
       ),
     ).toBe('dependent');
-    expect(
-      priorityOf(githubKey('gh', { call: 'runs', repo: REPO, page: 1 })),
-    ).toBe('root');
-    expect(priorityOf(amplifyKey('aws', { call: 'apps', region: 'eu' }))).toBe(
+    expect(roleOf(githubKey('gh', { call: 'runs', repo: REPO, page: 1 }))).toBe(
       'root',
     );
+    expect(
+      roleOf(amplifyKey('aws', { call: 'branches', region: 'eu', appId: 'a' })),
+    ).toBe('root');
+    expect(roleOf(githubKey('gh', { call: 'repos', page: 1 }))).toBe('lookup');
+    expect(
+      roleOf(githubKey('gh', { call: 'branches', repo: REPO, page: 1 })),
+    ).toBe('lookup');
+    expect(roleOf(amplifyKey('aws', { call: 'apps', region: 'eu' }))).toBe(
+      'lookup',
+    );
+  });
+
+  it('puts lookups and first loads of root reads ahead (Decision 45)', () => {
+    const runs = githubKey('gh', { call: 'runs', repo: REPO, page: 1 });
+    const apps = amplifyKey('aws', { call: 'apps', region: 'eu' });
+    expect(priorityOf(runs, false)).toBe('high');
+    expect(priorityOf(runs, true)).toBe('normal');
+    expect(priorityOf(apps, true)).toBe('high');
+    expect(priorityOf(jobs(1), false)).toBe('normal');
   });
 
   it('recognises later pages of the same list and credential only', () => {

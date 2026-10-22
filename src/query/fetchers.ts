@@ -1,7 +1,8 @@
 /**
  * The query function behind every key (spec.md §3.1, Decision 5): reads
- * the key back, waits for a slot in the credential's limiter (by
- * priority), and makes the one request the key names through the
+ * the key back, waits for a slot in the credential's limiter (editor
+ * lookups and a root read's first load ahead of everything else, Decision
+ * 45), and makes the one request the key names through the
  * instrumentation hook. GitHub requests are conditional on the ETag kept
  * with the cached data, so a `304` returns that data unchanged; a first
  * page that lands with new data refetches its list's later pages. A rate
@@ -151,7 +152,8 @@ export function createQueryFn(env: FetchEnv): QueryFunction {
       if (!readerFor) throw new MissingCredentialError(credentialId);
       return fetchAmplify(readerFor, key);
     };
-    return limiter.run(priorityOf(key), async () => {
+    const cached = client.getQueryData(key) !== undefined;
+    return limiter.run(priorityOf(key, cached), async () => {
       try {
         return await env.around()(requestCall(key), send);
       } catch (err) {

@@ -1,11 +1,11 @@
 /**
- * One credential's request limiter (spec.md §3.1–3.2, Decisions 7 and
- * 29): at most `max` requests in flight, FIFO within two priorities (root
- * queries and editor lookups ahead of jobs and compares), and a
+ * One credential's request limiter (spec.md §3.1–3.2, Decisions 7, 29
+ * and 45): at most `max` requests in flight, FIFO within two priorities
+ * (high ahead of normal; `priorityOf` in `keys.ts` assigns them), and a
  * pause-until after a rate limit or throttle: no request starts before
- * the pause ends, while those already running finish. A new `max` applies
- * at once. Clock and timers are injected, so it is tested with fake
- * timers.
+ * the pause ends, while those already running finish. A new `max`
+ * applies at once. Clock and timers are injected, so it is tested with
+ * fake timers.
  *
  * @module
  */
@@ -51,10 +51,10 @@ export function createLimiter({
   let running = 0;
   let pausedUntil = 0;
   let wake: unknown;
-  const queues: Record<Priority, Waiting[]> = { root: [], dependent: [] };
+  const queues: Record<Priority, Waiting[]> = { high: [], normal: [] };
 
   const next = (): Waiting | undefined =>
-    queues.root.shift() ?? queues.dependent.shift();
+    queues.high.shift() ?? queues.normal.shift();
 
   const pump = (): void => {
     const wait = pausedUntil - now();
@@ -102,7 +102,7 @@ export function createLimiter({
     },
     stats: () => ({
       running,
-      queued: queues.root.length + queues.dependent.length,
+      queued: queues.high.length + queues.normal.length,
       max,
       pausedUntil,
     }),

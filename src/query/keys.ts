@@ -78,14 +78,35 @@ export const credentialPrefix = (
   credentialId: string,
 ): [string, string] => [provider, credentialId];
 
-/** Where a request waits in its credential's queue (Decision 29 item 7):
- * root queries and editor lookups go ahead of jobs and compares. */
-export type Priority = 'root' | 'dependent';
+/** What a request is for: an editor lookup (repos, a repo's branches,
+ * Amplify apps), a row's root read (runs pages, an app's branches and
+ * jobs), or a read that depends on one (a run's jobs, a compare). */
+export type RequestRole = 'lookup' | 'root' | 'dependent';
 
-export const priorityOf = (key: FooboardQueryKey): Priority =>
-  key[0] === 'github' && (key[2].call === 'jobs' || key[2].call === 'compare')
-    ? 'dependent'
-    : 'root';
+export function roleOf(key: FooboardQueryKey): RequestRole {
+  if (key[0] === 'amplify') return key[2].call === 'apps' ? 'lookup' : 'root';
+  switch (key[2].call) {
+    case 'repos':
+    case 'branches':
+      return 'lookup';
+    case 'runs':
+      return 'root';
+    case 'jobs':
+    case 'compare':
+      return 'dependent';
+  }
+}
+
+/** Where a request waits in its credential's queue (Decision 29 item 7,
+ * Decision 45 item 3): editor lookups, and a root read's first load (no
+ * data cached yet), go to the front; a root read's later polls wait in
+ * line with jobs and compares. */
+export type Priority = 'high' | 'normal';
+
+export function priorityOf(key: FooboardQueryKey, cached: boolean): Priority {
+  const role = roleOf(key);
+  return role === 'lookup' || (role === 'root' && !cached) ? 'high' : 'normal';
+}
 
 /** A paginated request's page, if it has one. */
 const pageOf = (request: GithubRequest): number | undefined =>

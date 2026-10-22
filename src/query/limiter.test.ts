@@ -1,7 +1,7 @@
 /**
- * Tests for one credential's limiter (spec.md §3.1–3.2, Decisions 7 and
- * 29): at most `max` in flight, FIFO within two priorities with root
- * ahead of dependent, a new cap applied at once, and a pause-until that
+ * Tests for one credential's limiter (spec.md §3.1–3.2, Decisions 7, 29
+ * and 45): at most `max` in flight, FIFO within two priorities with high
+ * ahead of normal, a new cap applied at once, and a pause-until that
  * starts nothing new before it ends (a later pause wins) while running
  * requests finish.
  *
@@ -36,17 +36,17 @@ describe('createLimiter', () => {
     vi.useRealTimers();
   });
 
-  it('runs at most max at once, root before dependent, FIFO within each', async () => {
+  it('runs at most max at once, high before normal, FIFO within each', async () => {
     const started: string[] = [];
     const limiter = createLimiter({ max: 1 });
     const a = gate(started, 'a');
     const jobs1 = gate(started, 'jobs1');
     const jobs2 = gate(started, 'jobs2');
     const runs = gate(started, 'runs');
-    void limiter.run('root', a.task);
-    void limiter.run('dependent', jobs1.task);
-    void limiter.run('dependent', jobs2.task);
-    void limiter.run('root', runs.task);
+    void limiter.run('high', a.task);
+    void limiter.run('normal', jobs1.task);
+    void limiter.run('normal', jobs2.task);
+    void limiter.run('high', runs.task);
     expect(started).toEqual(['a']);
     expect(limiter.stats()).toMatchObject({ running: 1, queued: 3 });
     a.open();
@@ -60,11 +60,11 @@ describe('createLimiter', () => {
 
   it('settles as its task does, freeing the slot either way', async () => {
     const limiter = createLimiter({ max: 2 });
-    await expect(limiter.run('root', () => Promise.resolve(7))).resolves.toBe(
+    await expect(limiter.run('high', () => Promise.resolve(7))).resolves.toBe(
       7,
     );
     await expect(
-      limiter.run('root', () => Promise.reject(new Error('no'))),
+      limiter.run('high', () => Promise.reject(new Error('no'))),
     ).rejects.toThrow('no');
     expect(limiter.stats().running).toBe(0);
   });
@@ -73,7 +73,7 @@ describe('createLimiter', () => {
     const started: string[] = [];
     const limiter = createLimiter({ max: 1 });
     for (const name of ['a', 'b', 'c'])
-      void limiter.run('root', gate(started, name).task);
+      void limiter.run('high', gate(started, name).task);
     expect(started).toEqual(['a']);
     limiter.setMax(3);
     expect(started).toEqual(['a', 'b', 'c']);
@@ -86,7 +86,7 @@ describe('createLimiter', () => {
     limiter.pauseUntil(3_000);
     limiter.pauseUntil(2_000);
     expect(limiter.stats().pausedUntil).toBe(3_000);
-    void limiter.run('root', gate(started, 'a').task);
+    void limiter.run('high', gate(started, 'a').task);
     expect(started).toEqual([]);
     now = 3_000;
     await vi.advanceTimersByTimeAsync(2_000);
@@ -97,7 +97,7 @@ describe('createLimiter', () => {
     const started: string[] = [];
     const limiter = createLimiter({ max: 1, now: () => 0 });
     const a = gate(started, 'a');
-    const result = limiter.run('root', a.task);
+    const result = limiter.run('high', a.task);
     limiter.pauseUntil(10);
     a.open();
     await expect(result).resolves.toBe('a');
