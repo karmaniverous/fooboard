@@ -60,7 +60,11 @@ const RETRY_AFTER = 'retry-after';
 
 /** The delay AWS suggests for a throttled call: the response's
  * `Retry-After` (seconds), when the SDK error carries the raw response
- * and the browser exposes the header, else `DEFAULT_THROTTLE_MS`. */
+ * and the browser exposes the header, else `DEFAULT_THROTTLE_MS`. The
+ * SDK's own retry information (`$retryable`) carries no delay, and on
+ * 2026-10-22 Amplify's CORS exposed only `x-amzn-RequestId` and
+ * `x-amzn-ErrorType` to scripts, so in browsers this is the 5 s
+ * fallback until AWS exposes the header. */
 function throttleDelayMs(err: Error): number {
   const response: unknown = Reflect.get(err, '$response');
   const headers: unknown =

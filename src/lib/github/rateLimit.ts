@@ -98,10 +98,15 @@ export function isRateLimitResponse(status: number, headers: Headers): boolean {
   return headers.get('x-ratelimit-remaining') === '0';
 }
 
-/** Has this credential used more than half its hourly budget? Polling backs
- * off past this point so other tools keep headroom (spec.md C-16). */
+/** The share of a token's hourly budget its polling may use before it
+ * backs off (spec.md C-16: half). */
+const POLLING_SHARE = 0.5;
+
+/** Has this credential used more than `POLLING_SHARE` of its hourly
+ * budget? Polling backs off past this point so other tools keep headroom
+ * (spec.md C-16). */
 export function isOverPollingShare(
   budget: RateLimitBudget | undefined,
 ): boolean {
-  return budget !== undefined && budget.used > budget.limit / 2;
+  return budget !== undefined && budget.used > budget.limit * POLLING_SHARE;
 }

@@ -40,7 +40,9 @@ export const addSettings: Migration = (input) => ({
 
 /** Migration from each version to the next; a release that changes the
  * data model adds one. */
-const migrations: Partial<Record<number, Migration>> = { 4: addSettings };
+const migrations: Partial<Record<number, Migration>> = {
+  [FIRST_VERSION]: addSettings,
+};
 
 /** The data model version `input` says it was written with (0: none). */
 export function readVersion(input: unknown): number {
