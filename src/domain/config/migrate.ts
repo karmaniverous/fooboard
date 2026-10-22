@@ -4,8 +4,10 @@
  * arbitrary stored or imported data up to `CURRENT_SCHEMA_VERSION`, then
  * validates it against `ConfigRootSchema`.
  *
- * The chain starts at version 4 (spec.md A§4.3.7 *Data model version*):
- * earlier development versions are refused, and there are no steps yet.
+ * The chain starts at version 4 (spec.md §3.3 *Data model version*):
+ * earlier development versions are refused. v4 → v5 adds each
+ * dashboard's `settings` (requests in flight) with their defaults.
+ * Steps are pure and idempotent.
  *
  * @module
  */
@@ -13,6 +15,7 @@ import { z } from 'zod';
 
 import type { ConfigRoot } from './root';
 import { ConfigRootSchema, CURRENT_SCHEMA_VERSION } from './root';
+import { defaultSettings } from './settings';
 
 /** The refusal for a configuration from a newer data model (spec.md
  * A§4.3.7): never guessed at. */
@@ -22,13 +25,25 @@ type Migration = (input: Record<string, unknown>) => Record<string, unknown>;
 
 /** The first version the chain starts from (spec.md A§4.3.7): earlier
  * development versions were never saved and are not migrated. */
-const FIRST_VERSION = 4;
+export const FIRST_VERSION = 4;
+
+const objects = z.array(z.record(z.string(), z.unknown())).catch([]);
+
+/** v4 → v5: every dashboard gains `settings` with the defaults (a
+ * dashboard that has them keeps its own). */
+export const addSettings: Migration = (input) => ({
+  ...input,
+  dashboards: objects
+    .parse(input.dashboards)
+    .map((d) => ({ settings: defaultSettings(), ...d })),
+});
 
 /** Migration from each version to the next; a release that changes the
  * data model adds one. */
-const migrations: Partial<Record<number, Migration>> = {};
+const migrations: Partial<Record<number, Migration>> = { 4: addSettings };
 
-function readVersion(input: unknown): number {
+/** The data model version `input` says it was written with (0: none). */
+export function readVersion(input: unknown): number {
   if (
     typeof input === 'object' &&
     input !== null &&

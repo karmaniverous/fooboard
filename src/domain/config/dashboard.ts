@@ -27,6 +27,7 @@ import { findAnyCycle } from './cycle';
 import { ColumnGroupSchema, type Group, RowGroupSchema } from './groups';
 import { ProviderRowRulesSchema, ProviderRulesSchema } from './placement';
 import { RowSchema } from './row';
+import { DashboardSettingsSchema, defaultSettings } from './settings';
 import { StageSchema } from './stage';
 import {
   DashboardStatusSetsSchema,
@@ -133,6 +134,8 @@ export const DashboardSchema = z
     })),
     /** The dashboard's own source rules (customised built-ins). */
     customSourceRules: z.array(SourceRuleSchema).default(() => []),
+    /** Requests in flight per credential, per platform (spec.md §3.2). */
+    settings: DashboardSettingsSchema.default(() => defaultSettings()),
   })
   .superRefine((dashboard, ctx) => {
     // Duplicate stage ids would also let a cycle hide behind a later stage

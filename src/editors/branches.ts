@@ -1,6 +1,7 @@
 /**
  * Branch discovery for the editors (spec.md C-21): branch names per repo,
- * each read with the row's own GitHub token (C-1a), and what they show:
+ * each read with the row's own GitHub token (C-1a) through the board's
+ * queries (spec.md §3.1), and what they show:
  * how many repos have each branch, and what a pattern would match.
  *
  * @module
@@ -11,23 +12,22 @@ import type { Dashboard } from '@/domain/config/dashboard';
 import { rowGithubCredentialId } from '@/domain/config/inheritance';
 import type { Row } from '@/domain/config/row';
 import { matchesBranchPattern } from '@/domain/matching';
-import type { EngineProviders } from '@/engine';
+import type { QueryEnv } from '@/query/client';
+import { fetchBranches } from '@/query/lookups';
 
 /** Branch names per repo for `rows` (default: every row). A repo whose
  * row has no usable token is skipped; a read failure rejects. */
 export async function discoverBranches(
   dashboard: Dashboard,
-  providers: EngineProviders,
+  env: Pick<QueryEnv, 'client' | 'providers'>,
   rows: readonly Row[] = dashboard.rows,
 ): Promise<Map<string, string[]>> {
   const byRepo = new Map<string, string[]>();
   for (const row of rows) {
     if (byRepo.has(row.repo)) continue;
     const id = rowGithubCredentialId(dashboard, row);
-    const reader = id ? providers.github(id) : undefined;
-    if (!reader) continue;
-    const [owner = '', repo = ''] = row.repo.split('/');
-    const branches = await reader.listBranches({ owner, repo });
+    if (!id || !env.providers.github(id)) continue;
+    const branches = await fetchBranches(env.client, id, row.repo);
     byRepo.set(
       row.repo,
       branches.map((b) => b.name),

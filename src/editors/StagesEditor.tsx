@@ -19,7 +19,7 @@ import { branchRules } from '@/domain/config/placement';
 import type { Stage } from '@/domain/config/stage';
 import { branchOf } from '@/domain/rules/branch';
 import { NEW_STAGE_KEY, targetKey } from '@/editors/editTarget';
-import type { EngineProviders } from '@/engine';
+import { useQueryEnv } from '@/query/queryEnvContext';
 
 import { discoverBranches, patternPreview } from './branches';
 import { BranchFinder } from './BranchFinder';
@@ -37,15 +37,14 @@ const BRANCHES_PREVIEWED = 8;
 
 function AddStage({
   dashboard,
-  providers,
   onAdd,
   initialPattern = '',
 }: {
   dashboard: Dashboard;
-  providers: EngineProviders;
   onAdd: (stage: Stage) => void;
   initialPattern?: string;
 }): React.JSX.Element {
+  const env = useQueryEnv();
   const [found, load] = useLoad<Map<string, string[]>>();
   const [pattern, setPattern] = useState(initialPattern);
   const [name, setName] = useState('');
@@ -76,7 +75,7 @@ function AddStage({
         label="Find branches in your repos"
         disabled={dashboard.rows.length === 0}
         onFind={() => {
-          load(() => discoverBranches(dashboard, providers));
+          load(() => discoverBranches(dashboard, env));
         }}
         onPick={setPattern}
       />
@@ -131,12 +130,10 @@ const stagePattern = (stage: Stage): string =>
 
 export function StagesEditor({
   dashboard,
-  providers,
   onChange,
   draftPattern,
 }: {
   dashboard: Dashboard;
-  providers: EngineProviders;
   onChange: (dashboard: Dashboard) => void;
   /** Pre-fills a new stage (e.g. *Add test* for an unmatched branch). */
   draftPattern?: string;
@@ -228,7 +225,6 @@ export function StagesEditor({
       <ColumnGroupList dashboard={dashboard} onChange={onChange} />
       <AddStage
         dashboard={dashboard}
-        providers={providers}
         initialPattern={draftPattern}
         onAdd={(stage) => {
           onChange({ ...dashboard, stages: [...stages, stage] });

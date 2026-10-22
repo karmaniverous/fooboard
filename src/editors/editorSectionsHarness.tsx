@@ -1,6 +1,7 @@
 /**
- * The editor-section tests' harness: a starting dashboard, a fake Amplify
- * reader, and the editor rendered with the latest draft exposed.
+ * The editor-section tests' harness: a starting dashboard, a query
+ * environment over a fake Amplify reader (and the GitHub port a test
+ * gives), and the editor rendered with the latest draft exposed.
  *
  * @module
  */
@@ -10,13 +11,14 @@ import { MemoryRouter } from 'react-router-dom';
 
 import { type Dashboard, DashboardSchema } from '@/domain/config/dashboard';
 import { branchRules } from '@/domain/config/placement';
-import type { EngineProviders } from '@/engine';
 import { amplifyApp } from '@/lib/amplify/sdkShapes';
-import type { GitHubReader } from '@/lib/github/reader';
+import type { GitHubApi } from '@/lib/github';
+import { QueryProvider } from '@/query/QueryProvider';
 import { createAppStores } from '@/storage';
 import { memoryStorage } from '@/storage/keyValue';
 import { StoresContext } from '@/storage/storesContext';
-import { fakeAmplifyReader, fakeGitHubReader } from '@/test/fakeReaders';
+import { fakeAmplifyReader, fakeGitHubApi } from '@/test/fakeReaders';
+import { testQueryEnv } from '@/test/queryEnv';
 
 import { DashboardEditor } from './DashboardEditor';
 
@@ -54,18 +56,17 @@ const amplify = fakeAmplifyReader({
     ]),
 });
 
-export function setup(github: Partial<GitHubReader> = {}) {
-  const providers: EngineProviders = {
-    github: () => fakeGitHubReader(github),
-    amplify: () => () => amplify,
-  };
+export function setup(github: Partial<GitHubApi> = {}) {
+  const env = testQueryEnv({
+    github: () => fakeGitHubApi(github),
+    amplify: () => amplify,
+  });
   const latest = { current: start };
   function Harness(): React.JSX.Element {
     const [d, setD] = useState<Dashboard>(start);
     return (
       <DashboardEditor
         dashboard={d}
-        providers={providers}
         onChange={(next) => {
           latest.current = next;
           setD(next);
@@ -76,7 +77,9 @@ export function setup(github: Partial<GitHubReader> = {}) {
   render(
     <StoresContext value={createAppStores(memoryStorage())}>
       <MemoryRouter>
-        <Harness />
+        <QueryProvider env={env}>
+          <Harness />
+        </QueryProvider>
       </MemoryRouter>
     </StoresContext>,
   );

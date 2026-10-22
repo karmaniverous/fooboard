@@ -19,7 +19,6 @@ import type { Row } from '@/domain/config/row';
 import { ITEM_NAME_PATH } from '@/domain/model/keys';
 import { always, unlessAlways } from '@/domain/rules/always';
 import { targetKey } from '@/editors/editTarget';
-import type { EngineProviders } from '@/engine';
 
 import { AmplifySources } from './AmplifySources';
 import { CredentialSelect } from './CredentialSelect';
@@ -39,12 +38,10 @@ const rowSummary = (row: Row): string =>
 
 export function RowsEditor({
   dashboard,
-  providers,
   onChange,
   override,
 }: {
   dashboard: Dashboard;
-  providers: EngineProviders;
   onChange: (dashboard: Dashboard) => void;
   /** *Add override*: a branch to offer on the rows reading a record. */
   override?: { branch: string; rowIds: readonly string[] };
@@ -152,7 +149,6 @@ export function RowsEditor({
             )}
             <RowGrouping
               dashboard={dashboard}
-              providers={providers}
               row={row}
               override={override}
               onChange={onChange}
@@ -165,7 +161,6 @@ export function RowsEditor({
         <h3 className="font-semibold">Add a row</h3>
         <RepoPicker
           dashboard={dashboard}
-          providers={providers}
           onPick={(repo, credentialId) => {
             onChange({
               ...dashboard,
@@ -178,7 +173,6 @@ export function RowsEditor({
         />
         <AmplifyPicker
           dashboard={dashboard}
-          providers={providers}
           onAdd={(row) => {
             onChange({ ...dashboard, rows: [...dashboard.rows, row] });
           }}

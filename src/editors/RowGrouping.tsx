@@ -20,7 +20,7 @@ import { ITEM_NAME_PATH } from '@/domain/model/keys';
 import { always } from '@/domain/rules/always';
 import { branchOf } from '@/domain/rules/branch';
 import { targetKey } from '@/editors/editTarget';
-import type { EngineProviders } from '@/engine';
+import { useQueryEnv } from '@/query/queryEnvContext';
 
 import { discoverBranches } from './branches';
 import { CredentialSelect } from './CredentialSelect';
@@ -44,7 +44,6 @@ import { GroupStatusSets, RowStatusSets } from './statuses/StatusSetOverrides';
 
 interface Props {
   dashboard: Dashboard;
-  providers: EngineProviders;
   onChange: (dashboard: Dashboard) => void;
 }
 
@@ -98,7 +97,8 @@ export function RowGrouping({
    * rows reading its repo or app (shown on the first). */
   override?: { branch: string; rowIds: readonly string[] };
 }): React.JSX.Element {
-  const { dashboard, providers, onChange } = props;
+  const { dashboard, onChange } = props;
+  const env = useQueryEnv();
   const group = groupOf(dashboard.rowGroups, row.id);
   return (
     <>
@@ -136,7 +136,7 @@ export function RowGrouping({
             }}
           />
         )}
-        loadBranches={() => discoverBranches(dashboard, providers, [row])}
+        loadBranches={() => discoverBranches(dashboard, env, [row])}
         onChange={(stageId, pattern) => {
           onChange(setRowOverride(dashboard, row.id, stageId, pattern));
         }}
@@ -148,10 +148,10 @@ export function RowGrouping({
 
 function RowGroupSettings({
   dashboard,
-  providers,
   onChange,
   group,
 }: Props & { group: RowGroup }): React.JSX.Element {
+  const env = useQueryEnv();
   const name = group.label ?? 'this group';
   const withItems = useContext(SourcesWithItemsContext);
   return (
@@ -250,7 +250,7 @@ function RowGroupSettings({
         loadBranches={() =>
           discoverBranches(
             dashboard,
-            providers,
+            env,
             dashboard.rows.filter((r) => group.memberIds.includes(r.id)),
           )
         }

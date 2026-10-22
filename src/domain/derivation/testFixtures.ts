@@ -73,4 +73,3 @@ const preset = (id: string): StatusSet => {
 
 /** The bundled *GitHub deploy and test* and *Amplify* sets (A§4.3.6). */
 export const githubSet = preset(PRESET_IDS.githubDeployTest);
-export const amplifySet = preset('amplify');

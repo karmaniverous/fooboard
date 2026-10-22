@@ -1,6 +1,9 @@
 /**
  * Configuration store (spec.md C-1): every dashboard, under the versioned
- * schema, in local storage. Loading migrates older versions. Stored data
+ * schema, in local storage. Loading migrates older versions; the first save
+ * of a migrated configuration keeps the original under
+ * `fooboard:config.v<n>` until the next successful save (spec.md §3.3).
+ * Stored data
  * that fails validation is never silently overwritten: the store reports
  * it and stays read-only until the user resets (C-4), so a bad release
  * can't destroy someone's boards.
@@ -8,7 +11,7 @@
  * @module
  */
 import type { Dashboard } from '@/domain/config/dashboard';
-import { migrate } from '@/domain/config/migrate';
+import { FIRST_VERSION, migrate, readVersion } from '@/domain/config/migrate';
 import {
   type ConfigRoot,
   ConfigRootSchema,
@@ -19,6 +22,16 @@ import { describeError } from '@/lib/errors';
 import { KEY_PREFIX, type KeyValueStore, readJson } from './keyValue';
 
 const KEY = `${KEY_PREFIX}config`;
+
+/** Where the original of a configuration migrated from `version` is kept. */
+export const backupKey = (version: number): string =>
+  `${KEY}.v${String(version)}`;
+
+/** Every version a backup may have been kept for. */
+const BACKUP_VERSIONS = Array.from(
+  { length: CURRENT_SCHEMA_VERSION - FIRST_VERSION },
+  (_, i) => FIRST_VERSION + i,
+);
 
 /** What loading found. */
 type ConfigLoad =
@@ -76,7 +89,20 @@ export function createConfigStore(store: KeyValueStore): ConfigStore {
 
   const save = (root: ConfigRoot): void => {
     current(); // throws rather than overwrite unreadable data
-    store.setItem(KEY, JSON.stringify(ConfigRootSchema.parse(root)));
+    const before = store.getItem(KEY);
+    const version =
+      before === null
+        ? CURRENT_SCHEMA_VERSION
+        : readVersion(readJson(store, KEY));
+    const text = JSON.stringify(ConfigRootSchema.parse(root));
+    if (before !== null && version < CURRENT_SCHEMA_VERSION) {
+      // The first write of a migrated configuration keeps the original.
+      store.setItem(backupKey(version), before);
+      store.setItem(KEY, text);
+      return;
+    }
+    store.setItem(KEY, text);
+    for (const v of BACKUP_VERSIONS) store.removeItem(backupKey(v));
   };
 
   return {

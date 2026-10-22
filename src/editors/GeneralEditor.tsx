@@ -2,7 +2,8 @@
  * The editor's General tab (spec.md C-21): rename, the dashboard's
  * default row rules and item rules (item rules only for sources whose
  * source rule reads items, A§4.3.7), duplicate and delete (which also
- * drops the dashboard's device preferences and its credentials' secrets).
+ * drops the dashboard's device preferences and its credentials' secrets),
+ * and requests in flight per platform (spec.md §3.2).
  *
  * @module
  */
@@ -21,6 +22,7 @@ import { useStores } from '@/storage/storesContext';
 
 import { duplicateDashboard } from './edit';
 import { CommitInput } from './fields';
+import { RequestsInFlight } from './RequestsInFlight';
 import { setDashboardRowRule } from './rowRuleEdit';
 import { ProviderRules } from './rules/ProviderRules';
 import { SourcesWithItemsContext } from './rules/samples';
@@ -73,6 +75,7 @@ export function GeneralEditor({
           onChange(setDashboardRowRule(dashboard, p, 'items', items));
         }}
       />
+      <RequestsInFlight dashboard={dashboard} onChange={onChange} />
       <ActionError error={error} />
       <div className="flex flex-wrap gap-2">
         <Button

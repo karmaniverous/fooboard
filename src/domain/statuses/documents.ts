@@ -8,7 +8,7 @@ import type { AmplifyJobWithBranch } from '@/domain/derivation/types';
 import { builtinSourceFor } from '@/domain/model/builtinSources';
 import { asJson } from '@/domain/model/json';
 import type { SourceRule } from '@/domain/model/sourceRule';
-import { type RecordDoc, translate } from '@/domain/model/translate';
+import { translate } from '@/domain/model/translate';
 import { buildAmplifyConsoleLink } from '@/lib/amplify/consoleLink';
 
 /** An Amplify job translated by `rule` (the built-in by default). */
@@ -22,9 +22,3 @@ export function amplifyTranslate(
       : buildAmplifyConsoleLink({ ...app, branch, jobId: job.jobId });
   return translate(rule, asJson({ source: app, branch, job, consoleUrl }));
 }
-
-/** An Amplify job's record under `rule`. */
-export const amplifyRecord = (
-  job: AmplifyJobWithBranch,
-  rule?: SourceRule,
-): RecordDoc => amplifyTranslate(job, rule).record;
