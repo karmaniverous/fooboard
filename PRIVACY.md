@@ -8,11 +8,11 @@ fooboard is a static web app that runs entirely in your browser. This page says,
 
 Everything fooboard keeps stays **in your browser**, on the device you are using:
 
-| What | Where | How long |
-| --- | --- | --- |
-| Your dashboards (names, rows, stages, rules, colours, groups) | Browser local storage | Until you delete them or clear your browser's data for the site |
-| Zoom, density and theme | Browser local storage | The same |
-| GitHub tokens and AWS keys | The page's memory only, or local storage if you tick _Remember on this device_ | Until the tab closes (memory), or until you _Forget_ them or clear the site's data (remembered) |
+| What                                                          | Where                                                                          | How long                                                                                        |
+| ------------------------------------------------------------- | ------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------- |
+| Your dashboards (names, rows, stages, rules, colours, groups) | Browser local storage                                                          | Until you delete them or clear your browser's data for the site                                 |
+| Zoom, density and theme                                       | Browser local storage                                                          | The same                                                                                        |
+| GitHub tokens and AWS keys                                    | The page's memory only, or local storage if you tick _Remember on this device_ | Until the tab closes (memory), or until you _Forget_ them or clear the site's data (remembered) |
 
 fooboard has no server of its own, no accounts, no database, no cookies, no analytics, no advertising and no third-party scripts. Nothing you enter is sent to us.
 

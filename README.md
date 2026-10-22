@@ -54,11 +54,11 @@ A dashboard lives at `/d/<id>` in this browser.
 
 Each **row** is a repo (or an Amplify app, or one deployable unit in a repo), and each **column** a stage (for the built-in presets, a branch or a pattern such as `release/*`). Each **cell** shows the newest record that its row's and its column's [rules](#rules) place there, as the first status in its **status set** whose rule the record matches. The built-in sets:
 
-| Set | Statuses (first match wins) |
-| --- | --- |
+| Set                                                | Statuses (first match wins)                                                                                             |
+| -------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------- |
 | _GitHub deploy and test_ (default for GitHub rows) | Tests failed, Deploy failed, Cancelled, Testing, Deploying, Passed, Deployed, Partial (deployed, tests to come), Queued |
-| _GitHub single job_ | Failed, Cancelled, Running, Queued, Succeeded |
-| _Amplify_ (default for Amplify rows) | Failed, Cancelled, Running, Queued, Deployed |
+| _GitHub single job_                                | Failed, Cancelled, Running, Queued, Succeeded                                                                           |
+| _Amplify_ (default for Amplify rows)               | Failed, Cancelled, Running, Queued, Deployed                                                                            |
 
 Each status has a name, a colour, an icon (✓ success, ✕ failure, ◔ running, ◑ partial, ○ queued, ⊘ cancelled) and can be outlined, as Queued is. A status in progress pulses. Text on a cell is white or near-black, whichever reads better on its colour.
 
@@ -148,11 +148,11 @@ Use a **fine-grained personal access token**:
 3. Under **Repository access**, choose _Only select repositories_ and pick only this dashboard's repos.
 4. Under **Permissions**, set these repository permissions to _Read-only_, and leave everything else at _No access_:
 
-   | Permission | Access |
-   | --- | --- |
-   | Metadata | Read-only |
-   | Contents | Read-only |
-   | Actions | Read-only |
+   | Permission | Access    |
+   | ---------- | --------- |
+   | Metadata   | Read-only |
+   | Contents   | Read-only |
+   | Actions    | Read-only |
 
 5. Set a short **expiration** (30 to 90 days). fooboard warns as it approaches.
 6. Generate the token and paste it into _Credentials_ → _Add a credential_. Tick _Remember on this device_ to keep it after the browser closes.
@@ -175,10 +175,12 @@ Amplify rows need an AWS access key for an IAM user that can only read Amplify:
    - **After you add Amplify rows**, copy it again and replace the policy: the copy narrows branches and jobs to this dashboard's apps, as in the template below.
 
    Or attach a policy below yourself: in the template, replace `REGION`, `ACCOUNT_ID` and `APP_ID`, adding a line to each of the last two statements for each app.
+
 3. Create an access key for the user, and paste its ID and secret into _Credentials_ → _Add a credential_ → _AWS key_.
 
 Account-wide, before the dashboard has Amplify rows:
 
+<!-- prettier-ignore -->
 ```json
 {
   "Version": "2012-10-17",
@@ -206,6 +208,7 @@ Account-wide, before the dashboard has Amplify rows:
 
 Narrowed to the dashboard's apps (the template):
 
+<!-- prettier-ignore -->
 ```json
 {
   "Version": "2012-10-17",

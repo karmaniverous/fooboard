@@ -15,8 +15,9 @@ npx lefthook install   # install Git hooks (once, after cloning)
 npm run dev          # start the Vite dev server
 npm run build        # type-check (tsc -b) and build the static site to dist/
 npm run preview      # preview the production build locally
-npm run lint         # ESLint (+ Prettier)
-npm run lint:fix     # ESLint --fix
+npm run lint         # ESLint (+ Prettier), then lint:md
+npm run lint:fix     # ESLint --fix, then Prettier --write on Markdown
+npm run lint:md      # Prettier --check on Markdown (not CHANGELOG.md)
 npm run typecheck    # tsc -b --noEmit
 npm test             # Vitest (jsdom, coverage reported)
 npm run knip         # find unused files, dependencies and exports
