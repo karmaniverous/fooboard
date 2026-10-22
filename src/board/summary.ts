@@ -5,8 +5,9 @@
  * are unique only within a set, so a chip is a summary status's look (its
  * colour and name): sets that share one share a chip, and a set that
  * renames or recolours one gets its own. Badge chips have their own
- * namespace, so a status id can't collide with them. Pure, apart from the
- * filter hook.
+ * namespace, so a status id can't collide with them. A provisional cell
+ * (Decision 37) counts toward no chip and matches no filter until its jobs
+ * land. Pure, apart from the filter hook.
  *
  * @module
  */
@@ -43,7 +44,7 @@ export function matchesFilter(
   cell: BoardCell | undefined,
   filter: CellFilter,
 ): boolean {
-  if (!cell) return false;
+  if (!cell || cell.provisional) return false;
   const badge = BADGES.find((b) => badgeFilter(b) === filter);
   if (badge) return cell.badge?.kind === badge;
   return (
@@ -54,7 +55,7 @@ export function matchesFilter(
 
 /** The chips for `model`, with their counts. */
 export function summarize(model: BoardModel): SummaryChip[] {
-  const cells = Object.values(model.cells);
+  const cells = Object.values(model.cells).filter((c) => !c?.provisional);
   const statuses = new Map<string, SummaryChip & { rank: number }>();
   for (const cell of cells) {
     const derivation = cell?.derivation;

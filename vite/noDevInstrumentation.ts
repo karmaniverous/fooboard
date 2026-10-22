@@ -1,15 +1,23 @@
 /**
  * Build check (spec.md §3.5): the timing instrumentation runs in
  * development builds only, so a production bundle must contain none of
- * it. Every timing mark, measure and console summary starts with
- * `TIMING_PREFIX`; this plugin fails a production build whose output
- * contains it.
+ * it, nor the TanStack Query Devtools (spec.md §3.1: development only,
+ * lazily imported). Every timing mark, measure and console summary
+ * starts with `TIMING_PREFIX`, and the Devtools bundle names itself
+ * `DEVTOOLS_MARKER`; this plugin fails a production build whose output
+ * contains either.
  *
  * @module
  */
 import type { Plugin } from 'vite';
 
 import { TIMING_PREFIX } from '../src/perf/targets.ts';
+
+/** A string the TanStack Query Devtools bundle carries (its title). */
+export const DEVTOOLS_MARKER = 'TanStack Query Devtools';
+
+/** What a production bundle must not contain. */
+const DEV_ONLY_MARKERS = [TIMING_PREFIX, DEVTOOLS_MARKER] as const;
 
 /** The parts of a bundle output the check reads. */
 interface Output {
@@ -37,18 +45,22 @@ export function filesContaining(
     .map((output) => output.fileName);
 }
 
-/** Fail a production build that contains timing instrumentation. */
-export function noDevInstrumentation(marker = TIMING_PREFIX): Plugin {
+/** Fail a production build that contains development-only code. */
+export function noDevInstrumentation(
+  markers: readonly string[] = DEV_ONLY_MARKERS,
+): Plugin {
   return {
     name: 'fooboard:no-dev-instrumentation',
     apply: (_config, env) =>
       env.command === 'build' && env.mode === 'production',
     generateBundle(_options, bundle) {
-      const found = filesContaining(bundle, marker);
-      if (found.length > 0)
-        this.error(
-          `Development timing instrumentation ("${marker}") found in the production bundle: ${found.join(', ')}`,
-        );
+      for (const marker of markers) {
+        const found = filesContaining(bundle, marker);
+        if (found.length > 0)
+          this.error(
+            `Development-only code ("${marker}") found in the production bundle: ${found.join(', ')}`,
+          );
+      }
     },
   };
 }

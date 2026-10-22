@@ -3,12 +3,13 @@
  * (runs, jobs of the newest run, matching refs, compare), plus a repeated
  * runs request to show whether GitHub honoured the ETag. A `304` does not
  * count against the primary rate limit, so an unchanged `remaining` after
- * the repeat means the cache worked. Pure apart from the injected reader.
+ * the repeat means the conditional request worked. Pure apart from the
+ * injected request port and budget.
  *
  * @module
  */
+import type { Conditional, GitHubApi } from '@/lib/github/api';
 import type { RateLimitBudget } from '@/lib/github/rateLimit';
-import type { GitHubReader } from '@/lib/github/reader';
 
 /** What the spike needs besides the token. */
 export interface GithubSpikeTarget {
@@ -31,32 +32,31 @@ export interface GithubSpikeResult {
   tokenExpiration: string | undefined;
 }
 
-/** Run the spike's read chain against one repo. */
+/** The data of a request made without an ETag (never a 304). */
+const dataOf = <T>(res: Conditional<T>, none: T): T =>
+  res.notModified ? none : res.data;
+
+/** Run the spike's read chain against one repo; `budget` reads the last
+ * budget a response reported. */
 export async function runGithubSpike(
-  reader: GitHubReader,
+  api: GitHubApi,
+  budget: () => RateLimitBudget | undefined,
   { owner, repo, branchPrefix }: GithubSpikeTarget,
 ): Promise<GithubSpikeResult> {
   const ref = { owner, repo };
   const prefix = branchPrefix || 'main';
 
-  const runs = await reader.listWorkflowRuns(ref, {
-    perPage: 100,
-    excludePullRequests: true,
-  });
+  const first = await api.runsPage(ref, 1);
+  const runs = dataOf(first, []);
   const newest = runs.at(0);
-  const jobs = newest
-    ? await reader.listRunJobs(ref, newest.id, { filter: 'latest' })
-    : [];
-  const refs = await reader.matchingRefs(ref, prefix);
+  const jobs = newest ? dataOf(await api.jobsPage(ref, newest.id, 1), []) : [];
+  const refs = await api.matchingRefs(ref, prefix);
   const head = refs[0]?.ref.replace(/^refs\/heads\//, '') ?? 'main';
-  const compare = await reader.compare(ref, 'main', head);
+  const compare = dataOf(await api.compare(ref, 'main', head), undefined);
 
-  const budgetBefore = reader.getBudget();
-  await reader.listWorkflowRuns(ref, {
-    perPage: 100,
-    excludePullRequests: true,
-  });
-  const budgetAfter = reader.getBudget();
+  const budgetBefore = budget();
+  await api.runsPage(ref, 1, first.notModified ? undefined : first.etag);
+  const budgetAfter = budget();
 
   return {
     runs: runs.slice(0, 5).map((r) => ({
@@ -74,8 +74,8 @@ export async function runGithubSpike(
     compare: {
       base: 'main',
       head,
-      aheadBy: compare.aheadBy,
-      behindBy: compare.behindBy,
+      aheadBy: compare?.ahead_by ?? 0,
+      behindBy: compare?.behind_by ?? 0,
     },
     budgetBefore,
     budgetAfter,
@@ -83,6 +83,6 @@ export async function runGithubSpike(
       budgetBefore && budgetAfter
         ? budgetAfter.remaining === budgetBefore.remaining
         : undefined,
-    tokenExpiration: reader.getTokenExpiration(),
+    tokenExpiration: api.getTokenExpiration(),
   };
 }

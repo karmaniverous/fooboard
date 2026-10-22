@@ -1,15 +1,18 @@
 /**
  * A dashboard's board screen: title, summary filters, budget, and the
  * fit/zoom viewport over the live grid. Shared by *Try the demo* and saved
- * dashboards, which differ only in their providers and header extras.
+ * dashboards, which differ only in their query environment and header
+ * extras.
  *
  * @module
  */
 
 import type { Dashboard } from '@/domain/config/dashboard';
 import type { Problem } from '@/domain/problems/problem';
-import type { BoardModel, EngineProviders } from '@/engine';
+import type { BoardModel } from '@/engine';
 import { cn, PINNED_X } from '@/lib/utils';
+import type { Around } from '@/query/instrument';
+import { useQueryEnv } from '@/query/queryEnvContext';
 
 import { BoardSummary, BudgetMeter } from './BoardChrome';
 import { BoardViewport } from './BoardViewport';
@@ -18,19 +21,22 @@ import { problemMarks } from './problemMarks';
 import { ProblemMarksContext } from './problemMarksContext';
 import { StatusLegend } from './StatusLegend';
 import { useCellFilter } from './summary';
-import { useBoardEngine } from './useBoardEngine';
+import { useBoardModel } from './useBoardModel';
 import { useBoardView } from './useBoardView';
 import { type BoardProblems, useProblems } from './useProblems';
 
 export function BoardScreen({
   dashboard,
-  providers,
+  around,
+  refreshKey,
   actions,
   onOpenProblem,
 }: {
   dashboard: Dashboard;
-  /** Must be stable between renders; a new object restarts the engine. */
-  providers: EngineProviders;
+  /** Wraps every request (the demo's simulated latency); keep stable. */
+  around?: Around;
+  /** A new value re-derives every row (a secret changed). */
+  refreshKey?: unknown;
   /** Extra header controls (credentials, editors, unmapped runs); a
    * function receives the live model. */
   actions?:
@@ -39,7 +45,10 @@ export function BoardScreen({
   /** Open the editor at a problem (clicking a marker); none in the demo. */
   onOpenProblem?: (problem: Problem) => void;
 }): React.JSX.Element {
-  const { model, now } = useBoardEngine(dashboard, providers);
+  const { model, now } = useBoardModel(dashboard, useQueryEnv(), {
+    around,
+    refreshKey,
+  });
   const view = useBoardView(
     dashboard.id,
     dashboard.rows.length,

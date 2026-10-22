@@ -1,19 +1,29 @@
 /**
  * *Try the demo* (spec.md C-23): the fictional `acme/*` board, driven by
- * the bundled demo providers, so visitors see fooboard before creating a
- * token. Only the view settings (zoom, row height) are saved, per device.
- * In development, `?latency=300` delays every demo request (spec.md §3.5).
+ * the bundled demo providers through its own query environment, never
+ * persisted, so visitors see fooboard before creating a token. Only the
+ * view settings (zoom, row height) are saved, per device. In development,
+ * `?latency=300` delays every demo request (spec.md §3.5).
  *
  * @module
  */
-import { useMemo } from 'react';
+import { useState } from 'react';
 
 import { BoardScreen } from '@/board/BoardScreen';
 import { demoDashboard } from '@/demo/board';
 import { demoProviders } from '@/engine';
-import { withDemoLatency } from '@/perf';
+import { demoLatency } from '@/perf';
+import { createQueryEnv } from '@/query/client';
+import { QueryProvider } from '@/query/QueryProvider';
 
 export function DemoPage(): React.JSX.Element {
-  const providers = useMemo(() => withDemoLatency(demoProviders()), []);
-  return <BoardScreen dashboard={demoDashboard} providers={providers} />;
+  const [env] = useState(() =>
+    createQueryEnv({ providers: (hooks) => demoProviders(hooks) }),
+  );
+  const [around] = useState(demoLatency);
+  return (
+    <QueryProvider env={env}>
+      <BoardScreen dashboard={demoDashboard} around={around} />
+    </QueryProvider>
+  );
 }
