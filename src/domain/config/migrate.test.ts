@@ -86,6 +86,16 @@ describe('migrate', () => {
     });
   });
 
+  it('changes nothing when the v4 to v5 step runs again', () => {
+    const once = addSettings({
+      dashboards: [
+        { id: 'a' },
+        { id: 'b', settings: { requestsInFlight: { github: 3, aws: 4 } } },
+      ],
+    });
+    expect(addSettings(once)).toEqual(once);
+  });
+
   it('refuses a version with no step to the next', () => {
     expect(() =>
       migrate({ schemaVersion: CURRENT_SCHEMA_VERSION - 1 }, {}, 0),

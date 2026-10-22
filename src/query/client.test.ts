@@ -1,13 +1,17 @@
 /**
  * Tests for the query environment (spec.md §3.1): the query defaults
- * (transient failures retry, 4xx answers never do; focus refetches only
- * what is due; polling pauses while the tab is hidden), budgets recorded
- * from responses, and a changed secret dropping only that credential's
- * queries.
+ * (transient failures retry, 4xx answers never do; focus and reconnect
+ * refetch only what is due; polling pauses while the tab is hidden),
+ * budgets recorded from responses, and a changed secret dropping only
+ * that credential's queries.
  *
  * @module
  */
-import { focusManager, QueryObserver } from '@tanstack/query-core';
+import {
+  focusManager,
+  onlineManager,
+  QueryObserver,
+} from '@tanstack/query-core';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { GitHubApi } from '@/lib/github';
@@ -29,6 +33,7 @@ describe('createQueryEnv', () => {
   });
   afterEach(() => {
     focusManager.setFocused(undefined);
+    onlineManager.setOnline(true);
     vi.useRealTimers();
   });
 
@@ -84,6 +89,43 @@ describe('createQueryEnv', () => {
 
     // Visible again: only the query whose data went stale refetches.
     focusManager.setFocused(true);
+    await vi.advanceTimersByTimeAsync(0);
+    expect(reads).toEqual(['fast']);
+    for (const stop of stops) stop();
+  });
+
+  it('refetches on reconnect only what is due', async () => {
+    const reads: string[] = [];
+    const { client } = testQueryEnv({
+      github: () =>
+        fakeGitHubApi({
+          runsPage: ({ repo }) => {
+            reads.push(repo);
+            return Promise.resolve(fetched([]));
+          },
+        }),
+    });
+    const stops = (
+      [
+        ['fast', ACTIVE_INTERVAL_MS],
+        ['slow', IDLE_INTERVAL_MS],
+      ] as const
+    ).map(([repo, interval]) =>
+      new QueryObserver(client, {
+        queryKey: runs(`acme/${repo}`),
+        refetchInterval: interval,
+        staleTime: interval,
+      }).subscribe(() => undefined),
+    );
+    await vi.advanceTimersByTimeAsync(0);
+    // Hidden and offline, so nothing polls while the fast data goes stale.
+    focusManager.setFocused(false);
+    onlineManager.setOnline(false);
+    reads.length = 0;
+    await vi.advanceTimersByTimeAsync(ACTIVE_INTERVAL_MS * 3);
+    expect(reads).toEqual([]);
+
+    onlineManager.setOnline(true);
     await vi.advanceTimersByTimeAsync(0);
     expect(reads).toEqual(['fast']);
     for (const stop of stops) stop();
