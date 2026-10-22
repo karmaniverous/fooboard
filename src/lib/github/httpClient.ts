@@ -25,6 +25,7 @@ import {
   parseRateLimitHeaders,
   type RateLimitBudget,
 } from './rateLimit';
+import { HTTP_STATUS } from './status';
 
 /** A `fetch`-compatible function, injectable for tests (spec.md: no real network in tests). */
 export type FetchLike = (
@@ -36,15 +37,6 @@ export type FetchLike = (
 const SECONDARY_LIMIT = /secondary rate limit/i;
 
 const TOKEN_EXPIRATION_HEADER = 'github-authentication-token-expiration';
-
-/** HTTP statuses the client tells apart. */
-const HTTP = {
-  notModified: 304,
-  unauthorized: 401,
-  forbidden: 403,
-  notFound: 404,
-  tooManyRequests: 429,
-} as const;
 
 /** A response with a body: the parsed JSON, its ETag and `Link` header,
  * and whether `fetch` followed a redirect to reach it (a renamed repo,
@@ -115,12 +107,18 @@ export class GitHubHttpClient {
     const expiration = res.headers.get(TOKEN_EXPIRATION_HEADER);
     if (expiration) this.tokenExpiration = expiration;
 
-    if (res.status === HTTP.notModified && etag) return { notModified: true };
-    if (res.status === HTTP.unauthorized) throw new GitHubAuthError(path);
-    if (res.status === HTTP.notFound) throw new GitHubNotFoundError(path);
+    if (res.status === HTTP_STATUS.notModified && etag)
+      return { notModified: true };
+    if (res.status === HTTP_STATUS.unauthorized)
+      throw new GitHubAuthError(path);
+    if (res.status === HTTP_STATUS.notFound)
+      throw new GitHubNotFoundError(path);
 
     const text = await this.readBody(res, path);
-    if (res.status === HTTP.forbidden || res.status === HTTP.tooManyRequests) {
+    if (
+      res.status === HTTP_STATUS.forbidden ||
+      res.status === HTTP_STATUS.tooManyRequests
+    ) {
       // Secondary limits can arrive as a plain 403 whose only signal is
       // the error message.
       if (

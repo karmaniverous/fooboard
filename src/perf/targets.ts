@@ -14,7 +14,7 @@ export const TIMING_PREFIX = 'fooboard-timing';
 
 /** Mark and measure names (User Timing). */
 export const TIMING_NAMES = {
-  /** Mark: the board's engine started (the board opened). */
+  /** Mark: the board model started (the board opened). */
   open: `${TIMING_PREFIX}:open`,
   /** Mark and measure: the first non-empty status cell was committed. */
   firstCell: `${TIMING_PREFIX}:first-cell`,

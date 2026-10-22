@@ -15,6 +15,7 @@ import { describeError } from '@/lib/errors';
 import { isAuthFailure, isNotFound, isRateLimit } from '@/query/errors';
 
 import { emptyViews } from './cells';
+import type { Need, RowDerivation } from './need';
 import type { CellView } from './types';
 
 /** The cell text for a repo or app that is gone. */
@@ -56,22 +57,45 @@ export const failedView = (
 ): CellView | undefined =>
   failedViews(outcome, [{ id: 'cell' }], () => set).cell;
 
+/** A row whose read of `what` failed with `outcome`: every cell shows
+ * it, with its problem; the row keeps observing `needs`. */
+export function failedDerivation(
+  outcome: FailureOutcome,
+  row: { id: string; stages: readonly { id: string }[] },
+  setFor: (stageId: string) => StatusSet,
+  what: string,
+  needs: Need[],
+): RowDerivation {
+  const note = failureProblem(outcome, row.id, what);
+  return {
+    cells: failedViews(outcome, row.stages, setFor),
+    needs,
+    problems: note ? [note] : [],
+  };
+}
+
+/** A problem on row `rowId` whose Fix opens the row. */
+export function rowProblem(
+  rowId: string,
+  message: string,
+  dismissable: boolean,
+): Problem {
+  const scope = { kind: 'row', id: rowId } as const;
+  return problem(scope, message, dismissable, { target: scope });
+}
+
 /** The board problem for `outcome` reading `what` for row `rowId`. */
 export function failureProblem(
   outcome: FailureOutcome,
   rowId: string,
   what: string,
 ): Problem | undefined {
-  const scope = { kind: 'row', id: rowId } as const;
   if (outcome.kind === 'needs-credential') return undefined;
   if (outcome.kind === 'not-found')
-    return problem(
-      scope,
+    return rowProblem(
+      rowId,
       `${what} wasn't found, or its credential can no longer see it: re-pick or remove it`,
       false,
-      { target: scope },
     );
-  return problem(scope, `Couldn't read ${what}: ${outcome.message}`, true, {
-    target: scope,
-  });
+  return rowProblem(rowId, `Couldn't read ${what}: ${outcome.message}`, true);
 }

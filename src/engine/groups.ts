@@ -28,7 +28,7 @@ import {
   type RowEntry,
 } from './rowDerive';
 import type { CellView, UnmappedRun } from './types';
-import { windowHints } from './windowHints';
+import { fullReadHints } from './windowHints';
 
 export interface GroupEntry {
   unmapped: UnmappedRun[];
@@ -110,12 +110,12 @@ export function computeGroup(
     reading,
     new Map([[appKey(plan.app), { records: app.records }]]),
   );
-  const hints = app.full
-    ? windowHints(
-        Object.fromEntries(readers.map((r) => [r.id, cells(r.id)])),
-        ctx.source,
-      )
-    : [];
+  const hints = fullReadHints(
+    app.full,
+    readers.map((r) => r.id),
+    cells,
+    ctx.source,
+  );
   return {
     unmapped,
     problems: [...translationProblems(ctx.source, app.keyProblems), ...hints],

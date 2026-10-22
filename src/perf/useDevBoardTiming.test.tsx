@@ -7,7 +7,7 @@ import type { Dashboard } from '@/domain/config/dashboard';
 import { createBoardModel } from '@/engine';
 import { emptyModel } from '@/engine/model';
 import type { RequestCall } from '@/query/instrument';
-import { demoEnv, fullModel } from '@/test/boardModel';
+import { demoEnv, FILL_TIMEOUT_MS, fullModel } from '@/test/boardModel';
 
 import type { TimingSink } from './session';
 import type { TimingSummary } from './summary';
@@ -20,8 +20,6 @@ import {
 
 /** How long the demo board may take to fill at its simulated latency,
  * with the whole suite running alongside. */
-const FILL_TIMEOUT_MS = 10_000;
-
 /** A request of the demo's GitHub token. */
 const runsCall: RequestCall = {
   provider: 'github',

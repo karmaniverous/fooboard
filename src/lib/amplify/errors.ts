@@ -3,11 +3,14 @@
  * service exceptions identified by `name`; this module maps the ones the
  * board reacts to: a missing app (shown as an error cell), bad or expired
  * credentials (shown as *needs credential*), and throttling (the
- * credential's limiter pauses for AWS's suggested delay, Decision 21). Credentials never appear in messages: the SDK
+ * credential's limiter pauses for AWS's suggested delay, Decision 21).
+ * Credentials never appear in messages: the SDK
  * doesn't include them, and these wrappers add only the operation name.
  *
  * @module
  */
+
+import { secondsToMs } from '@/lib/retryAfter';
 
 /** Base class for the errors this adapter raises. */
 class AmplifyReaderError extends Error {
@@ -53,8 +56,6 @@ const THROTTLE_ERRORS = new Set([
 /** Default wait after throttling when AWS gives no hint (Decision 21). */
 export const DEFAULT_THROTTLE_MS = 5_000;
 
-const MS_PER_SECOND = 1_000;
-
 /** The header carrying AWS's suggested delay, in seconds. */
 const RETRY_AFTER = 'retry-after';
 
@@ -75,10 +76,7 @@ function throttleDelayMs(err: Error): number {
     typeof headers === 'object' && headers !== null
       ? Reflect.get(headers, RETRY_AFTER)
       : undefined;
-  const seconds = typeof raw === 'string' ? Number(raw) : NaN;
-  return Number.isFinite(seconds) && seconds >= 0
-    ? seconds * MS_PER_SECOND
-    : DEFAULT_THROTTLE_MS;
+  return secondsToMs(raw) ?? DEFAULT_THROTTLE_MS;
 }
 
 /** Map an AWS SDK error to a typed Amplify error; other values pass through. */

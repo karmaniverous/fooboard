@@ -18,11 +18,12 @@ import {
   RateLimitedError,
 } from '@/lib/github/errors';
 import {
-  DEMO_TOKEN,
   demoContext,
   demoGithubRow,
   demoRuns,
   jobsRequest,
+  keyOf,
+  runsKey,
   seedDemoRepo,
   seedError,
   seedRuns,
@@ -33,9 +34,6 @@ import { NOT_FOUND } from './providerOutcome';
 
 const REPO = 'acme/api-core';
 const row = demoGithubRow('api-core');
-const runsKey = (page = 1) =>
-  JSON.stringify(['github', DEMO_TOKEN, { call: 'runs', repo: REPO, page }]);
-const keyOf = (n: { key: unknown }) => JSON.stringify(n.key);
 
 describe('deriveGithubRow failures', () => {
   it('shows a failed jobs read on the cell, dropping its cached jobs', async () => {
@@ -83,7 +81,7 @@ describe('deriveGithubRow failures', () => {
     expect(out.cells.dev?.derivation).toMatchObject({ kind: 'empty', state });
     expect(out.problems.length > 0).toBe(problem);
     // The runs query is still observed, so the row recovers.
-    expect(out.needs.map(keyOf)).toContain(runsKey());
+    expect(out.needs.map(keyOf)).toContain(runsKey(REPO));
   });
 
   it('marks a 404 not found, on the row, not dismissable', async () => {

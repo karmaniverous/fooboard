@@ -24,7 +24,7 @@ import {
   type PlacedRecord,
 } from '@/domain/model/cell';
 import type { SourceRuleOf } from '@/domain/model/sourceRule';
-import { type Problem, problem } from '@/domain/problems/problem';
+import type { Problem } from '@/domain/problems/problem';
 import { evaluateRule } from '@/domain/rules/check';
 import { type Fetched, pagesFor, type WorkflowRun } from '@/lib/github';
 import { githubSnapshot } from '@/query/cache';
@@ -41,10 +41,11 @@ import { type Candidate, githubCandidates } from './githubCandidates';
 import { jobsOf } from './githubJobs';
 import type { Need, RowDerivation } from './need';
 import {
+  failedDerivation,
   failedView,
-  failedViews,
   failureOutcome,
   failureProblem,
+  rowProblem,
 } from './providerOutcome';
 import { provisionalCell } from './provisional';
 import type { CellView } from './types';
@@ -99,26 +100,19 @@ function renamedProblem(
   first: Fetched<WorkflowRun[]>,
 ): Problem | undefined {
   const now = first.data[0]?.repository?.full_name;
-  const scope = { kind: 'row', id: row.id } as const;
   const renamed =
     now !== undefined && now.toLowerCase() !== row.repo.toLowerCase();
   if (renamed)
-    return problem(
-      scope,
+    return rowProblem(
+      row.id,
       `${row.repo} was renamed to ${now}: re-pick the repo`,
       false,
-      {
-        target: scope,
-      },
     );
   if (first.redirected && now === undefined)
-    return problem(
-      scope,
+    return rowProblem(
+      row.id,
       `${row.repo} has moved (GitHub redirected): re-pick the repo`,
       false,
-      {
-        target: scope,
-      },
     );
   return undefined;
 }
@@ -203,14 +197,14 @@ export function deriveGithubRow(
       freshness: rootFreshness(active, ctx.overBudget),
     }));
   const failure = failureOutcome(runs.first.failed, runs.first.error);
-  if (failure) {
-    const note = failureProblem(failure, row.id, row.repo);
-    return {
-      cells: failedViews(failure, ctx.stages, setFor),
-      needs: rootNeeds(false),
-      problems: note ? [note] : [],
-    };
-  }
+  if (failure)
+    return failedDerivation(
+      failure,
+      { id: row.id, stages: ctx.stages },
+      setFor,
+      row.repo,
+      rootNeeds(false),
+    );
   const firstPage = runs.first.data;
   if (!firstPage) return { cells: {}, needs: rootNeeds(false), problems: [] };
 

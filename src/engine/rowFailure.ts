@@ -10,10 +10,9 @@
 import { cellRulesFor } from '@/domain/config/cellRules';
 import type { Dashboard } from '@/domain/config/dashboard';
 import type { Row } from '@/domain/config/row';
-import { problem } from '@/domain/problems/problem';
 import { describeError } from '@/lib/errors';
 
-import { failedViews } from './providerOutcome';
+import { failedViews, rowProblem } from './providerOutcome';
 import type { RowEntry } from './rowDerive';
 import type { BoardCell } from './types';
 
@@ -39,12 +38,10 @@ export function failedRow(
     badge: undefined,
     settled: true,
   }));
-  const scope = { kind: 'row', id: row.id } as const;
-  const note = problem(
-    scope,
+  const note = rowProblem(
+    row.id,
     `Couldn't show ${row.displayName}: ${message}`,
     true,
-    { target: scope },
   );
   return {
     cells,

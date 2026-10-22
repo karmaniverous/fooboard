@@ -8,6 +8,7 @@
  */
 import { createDemoAmplifyReaderFor } from '@/demo/amplify';
 import { createDemoGitHubApi } from '@/demo/github';
+import { getOrCreate } from '@/lib/memo';
 import type { ProviderHooks } from '@/query/client';
 import type { QueryProviders } from '@/query/fetchers';
 
@@ -22,16 +23,12 @@ export function demoProviders(
   const amplify = createDemoAmplifyReaderFor(clock);
   const github = new Map<string, ReturnType<typeof createDemoGitHubApi>>();
   return {
-    github: (id) => {
-      let api = github.get(id);
-      if (!api) {
-        api = createDemoGitHubApi(clock, (budget) => {
+    github: (id) =>
+      getOrCreate(github, id, () =>
+        createDemoGitHubApi(clock, (budget) => {
           hooks.onBudget(id, budget);
-        });
-        github.set(id, api);
-      }
-      return api;
-    },
+        }),
+      ),
     amplify: () => amplify,
     fingerprint: () => DEMO_FINGERPRINT,
   };

@@ -10,11 +10,13 @@
 import { QueryClientProvider } from '@tanstack/react-query';
 import { lazy, Suspense } from 'react';
 
+import { DEV_AIDS } from '@/lib/devAids';
+
 import type { QueryEnv } from './client';
 import { QueryEnvContext } from './queryEnvContext';
 
 /** The Devtools, development builds only (loaded on first render). */
-const Devtools = import.meta.env.DEV
+const Devtools = DEV_AIDS
   ? lazy(async () => ({
       default: (await import('@tanstack/react-query-devtools'))
         .ReactQueryDevtools,
@@ -32,7 +34,7 @@ export function QueryProvider({
     <QueryEnvContext value={env}>
       <QueryClientProvider client={env.client}>
         {children}
-        {Devtools && import.meta.env.MODE !== 'test' && (
+        {Devtools && (
           <Suspense fallback={null}>
             <Devtools />
           </Suspense>

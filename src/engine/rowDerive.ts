@@ -54,8 +54,11 @@ export const githubGroupId = (credentialId: string, repo: string): string =>
 export const amplifyGroupId = (key: string): string =>
   JSON.stringify(['amplify', key]);
 
-const overBudget = (env: DeriveEnv, credentialId: string) =>
-  isOverPollingShare(env.budgets.get(credentialId));
+/** Is `credentialId`'s token past its polling share (it polls slower)? */
+export const overBudget = (
+  env: Pick<DeriveEnv, 'budgets'>,
+  credentialId: string,
+): boolean => isOverPollingShare(env.budgets.get(credentialId));
 
 export function githubContext(
   env: DeriveEnv,

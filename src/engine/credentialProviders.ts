@@ -11,6 +11,7 @@
 import { createAmplifyReader } from '@/lib/amplify/reader';
 import type { AmplifyReaderFor } from '@/lib/amplify/rowJobs';
 import { createGitHubApi, type GitHubApi } from '@/lib/github';
+import { getOrCreate } from '@/lib/memo';
 import type { ProviderHooks } from '@/query/client';
 import type { QueryProviders } from '@/query/fetchers';
 import type {
@@ -61,18 +62,14 @@ export function credentialProviders(
   const amplify = cachedBySecret<AmplifyReaderFor>(store, (_id, secret) => {
     if (secret.kind !== 'aws') return undefined;
     const byRegion = new Map<string, ReturnType<typeof createAmplifyReader>>();
-    return ({ region }) => {
-      let reader = byRegion.get(region);
-      if (!reader) {
-        reader = createAmplifyReader({
+    return ({ region }) =>
+      getOrCreate(byRegion, region, () =>
+        createAmplifyReader({
           region,
           accessKeyId: secret.accessKeyId,
           secretAccessKey: secret.secretAccessKey,
-        });
-        byRegion.set(region, reader);
-      }
-      return reader;
-    };
+        }),
+      );
   });
 
   return {

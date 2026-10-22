@@ -15,6 +15,7 @@ import {
   type QueryObserverOptions,
 } from '@tanstack/query-core';
 
+import { getOrCreate } from '@/lib/memo';
 import { faster, type Freshness } from '@/query/intervals';
 
 import type { Need } from './need';
@@ -62,12 +63,11 @@ export interface ObserverSet {
 
 export function createObserverSet(client: QueryClient): ObserverSet {
   const observed = new Map<string, Observed>();
-  let versions = versionsByClient.get(client);
-  if (!versions) {
-    versions = new Map();
-    versionsByClient.set(client, versions);
-  }
-  const seen = versions;
+  const seen = getOrCreate(
+    versionsByClient,
+    client,
+    () => new Map<string, string>(),
+  );
   return {
     sync(needs) {
       for (const [hash, need] of needs) {

@@ -11,15 +11,30 @@ import type { SourceRule } from '@/domain/model/sourceRule';
 import type { Problem } from '@/domain/problems/problem';
 import { windowHint } from '@/domain/problems/runtime';
 
+/** A row's derived cells, by stage id. */
+type RowCells = Readonly<
+  Partial<Record<string, { derivation: CellDerivation }>>
+>;
+
+/** Hints for `rowIds`' empty cells when the read came back `full`,
+ * none otherwise; `cells` gives a row's derived cells. */
+export const fullReadHints = (
+  full: boolean,
+  rowIds: readonly string[],
+  cells: (rowId: string) => RowCells | undefined,
+  source: SourceRule,
+): Problem[] =>
+  full
+    ? windowHints(
+        Object.fromEntries(rowIds.map((id) => [id, cells(id) ?? {}])),
+        source,
+      )
+    : [];
+
 /** Hints for every empty cell in `rows` (row id to stage id to cell),
  * read with `source`. */
-export function windowHints(
-  rows: Readonly<
-    Record<
-      string,
-      Readonly<Partial<Record<string, { derivation: CellDerivation }>>>
-    >
-  >,
+function windowHints(
+  rows: Readonly<Record<string, RowCells>>,
   source: SourceRule,
 ): Problem[] {
   return Object.entries(rows).flatMap(([rowId, cells]) =>

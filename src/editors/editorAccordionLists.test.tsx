@@ -17,16 +17,13 @@ import { branchRules } from '@/domain/config/placement';
 import { RESERVED_KEYS } from '@/domain/model/keys';
 import { envRender } from '@/test/envRender';
 import { focusElement } from '@/test/focus';
-import { expand, itemTrigger } from '@/test/openItem';
+import { expand, isOpen, itemTrigger } from '@/test/openItem';
 
 import { DashboardEditor } from './DashboardEditor';
 import type { EditorDraft } from './draft';
 import { setup, tab } from './editorSectionsHarness';
 import { customiseSource } from './sources/customSource';
 import { UnknownRunsList } from './statuses/UnknownRunsList';
-
-const isOpen = (name: string) =>
-  itemTrigger(name).getAttribute('aria-expanded') === 'true';
 
 const board = customiseSource(
   DashboardSchema.parse({

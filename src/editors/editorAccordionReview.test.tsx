@@ -17,16 +17,13 @@ import { type Dashboard, DashboardSchema } from '@/domain/config/dashboard';
 import { branchRules } from '@/domain/config/placement';
 import type { KeyDef } from '@/domain/model/sourceRule';
 import { envRender } from '@/test/envRender';
-import { expand, itemTrigger } from '@/test/openItem';
+import { expand, isOpen } from '@/test/openItem';
 
 import { DashboardEditor } from './DashboardEditor';
 import type { EditorDraft } from './draft';
 import { KeysEditor } from './sources/KeysEditor';
 import { customise } from './statuses/customSet';
 import { StatusSetsEditor } from './statuses/StatusSetsEditor';
-
-const isOpen = (name: string) =>
-  itemTrigger(name).getAttribute('aria-expanded') === 'true';
 
 const board = DashboardSchema.parse({
   id: 'd',

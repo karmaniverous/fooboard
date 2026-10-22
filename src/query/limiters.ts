@@ -10,6 +10,7 @@ import type { CredentialKind } from '@/domain/config/credentials';
 import type { Dashboard } from '@/domain/config/dashboard';
 import type { Provider } from '@/domain/config/providers';
 import { DEFAULT_REQUESTS_IN_FLIGHT } from '@/domain/config/settings';
+import { getOrCreate } from '@/lib/memo';
 
 import { createLimiter, type Limiter, type Timers } from './limiter';
 
@@ -37,16 +38,13 @@ export function createLimiters({
   return {
     for(provider, credentialId) {
       const key = id(provider, credentialId);
-      let limiter = limiters.get(key);
-      if (!limiter) {
-        limiter = createLimiter({
+      return getOrCreate(limiters, key, () =>
+        createLimiter({
           max: caps.get(key) ?? DEFAULT_REQUESTS_IN_FLIGHT,
           now,
           timers,
-        });
-        limiters.set(key, limiter);
-      }
-      return limiter;
+        }),
+      );
     },
     configure({ credentials, settings }) {
       for (const credential of credentials) {

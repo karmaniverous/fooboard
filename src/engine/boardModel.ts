@@ -13,13 +13,17 @@ import { unique } from 'radash';
 
 import type { Dashboard } from '@/domain/config/dashboard';
 import { rowGithubCredentialId } from '@/domain/config/inheritance';
-import { isOverPollingShare } from '@/lib/github';
 import type { QueryEnv } from '@/query/client';
 
 import { computeGroup, type GroupEntry, planGroups } from './groups';
 import { emptyModel, githubCredentialIds } from './model';
 import { createObserverSet, mergeNeeds } from './observers';
-import { type DeriveEnv, deriveRow, type RowEntry } from './rowDerive';
+import {
+  type DeriveEnv,
+  deriveRow,
+  overBudget,
+  type RowEntry,
+} from './rowDerive';
 import { failedRow } from './rowFailure';
 import { type BoardModel, cellKey } from './types';
 
@@ -62,7 +66,7 @@ export function createBoardModel({
   const listeners = new Set<() => void>();
   const observers = createObserverSet(env.client);
   let feeds = new Map<string, Set<string>>();
-  const overBudget = new Map<string, boolean>();
+  const wasOverBudget = new Map<string, boolean>();
 
   const publish = () => {
     const cells: BoardModel['cells'] = {};
@@ -162,9 +166,9 @@ export function createBoardModel({
   // budget re-derives its rows (their polling slows or speeds).
   const unsubscribeBudgets = env.budgets.subscribe(() => {
     for (const id of githubCredentialIds(dashboard)) {
-      const over = isOverPollingShare(env.budgets.get(id));
-      if ((overBudget.get(id) ?? false) === over) continue;
-      overBudget.set(id, over);
+      const over = overBudget(env, id);
+      if ((wasOverBudget.get(id) ?? false) === over) continue;
+      wasOverBudget.set(id, over);
       for (const row of dashboard.rows)
         if (rowGithubCredentialId(dashboard, row) === id) dirty.add(row.id);
     }

@@ -154,7 +154,7 @@ export function summarise(input: {
   fullBoard?: Moment;
   records: readonly RequestRecord[];
   /** Requests made meanwhile for boards no longer shown (e.g. a closed
-   * board's polling, or the engine
+   * board's polling, or the board model
    * React's development StrictMode starts and stops). */
   strayRequests: number;
 }): TimingSummary {
@@ -179,7 +179,7 @@ export function summarise(input: {
     );
   if (input.strayRequests > 0)
     notes.push(
-      `${String(input.strayRequests)} requests ran meanwhile for boards no longer shown (StrictMode's discarded engine, or a closed board's reads still running), sharing the credentials' queues.`,
+      `${String(input.strayRequests)} requests ran meanwhile for boards no longer shown (StrictMode's discarded board model, or a closed board's reads still running), sharing the credentials' queues.`,
     );
   return {
     board: input.board,

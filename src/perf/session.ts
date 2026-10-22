@@ -52,7 +52,7 @@ export interface TimingSession {
   around: Around;
   /** The board committed `model` to the DOM. */
   committed(model: BoardModel): void;
-  /** The board closed (its engine stopped). */
+  /** The board closed (its board model stopped). */
   stop(): void;
   /** Requests recorded so far (until the full board). */
   requests(): readonly RequestRecord[];
@@ -63,7 +63,7 @@ export interface TimingSession {
 
 /** Does `row` need `call`'s read? GitHub reads are per repo and token (a
  * GitHub row's runs, an Amplify row's compares); Amplify reads per app,
- * region and key (the engine's `appKey`), the key being the source's own,
+ * region and key (`appKey`), the key being the source's own,
  * else the one its row inherits (spec.md C-1a). */
 export function rowNeeds(
   dashboard: Dashboard,
@@ -121,7 +121,7 @@ export function createTimingSession(input: TimingSessionInput): TimingSession {
     const end = clock();
     // Polling after the full board isn't part of the load, but once the
     // board has closed, what still settles may be stray for the next one.
-    // (Its engine stops before the next board's starts, so polling while
+    // (Its board model stops before the next board's starts, so polling while
     // it's open is never stray, and needn't be kept.)
     if (fullBoard) {
       if (stopped) settledAfterClose.push(end);
@@ -193,7 +193,7 @@ export function createTimingSession(input: TimingSessionInput): TimingSession {
       if (stopped) return;
       stopped = true;
       // A board closed before it was full reports what it had, unless
-      // nothing was shown yet (e.g. StrictMode's discarded first engine).
+      // nothing was shown yet (e.g. StrictMode's discarded first board model).
       if (firstCell && !fullBoard) sink.report(summary());
     },
     requests: () => records,

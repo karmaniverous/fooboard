@@ -11,6 +11,9 @@ import type { BoardModelHandle } from '@/engine/boardModel';
 import type { BoardModel } from '@/engine/types';
 import { createQueryEnv, type QueryEnv } from '@/query/client';
 
+/** How long a test waits for a demo board to fill. */
+export const FILL_TIMEOUT_MS = 10_000;
+
 /** Retries in tests wait nothing. */
 export function withoutRetryDelay(env: QueryEnv): QueryEnv {
   env.client.setDefaultOptions({

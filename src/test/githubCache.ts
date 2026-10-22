@@ -14,7 +14,7 @@ import { cellRulesFor } from '@/domain/config/cellRules';
 import type { GithubRow } from '@/domain/config/row';
 import { sourceRuleFor } from '@/domain/model/sources';
 import type { GithubContext } from '@/engine/githubRow';
-import type { Job, WorkflowRun } from '@/lib/github';
+import { type Job, repoRef, type WorkflowRun } from '@/lib/github';
 import { githubKey, type GithubRequest } from '@/query/keys';
 
 import { fetched } from './fakeReaders';
@@ -47,20 +47,16 @@ export const demoContext = (
 });
 
 const api = createDemoGitHubApi(() => 0);
-const ref = (repo: string) => {
-  const [owner = '', name = ''] = repo.split('/');
-  return { owner, repo: name };
-};
 
 /** The demo's runs of `repo` (`owner/name`). */
 export async function demoRuns(repo: string): Promise<WorkflowRun[]> {
-  const res = await api.runsPage(ref(repo), 1);
+  const res = await api.runsPage(repoRef(repo), 1);
   return res.notModified ? [] : res.data;
 }
 
 /** The demo's jobs of a run. */
 export async function demoJobs(repo: string, runId: number): Promise<Job[]> {
-  const res = await api.jobsPage(ref(repo), runId, 1);
+  const res = await api.jobsPage(repoRef(repo), runId, 1);
   return res.notModified ? [] : res.data;
 }
 
@@ -77,6 +73,14 @@ export function seedRuns(
     fetched(runs, extra),
   );
 }
+
+/** A runs page's query key as a string, to compare with `keyOf`. */
+export const runsKey = (repo: string, page = 1): string =>
+  JSON.stringify(['github', DEMO_TOKEN, { call: 'runs', repo, page }]);
+
+/** A need's query key as a string. */
+export const keyOf = (need: { key: unknown }): string =>
+  JSON.stringify(need.key);
 
 /** The jobs request of a run (page 1). */
 export const jobsRequest = (

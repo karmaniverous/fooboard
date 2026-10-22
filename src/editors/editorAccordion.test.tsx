@@ -13,14 +13,11 @@ const render = envRender();
 import { DashboardSchema } from '@/domain/config/dashboard';
 import { branchRules } from '@/domain/config/placement';
 import { envRender } from '@/test/envRender';
-import { expand, itemTrigger } from '@/test/openItem';
+import { expand, isOpen, itemTrigger } from '@/test/openItem';
 
 import { DashboardEditor } from './DashboardEditor';
 import type { EditorDraft } from './draft';
 import { setup, tab } from './editorSectionsHarness';
-
-const isOpen = (name: string) =>
-  itemTrigger(name).getAttribute('aria-expanded') === 'true';
 
 // jsdom doesn't lay out, so has no scrollIntoView; a test may stub one.
 afterEach(() => {

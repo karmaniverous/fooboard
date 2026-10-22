@@ -20,13 +20,12 @@ import {
   GitHubNotFoundError,
   RateLimitedError,
 } from '@/lib/github/errors';
+import { HTTP_STATUS } from '@/lib/github/status';
 
 /** Retries after the first attempt, for network errors and 5xx. */
 export const MAX_RETRIES = 2;
 /** The first retry's delay; each later one doubles it. */
 export const RETRY_BASE_DELAY_MS = 1_000;
-/** The first HTTP status of a server error. */
-const SERVER_ERROR_STATUS = 500;
 
 /** A provider's rate limit or throttle: the cached data stays. */
 export const isRateLimit = (err: unknown): boolean =>
@@ -47,7 +46,8 @@ const isAwsServerFault = (err: unknown): boolean =>
 /** Worth trying again: the network failed, or the server did. */
 export function isTransient(err: unknown): boolean {
   if (err instanceof GitHubNetworkError) return true;
-  if (err instanceof GitHubHttpError) return err.status >= SERVER_ERROR_STATUS;
+  if (err instanceof GitHubHttpError)
+    return err.status >= HTTP_STATUS.serverError;
   // `fetch` rejects with a TypeError when the network fails.
   return err instanceof TypeError || isAwsServerFault(err);
 }

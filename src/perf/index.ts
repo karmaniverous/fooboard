@@ -9,12 +9,11 @@
  * @module
  */
 import type { BoardModel } from '@/engine/types';
+import { DEV_AIDS } from '@/lib/devAids';
 import { type Around, passThrough } from '@/query/instrument';
 
 import { demoLatencyMs, latencyAround } from './demoLatency';
 import { type StartTiming, useDevBoardTiming } from './useDevBoardTiming';
-
-const ENABLED = import.meta.env.DEV && import.meta.env.MODE !== 'test';
 
 const untimed: StartTiming = () => ({
   around: passThrough,
@@ -26,12 +25,12 @@ const useNoBoardTiming = (): StartTiming => untimed;
 
 /** The board's timing hook: call it with the rendered model; start a
  * timing for each board model with the function it returns. */
-export const useBoardTiming: (model: BoardModel) => StartTiming = ENABLED
+export const useBoardTiming: (model: BoardModel) => StartTiming = DEV_AIDS
   ? useDevBoardTiming
   : useNoBoardTiming;
 
 /** The demo's simulated latency the URL asks for (`?latency=300`), in
  * development builds only; `undefined` for none. */
-export const demoLatency: () => Around | undefined = ENABLED
+export const demoLatency: () => Around | undefined = DEV_AIDS
   ? () => latencyAround(demoLatencyMs(window.location.search))
   : () => undefined;

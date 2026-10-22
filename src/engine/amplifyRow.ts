@@ -26,7 +26,7 @@ import { amplifyKey } from '@/query/keys';
 import { type AppState, appState } from './amplifyApp';
 import { emptyViews, finalView } from './cells';
 import type { Need, RowDerivation } from './need';
-import { failedViews, failureProblem } from './providerOutcome';
+import { failedDerivation } from './providerOutcome';
 import type { CellView } from './types';
 
 /** What every Amplify row derivation shares. */
@@ -85,18 +85,14 @@ export function deriveAmplifyRow(
   const states = apps.map((app) => appState(ctx.client, app, ctx.source));
   const failedAt = states.findIndex((s) => s.failure);
   const failure = states[failedAt]?.failure;
-  if (failure) {
-    const note = failureProblem(
+  if (failure)
+    return failedDerivation(
       failure,
-      row.id,
+      { id: row.id, stages: ctx.stages },
+      setFor,
       `Amplify app ${apps[failedAt]?.appId ?? ''}`,
+      appNeeds(states, false),
     );
-    return {
-      cells: failedViews(failure, ctx.stages, setFor),
-      needs: appNeeds(states, false),
-      problems: note ? [note] : [],
-    };
-  }
   const records = states.flatMap((s) => s.records);
   const complete = states.every((s) => s.complete);
   const updatedAt =

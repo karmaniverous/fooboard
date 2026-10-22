@@ -24,6 +24,8 @@ import {
   demoJobs,
   demoRuns,
   jobsRequest,
+  keyOf,
+  runsKey,
   seedDemoRepo,
   seedJobs,
   seedRuns,
@@ -34,9 +36,6 @@ import type { Need } from './need';
 
 const REPO = 'acme/api-core';
 const row = demoGithubRow('api-core');
-const runsKey = (page = 1) =>
-  JSON.stringify(['github', DEMO_TOKEN, { call: 'runs', repo: REPO, page }]);
-const keyOf = (n: { key: unknown }) => JSON.stringify(n.key);
 /** The jobs needs, with the run each one reads. */
 const jobsNeeds = (needs: Need[]) =>
   needs.flatMap((need) =>
@@ -50,7 +49,7 @@ describe('deriveGithubRow', () => {
     const client = new QueryClient();
     const out = deriveGithubRow(demoContext(client, REPO), row);
     expect(out.cells).toEqual({});
-    expect(out.needs.map(keyOf)).toEqual([runsKey()]);
+    expect(out.needs.map(keyOf)).toEqual([runsKey(REPO)]);
     expect(out.needs[0]?.freshness.refetchInterval).toBe(IDLE_INTERVAL_MS);
   });
 
@@ -189,13 +188,15 @@ describe('deriveGithubRow', () => {
       ...ctx,
       source: { ...ctx.source, reader: { ...ctx.source.reader, runs: 200 } },
     };
-    expect(deriveGithubRow(wide, row).needs.map(keyOf)).toContain(runsKey(2));
+    expect(deriveGithubRow(wide, row).needs.map(keyOf)).toContain(
+      runsKey(REPO, 2),
+    );
     const narrow = {
       ...ctx,
       source: { ...ctx.source, reader: { ...ctx.source.reader, runs: 100 } },
     };
     expect(deriveGithubRow(narrow, row).needs.map(keyOf)).not.toContain(
-      runsKey(2),
+      runsKey(REPO, 2),
     );
   });
 

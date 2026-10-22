@@ -18,7 +18,7 @@ import { githubCandidates } from './githubCandidates';
 import { jobsOf } from './githubJobs';
 import { type GithubContext, runsPages } from './githubRow';
 import type { CellView, UnmappedRun } from './types';
-import { windowHints } from './windowHints';
+import { fullReadHints } from './windowHints';
 
 export interface GroupResult {
   unmapped: UnmappedRun[];
@@ -65,12 +65,12 @@ export function githubGroup(
       rows: reasons,
     });
   }
-  const hints = full
-    ? windowHints(
-        Object.fromEntries(rows.map((row) => [row.id, cells(row.id) ?? {}])),
-        ctx.source,
-      )
-    : [];
+  const hints = fullReadHints(
+    full,
+    rows.map((row) => row.id),
+    cells,
+    ctx.source,
+  );
   return {
     unmapped,
     problems: [

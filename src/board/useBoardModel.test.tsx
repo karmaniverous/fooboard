@@ -12,14 +12,12 @@ import { describe, expect, it } from 'vitest';
 import { demoDashboard } from '@/demo/board';
 import type { Dashboard } from '@/domain/config/dashboard';
 import type { Around } from '@/query/instrument';
-import { demoEnv } from '@/test/boardModel';
+import { demoEnv, FILL_TIMEOUT_MS } from '@/test/boardModel';
 
 import { useBoardModel } from './useBoardModel';
 
 /** How long the demo board may take to fill with the whole suite
  * running alongside (coverage slows it). */
-const FILL_TIMEOUT_MS = 10_000;
-
 const observing = (env: ReturnType<typeof demoEnv>) =>
   env.client
     .getQueryCache()

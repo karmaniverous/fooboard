@@ -6,6 +6,7 @@
  *
  * @module
  */
+import { getOrCreate } from '@/lib/memo';
 import { createQueryEnv, type QueryEnv } from '@/query/client';
 import type { AppStores } from '@/storage';
 
@@ -15,12 +16,9 @@ const envs = new WeakMap<AppStores, QueryEnv>();
 
 /** The query environment of the app owning `stores`. */
 export function appQueryEnv(stores: AppStores): QueryEnv {
-  let env = envs.get(stores);
-  if (!env) {
-    env = createQueryEnv({
+  return getOrCreate(envs, stores, () =>
+    createQueryEnv({
       providers: (hooks) => credentialProviders(stores.credentials, hooks),
-    });
-    envs.set(stores, env);
-  }
-  return env;
+    }),
+  );
 }
