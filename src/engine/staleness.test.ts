@@ -73,16 +73,34 @@ function setup(overBudget = false) {
 }
 
 describe('rowStaleness', () => {
-  it('needs both compares by branch pair, versioned by the commits', () => {
+  it('needs the forward compare first, versioned by the commits', () => {
     const { link } = setup();
     const { staleness, needs } = rowStaleness(link, stages, cells);
-    expect(needs.map((n) => n.key[2])).toEqual([forward, reverse]);
+    expect(needs.map((n) => n.key[2])).toEqual([forward]);
     expect(needs[0]).toMatchObject({
       freshness: { refetchInterval: IDLE_INTERVAL_MS },
       version: 'b1|d1',
     });
     expect(staleness.bali).toEqual({ badge: undefined, settled: false });
     expect(staleness.dev).toMatchObject({ settled: true });
+  });
+
+  it('reads the reverse compare only when the cell has commits its source lacks', () => {
+    const behind = setup();
+    behind.seed(forward, 3, 2, 'src');
+    const both = rowStaleness(behind.link, stages, cells);
+    expect(both.needs.map((n) => n.key[2])).toEqual([forward, reverse]);
+    expect(both.staleness.bali).toEqual({ badge: undefined, settled: false });
+
+    const contained = setup();
+    contained.seed(forward, 3, 0, 'src');
+    const one = rowStaleness(contained.link, stages, cells);
+    expect(one.needs.map((n) => n.key[2])).toEqual([forward]);
+    expect(one.staleness.bali).toMatchObject({
+      settled: true,
+      badge: { kind: 'behind', count: 3 },
+      compare: { aheadSubjects: [] },
+    });
   });
 
   it('backs off four times over budget', () => {

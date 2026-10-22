@@ -1,9 +1,9 @@
 /**
  * Staleness for one row from the cache (spec.md §3.1, §2.7): for each
- * stage with a source stage whose cells sit on different branches, two
- * compare queries keyed by branch pair, `cell...source` (the counts, and
- * the commits the cell lacks) and `source...cell` (the commits the source
- * lacks). Compares poll at the idle interval and refetch when either
+ * stage with a source stage whose cells sit on different branches,
+ * compare queries keyed by branch pair: `cell...source` (the counts, and
+ * the commits the cell lacks) and, only when that says the cell has
+ * commits its source lacks, `source...cell` (to list them). Compares poll at the idle interval and refetch when either
  * cell's commit changes. A failed compare drops its cached data and
  * unbadges its cell; a cell waiting for its compares is not settled.
  * Pure.
@@ -99,11 +99,16 @@ export function rowStaleness(
       return githubSnapshot(link.client, link.credentialId, request);
     };
     const forwardSnap = pair(own.branch, source.branch);
-    const reverseSnap = pair(source.branch, own.branch);
     const forward = answered(forwardSnap);
-    const reverse = answered(reverseSnap);
-    if (!forward || !reverse) {
-      const failed = forwardSnap.failed || reverseSnap.failed;
+    // The reverse compare only lists the commits the cell has that its
+    // source lacks: with none (`behind_by` 0) there is nothing to read.
+    const reverseSnap =
+      forward && forward.behind_by > 0
+        ? pair(source.branch, own.branch)
+        : undefined;
+    const reverse = reverseSnap ? answered(reverseSnap) : undefined;
+    if (!forward || (reverseSnap && !reverse)) {
+      const failed = forwardSnap.failed || (reverseSnap?.failed ?? false);
       staleness[stage.id] = { badge: undefined, settled: failed };
       continue;
     }
@@ -118,7 +123,7 @@ export function rowStaleness(
         sourceBranch: source.branch,
         htmlUrl: forward.html_url,
         behindSubjects: commitSubjects(forward),
-        aheadSubjects: commitSubjects(reverse),
+        aheadSubjects: reverse ? commitSubjects(reverse) : [],
       },
     };
   }
