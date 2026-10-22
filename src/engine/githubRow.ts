@@ -49,10 +49,12 @@ import {
 import { provisionalCell } from './provisional';
 import type { CellView } from './types';
 
-/** Runs per cell whose jobs load at once on a cold cache (Decision 37):
- * enough that a cell skipping a few non-matching runs (lint-only, CodeQL)
- * doesn't wait for them one at a time, few enough to spare the budget. */
-export const COLD_CANDIDATES_PER_STAGE = 3;
+/** Runs per cell whose jobs load at once on a cold cache (Decision 37),
+ * set from measurement on a 16-repo board at 10 requests in flight: 1
+ * filled it in 27 s with 228 requests, 2 in 37 s (327), 3 in 47 s (411).
+ * The stages of a row share candidates, so reading ahead mostly reads
+ * jobs no cell needs and queues them in front of those it does. */
+export const COLD_CANDIDATES_PER_STAGE = 1;
 
 /** What every GitHub row derivation of one token and repo shares. */
 export interface GithubContext {
