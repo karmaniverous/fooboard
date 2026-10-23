@@ -1,12 +1,12 @@
 /**
  * Tests for editor fixes from review: deleting an Amplify source asks
  * first; a failed repo list retries; the same repo can be
- * added twice; listed apps hide when the region changes; a region with
- * no apps says so.
+ * added twice. (The Amplify app picker's tests are in
+ * `amplifyPicker.test.tsx`.)
  *
  * @module
  */
-import { act, fireEvent, screen, within } from '@testing-library/react';
+import { fireEvent, screen, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
 import { fetched, ghRepo } from '@/test/fakeReaders';
@@ -48,46 +48,6 @@ describe('editor review fixes', () => {
       .filter((r) => r.repo === 'acme/api')
       .map((r) => r.itemRule?.checks.length ?? 0);
     expect(checks).toEqual([0, 1]);
-  });
-
-  it('hides listed apps when the region changes, before or after the response', async () => {
-    const latest = setup();
-    tab('Rows');
-    const region = screen.getByLabelText('Region');
-    // Changed while the request is pending.
-    fireEvent.click(screen.getByRole('button', { name: 'List Amplify apps' }));
-    fireEvent.change(region, { target: { value: 'eu-west-1' } });
-    await act(async () => {
-      await Promise.resolve();
-    });
-    expect(screen.queryByRole('button', { name: /site/ })).toBeNull();
-
-    // Listed for eu-west-1, then changed after the response.
-    fireEvent.click(screen.getByRole('button', { name: 'List Amplify apps' }));
-    expect(
-      await screen.findByRole('button', { name: /site/ }),
-    ).toBeInTheDocument();
-    fireEvent.change(region, { target: { value: 'us-west-2' } });
-    expect(screen.queryByRole('button', { name: /site/ })).toBeNull();
-
-    fireEvent.change(region, { target: { value: 'eu-west-1' } });
-    fireEvent.click(screen.getByRole('button', { name: /site/ }));
-    expect(latest.current.rows.at(-1)).toMatchObject({
-      sources: [{ region: 'eu-west-1', appId: 'a1' }],
-    });
-  });
-
-  it('says when the listed region has no apps', async () => {
-    setup({}, { listApps: () => Promise.resolve([]) });
-    tab('Rows');
-    fireEvent.change(screen.getByLabelText('Region'), {
-      target: { value: 'eu-north-1' },
-    });
-    fireEvent.click(screen.getByRole('button', { name: 'List Amplify apps' }));
-    const empty = await screen.findByText('No apps in eu-north-1.');
-    const list = empty.closest('ul');
-    if (!list) throw new Error('the message is not in the app list');
-    expect(within(list).getAllByRole('listitem')).toEqual([empty]);
   });
 
   it('asks before deleting an Amplify source', async () => {

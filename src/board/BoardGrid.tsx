@@ -193,7 +193,13 @@ export function BoardGrid({
                   lineOnRow && ri === 0 ? BOUNDARY.top : undefined;
                 return (
                   <div key={row.id} role="row" className="contents">
-                    <WithTooltip label={`${row.displayName} (${row.repo})`}>
+                    <WithTooltip
+                      label={
+                        row.repo
+                          ? `${row.displayName} (${row.repo})`
+                          : row.displayName
+                      }
+                    >
                       <div
                         role="rowheader"
                         tabIndex={0}

@@ -8,7 +8,7 @@ import { omit } from 'radash';
 
 import { mapCredentialRefs } from '@/credentials/dashboardCredentials';
 import type { Dashboard } from '@/domain/config/dashboard';
-import type { GithubRow } from '@/domain/config/row';
+import type { AmplifyRow, GithubRow } from '@/domain/config/row';
 import { freshId } from '@/lib/ids';
 
 import { tidyGroups } from './groupEdit';
@@ -41,6 +41,29 @@ export function rowFromRepo(
     repo: fullName,
     displayName: name,
     ...(credentialId ? { credentialId } : {}),
+    stageRules: {},
+    cellStatusSets: {},
+  };
+}
+
+/** An Amplify row for a picked app: named after the app, reading it with
+ * the AWS key it was listed with (unset follows the default), and
+ * building from `repo` when it has one (spec.md C-21, Decision 21). */
+export function rowFromApp(
+  app: { appId: string; name: string; region: string },
+  dashboard: Pick<Dashboard, 'rows'>,
+  credentialId: string | undefined,
+  repo: string | undefined,
+): AmplifyRow {
+  return {
+    type: 'amplify',
+    id: uniqueId(
+      app.name,
+      dashboard.rows.map((r) => r.id),
+    ),
+    ...(repo ? { repo } : {}),
+    displayName: app.name,
+    sources: [{ credentialId, region: app.region, appId: app.appId }],
     stageRules: {},
     cellStatusSets: {},
   };

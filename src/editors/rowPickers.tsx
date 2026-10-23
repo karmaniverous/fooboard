@@ -1,27 +1,43 @@
 /**
- * The row editor's Amplify app picker (spec.md C-21, via `ListApps`). The
- * GitHub repo picker is in `RepoPicker`; an Amplify row's sources are
- * edited in `AmplifySources`.
+ * The row editor's Amplify app picker (spec.md C-21, §3.1, Decision 21):
+ * an AWS key's apps in every Amplify Hosting region, one `ListApps` query
+ * per region, each app shown with its region. The GitHub repo picker is
+ * in `RepoPicker`; the listed apps and adding one are in `AmplifyAppList`;
+ * an Amplify row's sources are edited in `AmplifySources`.
  *
  * @module
  */
 import { useState } from 'react';
 
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { resolveCredentialId } from '@/domain/config/credentialRefs';
 import type { Dashboard } from '@/domain/config/dashboard';
 import type { AmplifyRow } from '@/domain/config/row';
-import { fetchApps } from '@/query/lookups';
+import type { RegionApp } from '@/lib/amplify/regions';
+import { fetchAppsAcrossRegions } from '@/query/lookups';
 import { useQueryEnv } from '@/query/queryEnvContext';
 
+import { AmplifyAppList, type ListedApp } from './AmplifyAppList';
 import { CredentialSelect } from './CredentialSelect';
-import { repoFromUrl, uniqueId } from './edit';
+import { repoFromUrl, rowFromApp } from './edit';
 import { LoadStatus } from './LoadStatus';
 import { useLoadFor } from './useLoad';
 
-/** The region the app picker lists first: AWS's default region. */
-const DEFAULT_PICKER_REGION = 'us-east-1';
+/** The listed apps that have an id, with the GitHub repo each builds from
+ * (none for an app without a connected GitHub repo). */
+const listedApps = (found: readonly RegionApp[]): ListedApp[] =>
+  found.flatMap(({ region, app }) =>
+    app.appId
+      ? [
+          {
+            appId: app.appId,
+            name: app.name ?? app.appId,
+            region,
+            repo: repoFromUrl(app.repository),
+          },
+        ]
+      : [],
+  );
 
 export function AmplifyPicker({
   dashboard,
@@ -31,13 +47,12 @@ export function AmplifyPicker({
   onAdd: (row: AmplifyRow) => void;
 }): React.JSX.Element {
   const [credentialId, setCredentialId] = useState<string | undefined>();
-  const [region, setRegion] = useState(DEFAULT_PICKER_REGION);
-  // Results and the add action use the key and region they were listed
-  // with; changing either hides them until the list is fetched again.
+  // Results and the add action use the key they were listed with;
+  // changing it hides them until the list is fetched again.
   const [apps, load] = useLoadFor<
-    { credentialId: string | undefined; region: string },
-    { appId: string; name: string; repo?: string }[]
-  >({ credentialId, region: region.trim() });
+    { credentialId: string | undefined },
+    ListedApp[]
+  >({ credentialId });
   const resolved = resolveCredentialId(
     dashboard.defaultCredentials,
     'aws',
@@ -63,80 +78,30 @@ export function AmplifyPicker({
           onChange={setCredentialId}
           label="AWS key for the new Amplify row"
         />
-        <Input
-          aria-label="Region"
-          className="h-8 w-32 text-xs"
-          value={region}
-          onChange={(e) => {
-            setRegion(e.target.value);
-          }}
-        />
         <Button
           size="sm"
           variant="outline"
-          disabled={!key || !region.trim()}
+          disabled={!key}
           onClick={() => {
             if (!key) return;
-            load(async ({ region: listedIn }) =>
-              (await fetchApps(env.client, key, listedIn)).flatMap((a) =>
-                a.appId
-                  ? [
-                      {
-                        appId: a.appId,
-                        name: a.name ?? a.appId,
-                        repo: repoFromUrl(a.repository),
-                      },
-                    ]
-                  : [],
-              ),
+            load(async () =>
+              listedApps(await fetchAppsAcrossRegions(env.client, key)),
             );
           }}
         >
           List Amplify apps
         </Button>
       </div>
-      <LoadStatus state={apps} loading="Loading apps…" />
+      <LoadStatus state={apps} loading="Loading apps in every region…" />
       {apps.kind === 'done' && (
-        <ul className="max-h-48 overflow-y-auto">
-          {apps.value.value.length === 0 && (
-            <li>No apps in {apps.value.context.region}.</li>
-          )}
-          {apps.value.value.map((a) => (
-            <li key={a.appId}>
-              <button
-                type="button"
-                disabled={!a.repo}
-                className="w-full rounded px-2 py-1 text-left hover:bg-muted disabled:opacity-50"
-                onClick={() => {
-                  if (!a.repo) return;
-                  onAdd({
-                    type: 'amplify',
-                    id: uniqueId(
-                      a.name,
-                      dashboard.rows.map((r) => r.id),
-                    ),
-                    repo: a.repo,
-                    displayName: a.name,
-                    sources: [
-                      {
-                        credentialId: apps.value.context.credentialId,
-                        region: apps.value.context.region,
-                        appId: a.appId,
-                      },
-                    ],
-                    stageRules: {},
-                    cellStatusSets: {},
-                  });
-                }}
-              >
-                {a.name}{' '}
-                <span className="text-muted-foreground">
-                  ({a.repo ?? 'no repo'})
-                </span>
-              </button>
-            </li>
-          ))}
-        </ul>
+        <AmplifyAppList
+          apps={apps.value.value}
+          onPick={(app, repo) => {
+            onAdd(
+              rowFromApp(app, dashboard, apps.value.context.credentialId, repo),
+            );
+          }}
+        />
       )}
     </div>
   );
