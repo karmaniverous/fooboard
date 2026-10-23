@@ -13,6 +13,7 @@ import {
   waitFor,
   within,
 } from '@testing-library/react';
+import { omit } from 'radash';
 import { MemoryRouter } from 'react-router-dom';
 import { beforeAll, describe, expect, it } from 'vitest';
 
@@ -50,15 +51,10 @@ beforeAll(async () => {
 });
 
 // The detail sheet links to the credential guide, so render inside a router.
-const renderBoard = (layout: Layout = testLayout) =>
+const renderBoard = (layout: Layout = testLayout, dashboard = demoDashboard) =>
   render(
     <MemoryRouter>
-      <BoardGrid
-        dashboard={demoDashboard}
-        model={model}
-        layout={layout}
-        now={0}
-      />
+      <BoardGrid dashboard={dashboard} model={model} layout={layout} now={0} />
     </MemoryRouter>,
   );
 
@@ -73,6 +69,25 @@ describe('BoardGrid', () => {
     expect(
       screen.getByRole('rowgroup', { name: 'Frontend' }),
     ).toBeInTheDocument();
+  });
+
+  it("names a row's repo in its header's tooltip, and only the name without one", async () => {
+    const amplify = demoDashboard.rows.find((r) => r.type === 'amplify');
+    if (!amplify) throw new Error('the demo has no Amplify row');
+    renderBoard(testLayout, {
+      ...demoDashboard,
+      rows: demoDashboard.rows.map((r) =>
+        r.id === amplify.id ? omit(amplify, ['repo']) : r,
+      ),
+    });
+    focusElement(screen.getByRole('rowheader', { name: 'billing' }));
+    expect(await screen.findByRole('tooltip')).toHaveTextContent(
+      'billing (acme/billing)',
+    );
+    focusElement(screen.getByRole('rowheader', { name: amplify.displayName }));
+    await waitFor(() => {
+      expect(screen.getByRole('tooltip').textContent).toBe(amplify.displayName);
+    });
   });
 
   it('links cells to jobs and badges to the compare page', () => {
