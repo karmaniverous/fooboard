@@ -29,6 +29,7 @@ import {
 import { emptyViews } from './cells';
 import { deriveGithubRow, type GithubContext } from './githubRow';
 import type { Need, RowDerivation } from './need';
+import type { RefreshClock } from './refreshing';
 import { type GitLink, rowStaleness } from './staleness';
 import { type BoardCell } from './types';
 
@@ -39,6 +40,8 @@ export interface DeriveEnv {
   budgets: BudgetStore;
   /** The clock rows are derived by (refreshing, Decision 46). */
   now: () => number;
+  /** When a query's fetch under way started (Decision 47). */
+  fetchStartedAt: RefreshClock['fetchStartedAt'];
 }
 
 /** A derived row. */
@@ -77,6 +80,7 @@ export function githubContext(
       cellRulesFor(dashboard, row, stageId),
     overBudget: overBudget(env, credentialId),
     now: env.now(),
+    fetchStartedAt: env.fetchStartedAt,
   };
 }
 
@@ -93,6 +97,7 @@ export function amplifyContext(
     hasReader: (id) => env.providers.amplify(id) !== undefined,
     source: sourceRuleFor(dashboard, 'amplify'),
     now: env.now(),
+    fetchStartedAt: env.fetchStartedAt,
   };
 }
 

@@ -59,9 +59,11 @@ export interface Snapshot<T> {
   updatedAt: number;
   /** A fetch is under way, or waiting for the network. */
   fetching: boolean;
+  /** The query's hash, which keys what the board model tracks of it. */
+  queryHash: string;
 }
 
-const EMPTY: Snapshot<never> = {
+const EMPTY: Omit<Snapshot<never>, 'queryHash'> = {
   data: undefined,
   error: null,
   failed: false,
@@ -73,9 +75,11 @@ function snapshot<T>(
   client: QueryClient,
   key: readonly unknown[],
 ): Snapshot<T> {
-  const state = client.getQueryState<T>(key);
-  if (!state) return EMPTY;
+  const { queryHash } = client.defaultQueryOptions({ queryKey: key });
+  const state = client.getQueryCache().get<T>(queryHash)?.state;
+  if (!state) return { ...EMPTY, queryHash };
   return {
+    queryHash,
     data: state.data,
     error: state.error,
     failed: state.status === 'error',

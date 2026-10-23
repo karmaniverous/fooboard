@@ -4,8 +4,9 @@
  * the run alone, final cells once jobs land, the cached placement shown
  * refreshing while a newer run's jobs load, the cold-cache window of jobs
  * requests, failures of the runs and jobs reads, renamed repos, paging,
- * polling cadence, and the whole row refreshing while its runs are
- * fetching or overdue, not while they are fresh (Decision 46).
+ * polling cadence, and the whole row refreshing while its runs have been
+ * fetching longer than the delay or are overdue, not while they are fresh
+ * or a fetch is quicker (Decisions 46, 47).
  *
  * @module
  */
@@ -36,6 +37,7 @@ import { landedAt, markFetching } from '@/test/queryState';
 
 import { COLD_CANDIDATES_PER_STAGE, deriveGithubRow } from './githubRow';
 import type { Need } from './need';
+import { REFRESHING_DELAY_MS } from './refreshing';
 
 const REPO = 'acme/api-core';
 const row = demoGithubRow('api-core');
@@ -222,17 +224,25 @@ describe('deriveGithubRow refreshing', () => {
   const runs = githubKey(DEMO_TOKEN, { call: 'runs', repo: REPO, page: 1 });
 
   /** The row derived `age(interval)` ms after its runs landed, where
-   * `interval` is how often the row's runs poll. */
+   * `interval` is how often the row's runs poll, while a fetch of them
+   * has been under way for `fetchingFor` ms (when given). */
   async function derivedAt(
     age: (interval: number) => number,
-    fetching = false,
+    fetchingFor?: number,
   ) {
     const client = new QueryClient();
     await seedDemoRepo(client, REPO);
-    if (fetching) markFetching(client, runs);
+    if (fetchingFor !== undefined) markFetching(client, runs);
     const landed = landedAt(client, runs);
     const at = (now: number) =>
-      deriveGithubRow(demoContext(client, REPO, { now }), row);
+      deriveGithubRow(
+        demoContext(client, REPO, {
+          now,
+          fetchStartedAt: () =>
+            fetchingFor === undefined ? undefined : now - fetchingFor,
+        }),
+        row,
+      );
     const interval = at(landed).needs[0]?.freshness.refetchInterval;
     if (typeof interval !== 'number') throw new Error('the runs never poll');
     const cells = Object.values(at(landed + age(interval)).cells);
@@ -250,8 +260,13 @@ describe('deriveGithubRow refreshing', () => {
     expect(marks.every(Boolean)).toBe(true);
   });
 
-  it('marks every cell while the runs are fetching, however fresh', async () => {
-    const marks = await derivedAt(() => 0, true);
+  it('leaves fresh runs unmarked while their fetch is within the delay', async () => {
+    const marks = await derivedAt(() => 0, REFRESHING_DELAY_MS);
+    expect(marks.some(Boolean)).toBe(false);
+  });
+
+  it('marks every cell once the runs have been fetching past the delay, however fresh', async () => {
+    const marks = await derivedAt(() => 0, REFRESHING_DELAY_MS + 1);
     expect(marks.every(Boolean)).toBe(true);
   });
 });

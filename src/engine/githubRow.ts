@@ -7,8 +7,9 @@
  * yet, and goes on past them only to find a cached placement. Until the
  * jobs land, a cell whose rules don't test items shows its run's state
  * provisionally (Decision 37), or its cached placement marked refreshing.
- * The whole row is refreshing while its runs are fetching or older than
- * their poll interval (Decision 46). Pure: reads the cache, never fetches.
+ * The whole row is refreshing while its runs have been fetching longer
+ * than the refreshing delay or are older than their poll interval
+ * (Decisions 46, 47). Pure: reads the cache, never fetches.
  *
  * @module
  */
@@ -49,7 +50,7 @@ import {
   rowProblem,
 } from './providerOutcome';
 import { provisionalCell } from './provisional';
-import { isRefreshing, markRefreshing } from './refreshing';
+import { isRefreshing, markRefreshing, type RefreshClock } from './refreshing';
 import type { CellView } from './types';
 
 /** Runs per cell whose jobs load at once on a cold cache (Decision 29
@@ -61,7 +62,7 @@ import type { CellView } from './types';
 export const COLD_CANDIDATES_PER_STAGE = 1;
 
 /** What every GitHub row derivation of one token and repo shares. */
-export interface GithubContext {
+export interface GithubContext extends RefreshClock {
   client: QueryClient;
   credentialId: string;
   repo: string;
@@ -69,9 +70,6 @@ export interface GithubContext {
   stages: readonly Stage[];
   rulesFor: (row: GithubRow, stageId: string) => CellRules;
   overBudget: boolean;
-  /** When the row is derived: data older than its poll interval is
-   * refreshing (Decision 46). */
-  now: number;
 }
 
 /** The repo's runs pages that have landed, and the requests to observe. */
@@ -234,7 +232,7 @@ export function deriveGithubRow(
       isRefreshing(
         githubSnapshot(ctx.client, ctx.credentialId, request),
         freshness,
-        ctx.now,
+        ctx,
       ),
     ),
   );

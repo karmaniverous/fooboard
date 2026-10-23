@@ -1,7 +1,7 @@
 /**
  * Query state fixtures: when a seeded query's data landed, and a query
- * marked as fetching (a poll in flight) without running its query
- * function, so derivation tests can read either state from the cache.
+ * marked as fetching (a poll in flight) or as landing without running its
+ * query function, so derivation tests can read each state from the cache.
  *
  * @module
  */
@@ -24,4 +24,14 @@ export function markFetching(
 ): void {
   const query = queryOf(client, key);
   query.setState({ ...query.state, fetchStatus: 'fetching' });
+}
+
+/** Mark `key`'s fetch as landed at `at` (ms), its data unchanged. */
+export function markLanded(
+  client: QueryClient,
+  key: readonly unknown[],
+  at: number,
+): void {
+  const query = queryOf(client, key);
+  query.setState({ ...query.state, fetchStatus: 'idle', dataUpdatedAt: at });
 }

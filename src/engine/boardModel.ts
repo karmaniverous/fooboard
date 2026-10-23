@@ -5,7 +5,9 @@
  * the Unmapped runs and problems of their groups, so the board fills
  * progressively (runs, then jobs, then behind). An edit re-derives from
  * the cache at once, so the board never blanks; a token passing half its
- * budget slows its polling. React only subscribes to it.
+ * budget slows its polling. A fetch that runs longer than the
+ * refreshing delay re-derives the rows it feeds once the delay passes.
+ * React only subscribes to it.
  *
  * @module
  */
@@ -15,6 +17,7 @@ import type { Dashboard } from '@/domain/config/dashboard';
 import { rowGithubCredentialId } from '@/domain/config/inheritance';
 import type { QueryEnv } from '@/query/client';
 
+import { createFetchStarts } from './fetchStarts';
 import { computeGroup, type GroupEntry, planGroups } from './groups';
 import { emptyModel, githubCredentialIds } from './model';
 import { createObserverSet, mergeNeeds } from './observers';
@@ -63,11 +66,19 @@ export function createBoardModel({
   let destroyed = false;
   let scheduled = false;
   let model = emptyModel(githubCredentialIds(dashboard));
+  const fetches = createFetchStarts({
+    cache: env.client.getQueryCache(),
+    now,
+    onSlow: (queryHash) => {
+      markFed(queryHash);
+    },
+  });
   const derive: DeriveEnv = {
     client: env.client,
     providers: env.providers,
     budgets: env.budgets,
     now,
+    fetchStartedAt: fetches.startedAt,
   };
   const rows = new Map<string, RowEntry>();
   const groups = new Map<string, GroupEntry>();
@@ -161,14 +172,19 @@ export function createBoardModel({
     for (const row of dashboard.rows) dirty.add(row.id);
   };
 
+  /** Re-derive the rows `queryHash`'s query feeds. */
+  const markFed = (queryHash: string) => {
+    const fed = feeds.get(queryHash);
+    if (!fed) return;
+    for (const rowId of fed) dirty.add(rowId);
+    schedule();
+  };
+
   const unsubscribeCache = env.client.getQueryCache().subscribe((event) => {
     if (event.type === 'updated' && !DERIVING_ACTIONS.has(event.action.type))
       return;
     if (event.type !== 'updated' && event.type !== 'removed') return;
-    const fed = feeds.get(event.query.queryHash);
-    if (!fed) return;
-    for (const rowId of fed) dirty.add(rowId);
-    schedule();
+    markFed(event.query.queryHash);
   });
 
   // Budgets publish with the next flush; a token crossing half its
@@ -211,6 +227,7 @@ export function createBoardModel({
       destroyed = true;
       unsubscribeCache();
       unsubscribeBudgets();
+      fetches.destroy();
       observers.destroy();
       listeners.clear();
     },

@@ -43,6 +43,7 @@ export const demoContext = (
   rulesFor: (row, stageId) => cellRulesFor(demoDashboard, row, stageId),
   overBudget: false,
   now: 0,
+  fetchStartedAt: () => undefined,
   ...overrides,
 });
 

@@ -2,7 +2,8 @@
  * Tests for the board model's *refreshing* mark (spec.md §3.1, Decision
  * 46): a board reopened over fresh cached data shows it at once,
  * unmarked; over data older than its poll interval (each row's own),
- * marked; and a poll in flight marks the rows it feeds until it lands.
+ * marked. A fetch in flight marks its rows only past the refreshing
+ * delay: see boardModelRefreshingDelay.test.ts.
  *
  * @module
  */
@@ -10,20 +11,11 @@ import { describe, expect, it } from 'vitest';
 
 import { demoDashboard } from '@/demo/board';
 import { EMPTY_STATES } from '@/domain/derivation';
-import {
-  ACTIVE_INTERVAL_MS,
-  BUDGET_BACKOFF,
-  IDLE_INTERVAL_MS,
-} from '@/query/intervals';
-import { githubKey } from '@/query/keys';
-import { demoEnv, settle } from '@/test/boardModel';
-import { DEMO_TOKEN } from '@/test/githubCache';
+import { ACTIVE_INTERVAL_MS, BUDGET_BACKOFF } from '@/query/intervals';
+import { demoEnv, OVERDUE_MS, settle } from '@/test/boardModel';
 
 import { createBoardModel } from './boardModel';
 import { type BoardModel, cellKey } from './types';
-
-/** Longer than any root query's poll interval. */
-const OVERDUE_MS = IDLE_INTERVAL_MS * BUDGET_BACKOFF + 1;
 
 /** The cells showing data: not a missing credential or a failed read. */
 const withData = (model: BoardModel) => {
@@ -91,32 +83,5 @@ describe('board model refreshing', () => {
     expect(rows.some((r) => !r.active)).toBe(true);
     for (const r of rows) expect(r.refreshing).toBe(r.active);
     later.destroy();
-  });
-
-  it('marks the rows a poll feeds while it is in flight', async () => {
-    const env = demoEnv();
-    const board = createBoardModel({ dashboard: demoDashboard, env });
-    await settle(env, board);
-    const [row] = demoDashboard.rows;
-    if (row.type !== 'github') throw new Error('the first row is not GitHub');
-    const marked = (model: BoardModel) =>
-      demoDashboard.stages.map(
-        (s) => model.cells[cellKey(row.id, s.id)]?.refreshing === true,
-      );
-    expect(marked(board.getModel()).some(Boolean)).toBe(false);
-
-    const polled = env.client.refetchQueries({
-      queryKey: githubKey(DEMO_TOKEN, {
-        call: 'runs',
-        repo: row.repo,
-        page: 1,
-      }),
-    });
-    await Promise.resolve();
-    await Promise.resolve();
-    expect(marked(board.getModel()).every(Boolean)).toBe(true);
-    await polled;
-    expect(marked(await settle(env, board)).some(Boolean)).toBe(false);
-    board.destroy();
   });
 });

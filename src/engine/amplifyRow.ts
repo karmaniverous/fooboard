@@ -5,8 +5,8 @@
  * until every app's reads have landed it is not settled, and a cell no
  * landed record places stays loading. A failed read of one app shows on
  * the rows reading that app only. The whole row is refreshing while any
- * of its apps' reads is fetching or older than its poll interval
- * (Decision 46). Pure.
+ * of its apps' reads has been fetching longer than the refreshing delay
+ * or is older than its poll interval (Decisions 46, 47). Pure.
  *
  * @module
  */
@@ -30,11 +30,11 @@ import { type AppState, appState } from './amplifyApp';
 import { emptyViews, finalView } from './cells';
 import type { Need, RowDerivation } from './need';
 import { failedDerivation } from './providerOutcome';
-import { isRefreshing, markRefreshing } from './refreshing';
+import { isRefreshing, markRefreshing, type RefreshClock } from './refreshing';
 import type { CellView } from './types';
 
 /** What every Amplify row derivation shares. */
-export interface AmplifyContext {
+export interface AmplifyContext extends RefreshClock {
   client: QueryClient;
   stages: readonly Stage[];
   rulesFor: (row: AmplifyRow, stageId: string) => CellRules;
@@ -42,9 +42,6 @@ export interface AmplifyContext {
   /** A secret is entered for the AWS credential. */
   hasReader: (credentialId: string) => boolean;
   source: SourceRuleOf<'amplify'>;
-  /** When the row is derived: data older than its poll interval is
-   * refreshing (Decision 46). */
-  now: number;
 }
 
 /** A row's apps with their credentials, or `undefined` when one has no
@@ -123,7 +120,7 @@ export function deriveAmplifyRow(
         isRefreshing(
           amplifySnapshot(ctx.client, s.credentialId, request),
           freshness,
-          ctx.now,
+          ctx,
         ),
       ),
     ),

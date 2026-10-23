@@ -2,7 +2,7 @@
  * Board model test helpers: a demo query environment (retries without
  * delay, the demo clock frozen unless given, the added run's jobs waiting
  * on a real timer unless given), and the model once every query it needs
- * has landed.
+ * has landed, and an age past every poll interval.
  *
  * @module
  */
@@ -12,6 +12,10 @@ import { createBoardModel, demoProviders } from '@/engine';
 import type { BoardModelHandle } from '@/engine/boardModel';
 import type { BoardModel } from '@/engine/types';
 import { createQueryEnv, type QueryEnv } from '@/query/client';
+import { BUDGET_BACKOFF, IDLE_INTERVAL_MS } from '@/query/intervals';
+
+/** Longer than any root query's poll interval. */
+export const OVERDUE_MS = IDLE_INTERVAL_MS * BUDGET_BACKOFF + 1;
 
 /** How long a test waits for a demo board to fill. */
 export const FILL_TIMEOUT_MS = 10_000;
