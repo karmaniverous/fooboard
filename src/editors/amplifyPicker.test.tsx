@@ -80,6 +80,9 @@ describe('the Amplify app picker', () => {
     const none = latest.current.rows.at(-1);
     expect(none).toMatchObject({ id: 'orphan-2', displayName: 'orphan' });
     expect(none && 'repo' in none).toBe(false);
+    expect(
+      document.querySelector('[data-edit-target="row:orphan-2"]'),
+    ).toHaveTextContent('Amplify · no GitHub repo');
     // Without a repo there is no GitHub token to choose for it.
     expect(screen.queryByLabelText('GitHub token for orphan')).toBeNull();
     expect(screen.getByLabelText('Display name for orphan-2')).toHaveValue(

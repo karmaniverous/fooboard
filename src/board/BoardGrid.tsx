@@ -23,6 +23,7 @@ import { BOUNDARY, GROUP_LABEL } from './gridStyles';
 import { capText, type Layout, LINE_HEIGHT } from './layout';
 import { ProblemMark } from './ProblemMark';
 import { useProblemMarks } from './problemMarksContext';
+import { rowLabel } from './rowLabel';
 import { stageLabel } from './stageLabel';
 import { type CellFilter, matchesFilter } from './summary';
 
@@ -193,13 +194,7 @@ export function BoardGrid({
                   lineOnRow && ri === 0 ? BOUNDARY.top : undefined;
                 return (
                   <div key={row.id} role="row" className="contents">
-                    <WithTooltip
-                      label={
-                        row.repo
-                          ? `${row.displayName} (${row.repo})`
-                          : row.displayName
-                      }
-                    >
+                    <WithTooltip label={rowLabel(row)}>
                       <div
                         role="rowheader"
                         tabIndex={0}
