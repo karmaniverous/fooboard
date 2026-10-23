@@ -6,7 +6,8 @@
  *
  * The chain starts at version 4 (spec.md §3.3 *Data model version*):
  * earlier development versions are refused. v4 → v5 adds each
- * dashboard's `settings` (requests in flight) with their defaults.
+ * dashboard's `settings` (requests in flight) with the v5 defaults, frozen
+ * in the step.
  * Steps are pure and idempotent.
  *
  * @module
@@ -15,7 +16,6 @@ import { z } from 'zod';
 
 import type { ConfigRoot } from './root';
 import { ConfigRootSchema, CURRENT_SCHEMA_VERSION } from './root';
-import { defaultSettings } from './settings';
 
 /** The refusal for a configuration from a newer data model (spec.md
  * A§4.3.7): never guessed at. */
@@ -27,12 +27,24 @@ type Migration = (input: Record<string, unknown>) => Record<string, unknown>;
  * development versions were never saved and are not migrated. */
 export const FIRST_VERSION = 4;
 
+/** Requests in flight per credential when data model v5 was made: frozen
+ * here, so a later default never changes what a v4 dashboard becomes. */
+const V5_REQUESTS_IN_FLIGHT = 10;
+
+/** The settings v5 gave a v4 dashboard. */
+const v5Settings = () => ({
+  requestsInFlight: {
+    github: V5_REQUESTS_IN_FLIGHT,
+    aws: V5_REQUESTS_IN_FLIGHT,
+  },
+});
+
 /** A dashboard list as stored: absent means none. */
 const DashboardListSchema = z
   .array(z.record(z.string(), z.unknown()))
   .optional();
 
-/** v4 → v5: every dashboard gains `settings` with the defaults (a
+/** v4 → v5: every dashboard gains `settings` with the v5 defaults (a
  * dashboard that has them keeps its own). A malformed list is left as it
  * is, so validation refuses it and the store keeps it read-only rather
  * than saving an empty configuration over it. */
@@ -42,7 +54,7 @@ export const addSettings: Migration = (input) => {
   return {
     ...input,
     dashboards: (list.data ?? []).map((d) => ({
-      settings: defaultSettings(),
+      settings: v5Settings(),
       ...d,
     })),
   };

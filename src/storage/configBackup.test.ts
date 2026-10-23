@@ -10,7 +10,6 @@
 import { describe, expect, it } from 'vitest';
 
 import { CURRENT_SCHEMA_VERSION } from '@/domain/config/root';
-import { DEFAULT_REQUESTS_IN_FLIGHT } from '@/domain/config/settings';
 
 import { backupKey, createConfigStore } from './configStore';
 import { type KeyValueStore, memoryStorage } from './keyValue';
@@ -55,12 +54,7 @@ describe('config backup across the v5 migration', () => {
         {
           id: 'd',
           name: 'Ops',
-          settings: {
-            requestsInFlight: {
-              github: DEFAULT_REQUESTS_IN_FLIGHT,
-              aws: DEFAULT_REQUESTS_IN_FLIGHT,
-            },
-          },
+          settings: { requestsInFlight: { github: 10, aws: 10 } },
         },
       ],
     });

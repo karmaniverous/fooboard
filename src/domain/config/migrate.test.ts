@@ -6,11 +6,22 @@
  *
  * @module
  */
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import { addSettings, FIRST_VERSION, migrate } from './migrate';
 import { CURRENT_SCHEMA_VERSION } from './root';
-import { defaultSettings } from './settings';
+import type * as Settings from './settings';
+
+// Today's default moves on; what v4 data migrates to must not.
+vi.mock('./settings', async (importOriginal) => ({
+  ...(await importOriginal<typeof Settings>()),
+  DEFAULT_REQUESTS_IN_FLIGHT: 3,
+  defaultSettings: () => ({ requestsInFlight: { github: 3, aws: 3 } }),
+}));
+
+/** The settings v5 gave every v4 dashboard: literal, so a change to
+ * today's defaults can't move them. */
+const V5_SETTINGS = { requestsInFlight: { github: 10, aws: 10 } };
 
 describe('migrate', () => {
   it('validates and returns current data, defaulting missing dashboards', () => {
@@ -67,7 +78,7 @@ describe('migrate', () => {
     const out = migrate(v4);
     expect(out.schemaVersion).toBe(CURRENT_SCHEMA_VERSION);
     expect(out.dashboards.map((d) => d.settings)).toEqual([
-      defaultSettings(),
+      V5_SETTINGS,
       { requestsInFlight: { github: 3, aws: 4 } },
     ]);
     expect(out.dashboards.map((d) => d.name)).toEqual(['A', 'B']);
@@ -80,7 +91,7 @@ describe('migrate', () => {
       addSettings({ dashboards: [{ id: 'a' }, { id: 'b', settings: own }] }),
     ).toEqual({
       dashboards: [
-        { id: 'a', settings: defaultSettings() },
+        { id: 'a', settings: V5_SETTINGS },
         { id: 'b', settings: own },
       ],
     });
