@@ -1,8 +1,10 @@
 /**
- * Cell detail (spec.md C-13): status, phase, branch, commit, exact time,
- * and the behind/diverged commit subjects in both directions. Shown in a
- * hover/focus tooltip (informational: the cell and its badge are the
- * links, C-13a) and in a touch detail sheet, which also carries the links.
+ * Cell detail (spec.md C-13): status, phase, branch, commit, commit
+ * message, exact time, and the behind/diverged commit subjects in both
+ * directions. Shown in a hover/focus tooltip (informational: the cell and
+ * its badge are the links, C-13a; the short SHA and the message's first
+ * line) and in a touch detail sheet, which also carries the links, the
+ * full SHA with *Copy*, and every line of the message (Decision 21).
  * Problems on the cell (a window hint on an empty cell, a status-set
  * problem, spec.md A§4.3.7) are listed under it.
  *
@@ -28,6 +30,8 @@ import type { BoardCell } from '@/engine';
 import { readmeSection } from '@/lib/site';
 
 import { badgeDescription, EMPTY_LABEL, shortSha } from './cellView';
+import { CommitSha } from './CommitSha';
+import { firstLine } from './layoutContents';
 
 export function CellDetail({
   cell,
@@ -75,7 +79,27 @@ export function CellDetail({
           {derivation.commit && (
             <>
               <dt className="text-muted-foreground">Commit</dt>
-              <dd className="font-mono">{shortSha(derivation.commit)}</dd>
+              <dd className="font-mono">
+                {interactive ? (
+                  <CommitSha sha={derivation.commit} />
+                ) : (
+                  shortSha(derivation.commit)
+                )}
+              </dd>
+            </>
+          )}
+          {derivation.message && (
+            <>
+              <dt className="text-muted-foreground">Message</dt>
+              <dd
+                className={
+                  interactive ? 'whitespace-pre-wrap break-words' : 'truncate'
+                }
+              >
+                {interactive
+                  ? derivation.message
+                  : firstLine(derivation.message)}
+              </dd>
             </>
           )}
           {derivation.time && (

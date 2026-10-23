@@ -8,7 +8,7 @@
 
 import { type CellRules, counted } from '@/domain/model/cell';
 import { textOf } from '@/domain/model/json';
-import type { RecordDoc } from '@/domain/model/translate';
+import { orderOf, type RecordDoc } from '@/domain/model/translate';
 import { evaluateRule } from '@/domain/rules/check';
 
 /** Why a record is unmapped. */
@@ -49,7 +49,7 @@ export function unmappedReason(
   cells: readonly CellRules[],
   itemsKnown: boolean,
 ): UnmappedReason | undefined {
-  if (cells.some((c) => (record[c.order] ?? null) === null))
+  if (cells.some((c) => orderOf(record, c.order) === null))
     return { kind: 'no-order-key' };
   const staged = cells.filter(
     (c) => c.stage !== undefined && evaluateRule(c.stage, record),
