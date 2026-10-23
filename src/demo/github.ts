@@ -39,6 +39,7 @@ import {
   fetched,
   iso,
   restState,
+  runAt,
   sha,
 } from './githubPayloads';
 import {
@@ -50,6 +51,9 @@ import {
   stageForBranch,
   stalenessCounts,
 } from './scenarios';
+
+/** How long after its deploy job a run's test job starts. */
+const TEST_AFTER_MS = 3 * MINUTE;
 
 const repoIndex = (repo: string): number =>
   (DEMO_GITHUB_REPOS as readonly string[]).indexOf(repo);
@@ -111,38 +115,39 @@ function demoRuns(repo: string, startMs: number): DemoRun[] {
 
   // The keyed row's jobs name their service (its row key test).
   const key = repo === DEMO_KEYED_REPO ? ` (${repo})` : '';
+  /** The id of the run of stage number `s`. */
+  const stageRunId = (s: number) => 1000 + r * 100 + s * 10;
+  /** A stage run's deploy and test jobs, in `states`. */
+  const deployAndTest = (
+    id: number,
+    states: ReturnType<typeof jobStates>,
+    createdMs: number,
+  ) => [
+    job(id, 1, `deploy${key}`, states.deploy, createdMs),
+    job(id, 2, `test${key}`, states.test, createdMs + TEST_AFTER_MS),
+  ];
 
   DEMO_STAGE_IDS.forEach((stageId, s) => {
     const scenario = scenarioFor(repo, stageId);
     if (scenario === 'noBranch' || scenario === 'noRuns') return;
-    const id = 1000 + r * 100 + s * 10;
+    const id = stageRunId(s);
     const live = scenario === 'started' || scenario === 'queued';
     const createdMs = live ? startMs - MINUTE : startMs - (s + 1) * 37 * MINUTE;
     runs.push({
       run: makeRun(id, stageBranch(stageId), createdMs),
-      jobs: (start, now) => {
-        const states = jobStates(scenario, now - start);
-        return [
-          job(id, 1, `deploy${key}`, states.deploy, createdMs),
-          job(id, 2, `test${key}`, states.test, createdMs + 3 * MINUTE),
-        ];
-      },
+      jobs: (start, now) =>
+        deployAndTest(id, jobStates(scenario, now - start), createdMs),
     });
   });
 
   if (repo === ADDED_RUN_CELL.rowId) {
-    const s = DEMO_STAGE_IDS.indexOf(ADDED_RUN_CELL.stageId);
-    const id = 1000 + r * 100 + s * 10 + 5;
+    // Next to its stage's own run id.
+    const id = stageRunId(DEMO_STAGE_IDS.indexOf(ADDED_RUN_CELL.stageId)) + 5;
     const createdMs = startMs + ADDED_RUN_AT_MS;
     runs.push({
       run: makeRun(id, stageBranch(ADDED_RUN_CELL.stageId), createdMs),
-      jobs: (start, now) => {
-        const states = addedRunStates(now - start);
-        return [
-          job(id, 1, 'deploy', states.deploy, createdMs),
-          job(id, 2, 'test', states.test, createdMs + 3 * MINUTE),
-        ];
-      },
+      jobs: (start, now) =>
+        deployAndTest(id, addedRunStates(now - start), createdMs),
       addedAtMs: ADDED_RUN_AT_MS,
     });
   }
@@ -178,15 +183,6 @@ function demoBranches(repo: string): string[] {
   return DEMO_STAGE_IDS.filter(
     (id) => scenarioFor(repo, id) !== 'noBranch',
   ).map((id) => stageBranch(id));
-}
-
-/** `run` as GitHub reports it at `jobs`' states: in progress while any
- * job is; else completed, failed if any job failed. */
-function runAt(run: WorkflowRun, jobs: readonly Job[]): WorkflowRun {
-  if (jobs.some((j) => j.status !== 'completed'))
-    return { ...run, status: 'in_progress', conclusion: null };
-  const failed = jobs.find((j) => j.conclusion !== 'success');
-  return { ...run, conclusion: failed?.conclusion ?? run.conclusion };
 }
 
 /** Is `base...head` a cell compared with its source stage (the forward
