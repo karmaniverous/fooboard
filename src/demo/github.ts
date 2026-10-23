@@ -6,23 +6,41 @@
  * (`legacy-billing`: rejected credential; `flaky-svc`: server error), and
  * three runs are deliberately unmapped, one per reason (a `hotfix/*`
  * branch, a lint-only run, and another service's deploy in the keyed row's
- * repo).
+ * repo). One cell gets a newer run after the board has loaded, whose jobs
+ * answer slowly (`addedRun.ts`).
  *
  * @module
  */
 import { alphabetical } from 'radash';
 
-import type { Fetched, GitHubApi, RepoRef } from '@/lib/github/api';
+import type { GitHubApi, RepoRef } from '@/lib/github/api';
 import { GitHubAuthError, GitHubHttpError } from '@/lib/github/errors';
 import type { RateLimitBudget } from '@/lib/github/rateLimit';
 import type { Job, WorkflowRun } from '@/lib/github/schemas';
 
+import {
+  ADDED_RUN_AT_MS,
+  ADDED_RUN_CELL,
+  ADDED_RUN_JOBS_DELAY_MS,
+  addedRunShown,
+  addedRunStates,
+  sleep,
+  type Wait,
+} from './addedRun';
 import {
   DEMO_GITHUB_REPOS,
   DEMO_KEYED_REPO,
   DEMO_STAGE_IDS,
   demoDashboard,
 } from './board';
+import {
+  DEMO_MESSAGES,
+  demoBudget,
+  fetched,
+  iso,
+  restState,
+  sha,
+} from './githubPayloads';
 import {
   type DemoJobState,
   jobStates,
@@ -36,22 +54,12 @@ import {
 const repoIndex = (repo: string): number =>
   (DEMO_GITHUB_REPOS as readonly string[]).indexOf(repo);
 
-const iso = (ms: number): string => new Date(ms).toISOString();
-
-const sha = (seed: number): string =>
-  (seed * 2654435761).toString(16).padStart(8, '0').slice(-7) + 'a1b2c3d';
-
-/** REST job status/conclusion for a demo job state. */
-function restState(state: DemoJobState): Pick<Job, 'status' | 'conclusion'> {
-  if (state === 'waiting') return { status: 'waiting', conclusion: null };
-  if (state === 'queued') return { status: 'queued', conclusion: null };
-  if (state === 'running') return { status: 'in_progress', conclusion: null };
-  return { status: 'completed', conclusion: state };
-}
-
 interface DemoRun {
   run: WorkflowRun;
   jobs: (startMs: number, nowMs: number) => Job[];
+  /** Listed only from this long after demo start; its jobs answer after
+   * `ADDED_RUN_JOBS_DELAY_MS`. */
+  addedAtMs?: number;
 }
 
 /** All demo runs for one repo, newest first. */
@@ -122,6 +130,22 @@ function demoRuns(repo: string, startMs: number): DemoRun[] {
     });
   });
 
+  if (repo === ADDED_RUN_CELL.rowId) {
+    const s = DEMO_STAGE_IDS.indexOf(ADDED_RUN_CELL.stageId);
+    const id = 1000 + r * 100 + s * 10 + 5;
+    const createdMs = startMs + ADDED_RUN_AT_MS;
+    runs.push({
+      run: makeRun(id, stageBranch(ADDED_RUN_CELL.stageId), createdMs),
+      jobs: (start, now) => {
+        const states = addedRunStates(now - start);
+        return [
+          job(id, 1, 'deploy', states.deploy, createdMs),
+          job(id, 2, 'test', states.test, createdMs + 3 * MINUTE),
+        ];
+      },
+      addedAtMs: ADDED_RUN_AT_MS,
+    });
+  }
   if (repo === 'api-core') {
     const id = 990;
     runs.push({
@@ -156,25 +180,6 @@ function demoBranches(repo: string): string[] {
   ).map((id) => stageBranch(id));
 }
 
-/** Plausible commit messages for the demo's richest detail (C-13 rung 5). */
-const DEMO_MESSAGES = [
-  'Fix flaky checkout test',
-  'Bump dependencies',
-  'Add retry to payment webhook',
-  'Tune cache headers',
-  'Refactor auth middleware',
-  'Release notes for 24.3',
-];
-
-/** A demo answer: never a 304, never paginated. */
-const fetched = <T>(data: T): Fetched<T> => ({
-  notModified: false,
-  data,
-  etag: null,
-  hasNext: false,
-  redirected: false,
-});
-
 /** `run` as GitHub reports it at `jobs`' states: in progress while any
  * job is; else completed, failed if any job failed. */
 function runAt(run: WorkflowRun, jobs: readonly Job[]): WorkflowRun {
@@ -192,22 +197,20 @@ function isForward(base: string, head: string): boolean {
   return source !== undefined && source === stageForBranch(head);
 }
 
-/** The demo's token budget at `now`: plenty left. */
-const demoBudget = (now: number): RateLimitBudget => ({
-  limit: 5000,
-  remaining: 4870,
-  reset: Math.floor(now / 1000) + 3600,
-  used: 130,
-  status: 'ok',
-});
-
 /** Create the demo GitHub request port; `clock` drives scenario
- * progress, and every answer reports the demo budget to `onBudget`. */
+ * progress, every answer reports the demo budget to `onBudget`, and the
+ * added run's jobs answer after `wait`. */
 export function createDemoGitHubApi(
   clock: () => number = Date.now,
   onBudget: (budget: RateLimitBudget) => void = () => undefined,
+  wait: Wait = sleep,
 ): GitHubApi {
   const startMs = clock();
+  /** `repo`'s runs listed at the demo clock's time. */
+  const listed = (repo: string) =>
+    demoRuns(repo, startMs).filter(
+      (d) => d.addedAtMs === undefined || addedRunShown(clock() - startMs),
+    );
   const guard = ({ repo }: RepoRef, path: string): void => {
     if (repo === 'legacy-billing') throw new GitHubAuthError(path);
     if (repo === 'flaky-svc') throw new GitHubHttpError(path, 502);
@@ -233,19 +236,16 @@ export function createDemoGitHubApi(
     runsPage: (ref) =>
       call(ref, 'runs', () =>
         fetched(
-          demoRuns(ref.repo, startMs).map((d) =>
-            runAt(d.run, d.jobs(startMs, clock())),
-          ),
+          listed(ref.repo).map((d) => runAt(d.run, d.jobs(startMs, clock()))),
         ),
       ),
-    jobsPage: (ref, runId) =>
-      call(ref, 'jobs', () =>
-        fetched(
-          demoRuns(ref.repo, startMs)
-            .find((d) => d.run.id === runId)
-            ?.jobs(startMs, clock()) ?? [],
-        ),
-      ),
+    jobsPage: async (ref, runId) => {
+      const found = listed(ref.repo).find((d) => d.run.id === runId);
+      if (found?.addedAtMs !== undefined) await wait(ADDED_RUN_JOBS_DELAY_MS);
+      return call(ref, 'jobs', () =>
+        fetched(found?.jobs(startMs, clock()) ?? []),
+      );
+    },
     matchingRefs: (ref, prefix) =>
       call(ref, 'refs', () =>
         demoBranches(ref.repo)

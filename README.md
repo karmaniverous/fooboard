@@ -36,7 +36,7 @@ fooboard shows the deployment state of every repo × stage at a glance. Paste a 
 
 ## Try the demo
 
-_Try the demo_ (on the home page, or the play button in the header) opens a sample board for a fictional company, `acme`, with no account or token. It is shaped like a real pipeline: a _Preview_ group of three preview environments, then _dev_, _release_ and _prod_; a _Backend_ group of GitHub service repos and a _Frontend_ group of Amplify apps. Its runs move along as you watch, and it shows every status, badge, empty state and unmapped run described below.
+_Try the demo_ (on the home page, or the play button in the header) opens a sample board for a fictional company, `acme`, with no account or token. It is shaped like a real pipeline: a _Preview_ group of three preview environments, then _dev_, _release_ and _prod_; a _Backend_ group of GitHub service repos and a _Frontend_ group of Amplify apps. Its runs move along as you watch, and it shows every status, badge, empty state and unmapped run described below. About two and a half minutes in, a new run starts on _web-app_ / _prod_, and its jobs take a few seconds to load, so that cell shows the **refreshing** dot meanwhile.
 
 > 📷 _Screenshot to come: the home page._
 

@@ -1,10 +1,12 @@
 /**
  * Board model test helpers: a demo query environment (retries without
- * delay, the demo clock frozen unless given), and the model once every
- * query it needs has landed.
+ * delay, the demo clock frozen unless given, the added run's jobs waiting
+ * on a real timer unless given), and the model once every query it needs
+ * has landed.
  *
  * @module
  */
+import type { Wait } from '@/demo/addedRun';
 import type { Dashboard } from '@/domain/config/dashboard';
 import { createBoardModel, demoProviders } from '@/engine';
 import type { BoardModelHandle } from '@/engine/boardModel';
@@ -23,9 +25,11 @@ export function withoutRetryDelay(env: QueryEnv): QueryEnv {
 }
 
 /** A demo query environment; the demo clock stands still by default. */
-export const demoEnv = (clock: () => number = () => 0): QueryEnv =>
+export const demoEnv = (clock: () => number = () => 0, wait?: Wait): QueryEnv =>
   withoutRetryDelay(
-    createQueryEnv({ providers: (hooks) => demoProviders(hooks, clock) }),
+    createQueryEnv({
+      providers: (hooks) => demoProviders(hooks, clock, wait),
+    }),
   );
 
 /** Resolve once nothing is fetching and the model has re-derived. */
