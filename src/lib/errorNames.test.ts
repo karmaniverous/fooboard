@@ -1,6 +1,6 @@
 /**
  * Tests that the adapters' error names survive a production build: the
- * board shows `describeError` (name and message) on an *Error* cell, and
+ * editors and alerts show `describeError` (name and message), and
  * minification renames classes, so each name must be a literal, not the
  * constructor's name. Each case renames the class as a minifier would.
  *

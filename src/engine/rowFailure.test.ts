@@ -36,7 +36,11 @@ describe('failedRow', () => {
       demoDashboard.stages.map((s) => s.id),
     );
     for (const cell of entry.cells)
-      expect(cell.derivation).toMatchObject({ kind: 'empty', state: 'error' });
+      expect(cell.derivation).toEqual({
+        kind: 'empty',
+        state: 'error',
+        reason: 'boom',
+      });
     expect(entry.derivation.problems).toEqual([
       expect.objectContaining({
         dismissable: true,

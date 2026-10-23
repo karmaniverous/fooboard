@@ -84,6 +84,20 @@ describe('deriveGithubRow failures', () => {
     expect(out.needs.map(keyOf)).toContain(runsKey(REPO));
   });
 
+  it('shows an error cell with the message alone, not the class name', async () => {
+    const client = new QueryClient();
+    await seedDemoRepo(client, REPO);
+    const error = new GitHubHttpError('runs', 502);
+    await seedError(client, { call: 'runs', repo: REPO, page: 1 }, error);
+    const out = deriveGithubRow(demoContext(client, REPO), row);
+    expect(out.cells.dev?.derivation).toEqual({
+      kind: 'empty',
+      state: EMPTY_STATES.error,
+      reason: error.message,
+    });
+    expect(error.message).not.toContain(error.name);
+  });
+
   it('marks a 404 not found, on the row, not dismissable', async () => {
     const client = new QueryClient();
     await seedDemoRepo(client, REPO);

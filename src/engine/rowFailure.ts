@@ -10,7 +10,7 @@
 import { cellRulesFor } from '@/domain/config/cellRules';
 import type { Dashboard } from '@/domain/config/dashboard';
 import type { Row } from '@/domain/config/row';
-import { describeError } from '@/lib/errors';
+import { errorMessage } from '@/lib/errors';
 
 import { failedViews, rowProblem } from './providerOutcome';
 import type { RowEntry } from './rowDerive';
@@ -24,7 +24,7 @@ export function failedRow(
   error: unknown,
   previous: RowEntry | undefined,
 ): RowEntry {
-  const message = describeError(error);
+  const message = errorMessage(error);
   const views = failedViews(
     { kind: 'error', message },
     dashboard.stages,

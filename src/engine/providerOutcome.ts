@@ -11,7 +11,7 @@
  */
 import type { StatusSet } from '@/domain/config/statusSets';
 import { type Problem, problem } from '@/domain/problems/problem';
-import { describeError } from '@/lib/errors';
+import { errorMessage } from '@/lib/errors';
 import { isAuthFailure, isNotFound, isRateLimit } from '@/query/errors';
 
 import { emptyViews } from './cells';
@@ -35,7 +35,7 @@ export function failureOutcome(
   if (!failed || isRateLimit(error)) return undefined;
   if (isAuthFailure(error)) return { kind: 'needs-credential' };
   if (isNotFound(error)) return { kind: 'not-found' };
-  return { kind: 'error', message: describeError(error) };
+  return { kind: 'error', message: errorMessage(error) };
 }
 
 /** A row's cells for `outcome`. */
