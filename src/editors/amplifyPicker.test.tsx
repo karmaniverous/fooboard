@@ -50,6 +50,24 @@ describe('the Amplify app picker', () => {
     });
   });
 
+  it('names an app by its id when it has no name, and leaves out an app without an id', async () => {
+    setup({}, (region) =>
+      Promise.resolve(
+        region === 'ca-central-1'
+          ? [amplifyApp({ appId: 'a3' }), amplifyApp({ name: 'ghost' })]
+          : [],
+      ),
+    );
+    tab('Rows');
+    list();
+    expect(
+      await screen.findByRole('button', {
+        name: 'a3 ca-central-1 (no GitHub repo)',
+      }),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /ghost/ })).toBeNull();
+  });
+
   it('adds an app without a GitHub repo with a typed repo, and with none', async () => {
     const latest = setup();
     tab('Rows');
@@ -63,6 +81,10 @@ describe('the Amplify app picker', () => {
     const add = screen.getByRole('button', { name: 'Add orphan' });
     fireEvent.change(repo, { target: { value: 'not a repo' } });
     expect(add).toBeDisabled();
+    // Enter in the field adds nothing while the repo is invalid.
+    const rows = latest.current.rows.length;
+    fireEvent.submit(repo);
+    expect(latest.current.rows).toHaveLength(rows);
     expect(
       screen.getByText('Type the repo as owner/name, or leave it empty.'),
     ).toBeInTheDocument();
@@ -75,7 +97,12 @@ describe('the Amplify app picker', () => {
     });
     expect(screen.queryByLabelText('GitHub repo for orphan')).toBeNull();
 
-    fireEvent.click(screen.getByRole('button', { name: /^orphan eu-west-1/ }));
+    // Choosing it twice closes the question again.
+    const again = screen.getByRole('button', { name: /^orphan eu-west-1/ });
+    fireEvent.click(again);
+    fireEvent.click(again);
+    expect(again).toHaveAttribute('aria-expanded', 'false');
+    fireEvent.click(again);
     fireEvent.click(screen.getByRole('button', { name: 'Add orphan' }));
     const none = latest.current.rows.at(-1);
     expect(none).toMatchObject({ id: 'orphan-2', displayName: 'orphan' });

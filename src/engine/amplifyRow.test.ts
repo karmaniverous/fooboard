@@ -27,7 +27,11 @@ import { amplifyKey } from '@/query/keys';
 import { fetched } from '@/test/fakeReaders';
 import { landedAt, markFetching } from '@/test/queryState';
 
-import { type AmplifyContext, deriveAmplifyRow } from './amplifyRow';
+import {
+  type AmplifyContext,
+  deriveAmplifyRow,
+  resolvedSources,
+} from './amplifyRow';
 import { NOT_FOUND } from './providerOutcome';
 import { REFRESHING_DELAY_MS } from './refreshing';
 
@@ -209,14 +213,14 @@ describe('deriveAmplifyRow', () => {
           { ...key, region: 'eu-west-1', appId: 'x9' },
         ],
       };
-      const out = deriveAmplifyRow(
-        {
-          ...ctx(client),
-          defaultsFor: defaults,
-          hasReader: (id) => id === AWS,
-        },
-        twoSources,
-      );
+      const keys: AmplifyContext = {
+        ...ctx(client),
+        defaultsFor: defaults,
+        hasReader: (id) => id === AWS,
+      };
+      const out = deriveAmplifyRow(keys, twoSources);
+      // The row feeds no app's Unmapped runs or problems either.
+      expect(resolvedSources(keys, twoSources)).toBeUndefined();
       const needsCredential: unknown = expect.objectContaining({
         state: EMPTY_STATES.needsCredential,
       });
