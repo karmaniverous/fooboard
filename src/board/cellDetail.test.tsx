@@ -2,11 +2,18 @@
  * Tests for the commit in cell detail (spec.md C-13, Decision 21): the
  * sheet shows every line of the record's message and the full SHA, which
  * *Copy* copies (saying whether it could); the tooltip shows the
- * message's first line and the short SHA.
+ * message's first line and the short SHA. A poll that swaps the commit
+ * under an open sheet drops the old commit's copy feedback.
  *
  * @module
  */
-import { act, fireEvent, render, screen } from '@testing-library/react';
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { githubSet } from '@/domain/derivation/testFixtures';
@@ -34,15 +41,24 @@ const cell: BoardCell = {
   },
 };
 
-const show = (interactive: boolean) =>
-  render(
-    <CellDetail
-      cell={cell}
-      rowName="api"
-      stageName="Dev"
-      interactive={interactive}
-    />,
-  );
+const SHA_B = 'fedcba9876543210fedcba9876543210fedcba98';
+
+/** `cell` with another commit, as a poll might swap in. */
+const withCommit = (commit: string): BoardCell =>
+  cell.derivation.kind === 'ok'
+    ? { ...cell, derivation: { ...cell.derivation, commit } }
+    : cell;
+
+const detail = (shown: BoardCell, interactive: boolean) => (
+  <CellDetail
+    cell={shown}
+    rowName="api"
+    stageName="Dev"
+    interactive={interactive}
+  />
+);
+
+const show = (interactive: boolean) => render(detail(cell, interactive));
 
 /** The detail's value for the term `name`. */
 const value = (name: string) => screen.getByText(name).nextElementSibling;
@@ -83,6 +99,48 @@ describe('the commit in cell detail', () => {
       await Promise.resolve();
     });
     expect(screen.getByRole('status')).toHaveTextContent("Couldn't copy");
+  });
+
+  it("drops commit A's copy feedback when a poll swaps in commit B", async () => {
+    clipboard(() => Promise.resolve());
+    const { rerender } = show(true);
+    await act(async () => {
+      fireEvent.click(
+        screen.getByRole('button', { name: 'Copy the commit SHA' }),
+      );
+      await Promise.resolve();
+    });
+    expect(screen.getByRole('status')).toHaveTextContent('Copied');
+    rerender(detail(withCommit(SHA_B), true));
+    expect(value('Commit')).toHaveTextContent(SHA_B);
+    expect(screen.getByRole('status')).toBeEmptyDOMElement();
+  });
+
+  it("doesn't say Copied beside commit B when copying A finishes later", async () => {
+    let finish = () => {};
+    const writeText = vi.fn(
+      () =>
+        new Promise<void>((resolve) => {
+          finish = resolve;
+        }),
+    );
+    clipboard(writeText);
+    const { rerender } = show(true);
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Copy the commit SHA' }),
+    );
+    // The copy of A is under way (the clipboard has it, unanswered).
+    await waitFor(() => {
+      expect(writeText).toHaveBeenCalledWith(SHA);
+    });
+    rerender(detail(withCommit(SHA_B), true));
+    await act(async () => {
+      finish();
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+    expect(value('Commit')).toHaveTextContent(SHA_B);
+    expect(screen.getByRole('status')).toBeEmptyDOMElement();
   });
 
   it('shows only the first line and the short SHA in the tooltip', () => {

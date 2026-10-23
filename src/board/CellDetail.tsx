@@ -87,7 +87,9 @@ export function CellDetail({
               <dt className="text-muted-foreground">Commit</dt>
               <dd className={interactive ? undefined : 'font-mono'}>
                 {interactive ? (
-                  <CommitSha sha={derivation.commit} />
+                  // Keyed by SHA: a poll that swaps the commit while the
+                  // sheet is open drops the old commit's copy feedback.
+                  <CommitSha key={derivation.commit} sha={derivation.commit} />
                 ) : (
                   shortSha(derivation.commit)
                 )}
