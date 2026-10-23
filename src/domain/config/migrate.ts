@@ -27,16 +27,26 @@ type Migration = (input: Record<string, unknown>) => Record<string, unknown>;
  * development versions were never saved and are not migrated. */
 export const FIRST_VERSION = 4;
 
-const objects = z.array(z.record(z.string(), z.unknown())).catch([]);
+/** A dashboard list as stored: absent means none. */
+const DashboardListSchema = z
+  .array(z.record(z.string(), z.unknown()))
+  .optional();
 
 /** v4 → v5: every dashboard gains `settings` with the defaults (a
- * dashboard that has them keeps its own). */
-export const addSettings: Migration = (input) => ({
-  ...input,
-  dashboards: objects
-    .parse(input.dashboards)
-    .map((d) => ({ settings: defaultSettings(), ...d })),
-});
+ * dashboard that has them keeps its own). A malformed list is left as it
+ * is, so validation refuses it and the store keeps it read-only rather
+ * than saving an empty configuration over it. */
+export const addSettings: Migration = (input) => {
+  const list = DashboardListSchema.safeParse(input.dashboards);
+  if (!list.success) return input;
+  return {
+    ...input,
+    dashboards: (list.data ?? []).map((d) => ({
+      settings: defaultSettings(),
+      ...d,
+    })),
+  };
+};
 
 /** Migration from each version to the next; a release that changes the
  * data model adds one. */

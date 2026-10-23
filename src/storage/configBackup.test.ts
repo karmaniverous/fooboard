@@ -18,11 +18,17 @@ import { type KeyValueStore, memoryStorage } from './keyValue';
 const KEY = 'fooboard:config';
 const V4 = 4;
 
-/** A v4 configuration: one dashboard, no settings. */
-const v4Text = JSON.stringify({
-  schemaVersion: V4,
-  dashboards: [{ id: 'd', name: 'Ops', credentials: [], rows: [], stages: [] }],
-});
+/** A v4 dashboard: no settings. */
+const v4Dashboard = {
+  id: 'd',
+  name: 'Ops',
+  credentials: [],
+  rows: [],
+  stages: [],
+};
+
+/** A v4 configuration: one dashboard. */
+const v4Text = JSON.stringify({ schemaVersion: V4, dashboards: [v4Dashboard] });
 
 /** Memory storage holding the v4 text; writes to `KEY` fail on demand. */
 function storage() {
@@ -60,6 +66,21 @@ describe('config backup across the v5 migration', () => {
     });
     expect(store.getItem(KEY)).toBe(v4Text);
     expect(store.getItem(backupKey(V4))).toBeNull();
+  });
+
+  it('keeps a v4 configuration with an invalid dashboard unreadable and unwritten', () => {
+    const store = memoryStorage();
+    const text = JSON.stringify({
+      schemaVersion: V4,
+      dashboards: [v4Dashboard, null],
+    });
+    store.setItem(KEY, text);
+    const config = createConfigStore(store);
+    expect(config.load().kind).toBe('unreadable');
+    expect(() => {
+      config.save({ schemaVersion: CURRENT_SCHEMA_VERSION, dashboards: [] });
+    }).toThrow(/unreadable/);
+    expect(store.getItem(KEY)).toBe(text);
   });
 
   it('keeps the v4 original from the first save until the next one succeeds', () => {

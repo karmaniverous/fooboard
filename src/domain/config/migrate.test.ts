@@ -86,6 +86,22 @@ describe('migrate', () => {
     });
   });
 
+  it.each([
+    [
+      'an invalid element beside a valid dashboard',
+      [{ id: 'a', name: 'A' }, null],
+    ],
+    ['a list that is not a list', 'dashboards'],
+  ])('refuses v4 data with %s, never emptying it', (_, dashboards) => {
+    expect(() =>
+      migrate({ schemaVersion: FIRST_VERSION, dashboards }),
+    ).toThrow();
+  });
+
+  it('gives v4 data with no dashboard list an empty one', () => {
+    expect(migrate({ schemaVersion: FIRST_VERSION }).dashboards).toEqual([]);
+  });
+
   it('changes nothing when the v4 to v5 step runs again', () => {
     const once = addSettings({
       dashboards: [
