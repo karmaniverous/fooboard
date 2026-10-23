@@ -1,6 +1,6 @@
 # Privacy
 
-_Effective 18 October 2026._
+_Effective 23 October 2026._
 
 fooboard is a static web app that runs entirely in your browser. This page says, plainly, what it does with your data. In short: **we don't collect any.**
 
