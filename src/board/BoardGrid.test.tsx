@@ -1,8 +1,8 @@
 /**
  * Tests for the board grid over the demo board: every cell renders, group
  * labels appear, cells link to their jobs, badges link to the compare
- * page, empty states show their text, and a touch tap opens the detail
- * sheet instead of following the link.
+ * page, empty states show their text, and a touch tap or Space opens the
+ * detail sheet instead of following the link.
  *
  * @module
  */
@@ -15,7 +15,7 @@ import {
 } from '@testing-library/react';
 import { omit } from 'radash';
 import { MemoryRouter } from 'react-router-dom';
-import { beforeAll, describe, expect, it } from 'vitest';
+import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 
 import { demoDashboard } from '@/demo/board';
 import { branchRules } from '@/domain/config/placement';
@@ -137,6 +137,68 @@ describe('BoardGrid', () => {
     expect(
       screen.getByRole('dialog', { name: 'Cell detail' }),
     ).toBeInTheDocument();
+  });
+
+  describe('from the keyboard', () => {
+    afterEach(() => {
+      Reflect.deleteProperty(navigator, 'clipboard');
+    });
+
+    const focusedCell = () => {
+      renderBoard();
+      const link = screen.getAllByRole('link', { name: /Passed, dev/ })[0];
+      focusElement(link);
+      return link;
+    };
+
+    it('opens the sheet on Space, focused on Copy, and copies the SHA', async () => {
+      const writeText = vi.fn(() => Promise.resolve());
+      Object.defineProperty(navigator, 'clipboard', {
+        value: { writeText },
+        configurable: true,
+      });
+      const link = focusedCell();
+      expect(link).toHaveAttribute('aria-keyshortcuts', 'Space');
+      expect(screen.getByRole('tooltip')).toHaveTextContent(
+        'Press Space for details',
+      );
+      // false: the default (scrolling the page) was prevented.
+      expect(fireEvent.keyDown(link, { key: ' ' })).toBe(false);
+      const sheet = screen.getByRole('dialog', { name: 'Cell detail' });
+      const copy = within(sheet).getByRole('button', {
+        name: 'Copy the commit SHA',
+      });
+      // The modal sheet focuses its first control, Copy.
+      await waitFor(() => {
+        expect(copy).toHaveFocus();
+      });
+      fireEvent.click(copy);
+      expect(await within(sheet).findByRole('status')).toHaveTextContent(
+        'Copied',
+      );
+      expect(writeText).toHaveBeenCalledWith(
+        expect.stringMatching(/^[0-9a-f]{8,}$/),
+      );
+    });
+
+    it.each([
+      ['Enter, which follows the link', { key: 'Enter' }],
+      ['Shift+Space, which scrolls up', { key: ' ', shiftKey: true }],
+      ['Ctrl+Space', { key: ' ', ctrlKey: true }],
+      ['Alt+Space', { key: ' ', altKey: true }],
+      ['Meta+Space', { key: ' ', metaKey: true }],
+    ])('leaves %s alone', (_, init) => {
+      const link = focusedCell();
+      expect(fireEvent.keyDown(link, init)).toBe(true);
+      expect(screen.queryByRole('dialog')).toBeNull();
+    });
+
+    it('hints at Space only while the cell has focus', () => {
+      renderBoard();
+      const link = screen.getAllByRole('link', { name: /Passed, dev/ })[0];
+      fireEvent.mouseEnter(link);
+      expect(screen.getByRole('tooltip')).not.toHaveTextContent('Space');
+    });
   });
 
   it('shows commit subjects in the hover tooltip, without unreachable links', () => {

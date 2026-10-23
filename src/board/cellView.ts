@@ -23,6 +23,12 @@ export const statusLook = (
   style: { backgroundColor: status.color, color: textOn(status.color) },
 });
 
+/** The key that opens a focused cell's detail sheet (Enter follows the
+ * link): `key` as `KeyboardEvent.key` reports it, `name` as
+ * `aria-keyshortcuts` and the tooltip's hint spell it. Empty cells are
+ * buttons, which open the sheet on it natively. */
+export const DETAILS_KEY = { key: ' ', name: 'Space' } as const;
+
 /** The glyph for each status icon (A§4.3.6). */
 export const STATUS_GLYPH: Record<StatusIcon, string> = {
   queued: '\u25cb',
