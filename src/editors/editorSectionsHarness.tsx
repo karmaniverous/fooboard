@@ -61,7 +61,7 @@ const twoApps: Partial<AmplifyReader> = {
 export function setup(
   github: Partial<GitHubApi> = {},
   amplifyMethods: Partial<AmplifyReader> = twoApps,
-) {
+): { current: Dashboard } {
   const amplify = fakeAmplifyReader(amplifyMethods);
   const env = testQueryEnv({
     github: () => fakeGitHubApi(github),
@@ -91,6 +91,6 @@ export function setup(
   );
   return latest;
 }
-export const tab = (name: string) => {
+export const tab = (name: string): void => {
   fireEvent.mouseDown(screen.getByRole('tab', { name }), { button: 0 });
 };

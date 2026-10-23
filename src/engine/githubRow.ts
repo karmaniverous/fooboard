@@ -29,14 +29,14 @@ import type { SourceRuleOf } from '@/domain/model/sourceRule';
 import type { Problem } from '@/domain/problems/problem';
 import { evaluateRule } from '@/domain/rules/check';
 import { type Fetched, pagesFor, type WorkflowRun } from '@/lib/github';
-import { githubSnapshot } from '@/query/cache';
+import { githubSnapshot, type Snapshot } from '@/query/cache';
 import {
   ACTIVE_INTERVAL_MS,
   pollEvery,
   rootFreshness,
   SETTLED,
 } from '@/query/intervals';
-import { githubKey } from '@/query/keys';
+import { githubKey, type GithubRequest } from '@/query/keys';
 
 import { finalView } from './cells';
 import { type Candidate, githubCandidates } from './githubCandidates';
@@ -72,10 +72,20 @@ export interface GithubContext extends RefreshClock {
   overBudget: boolean;
 }
 
+/** A repo's runs as far as they've landed. */
+interface RunsPages {
+  /** The first page's query, landed or not. */
+  first: Snapshot<Fetched<WorkflowRun[]>>;
+  /** The pages that have landed, in order. */
+  pages: Fetched<WorkflowRun[]>[];
+  /** The pages to observe. */
+  requests: Extract<GithubRequest, { call: 'runs' }>[];
+}
+
 /** The repo's runs pages that have landed, and the requests to observe. */
-export function runsPages(ctx: GithubContext) {
+export function runsPages(ctx: GithubContext): RunsPages {
   const pages: Fetched<WorkflowRun[]>[] = [];
-  const requests = [];
+  const requests: RunsPages['requests'] = [];
   const first = githubSnapshot(ctx.client, ctx.credentialId, {
     call: 'runs',
     repo: ctx.repo,

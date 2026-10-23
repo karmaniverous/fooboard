@@ -14,8 +14,10 @@ const queryOf = (client: QueryClient, key: readonly unknown[]) => {
 };
 
 /** When `key`'s data landed (ms). */
-export const landedAt = (client: QueryClient, key: readonly unknown[]) =>
-  queryOf(client, key).state.dataUpdatedAt;
+export const landedAt = (
+  client: QueryClient,
+  key: readonly unknown[],
+): number => queryOf(client, key).state.dataUpdatedAt;
 
 /** Mark `key`'s query as fetching, as a poll in flight does. */
 export function markFetching(

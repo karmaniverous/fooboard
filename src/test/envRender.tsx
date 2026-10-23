@@ -6,7 +6,11 @@
  *
  * @module
  */
-import { render, type RenderOptions } from '@testing-library/react';
+import {
+  render,
+  type RenderOptions,
+  type RenderResult,
+} from '@testing-library/react';
 
 import { type TestProviders, testQueryEnv, withEnv } from './queryEnv';
 
@@ -16,8 +20,14 @@ const NO_CREDENTIALS: TestProviders = {
   amplify: () => undefined,
 };
 
+/** Testing Library's `render`, inside a query environment. */
+type EnvRender = (
+  ui: React.ReactElement,
+  options?: RenderOptions,
+) => RenderResult;
+
 /** A `render` wrapping each UI in a fresh environment over `providers`. */
 export const envRender =
-  (providers: TestProviders = NO_CREDENTIALS) =>
+  (providers: TestProviders = NO_CREDENTIALS): EnvRender =>
   (ui: React.ReactElement, options: RenderOptions = {}) =>
     render(ui, { wrapper: withEnv(testQueryEnv(providers)), ...options });

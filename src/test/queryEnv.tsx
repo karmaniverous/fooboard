@@ -53,8 +53,11 @@ export function testQueryEnv(
   };
 }
 
+/** A component providing an environment to its children. */
+type EnvWrapper = (props: { children: React.ReactNode }) => React.JSX.Element;
+
 /** `children` with `env` provided. */
-export function withEnv(env: QueryEnv) {
+export function withEnv(env: QueryEnv): EnvWrapper {
   return function Wrapper({
     children,
   }: {

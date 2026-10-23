@@ -39,7 +39,10 @@ export function pollEvery(base: number, overBudget: boolean): Freshness {
 }
 
 /** A root query's cadence: fast while a fed cell is in progress. */
-export const rootFreshness = (active: boolean, overBudget: boolean) =>
+export const rootFreshness = (
+  active: boolean,
+  overBudget: boolean,
+): Freshness =>
   pollEvery(active ? ACTIVE_INTERVAL_MS : IDLE_INTERVAL_MS, overBudget);
 
 /** The faster of two cadences (a query feeding several rows). */
