@@ -67,6 +67,7 @@ These checks **start from the code the PR touched**. That is the point of depart
 - **Don't reinvent the wheel: use [`radash`](https://radash-docs.vercel.app)** for general-purpose utilities (grouping, sorting, picking max/min, uniqueness, deep cloning, retries, debouncing and the like) instead of hand-rolled helpers. Write a local helper only when radash has nothing suitable, and say why in a comment.
 - **Ports and adapters**: pure domain logic in `src/domain`; providers behind interfaces; React components render and hold UI state only.
 - **Files stay under 300 lines** (ESLint `max-lines`). Split by responsibility before that.
+- **Exports state their return types**, test utilities included (ESLint `explicit-module-boundary-types`).
 - **Every non-test module starts with a TSDoc `@module` comment** saying what it is for.
 - **No React act(...) warnings.** One fails the test that logged it (`src/test/actGuard.ts`). Wrap state-changing work the test does directly in `act` (focus an element with `focusElement` from `src/test/focus.ts`, not a bare `element.focus()`), and await async updates with `findBy*` or `waitFor`. Never stub `console.error` to hide one.
 - **Tests sit next to the code** (`*.test.ts(x)`). Use fakes for ports. Provider fixtures are recorded from real API responses, then trimmed and anonymised to `acme/*`.

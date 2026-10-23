@@ -14,7 +14,7 @@ Everything fooboard keeps stays **in your browser**, on the device you are using
 | Zoom, density and theme                                                                 | Browser local storage                                                          | The same                                                                                        |
 | GitHub tokens and AWS keys                                                              | The page's memory only, or local storage if you tick _Remember on this device_ | Until the tab closes (memory), or until you _Forget_ them or clear the site's data (remembered) |
 | A copy of your dashboards from before an upgrade (e.g. `fooboard:config.v4`)            | Browser local storage                                                          | Until the next save succeeds                                                                    |
-| What fooboard read from GitHub and AWS (runs, jobs, branches, apps, rate-limit budgets) | The page's memory only                                                         | Until the tab closes; a changed secret drops what was read with the old one                     |
+| What fooboard read from GitHub and AWS (runs, jobs, branches, apps, rate-limit budgets) | The page's memory only                                                         | Until the tab closes; a changed secret drops what was read with the old one, budget included    |
 
 fooboard has no server of its own, no accounts, no database, no cookies, no analytics, no advertising and no third-party scripts. Nothing you enter is sent to us.
 
