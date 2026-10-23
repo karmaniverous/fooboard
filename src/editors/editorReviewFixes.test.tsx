@@ -1,7 +1,8 @@
 /**
  * Tests for editor fixes from review: deleting an Amplify source asks
  * first; a failed repo list retries; the same repo can be
- * added twice; listed apps hide when the region changes.
+ * added twice; listed apps hide when the region changes; a region with
+ * no apps says so.
  *
  * @module
  */
@@ -74,6 +75,19 @@ describe('editor review fixes', () => {
     expect(latest.current.rows.at(-1)).toMatchObject({
       sources: [{ region: 'eu-west-1', appId: 'a1' }],
     });
+  });
+
+  it('says when the listed region has no apps', async () => {
+    setup({}, { listApps: () => Promise.resolve([]) });
+    tab('Rows');
+    fireEvent.change(screen.getByLabelText('Region'), {
+      target: { value: 'eu-north-1' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'List Amplify apps' }));
+    const empty = await screen.findByText('No apps in eu-north-1.');
+    const list = empty.closest('ul');
+    if (!list) throw new Error('the message is not in the app list');
+    expect(within(list).getAllByRole('listitem')).toEqual([empty]);
   });
 
   it('asks before deleting an Amplify source', async () => {

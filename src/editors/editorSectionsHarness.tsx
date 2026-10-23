@@ -1,7 +1,8 @@
 /**
  * The editor-section tests' harness: a starting dashboard, a query
- * environment over a fake Amplify reader (and the GitHub port a test
- * gives), and the editor rendered with the latest draft exposed.
+ * environment over a fake Amplify reader (listing two apps unless a test
+ * gives its own methods) and the GitHub port a test gives, and the editor
+ * rendered with the latest draft exposed.
  *
  * @module
  */
@@ -11,6 +12,7 @@ import { MemoryRouter } from 'react-router-dom';
 
 import { type Dashboard, DashboardSchema } from '@/domain/config/dashboard';
 import { branchRules } from '@/domain/config/placement';
+import type { AmplifyReader } from '@/lib/amplify/reader';
 import { amplifyApp } from '@/lib/amplify/sdkShapes';
 import type { GitHubApi } from '@/lib/github';
 import { QueryProvider } from '@/query/QueryProvider';
@@ -40,7 +42,7 @@ const start = DashboardSchema.parse({
   ],
 });
 
-const amplify = fakeAmplifyReader({
+const twoApps: Partial<AmplifyReader> = {
   listApps: () =>
     Promise.resolve([
       amplifyApp({
@@ -54,9 +56,13 @@ const amplify = fakeAmplifyReader({
         repository: 'https://gitlab.com/x/y',
       }),
     ]),
-});
+};
 
-export function setup(github: Partial<GitHubApi> = {}) {
+export function setup(
+  github: Partial<GitHubApi> = {},
+  amplifyMethods: Partial<AmplifyReader> = twoApps,
+) {
+  const amplify = fakeAmplifyReader(amplifyMethods);
   const env = testQueryEnv({
     github: () => fakeGitHubApi(github),
     amplify: () => amplify,
