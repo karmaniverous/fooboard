@@ -39,9 +39,10 @@ export interface QueryEnv {
   budgets: BudgetStore;
   /** Instrument every request from now on (development only). */
   setAround(around: Around | undefined): void;
-  /** Some secrets may have changed: remove the queries of every one of
-   * `credentialIds` whose secret did, so nothing read with the old
-   * secret stays on screen (spec.md §3.1). */
+  /** Some secrets may have changed: remove the queries and the budget
+   * of every one of `credentialIds` whose secret did, so nothing read
+   * with the old secret stays on screen and its back-off isn't applied
+   * to the new one (spec.md §3.1). */
   secretsChanged(credentialIds: readonly string[]): void;
 }
 
@@ -97,6 +98,7 @@ export function createQueryEnv({
         if (!known || before === fingerprint) continue;
         for (const provider of ['github', 'amplify'] as const)
           client.removeQueries({ queryKey: credentialPrefix(provider, id) });
+        budgets.forget(id);
       }
     },
   };

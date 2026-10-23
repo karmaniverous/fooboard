@@ -14,7 +14,7 @@ import {
 } from '@tanstack/query-core';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import type { GitHubApi } from '@/lib/github';
+import { type GitHubApi, isOverPollingShare } from '@/lib/github';
 import { GitHubHttpError, GitHubNotFoundError } from '@/lib/github/errors';
 import { fakeGitHubApi, fetched } from '@/test/fakeReaders';
 import { testQueryEnv } from '@/test/queryEnv';
@@ -24,6 +24,14 @@ import { ACTIVE_INTERVAL_MS, IDLE_INTERVAL_MS } from './intervals';
 import { amplifyKey, githubKey } from './keys';
 
 const runs = (repo: string) => githubKey('gh', { call: 'runs', repo, page: 1 });
+/** A budget past the polling share: polling backs off. */
+const OVER_SHARE = {
+  limit: 5000,
+  remaining: 1000,
+  reset: 1,
+  used: 4000,
+  status: 'ok' as const,
+};
 /** Long enough for every retry's backoff. */
 const ALL_RETRIES_MS = RETRY_BASE_DELAY_MS * 2 ** (MAX_RETRIES + 1);
 
@@ -173,5 +181,38 @@ describe('createQueryEnv', () => {
     secrets.gh = 'two';
     env.secretsChanged(['gh', 'aws']);
     expect(cached()).toEqual([false, true]);
+  });
+
+  it.each([
+    ['replaced', 'two'],
+    ['forgotten', undefined],
+  ])('greys a token’s battery and drops its back-off once %s', (_, next) => {
+    const secrets: Record<string, string | undefined> = {
+      gh: 'one',
+      other: 'o',
+      quiet: 'q',
+    };
+    const ids = ['gh', 'other', 'quiet'];
+    const env = testQueryEnv({ fingerprint: (id) => secrets[id] });
+    const heard = vi.fn();
+    env.budgets.subscribe(heard);
+    env.secretsChanged(ids);
+    env.report('gh', OVER_SHARE);
+    env.report('other', OVER_SHARE);
+    env.secretsChanged(ids); // unchanged: kept
+    expect(isOverPollingShare(env.budgets.get('gh'))).toBe(true);
+    heard.mockClear();
+
+    secrets.gh = next;
+    secrets.quiet = next; // no budget yet: nothing to tell
+    env.secretsChanged(ids);
+    expect(env.budgets.get('gh')).toBeUndefined();
+    expect(isOverPollingShare(env.budgets.get('gh'))).toBe(false);
+    expect(env.budgets.get('other')).toEqual(OVER_SHARE);
+    expect(heard).toHaveBeenCalledOnce();
+
+    // The new token's first response fills the battery again.
+    env.report('gh', { ...OVER_SHARE, used: 1 });
+    expect(env.budgets.get('gh')?.used).toBe(1);
   });
 });
