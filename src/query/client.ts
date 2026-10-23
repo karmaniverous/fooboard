@@ -6,7 +6,11 @@
  * builds its own, never persisted. Query defaults follow Decision 29: no
  * retry for 4xx or rate limits, up to two for network errors and 5xx,
  * focus and reconnect refetch what is stale, polling pauses while the tab
- * is hidden.
+ * is hidden. The environment never mounts its client: whoever renders it
+ * does (`QueryProvider` mounts it in an effect and unmounts it on
+ * cleanup), so an environment a page owns (the demo's) lets go of the
+ * focus and online listeners when the page goes, and one React discards
+ * (StrictMode's second state initializer) holds none.
  *
  * @module
  */
@@ -75,7 +79,6 @@ export function createQueryEnv({
       },
     },
   });
-  client.mount();
   const seen = new Map<string, string | undefined>();
   return {
     client,

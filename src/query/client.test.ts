@@ -68,6 +68,8 @@ describe('createQueryEnv', () => {
           },
         }),
     });
+    // Mounted, as the QueryProvider rendering it would.
+    client.mount();
     const observe = (repo: string, interval: number) =>
       new QueryObserver(client, {
         queryKey: runs(`acme/${repo}`),
@@ -92,6 +94,7 @@ describe('createQueryEnv', () => {
     await vi.advanceTimersByTimeAsync(0);
     expect(reads).toEqual(['fast']);
     for (const stop of stops) stop();
+    client.unmount();
   });
 
   it('refetches on reconnect only what is due', async () => {
@@ -105,6 +108,8 @@ describe('createQueryEnv', () => {
           },
         }),
     });
+    // Mounted, as the QueryProvider rendering it would.
+    client.mount();
     const stops = (
       [
         ['fast', ACTIVE_INTERVAL_MS],
@@ -129,6 +134,7 @@ describe('createQueryEnv', () => {
     await vi.advanceTimersByTimeAsync(0);
     expect(reads).toEqual(['fast']);
     for (const stop of stops) stop();
+    client.unmount();
   });
 
   it('records the budget a response reports, telling subscribers', () => {

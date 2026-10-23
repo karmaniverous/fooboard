@@ -1,8 +1,9 @@
 /**
  * The app's query environment (spec.md §3.1, Decision 2): one per app,
  * created with the stores on first use and outliving every board, so the
- * cache survives navigation, edits and credential changes. Its providers
- * read the credential store.
+ * cache survives navigation, edits and credential changes. Its client
+ * listens for focus and reconnects while a `QueryProvider` shows it. Its
+ * providers read the credential store.
  *
  * @module
  */
