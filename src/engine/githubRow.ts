@@ -7,7 +7,8 @@
  * yet, and goes on past them only to find a cached placement. Until the
  * jobs land, a cell whose rules don't test items shows its run's state
  * provisionally (Decision 37), or its cached placement marked refreshing.
- * Pure: reads the cache, never fetches.
+ * The whole row is refreshing while its runs are fetching or older than
+ * their poll interval (Decision 46). Pure: reads the cache, never fetches.
  *
  * @module
  */
@@ -48,6 +49,7 @@ import {
   rowProblem,
 } from './providerOutcome';
 import { provisionalCell } from './provisional';
+import { isRefreshing, markRefreshing } from './refreshing';
 import type { CellView } from './types';
 
 /** Runs per cell whose jobs load at once on a cold cache (Decision 29
@@ -67,8 +69,9 @@ export interface GithubContext {
   stages: readonly Stage[];
   rulesFor: (row: GithubRow, stageId: string) => CellRules;
   overBudget: boolean;
-  /** When the board opened: older data is shown as refreshing. */
-  openedAt: number;
+  /** When the row is derived: data older than its poll interval is
+   * refreshing (Decision 46). */
+  now: number;
 }
 
 /** The repo's runs pages that have landed, and the requests to observe. */
@@ -211,8 +214,7 @@ export function deriveGithubRow(
   const candidates = githubCandidates(ctx.source, runs.pages);
   const needs: Need[] = [];
   const problems: Problem[] = [];
-  const refreshing = runs.first.updatedAt < ctx.openedAt;
-  const cells: Record<string, CellView> = {};
+  const derived: Record<string, CellView> = {};
   for (const stage of ctx.stages) {
     const view = deriveStage(
       ctx,
@@ -222,10 +224,20 @@ export function deriveGithubRow(
       problems,
       row.id,
     );
-    if (view)
-      cells[stage.id] = refreshing ? { ...view, refreshing: true } : view;
+    if (view) derived[stage.id] = view;
   }
-  const active = Object.values(cells).some((cell) => cell.active);
+  const active = Object.values(derived).some((cell) => cell.active);
+  const freshness = rootFreshness(active, ctx.overBudget);
+  const cells = markRefreshing(
+    derived,
+    runs.requests.some((request) =>
+      isRefreshing(
+        githubSnapshot(ctx.client, ctx.credentialId, request),
+        freshness,
+        ctx.now,
+      ),
+    ),
+  );
   const renamed = renamedProblem(row, firstPage);
   if (renamed) problems.push(renamed);
   return {

@@ -2,8 +2,8 @@
  * Board model types (spec.md §3.1): the per-dashboard cell model the UI
  * renders. Cells hold the domain derivation plus the staleness badge and
  * compare detail, and say whether they are provisional (shown from the
- * run alone until its jobs land), refreshing (cached data whose newer
- * state is still loading) and settled (final: nothing they show is still
+ * run alone until its jobs land), refreshing (cached data being read
+ * again or overdue for it, Decision 46) and settled (final: nothing they show is still
  * loading for the first time).
  *
  * @module

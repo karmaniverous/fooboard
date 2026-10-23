@@ -42,7 +42,7 @@ export const demoContext = (
   stages: demoDashboard.stages,
   rulesFor: (row, stageId) => cellRulesFor(demoDashboard, row, stageId),
   overBudget: false,
-  openedAt: 0,
+  now: 0,
   ...overrides,
 });
 

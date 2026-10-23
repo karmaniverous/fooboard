@@ -27,8 +27,17 @@ import {
 import { failedRow } from './rowFailure';
 import { type BoardModel, cellKey } from './types';
 
-/** The query actions that change what a row derives. */
-const DATA_ACTIONS = new Set(['success', 'error', 'setState']);
+/** The query actions that change what a row derives: its data or error
+ * landing, and a fetch starting, pausing or resuming (refreshing,
+ * Decision 46). */
+const DERIVING_ACTIONS = new Set([
+  'success',
+  'error',
+  'setState',
+  'fetch',
+  'pause',
+  'continue',
+]);
 
 export interface BoardModelHandle {
   getModel(): BoardModel;
@@ -58,7 +67,7 @@ export function createBoardModel({
     client: env.client,
     providers: env.providers,
     budgets: env.budgets,
-    openedAt: now(),
+    now,
   };
   const rows = new Map<string, RowEntry>();
   const groups = new Map<string, GroupEntry>();
@@ -153,7 +162,7 @@ export function createBoardModel({
   };
 
   const unsubscribeCache = env.client.getQueryCache().subscribe((event) => {
-    if (event.type === 'updated' && !DATA_ACTIONS.has(event.action.type))
+    if (event.type === 'updated' && !DERIVING_ACTIONS.has(event.action.type))
       return;
     if (event.type !== 'updated' && event.type !== 'removed') return;
     const fed = feeds.get(event.query.queryHash);

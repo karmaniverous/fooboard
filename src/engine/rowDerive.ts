@@ -37,7 +37,8 @@ export interface DeriveEnv {
   client: QueryClient;
   providers: QueryProviders;
   budgets: BudgetStore;
-  openedAt: number;
+  /** The clock rows are derived by (refreshing, Decision 46). */
+  now: () => number;
 }
 
 /** A derived row. */
@@ -75,7 +76,7 @@ export function githubContext(
     rulesFor: (row: GithubRow, stageId) =>
       cellRulesFor(dashboard, row, stageId),
     overBudget: overBudget(env, credentialId),
-    openedAt: env.openedAt,
+    now: env.now(),
   };
 }
 
@@ -91,7 +92,7 @@ export function amplifyContext(
     defaultsFor: (row) => inheritedCredentials(dashboard, row.id),
     hasReader: (id) => env.providers.amplify(id) !== undefined,
     source: sourceRuleFor(dashboard, 'amplify'),
-    openedAt: env.openedAt,
+    now: env.now(),
   };
 }
 

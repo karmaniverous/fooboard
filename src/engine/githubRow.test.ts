@@ -3,8 +3,9 @@
  * 26 and 37): what it needs before anything lands, provisional cells from
  * the run alone, final cells once jobs land, the cached placement shown
  * refreshing while a newer run's jobs load, the cold-cache window of jobs
- * requests, failures of the runs and jobs reads, renamed repos, paging and
- * polling cadence.
+ * requests, failures of the runs and jobs reads, renamed repos, paging,
+ * polling cadence, and the whole row refreshing while its runs are
+ * fetching or overdue, not while they are fresh (Decision 46).
  *
  * @module
  */
@@ -17,6 +18,7 @@ import {
   IDLE_INTERVAL_MS,
   SETTLED,
 } from '@/query/intervals';
+import { githubKey } from '@/query/keys';
 import {
   DEMO_TOKEN,
   demoContext,
@@ -30,6 +32,7 @@ import {
   seedJobs,
   seedRuns,
 } from '@/test/githubCache';
+import { landedAt, markFetching } from '@/test/queryState';
 
 import { COLD_CANDIDATES_PER_STAGE, deriveGithubRow } from './githubRow';
 import type { Need } from './need';
@@ -200,18 +203,55 @@ describe('deriveGithubRow', () => {
     );
   });
 
-  it('marks data older than the board as refreshing, and backs off over budget', async () => {
+  it('backs off over budget', async () => {
     const client = new QueryClient();
     await seedDemoRepo(client, REPO);
     const out = deriveGithubRow(
-      demoContext(client, REPO, { openedAt: Date.now() + 1, overBudget: true }),
+      demoContext(client, REPO, { overBudget: true }),
       row,
     );
-    expect(Object.values(out.cells).every((c) => c?.refreshing)).toBe(true);
     const interval = out.needs[0]?.freshness.refetchInterval;
     expect([
       IDLE_INTERVAL_MS * BUDGET_BACKOFF,
       ACTIVE_INTERVAL_MS * BUDGET_BACKOFF,
     ]).toContain(interval);
+  });
+});
+
+describe('deriveGithubRow refreshing', () => {
+  const runs = githubKey(DEMO_TOKEN, { call: 'runs', repo: REPO, page: 1 });
+
+  /** The row derived `age(interval)` ms after its runs landed, where
+   * `interval` is how often the row's runs poll. */
+  async function derivedAt(
+    age: (interval: number) => number,
+    fetching = false,
+  ) {
+    const client = new QueryClient();
+    await seedDemoRepo(client, REPO);
+    if (fetching) markFetching(client, runs);
+    const landed = landedAt(client, runs);
+    const at = (now: number) =>
+      deriveGithubRow(demoContext(client, REPO, { now }), row);
+    const interval = at(landed).needs[0]?.freshness.refetchInterval;
+    if (typeof interval !== 'number') throw new Error('the runs never poll');
+    const cells = Object.values(at(landed + age(interval)).cells);
+    expect(cells.length).toBeGreaterThan(0);
+    return cells.map((c) => c?.refreshing === true);
+  }
+
+  it('leaves fresh cached runs unmarked, as on reopening a board', async () => {
+    const marks = await derivedAt((interval) => interval);
+    expect(marks.some(Boolean)).toBe(false);
+  });
+
+  it('marks every cell once the runs are older than their poll interval', async () => {
+    const marks = await derivedAt((interval) => interval + 1);
+    expect(marks.every(Boolean)).toBe(true);
+  });
+
+  it('marks every cell while the runs are fetching, however fresh', async () => {
+    const marks = await derivedAt(() => 0, true);
+    expect(marks.every(Boolean)).toBe(true);
   });
 });

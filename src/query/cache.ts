@@ -46,21 +46,27 @@ export interface AmplifyData {
   apps: Fetched<App[]>;
 }
 
+/** `Snapshot.updatedAt` for a query whose data never landed. */
+export const NEVER_UPDATED = 0;
+
 /** One query as the board model sees it. */
 export interface Snapshot<T> {
   data: T | undefined;
   error: unknown;
   /** The latest fetch failed (data, if any, is from before). */
   failed: boolean;
-  /** When the data last landed (ms; 0 when never). */
+  /** When the data last landed (ms; `NEVER_UPDATED` when never). */
   updatedAt: number;
+  /** A fetch is under way, or waiting for the network. */
+  fetching: boolean;
 }
 
 const EMPTY: Snapshot<never> = {
   data: undefined,
   error: null,
   failed: false,
-  updatedAt: 0,
+  updatedAt: NEVER_UPDATED,
+  fetching: false,
 };
 
 function snapshot<T>(
@@ -74,6 +80,7 @@ function snapshot<T>(
     error: state.error,
     failed: state.status === 'error',
     updatedAt: state.dataUpdatedAt,
+    fetching: state.fetchStatus !== 'idle',
   };
 }
 

@@ -4,8 +4,8 @@
  * a cell it has shown; a cache update re-derives only the rows it feeds;
  * an edit re-derives from the cache at once, keeping the board filled, and
  * a *requests in flight* change applies to the limiters without reading
- * anything; a warm cache shows at once, marked refreshing until read
- * again; a destroyed model observes nothing and publishes nothing.
+ * anything; a destroyed model observes nothing and publishes nothing.
+ * Refreshing is tested in boardModelRefreshing.test.ts.
  *
  * @module
  */
@@ -13,7 +13,6 @@ import { describe, expect, it } from 'vitest';
 
 import { demoDashboard } from '@/demo/board';
 import type { Dashboard } from '@/domain/config/dashboard';
-import { EMPTY_STATES } from '@/domain/derivation';
 import type { RequestCall } from '@/query/instrument';
 import { demoEnv, settle } from '@/test/boardModel';
 
@@ -44,33 +43,6 @@ const observed = (env: ReturnType<typeof demoEnv>) =>
     .reduce((sum, q) => sum + q.getObserversCount(), 0);
 
 describe('createBoardModel', () => {
-  it('shows a warm cache at once, marked refreshing until read again', async () => {
-    const env = demoEnv();
-    const first = createBoardModel({ dashboard: demoDashboard, env });
-    const filled = await settle(env, first);
-    first.destroy();
-    const later = createBoardModel({
-      dashboard: demoDashboard,
-      env,
-      now: () => Date.now() + 1,
-    });
-    const warm = later.getModel();
-    expect(Object.keys(warm.cells)).toEqual(Object.keys(filled.cells));
-    // Every cell showing data is marked; a row with no credential, or
-    // whose read failed, shows none.
-    const noData: string[] = [EMPTY_STATES.needsCredential, EMPTY_STATES.error];
-    const withData = Object.values(warm.cells).filter(
-      (c) =>
-        c?.derivation.kind !== 'empty' || !noData.includes(c.derivation.state),
-    );
-    expect(withData.length).toBeGreaterThan(0);
-    expect(withData.every((c) => c?.refreshing)).toBe(true);
-    await env.client.refetchQueries();
-    const read = await settle(env, later);
-    expect(Object.values(read.cells).some((c) => c?.refreshing)).toBe(false);
-    later.destroy();
-  });
-
   it('fills progressively, runs before jobs before behind counts', async () => {
     const { env, board, calls, models } = recorded();
     expect(cellCount(board.getModel())).toBe(0);

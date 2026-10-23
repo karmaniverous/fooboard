@@ -3,7 +3,9 @@
  * apps' branch lists then each chosen branch's jobs, cells shown as soon
  * as a landed record places them (unsettled until every read lands), no
  * credential means Needs credential, and a failed app read shows on the
- * rows reading that app only (Amplify's NotFoundException as not found).
+ * rows reading that app only (Amplify's NotFoundException as not found);
+ * the row is refreshing while an app read is fetching or overdue, not
+ * while every read is fresh (Decision 46).
  *
  * @module
  */
@@ -21,6 +23,7 @@ import { AmplifyNotFoundError } from '@/lib/amplify/errors';
 import { chosenBranches } from '@/lib/amplify/rowJobs';
 import { amplifyKey } from '@/query/keys';
 import { fetched } from '@/test/fakeReaders';
+import { landedAt, markFetching } from '@/test/queryState';
 
 import { type AmplifyContext, deriveAmplifyRow } from './amplifyRow';
 import { NOT_FOUND } from './providerOutcome';
@@ -42,7 +45,7 @@ const ctx = (client: QueryClient, hasReader = true): AmplifyContext => ({
   defaultsFor: (row) => inheritedCredentials(demoDashboard, row.id),
   hasReader: () => hasReader,
   source,
-  openedAt: 0,
+  now: 0,
 });
 
 /** Seed one demo app's branch list and, unless `branchesOnly`, its jobs. */
@@ -77,19 +80,27 @@ const seedRow = async (
 };
 
 describe('deriveAmplifyRow', () => {
-  it('marks cells read before the board opened as refreshing', async () => {
+  it('marks cells refreshing while an app read is fetching or overdue, not while fresh', async () => {
     const client = new QueryClient();
     await seedRow(client, 'marketing-site');
     const row = rowOf('marketing-site');
-    const fresh = deriveAmplifyRow(ctx(client), row);
-    const older = deriveAmplifyRow(
-      { ...ctx(client), openedAt: Date.now() + 1 },
-      row,
-    );
-    const cells = Object.values(older.cells);
-    expect(cells.length).toBeGreaterThan(0);
-    expect(cells.every((c) => c?.refreshing === true)).toBe(true);
-    expect(Object.values(fresh.cells).some((c) => c?.refreshing)).toBe(false);
+    const [app] = DEMO_AMPLIFY_APPS['marketing-site'];
+    const list = amplifyKey(AWS, { call: 'branches', ...app });
+    const landed = landedAt(client, list);
+    const at = (now: number) => deriveAmplifyRow({ ...ctx(client), now }, row);
+    const marks = (now: number) => {
+      const cells = Object.values(at(now).cells);
+      expect(cells.length).toBeGreaterThan(0);
+      return cells.map((c) => c?.refreshing === true);
+    };
+    // Every read of the row polls at its cadence; the jobs landed no
+    // earlier than the branch list, so the list goes overdue first.
+    const interval = at(landed).needs[0]?.freshness.refetchInterval;
+    if (typeof interval !== 'number') throw new Error('the reads never poll');
+    expect(marks(landed + interval).some(Boolean)).toBe(false);
+    expect(marks(landed + interval + 1).every(Boolean)).toBe(true);
+    markFetching(client, list);
+    expect(marks(landed).every(Boolean)).toBe(true);
   });
 
   it('shows a cell no stage rule places as empty once its reads landed', async () => {
