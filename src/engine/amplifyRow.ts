@@ -5,7 +5,8 @@
  * until every app's reads have landed it is not settled, and a cell no
  * landed record places stays loading. A source whose AWS key can't be
  * resolved (none chosen or inherited, or no secret entered) leaves every
- * cell *Needs credential*, with a problem naming it (Decision 21). A
+ * cell *Needs credential*, with a dismissable problem naming it
+ * (Decisions 21, 48). A
  * failed read of one app shows on
  * the rows reading that app only. The whole row is refreshing while any
  * of its apps' reads has been fetching longer than the refreshing delay
@@ -86,7 +87,10 @@ export function resolvedSources(
   return unresolved.length > 0 ? undefined : resolved;
 }
 
-/** The problem naming a source of row `rowId` whose key can't be resolved. */
+/** The problem naming a source of row `rowId` whose key can't be
+ * resolved: dismissable, like the other credential problems (Decision 48),
+ * since a session-only secret raises it after every reload. Its id names
+ * the source and what's missing, not the key. */
 const unresolvedProblem = (rowId: string, { source, missing }: Unresolved) =>
   rowProblem(
     rowId,
@@ -95,7 +99,7 @@ const unresolvedProblem = (rowId: string, { source, missing }: Unresolved) =>
         ? 'has no AWS key: choose one for it, or a default'
         : "needs its AWS key's secret"
     }, so no cell of the row shows`,
-    false,
+    true,
   );
 
 /** The queries the apps need, polling fast while the row is `active`. */

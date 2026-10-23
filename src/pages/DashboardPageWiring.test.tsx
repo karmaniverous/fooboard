@@ -2,7 +2,8 @@
  * Tests for the dashboard page's wiring: the Problems button counts
  * problems (or reads *Notes* when there are only notes), *Fix* opens the
  * editor on the problem's tab, *Customise* saves an editable copy of a
- * built-in and opens it, *Dismiss* hides a problem for good, and the
+ * built-in and opens it, *Dismiss* hides a problem for good (an Amplify
+ * source without an AWS key too, its cells still needing one), and the
  * editor opens at General, where the dashboard can be deleted, its device
  * preferences with it.
  *
@@ -126,6 +127,35 @@ describe('DashboardPage dismissal', () => {
     expect(
       screen.queryByRole('button', { name: /^Notes/ })?.textContent,
     ).not.toBe(before);
+  });
+});
+
+describe('DashboardPage dismissing an unresolvable AWS key', () => {
+  const noKey = /^Amplify source a1 \(us-east-1\) has no AWS key/;
+
+  it('hides the problem, and the cells still need a credential', async () => {
+    renderDashboardPage({
+      id: 'k',
+      name: 'K',
+      rows: [
+        {
+          type: 'amplify',
+          id: 'site',
+          displayName: 'site',
+          repo: 'acme/site',
+          sources: [{ region: 'us-east-1', appId: 'a1' }],
+        },
+      ],
+      stages: [{ id: 'dev', name: 'Dev', rules: branchRules('dev') }],
+    });
+    await settled();
+    const panel = openPanel(/^Problems \(\d+\)$/);
+    const item = within(panel).getByText(noKey).closest('li');
+    if (!item) throw new Error('no problem item');
+    fireEvent.click(within(item).getByRole('button', { name: 'Dismiss' }));
+    expect(within(panel).queryByText(noKey)).toBeNull();
+    fireEvent.click(within(panel).getByRole('button', { name: 'Close' }));
+    expect(await settled()).not.toEqual([]);
   });
 });
 

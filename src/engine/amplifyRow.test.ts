@@ -232,6 +232,7 @@ describe('deriveAmplifyRow', () => {
         expect.objectContaining({
           level: { kind: 'row', id: row.id },
           message,
+          dismissable: true,
           target: { kind: 'row', id: row.id },
         }),
       ]);
