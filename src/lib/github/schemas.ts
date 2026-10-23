@@ -2,7 +2,8 @@
  * Zod schemas for the GitHub REST payloads this adapter reads (spec.md §4.3,
  * §5). Only the fields the adapter uses are validated; everything else on
  * the response is ignored. Types are derived with `z.infer`, so the schema
- * is the single source of truth.
+ * is the single source of truth. A field GitHub may omit gets its default
+ * here too (`attemptOf`).
  *
  * @module
  */
