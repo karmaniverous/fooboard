@@ -75,6 +75,33 @@ describe('DashboardSchema', () => {
     ).toThrow();
   });
 
+  it('accepts an Amplify row without a repo, but not with a GitHub token', () => {
+    const site = {
+      type: 'amplify',
+      id: 'site',
+      displayName: 'site',
+      sources: [{ region: 'eu-west-1', appId: 'a1' }],
+    };
+    const parse = (row: object) =>
+      DashboardSchema.safeParse({
+        id: 'd1',
+        name: 'Dashboard 1',
+        credentials: [{ id: 'gh', kind: 'github', label: 'gh' }],
+        rows: [row],
+      });
+    const parsed = parse(site);
+    expect(parsed.success && parsed.data.rows[0]).toMatchObject(site);
+    expect(parse({ ...site, githubCredentialId: 'gh' }).error?.issues).toEqual([
+      expect.objectContaining({
+        path: ['rows', 0, 'githubCredentialId'],
+        message: 'an Amplify row without a repo has no GitHub token',
+      }),
+    ]);
+    expect(
+      parse({ ...site, repo: 'acme/site', githubCredentialId: 'gh' }).success,
+    ).toBe(true);
+  });
+
   it('rejects a repo that is not owner/name', () => {
     expect(() =>
       DashboardSchema.parse({

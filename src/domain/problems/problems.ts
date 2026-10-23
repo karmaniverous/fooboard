@@ -4,8 +4,8 @@
  * module gathers the problems a configuration has on its own: source
  * rules (A§4.3.7 *Three kinds*), references that don't resolve, the
  * consistency check over every placement and status rule, stages no stage
- * rule covers, and Amplify rows without a GitHub credential (no badges;
- * dismissable). Pure.
+ * rule covers, and Amplify rows without a GitHub repo or credential (no
+ * badges; dismissable). Pure.
  *
  * @module
  */
@@ -13,6 +13,7 @@ import type { Dashboard } from '@/domain/config/dashboard';
 import { rowGithubCredentialId } from '@/domain/config/inheritance';
 import { ownOverride } from '@/domain/config/ownOverride';
 import { PROVIDER_LABELS, PROVIDERS } from '@/domain/config/providers';
+import type { Row } from '@/domain/config/row';
 import { sourceRuleFor } from '@/domain/model/sources';
 
 import { siteProblems, unusedSourceNotes } from './consistency';
@@ -49,21 +50,32 @@ function uncoveredStages(d: Dashboard): Problem[] {
   );
 }
 
+/** Why an Amplify row can't show behind or diverged badges, if it can't:
+ * it has no GitHub repo, or no GitHub token to read it with. */
+function noBadges(d: Dashboard, row: Row): string | undefined {
+  if (row.type !== 'amplify') return undefined;
+  if (row.repo === undefined) return 'no GitHub repo';
+  return rowGithubCredentialId(d, row) ? undefined : 'no GitHub credential';
+}
+
 /** Every problem `d` has on its own. */
 export function configProblems(d: Dashboard): Problem[] {
   const sources = {
     github: sourceRuleFor(d, 'github'),
     amplify: sourceRuleFor(d, 'amplify'),
   };
-  const badges = d.rows
-    .filter((row) => row.type === 'amplify' && !rowGithubCredentialId(d, row))
-    .map((row) =>
-      problem(
-        { kind: 'row', id: row.id },
-        'no GitHub credential, so no behind or diverged badges',
-        true,
-      ),
-    );
+  const badges = d.rows.flatMap((row) => {
+    const why = noBadges(d, row);
+    return why
+      ? [
+          problem(
+            { kind: 'row', id: row.id },
+            `${why}, so no behind or diverged badges`,
+            true,
+          ),
+        ]
+      : [];
+  });
   const sites = ruleSites(d);
   return [
     ...Object.values(sources).flatMap(sourceRuleProblems),

@@ -9,6 +9,7 @@
  *
  * @module
  */
+import { omit } from 'radash';
 import { describe, expect, it } from 'vitest';
 
 import { demoDashboard } from '@/demo/board';
@@ -134,6 +135,24 @@ describe('configProblems', () => {
       [
         { kind: 'row', id: 'site' },
         'no GitHub credential, so no behind or diverged badges',
+        true,
+      ],
+    ]);
+  });
+
+  it('reports an Amplify row without a GitHub repo, even with a token, dismissably', () => {
+    const noRepo = omit(amplifyRow, ['repo']);
+    expect(
+      messages({
+        ...base,
+        credentials: [{ id: 'gh', kind: 'github', label: 'gh' }],
+        defaultCredentials: { github: 'gh' },
+        rows: [noRepo, { ...amplifyRow, id: 'linked' }],
+      }),
+    ).toEqual([
+      [
+        { kind: 'row', id: 'site' },
+        'no GitHub repo, so no behind or diverged badges',
         true,
       ],
     ]);
