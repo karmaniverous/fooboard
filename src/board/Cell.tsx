@@ -18,6 +18,7 @@ import type { BoardCell } from '@/engine';
 import { cn } from '@/lib/utils';
 
 import { type Keyed, Lines } from './CellLines';
+import { markedLook, markWords } from './cellMarks';
 import { gapStyle } from './cellStyles';
 import {
   badgeDescription,
@@ -32,6 +33,7 @@ import {
 import { type Rung, RUNG_SHOWS } from './layout';
 import { firstLine } from './layoutContents';
 import { type LineMap } from './packing';
+import { RefreshingDot } from './RefreshingDot';
 
 export interface CellProps {
   cell: BoardCell | undefined;
@@ -186,11 +188,12 @@ export function Cell({
     branch,
     relative && `${relative} ago`,
     badge && badgeDescription(badge),
+    ...markWords(cell),
   ]
     .filter(Boolean)
     .join(', ');
 
-  const look = statusLook(status);
+  const look = markedLook(cell, statusLook(status));
   return (
     <div
       className={cn(
@@ -217,6 +220,7 @@ export function Cell({
         }}
         {...inspect}
       />
+      <RefreshingDot cell={cell} />
       {/* Text sits above the cover link but lets clicks through; the badge
           link inside it takes its own clicks. Text is hidden from assistive
           tech because the cover link's name already says it all. */}

@@ -30,6 +30,7 @@ const cell = (
 ): BoardCell => ({
   rowId: 'r',
   stageId: 's',
+  settled: true,
   derivation: {
     kind: 'ok',
     status: s,
@@ -64,6 +65,7 @@ const model: BoardModel = {
       derivation: { kind: 'empty', state: 'error' },
       active: false,
       badge: undefined,
+      settled: true,
     },
   },
   unmapped: [],
@@ -117,6 +119,18 @@ describe('summarize', () => {
     expect(badge?.count).toBe(0);
     expect(own?.count).toBe(1);
     expect(own?.id).not.toBe(badge?.id);
+  });
+
+  it('counts a provisional cell toward no chip and matches it to no filter', () => {
+    const provisional = cell(status('testFailed'), {
+      provisional: 'status',
+      settled: false,
+      badge: { kind: 'behind', count: 1 },
+    });
+    const chips = summarize({ ...model, cells: { a: provisional } });
+    expect(chips.every((c) => c.count === 0)).toBe(true);
+    for (const chip of summarize(model))
+      expect(matchesFilter(provisional, chip.id)).toBe(false);
   });
 });
 

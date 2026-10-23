@@ -3,7 +3,8 @@
  * root (`base: '/'`), which client-side routes such as `/spike/amplify`
  * require: a relative base would resolve assets against the route path on
  * deep links. A production build fails if it contains the development
- * timing instrumentation (`vite/noDevInstrumentation.ts`). Vitest extends
+ * timing instrumentation or the Query Devtools
+ * (`vite/noDevInstrumentation.ts`). Vitest extends
  * this config (see `vitest.config.ts`).
  *
  * @module

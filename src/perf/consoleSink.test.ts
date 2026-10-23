@@ -13,7 +13,7 @@ const summary = (pageLoad?: string) =>
     cells: 12,
     ...(pageLoad ? { pageLoad } : {}),
     firstCell: { sinceOpen: 912.4, sinceLoad: 1_400 },
-    fullBoard: { sinceOpen: 6_000.6, sinceLoad: 6_500 },
+    fullBoard: { sinceOpen: 9_000.6, sinceLoad: 9_500 },
     records: [
       {
         call: { provider: 'github', kind: 'compare', credentialId: 'c' },
@@ -29,10 +29,10 @@ const summary = (pageLoad?: string) =>
 describe('headline', () => {
   it('gives the measures from opening, and from the page load when known', () => {
     expect(headline(summary())).toBe(
-      'fooboard-timing Acme (demo, 12 cells, 1 requests): from opening: first cell 912 ms, full board 6001 ms',
+      'fooboard-timing Acme (demo, 12 cells, 1 requests): from opening: first cell 912 ms, full board 9001 ms',
     );
     expect(headline(summary('reload'))).toContain(
-      '; from page reload: first cell 1400 ms, full board 6500 ms',
+      '; from page reload: first cell 1400 ms, full board 9500 ms',
     );
   });
 });
@@ -42,7 +42,7 @@ describe('summaryTables', () => {
     const tables = summaryTables(summary(), { api: 'API' });
     expect(tables.targets.map((t) => [t.measured, t.met])).toEqual([
       ['912 ms', 'yes'],
-      ['6001 ms', 'NO'],
+      ['9001 ms', 'NO'],
       ['—', 'n/a'],
       ['—', 'n/a'],
     ]);

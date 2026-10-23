@@ -50,6 +50,8 @@ export default defineConfig(
       'prettier/prettier': 'error',
       // CONTRIBUTING: no unchecked narrowing; files stay under 300 lines.
       '@typescript-eslint/no-unsafe-type-assertion': 'error',
+      // Every export, test utilities included, states what it returns.
+      '@typescript-eslint/explicit-module-boundary-types': 'error',
       'max-lines': ['error', { max: 300 }],
     },
   },

@@ -7,14 +7,19 @@
  *
  * @module
  */
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, screen } from '@testing-library/react';
 import { useState } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 
 import { type Dashboard, DashboardSchema } from '@/domain/config/dashboard';
-import type { EngineProviders } from '@/engine';
 import { choose, optionsOf } from '@/test/choose';
-import { fakeAmplifyReader, fakeGitHubReader } from '@/test/fakeReaders';
+import { envRender } from '@/test/envRender';
+import {
+  fakeAmplifyReader,
+  fakeGitHubApi,
+  fetched,
+  ghRepo,
+} from '@/test/fakeReaders';
 
 import { CredentialSelect } from './CredentialSelect';
 import { RowsEditor } from './RowsEditor';
@@ -32,22 +37,13 @@ const board = (extra: object = {}) =>
   });
 
 /** Each token sees one repo named after it. */
-const providers: EngineProviders = {
+const render = envRender({
   github: (id) =>
-    fakeGitHubReader({
-      listRepos: () =>
-        Promise.resolve([
-          {
-            full_name: `acme/${id}-repo`,
-            name: `${id}-repo`,
-            private: false,
-            html_url: '',
-            owner: { login: 'acme' },
-          },
-        ]),
+    fakeGitHubApi({
+      reposPage: () => Promise.resolve(fetched([ghRepo(`acme/${id}-repo`)])),
     }),
-  amplify: () => () => fakeAmplifyReader({}),
-};
+  amplify: () => fakeAmplifyReader({}),
+});
 
 /** The rows editor over a draft it updates; `onChange` sees each edit. */
 function renderRows(dashboard: Dashboard) {
@@ -57,7 +53,6 @@ function renderRows(dashboard: Dashboard) {
     return (
       <RowsEditor
         dashboard={d}
-        providers={providers}
         onChange={(next) => {
           onChange(next);
           setD(next);

@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
-import type { RequestCall } from './readerWrap';
+import type { RequestCall } from '@/query/instrument';
+
 import {
   kindStats,
   median,
@@ -91,7 +92,7 @@ describe('summarise', () => {
       demoLatencyMs: DEMO_TARGET_LATENCY_MS,
       pageLoad: 'navigate',
       firstCell: { sinceOpen: 1_200, sinceLoad: 1_900 },
-      fullBoard: { sinceOpen: 6_000, sinceLoad: 6_700 },
+      fullBoard: { sinceOpen: 9_000, sinceLoad: 9_700 },
     });
     // Every target is listed, judged or not (here the reload and real
     // board ones aren't).
@@ -107,7 +108,7 @@ describe('summarise', () => {
       }),
       expect.objectContaining({
         maxMs: DEMO_FULL_BOARD_MAX_MS,
-        actualMs: 6_000,
+        actualMs: 9_000,
         met: false,
       }),
     ]);

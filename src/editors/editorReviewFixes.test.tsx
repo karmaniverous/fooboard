@@ -1,12 +1,15 @@
 /**
  * Tests for editor fixes from review: deleting an Amplify source asks
  * first; a failed repo list retries; the same repo can be
- * added twice; listed apps hide when the region changes.
+ * added twice; listed apps hide when the region changes; a region with
+ * no apps says so.
  *
  * @module
  */
 import { act, fireEvent, screen, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
+
+import { fetched, ghRepo } from '@/test/fakeReaders';
 
 import { setup, tab } from './editorSectionsHarness';
 
@@ -14,18 +17,10 @@ describe('editor review fixes', () => {
   it('retries a failed repo list', async () => {
     let calls = 0;
     setup({
-      listRepos: () =>
+      reposPage: () =>
         ++calls === 1
           ? Promise.reject(new Error('Bad gateway'))
-          : Promise.resolve([
-              {
-                full_name: 'acme/api',
-                name: 'api',
-                private: false,
-                html_url: '',
-                owner: { login: 'acme' },
-              },
-            ]),
+          : Promise.resolve(fetched([ghRepo('acme/api')])),
     });
     tab('Rows');
     fireEvent.click(screen.getByRole('button', { name: 'Add a GitHub row' }));
@@ -38,16 +33,7 @@ describe('editor review fixes', () => {
 
   it('adds the same repo twice as independent rows', async () => {
     const latest = setup({
-      listRepos: () =>
-        Promise.resolve([
-          {
-            full_name: 'acme/api',
-            name: 'api',
-            private: false,
-            html_url: '',
-            owner: { login: 'acme' },
-          },
-        ]),
+      reposPage: () => Promise.resolve(fetched([ghRepo('acme/api')])),
     });
     tab('Rows');
     fireEvent.click(screen.getByRole('button', { name: 'Add a GitHub row' }));
@@ -89,6 +75,19 @@ describe('editor review fixes', () => {
     expect(latest.current.rows.at(-1)).toMatchObject({
       sources: [{ region: 'eu-west-1', appId: 'a1' }],
     });
+  });
+
+  it('says when the listed region has no apps', async () => {
+    setup({}, { listApps: () => Promise.resolve([]) });
+    tab('Rows');
+    fireEvent.change(screen.getByLabelText('Region'), {
+      target: { value: 'eu-north-1' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'List Amplify apps' }));
+    const empty = await screen.findByText('No apps in eu-north-1.');
+    const list = empty.closest('ul');
+    if (!list) throw new Error('the message is not in the app list');
+    expect(within(list).getAllByRole('listitem')).toEqual([empty]);
   });
 
   it('asks before deleting an Amplify source', async () => {

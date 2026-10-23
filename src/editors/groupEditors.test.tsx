@@ -7,7 +7,7 @@
  *
  * @module
  */
-import { fireEvent, render, screen, within } from '@testing-library/react';
+import { fireEvent, screen, within } from '@testing-library/react';
 import { useState } from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { describe, expect, it } from 'vitest';
@@ -15,12 +15,12 @@ import { describe, expect, it } from 'vitest';
 import { type Dashboard, DashboardSchema } from '@/domain/config/dashboard';
 import { branchRules } from '@/domain/config/placement';
 import { branchRule } from '@/domain/rules/branch';
-import type { EngineProviders } from '@/engine';
 import { createAppStores } from '@/storage';
 import { memoryStorage } from '@/storage/keyValue';
 import { StoresContext } from '@/storage/storesContext';
 import { choose, optionsOf } from '@/test/choose';
-import { fakeGitHubReader, ghBranch } from '@/test/fakeReaders';
+import { envRender } from '@/test/envRender';
+import { fakeGitHubApi, fetched, ghBranch } from '@/test/fakeReaders';
 import { keyboardDrag } from '@/test/keyboardDrag';
 import { expand } from '@/test/openItem';
 
@@ -45,13 +45,14 @@ const start = DashboardSchema.parse({
   ],
 });
 
-const reader = fakeGitHubReader({
-  listBranches: () => Promise.resolve([ghBranch('main'), ghBranch('rc/1')]),
+const reader = fakeGitHubApi({
+  branchesPage: () =>
+    Promise.resolve(fetched([ghBranch('main'), ghBranch('rc/1')])),
 });
-const providers: EngineProviders = {
+const render = envRender({
   github: () => reader,
   amplify: () => undefined,
-};
+});
 
 function setup(initial: Dashboard = start, draft?: EditorDraft) {
   const latest = { current: initial };
@@ -60,7 +61,6 @@ function setup(initial: Dashboard = start, draft?: EditorDraft) {
     return (
       <DashboardEditor
         dashboard={d}
-        providers={providers}
         draft={draft}
         onChange={(next) => {
           latest.current = next;

@@ -24,6 +24,7 @@ vi.mock('@/engine/credentialProviders', async () => {
   return {
     credentialProviders: () => ({
       github: () => undefined,
+      fingerprint: () => 'secret',
       amplify: (credentialId: string) => () =>
         fakeAmplifyReader({
           listBranches: () => {
@@ -38,7 +39,7 @@ vi.mock('@/engine/credentialProviders', async () => {
 const SOURCE_LABEL = 'AWS key for site source a1';
 
 describe('DashboardPage Amplify sources', () => {
-  it('saves a changed key override and reads the row again with it', async () => {
+  it('saves a changed key override and reads the changed source with it', async () => {
     const other = { credentialId: 'aws1', region: 'eu-west-1', appId: 'a2' };
     const stores = renderDashboardPage({
       id: 'd',
@@ -81,8 +82,10 @@ describe('DashboardPage Amplify sources', () => {
         other,
       ],
     });
+    // Only the changed source reads again: the unchanged one's queries
+    // keep their key (credential, region, app), so the cache serves it.
     await waitFor(() => {
-      expect(new Set(readsBy)).toEqual(new Set(['aws2', 'aws1']));
+      expect(new Set(readsBy)).toEqual(new Set(['aws2']));
     });
     expect(
       screen.getByRole('combobox', { name: SOURCE_LABEL, hidden: true }),

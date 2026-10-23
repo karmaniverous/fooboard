@@ -11,7 +11,7 @@
 import { useEffect, useRef, useState } from 'react';
 
 import type { BoardModel } from '@/engine';
-import { IDLE_INTERVAL_MS } from '@/engine/scheduler';
+import { IDLE_INTERVAL_MS } from '@/query/intervals';
 
 /** At most this often (the idle polling interval). */
 const LAYOUT_DATA_INTERVAL_MS = IDLE_INTERVAL_MS;

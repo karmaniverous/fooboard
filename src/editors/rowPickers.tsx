@@ -12,7 +12,8 @@ import { Input } from '@/components/ui/input';
 import { resolveCredentialId } from '@/domain/config/credentialRefs';
 import type { Dashboard } from '@/domain/config/dashboard';
 import type { AmplifyRow } from '@/domain/config/row';
-import type { EngineProviders } from '@/engine';
+import { fetchApps } from '@/query/lookups';
+import { useQueryEnv } from '@/query/queryEnvContext';
 
 import { CredentialSelect } from './CredentialSelect';
 import { repoFromUrl, uniqueId } from './edit';
@@ -24,11 +25,9 @@ const DEFAULT_PICKER_REGION = 'us-east-1';
 
 export function AmplifyPicker({
   dashboard,
-  providers,
   onAdd,
 }: {
   dashboard: Dashboard;
-  providers: EngineProviders;
   onAdd: (row: AmplifyRow) => void;
 }): React.JSX.Element {
   const [credentialId, setCredentialId] = useState<string | undefined>();
@@ -44,7 +43,9 @@ export function AmplifyPicker({
     'aws',
     credentialId,
   );
-  const readers = resolved ? providers.amplify(resolved) : undefined;
+  const env = useQueryEnv();
+  const key =
+    resolved && env.providers.amplify(resolved) ? resolved : undefined;
   if (!dashboard.credentials.some((c) => c.kind === 'aws')) {
     return (
       <p className="text-xs text-muted-foreground">
@@ -73,16 +74,11 @@ export function AmplifyPicker({
         <Button
           size="sm"
           variant="outline"
-          disabled={!readers || !resolved || !region.trim()}
+          disabled={!key || !region.trim()}
           onClick={() => {
-            if (!readers || !resolved) return;
+            if (!key) return;
             load(async ({ region: listedIn }) =>
-              (
-                await readers({
-                  credentialId: resolved,
-                  region: listedIn,
-                }).listApps()
-              ).flatMap((a) =>
+              (await fetchApps(env.client, key, listedIn)).flatMap((a) =>
                 a.appId
                   ? [
                       {

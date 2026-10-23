@@ -24,9 +24,11 @@ export const itemTrigger = (name: string): HTMLElement =>
     name: new RegExp(`^${name.replace(REGEX_SPECIALS, '\\$&')}( |$)`),
   });
 
+/** Is the item named `name` open? */
+export const isOpen = (name: string): boolean =>
+  itemTrigger(name).getAttribute('aria-expanded') === 'true';
+
 /** Open the item named `name`, unless it is open already. */
 export function expand(name: string): void {
-  const trigger = itemTrigger(name);
-  if (trigger.getAttribute('aria-expanded') !== 'true')
-    fireEvent.click(trigger);
+  if (!isOpen(name)) fireEvent.click(itemTrigger(name));
 }

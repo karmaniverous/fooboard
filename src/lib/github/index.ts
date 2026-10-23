@@ -1,18 +1,27 @@
 /**
- * Public surface of the GitHub adapter (spec.md §5), as the board engine
- * consumes it: the reader port, the errors the engine turns into cell
- * states, the mapping into derivation inputs, and the budget and compare
- * types. Exports are added here as callers need them.
+ * Public surface of the GitHub adapter (spec.md §3.1), as the query layer
+ * and board model consume it: the request port, the errors that become
+ * cell states, the mapping into derivation inputs, and the budget type.
  *
  * @module
  */
-export { GitHubAuthError, RateLimitedError } from './errors';
+export {
+  type Conditional,
+  createGitHubApi,
+  type Fetched,
+  GITHUB_PER_PAGE,
+  type GitHubApi,
+  pagesFor,
+  repoRef,
+} from './api';
+export { RateLimitedError } from './errors';
 export { mapRunWithJobs, mapWorkflowRun } from './mapToDerivation';
 export { isOverPollingShare, type RateLimitBudget } from './rateLimit';
 export {
-  type CompareResult,
-  GITHUB_PER_PAGE,
-  type GitHubReader,
-  pagesFor,
-} from './reader';
-export type { WorkflowRun } from './schemas';
+  attemptOf,
+  type Branch,
+  type CompareApiResult,
+  type Job,
+  type Repo,
+  type WorkflowRun,
+} from './schemas';

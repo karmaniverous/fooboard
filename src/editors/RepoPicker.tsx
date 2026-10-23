@@ -11,7 +11,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { resolveCredentialId } from '@/domain/config/credentialRefs';
 import type { Dashboard } from '@/domain/config/dashboard';
-import type { EngineProviders } from '@/engine';
+import { fetchRepos } from '@/query/lookups';
+import { useQueryEnv } from '@/query/queryEnvContext';
 
 import { CredentialSelect } from './CredentialSelect';
 import { LoadStatus } from './LoadStatus';
@@ -19,11 +20,9 @@ import { useLoadFor } from './useLoad';
 
 export function RepoPicker({
   dashboard,
-  providers,
   onPick,
 }: {
   dashboard: Dashboard;
-  providers: EngineProviders;
   /** The picked repo and the token chosen for it (unset: the default). */
   onPick: (fullName: string, credentialId: string | undefined) => void;
 }): React.JSX.Element {
@@ -37,7 +36,9 @@ export function RepoPicker({
     'github',
     credentialId,
   );
-  const reader = resolved ? providers.github(resolved) : undefined;
+  const env = useQueryEnv();
+  const token =
+    resolved && env.providers.github(resolved) ? resolved : undefined;
   if (!dashboard.credentials.some((c) => c.kind === 'github')) {
     return (
       <p className="text-xs text-muted-foreground">
@@ -59,11 +60,13 @@ export function RepoPicker({
           <Button
             size="sm"
             variant="outline"
-            disabled={!reader}
+            disabled={!token}
             onClick={() => {
-              if (!reader) return;
+              if (!token) return;
               load(async () =>
-                (await reader.listRepos()).map((r) => r.full_name).sort(),
+                (await fetchRepos(env.client, token))
+                  .map((r) => r.full_name)
+                  .sort(),
               );
             }}
           >

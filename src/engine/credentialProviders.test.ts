@@ -1,11 +1,12 @@
 /**
  * Tests for `credentialProviders`: readers exist only for entered secrets
- * of the right kind, are reused until the secret changes, and an AWS key's
- * readers are reused per region.
+ * of the right kind, are reused until the secret changes (the fingerprint
+ * changes with it), an AWS key's readers are reused per region, and a
+ * GitHub response's budget is reported under its credential.
  *
  * @module
  */
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import { createCredentialStore } from '@/storage/credentialStore';
 import { memoryStorage } from '@/storage/keyValue';
@@ -14,7 +15,12 @@ import { credentialProviders } from './credentialProviders';
 
 const setup = () => {
   const store = createCredentialStore(memoryStorage());
-  return { store, providers: credentialProviders(store) };
+  const onBudget = vi.fn();
+  return {
+    store,
+    onBudget,
+    providers: credentialProviders(store, { onBudget }),
+  };
 };
 
 describe('credentialProviders', () => {
@@ -35,8 +41,41 @@ describe('credentialProviders', () => {
     store.set('gh', { kind: 'github', token: 'a' }, false);
     const first = providers.github('gh');
     expect(providers.github('gh')).toBe(first);
+    const before = providers.fingerprint('gh');
     store.set('gh', { kind: 'github', token: 'b' }, false);
     expect(providers.github('gh')).not.toBe(first);
+    expect(providers.fingerprint('gh')).not.toBe(before);
+    expect(providers.fingerprint('none')).toBeUndefined();
+  });
+
+  it("reports a response's budget under its credential", async () => {
+    const { store, onBudget, providers } = setup();
+    store.set('gh', { kind: 'github', token: 'a' }, false);
+    const headers = {
+      'x-ratelimit-limit': '5000',
+      'x-ratelimit-remaining': '4000',
+      'x-ratelimit-reset': '1',
+      'x-ratelimit-used': '1000',
+    };
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(() =>
+        Promise.resolve(
+          new Response(JSON.stringify({ total_count: 0, workflow_runs: [] }), {
+            headers,
+          }),
+        ),
+      ),
+    );
+    try {
+      await providers.github('gh')?.runsPage({ owner: 'o', repo: 'r' }, 1);
+    } finally {
+      vi.unstubAllGlobals();
+    }
+    expect(onBudget).toHaveBeenCalledWith(
+      'gh',
+      expect.objectContaining({ remaining: 4000 }),
+    );
   });
 
   it('reuses an AWS key reader per region', () => {

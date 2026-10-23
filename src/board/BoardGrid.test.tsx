@@ -18,12 +18,9 @@ import { beforeAll, describe, expect, it } from 'vitest';
 
 import { demoDashboard } from '@/demo/board';
 import { branchRules } from '@/domain/config/placement';
-import {
-  type BoardModel,
-  createBoardEngine,
-  demoProviders,
-  emptyModel,
-} from '@/engine';
+import { type BoardModel, emptyModel } from '@/engine';
+import { fullModel } from '@/test/boardModel';
+import { focusElement } from '@/test/focus';
 
 import { BoardGrid } from './BoardGrid';
 import type { Layout } from './layout';
@@ -49,13 +46,7 @@ const testLayout: Layout = {
 let model: BoardModel;
 
 beforeAll(async () => {
-  const engine = createBoardEngine({
-    dashboard: demoDashboard,
-    providers: demoProviders(() => 0),
-    visibility: { isHidden: () => false, onChange: () => () => undefined },
-  });
-  await engine.refreshAll();
-  model = engine.getModel();
+  model = await fullModel(demoDashboard);
 });
 
 // The detail sheet links to the credential guide, so render inside a router.
@@ -154,7 +145,7 @@ describe('BoardGrid', () => {
     const cellLink = screen.getAllByRole('link', {
       name: /, \d+ commits behind/,
     })[0];
-    cellLink.focus();
+    focusElement(cellLink);
     fireEvent.pointerDown(cellLink, { pointerType: 'touch' });
     fireEvent.click(cellLink);
     const sheet = screen.getByRole('dialog', { name: 'Cell detail' });
@@ -217,13 +208,13 @@ describe('BoardGrid', () => {
   it('shows the full row and stage names in tooltips from the keyboard', async () => {
     renderBoard();
     const row = screen.getByRole('rowheader', { name: 'billing' });
-    row.focus();
+    focusElement(row);
     expect(row).toHaveFocus();
     expect(await screen.findByRole('tooltip')).toHaveTextContent(
       'billing (acme/billing)',
     );
     const stage = screen.getByRole('columnheader', { name: 'Bali' });
-    stage.focus();
+    focusElement(stage);
     expect(stage).toHaveFocus();
     await waitFor(() => {
       expect(screen.getByRole('tooltip')).toHaveTextContent(/^Bali \(/);

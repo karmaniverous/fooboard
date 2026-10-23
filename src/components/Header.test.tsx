@@ -10,6 +10,7 @@
 import { fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
+import { focusElement } from '@/test/focus';
 import { fakeLayout } from '@/test/layout';
 import { renderShell } from '@/test/renderShell';
 
@@ -174,7 +175,7 @@ describe('Header', () => {
     async (how) => {
       renderShell(<Header />);
       const share = screen.getByRole('button', { name: 'Share / Export' });
-      share.focus();
+      focusElement(share);
       fireEvent.click(share);
       const dialog = screen.getByRole('dialog');
       if (how === 'Escape') fireEvent.keyDown(dialog, { key: 'Escape' });

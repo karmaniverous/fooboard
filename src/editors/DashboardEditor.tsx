@@ -16,7 +16,6 @@ import { type Dashboard, DashboardSchema } from '@/domain/config/dashboard';
 import { PROVIDERS } from '@/domain/config/providers';
 import { sourceRuleFor } from '@/domain/model/sources';
 import type { Problem } from '@/domain/problems/problem';
-import type { EngineProviders } from '@/engine';
 import { describeError } from '@/lib/errors';
 
 import type { EditorDraft } from './draft';
@@ -54,7 +53,6 @@ function focusItem(root: HTMLElement, keys: readonly string[]): void {
 
 export function DashboardEditor({
   dashboard,
-  providers,
   onChange,
   draft,
   unknown,
@@ -63,7 +61,6 @@ export function DashboardEditor({
   problems = [],
 }: {
   dashboard: Dashboard;
-  providers: EngineProviders;
   onChange: (dashboard: Dashboard) => void;
   /** Open on a fix (*Add rule*, *Add override*, *Fix*). */
   draft?: EditorDraft;
@@ -102,7 +99,7 @@ export function DashboardEditor({
       setError(parsed.error.issues.map((i) => i.message).join('; '));
     }
   };
-  const props = { dashboard, providers, onChange: update };
+  const props = { dashboard, onChange: update };
   return (
     <EditFocusContext value={focus}>
       <RuleSamplesContext value={samples}>

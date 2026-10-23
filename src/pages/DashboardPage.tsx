@@ -1,12 +1,12 @@
 /**
- * A saved dashboard (spec.md §4.4): the live board read with this
- * dashboard's credentials, plus its credentials panel. Readers are
- * rebuilt whenever a secret changes, so entering a token fills the board
- * at once instead of on the next poll.
+ * A saved dashboard (spec.md §2.4): the live board read with this
+ * dashboard's credentials through the app's query environment, plus its
+ * credentials panel. A changed secret removes what was read with the old
+ * one and re-derives the board, so entering a token fills it at once.
  *
  * @module
  */
-import { useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 
 import { BoardScreen } from '@/board/BoardScreen';
@@ -28,7 +28,8 @@ import {
 } from '@/editors/draft';
 import { ruleSamples } from '@/editors/rules/samples';
 import { unknownCells } from '@/editors/statuses/unknownRuns';
-import { credentialProviders } from '@/engine/credentialProviders';
+import { appQueryEnv } from '@/engine/appEnv';
+import { QueryProvider } from '@/query/QueryProvider';
 import { dashboardsOf } from '@/storage/configStore';
 import { useStores } from '@/storage/storesContext';
 
@@ -47,15 +48,17 @@ function SavedDashboard({
   initial: Dashboard;
   others: readonly Dashboard[];
 }): React.JSX.Element {
-  const { config, credentials } = useStores();
+  const stores = useStores();
+  const { config } = stores;
+  const env = appQueryEnv(stores);
   const [dashboard, setDashboard] = useState(initial);
   const version = useCredentialVersion();
-  // A changed secret (new `version`) rebuilds the providers, which
-  // restarts the engine with the new readers.
-  const providers = useMemo(
-    () => ({ ...credentialProviders(credentials), version }),
-    [credentials, version],
-  );
+  // A changed secret (new `version`) drops what the old one read; the
+  // board then re-derives (`refreshKey`).
+  const credentialIds = dashboard.credentials.map((c) => c.id).join('\n');
+  useEffect(() => {
+    env.secretsChanged(credentialIds.split('\n'));
+  }, [env, credentialIds, version]);
   const save = (next: Dashboard) => {
     config.saveDashboard(next);
     setDashboard(next);
@@ -79,7 +82,7 @@ function SavedDashboard({
   return (
     <BoardScreen
       dashboard={dashboard}
-      providers={providers}
+      refreshKey={version}
       onOpenProblem={(p) => {
         openEditor(problemDraft(p));
       }}
@@ -149,7 +152,6 @@ function SavedDashboard({
               key={draft.n}
               draft={draft.draft}
               dashboard={dashboard}
-              providers={providers}
               onChange={save}
               unknown={unknownCells(dashboard, model)}
               samples={ruleSamples(dashboard.rows, model.cells)}
@@ -169,7 +171,9 @@ function SavedDashboard({
               dashboard={dashboard}
               otherDashboards={others}
               onChange={save}
-              tokenExpiry={(id) => providers.github(id)?.getTokenExpiration()}
+              tokenExpiry={(id) =>
+                env.providers.github(id)?.getTokenExpiration()
+              }
             />
           </SidePanel>
         </>
@@ -180,7 +184,8 @@ function SavedDashboard({
 
 export function DashboardPage(): React.JSX.Element {
   const { id } = useParams();
-  const loaded = useStores().config.load();
+  const stores = useStores();
+  const loaded = stores.config.load();
   const dashboards = dashboardsOf(loaded);
   const dashboard = dashboards.find((d) => d.id === id);
   if (!dashboard) {
@@ -197,10 +202,12 @@ export function DashboardPage(): React.JSX.Element {
     );
   }
   return (
-    <SavedDashboard
-      key={dashboard.id}
-      initial={dashboard}
-      others={dashboards.filter((d) => d.id !== dashboard.id)}
-    />
+    <QueryProvider env={appQueryEnv(stores)}>
+      <SavedDashboard
+        key={dashboard.id}
+        initial={dashboard}
+        others={dashboards.filter((d) => d.id !== dashboard.id)}
+      />
+    </QueryProvider>
   );
 }

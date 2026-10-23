@@ -8,9 +8,7 @@
  */
 import { sleep } from 'radash';
 
-import type { EngineProviders } from '@/engine/types';
-
-import { wrapProviders } from './readerWrap';
+import type { Around } from '@/query/instrument';
 
 /** The demo URL's search parameter giving the latency in ms. */
 export const DEMO_LATENCY_PARAM = 'latency';
@@ -26,16 +24,15 @@ export function demoLatencyMs(search: string): number {
     : 0;
 }
 
-/** `providers` with every request delayed by `latencyMs` (unchanged for
- * none). `wait` is injectable for tests. */
-export function withLatency(
-  providers: EngineProviders,
+/** Every request delayed by `latencyMs`, or `undefined` for none.
+ * `wait` is injectable for tests. */
+export function latencyAround(
   latencyMs: number,
   wait: (ms: number) => Promise<unknown> = sleep,
-): EngineProviders {
-  if (latencyMs <= 0) return providers;
-  return wrapProviders(providers, async (_call, run) => {
+): Around | undefined {
+  if (latencyMs <= 0) return undefined;
+  return async (_call, run) => {
     await wait(latencyMs);
     return run();
-  });
+  };
 }

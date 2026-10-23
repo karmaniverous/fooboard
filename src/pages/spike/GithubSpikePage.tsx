@@ -7,7 +7,8 @@
  *
  * @module
  */
-import { createGitHubReader } from '@/lib/github/reader';
+import { createGitHubApi } from '@/lib/github/api';
+import type { RateLimitBudget } from '@/lib/github/rateLimit';
 
 import {
   githubSpikeFields,
@@ -32,9 +33,16 @@ export function GithubSpikePage(): React.JSX.Element {
       fields={githubSpikeFields}
       schema={githubSpikeFormSchema}
       defaults={githubSpikeFormDefaults}
-      run={(values) =>
-        runGithubSpike(createGitHubReader({ token: values.token }), values)
-      }
+      run={(values) => {
+        let budget: RateLimitBudget | undefined;
+        const api = createGitHubApi({
+          token: values.token,
+          onBudget: (b) => {
+            budget = b;
+          },
+        });
+        return runGithubSpike(api, () => budget, values);
+      }}
       renderResult={(result) => (
         <p className="text-sm">
           ETag honoured: {verdict(result.notModifiedHonoured)}

@@ -3,12 +3,12 @@ import { describe, expect, it } from 'vitest';
 import { demoDashboard } from '@/demo/board';
 import type { Dashboard } from '@/domain/config/dashboard';
 import type { Row } from '@/domain/config/row';
-import { createBoardEngine, demoProviders } from '@/engine';
 import { emptyModel } from '@/engine/model';
 import type { BoardModel } from '@/engine/types';
 import { GitHubAuthError } from '@/lib/github/errors';
+import type { RequestCall } from '@/query/instrument';
+import { fullModel as readFully } from '@/test/boardModel';
 
-import type { RequestCall } from './readerWrap';
 import { createTimingSession, rowNeeds, type TimingSink } from './session';
 import type { TimingSummary } from './summary';
 import { TIMING_NAMES } from './targets';
@@ -142,15 +142,8 @@ describe('rowNeeds for Amplify reads', () => {
   });
 });
 
-/** The demo board fully read, as the engine publishes it. */
-async function fullModel(): Promise<BoardModel> {
-  const engine = createBoardEngine({
-    dashboard: demoDashboard,
-    providers: demoProviders(() => 0),
-  });
-  await engine.refreshAll();
-  return engine.getModel();
-}
+/** The demo board fully read, as the board model publishes it. */
+const fullModel = (): Promise<BoardModel> => readFully(demoDashboard);
 
 /** `model` with only the cells of `rowIds`. */
 const onlyRows = (model: BoardModel, rowIds: string[]): BoardModel => ({

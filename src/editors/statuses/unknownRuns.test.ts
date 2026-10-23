@@ -51,6 +51,7 @@ const unknownCell = (rowId: string, stageId: string): BoardCell => ({
   stageId,
   active: false,
   badge: undefined,
+  settled: true,
   derivation: {
     kind: 'ok',
     status: UNKNOWN,

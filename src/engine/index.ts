@@ -1,19 +1,16 @@
 /**
- * Public surface of the board engine (spec.md §8 step 7), consumed by the
- * board UI: the engine factory, its model types, and the demo providers
- * that drive *Try the demo* (C-23).
+ * Public surface of the board model (spec.md §3.1), consumed by the board
+ * UI: the model factory, its types, the store-backed and demo providers.
  *
  * @module
  */
-export { githubCredentialIds } from './budgets';
+export { type BoardModelHandle, createBoardModel } from './boardModel';
 export { demoProviders } from './demoProviders';
-export { createBoardEngine } from './engine';
-export { emptyModel } from './model';
+export { emptyModel, githubCredentialIds } from './model';
 export {
   type BoardCell,
   type BoardModel,
   cellKey,
   CellKeySchema,
-  type EngineProviders,
   type UnmappedRun,
 } from './types';

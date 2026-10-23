@@ -9,6 +9,8 @@
 import { act, fireEvent } from '@testing-library/react';
 import { vi } from 'vitest';
 
+import { focusElement } from './focus';
+
 /** The laid-out size of a list item, and the gap between items. */
 const ITEM_HEIGHT = 40;
 const ITEM_GAP = 8;
@@ -64,7 +66,7 @@ export async function startKeyboardDrag(
   handle: HTMLElement,
 ): Promise<KeyboardDrag> {
   const restore = layOutListItems();
-  handle.focus();
+  focusElement(handle);
   fireEvent.keyDown(handle, { code: 'Space', key: ' ' });
   await settle();
   return {

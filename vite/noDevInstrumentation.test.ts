@@ -1,8 +1,14 @@
 import { describe, expect, it } from 'vitest';
 
-import { filesContaining, noDevInstrumentation } from './noDevInstrumentation';
+import { TIMING_PREFIX } from '../src/perf/targets';
+import {
+  DEVTOOLS_MARKER,
+  filesContaining,
+  noDevInstrumentation,
+} from './noDevInstrumentation';
 
-const MARKER = 'fooboard-timing';
+/** The timing instrumentation's marker. */
+const MARKER = TIMING_PREFIX;
 
 describe('filesContaining', () => {
   it('finds the marker in chunks and in text assets, not elsewhere', () => {
@@ -36,8 +42,8 @@ describe('noDevInstrumentation', () => {
     isPreview: false,
   });
 
-  it('fails the build naming the files that contain the marker', () => {
-    const { generateBundle } = noDevInstrumentation(MARKER);
+  it('fails the build naming the files that contain a marker', () => {
+    const { generateBundle } = noDevInstrumentation();
     if (typeof generateBundle !== 'function')
       throw new Error('generateBundle is a function');
     const context = {
@@ -56,10 +62,13 @@ describe('noDevInstrumentation', () => {
     expect(() => {
       run(`"${MARKER}:open"`);
     }).toThrow(/production bundle: a\.js/);
+    expect(() => {
+      run(`title: "${DEVTOOLS_MARKER}"`);
+    }).toThrow(/production bundle: a\.js/);
   });
 
   it('applies to production builds only', () => {
-    const { apply } = noDevInstrumentation(MARKER);
+    const { apply } = noDevInstrumentation([MARKER]);
     if (typeof apply !== 'function') throw new Error('apply is a function');
     expect(apply({}, env('build', 'production'))).toBe(true);
     expect(apply({}, env('build', 'development'))).toBe(false);

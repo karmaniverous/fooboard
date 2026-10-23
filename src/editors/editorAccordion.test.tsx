@@ -5,20 +5,19 @@
  *
  * @module
  */
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
+
+const render = envRender();
 
 import { DashboardSchema } from '@/domain/config/dashboard';
 import { branchRules } from '@/domain/config/placement';
-import type { EngineProviders } from '@/engine';
-import { expand, itemTrigger } from '@/test/openItem';
+import { envRender } from '@/test/envRender';
+import { expand, isOpen, itemTrigger } from '@/test/openItem';
 
 import { DashboardEditor } from './DashboardEditor';
 import type { EditorDraft } from './draft';
 import { setup, tab } from './editorSectionsHarness';
-
-const isOpen = (name: string) =>
-  itemTrigger(name).getAttribute('aria-expanded') === 'true';
 
 // jsdom doesn't lay out, so has no scrollIntoView; a test may stub one.
 afterEach(() => {
@@ -70,15 +69,10 @@ describe('the editor opened on a fix', () => {
       { id: 'prod', name: 'prod', rules: branchRules('main') },
     ],
   });
-  const providers: EngineProviders = {
-    github: () => undefined,
-    amplify: () => undefined,
-  };
   const open = (draft: EditorDraft) =>
     render(
       <DashboardEditor
         dashboard={dashboard}
-        providers={providers}
         draft={draft}
         onChange={() => undefined}
       />,
@@ -103,7 +97,6 @@ describe('the editor opened on a fix', () => {
     rerender(
       <DashboardEditor
         dashboard={dashboard}
-        providers={providers}
         draft={{ tab: 'Rows', focus: ['row:web'] }}
         onChange={() => undefined}
       />,

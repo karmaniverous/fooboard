@@ -2,7 +2,8 @@
  * Zod schemas for the GitHub REST payloads this adapter reads (spec.md §4.3,
  * §5). Only the fields the adapter uses are validated; everything else on
  * the response is ignored. Types are derived with `z.infer`, so the schema
- * is the single source of truth.
+ * is the single source of truth. A field GitHub may omit gets its default
+ * here too (`attemptOf`).
  *
  * @module
  */
@@ -27,8 +28,18 @@ const WorkflowRunSchema = z.object({
   /** What triggered the run, e.g. `push`, `pull_request` (spec.md §4.3.1:
    * `pull_request`/`pull_request_target` runs are excluded). */
   event: z.string(),
+  /** The run's repo as GitHub names it now: a renamed repo's runs carry
+   * the new name (Decision 26). */
+  repository: z.object({ full_name: z.string() }).optional(),
 });
 export type WorkflowRun = z.infer<typeof WorkflowRunSchema>;
+
+/** The attempt GitHub omits on runs and jobs from before reruns existed. */
+const FIRST_RUN_ATTEMPT = 1;
+
+/** The run attempt `item` (a run or a job) belongs to. */
+export const attemptOf = (item: { run_attempt?: number }): number =>
+  item.run_attempt ?? FIRST_RUN_ATTEMPT;
 
 /** `GET /repos/{owner}/{repo}/actions/runs` response envelope. */
 export const WorkflowRunsResponseSchema = z.object({
@@ -36,7 +47,7 @@ export const WorkflowRunsResponseSchema = z.object({
   workflow_runs: z.array(WorkflowRunSchema),
 });
 
-/** One job within a workflow run's latest attempt (spec.md 4.3.2-4.3.3). */
+/** One job within a workflow run attempt (spec.md 4.3.2-4.3.3). */
 const JobSchema = z.object({
   id: z.number(),
   run_id: z.number(),
@@ -50,7 +61,8 @@ const JobSchema = z.object({
 });
 export type Job = z.infer<typeof JobSchema>;
 
-/** `GET /repos/{owner}/{repo}/actions/runs/{run_id}/jobs` response envelope. */
+/** `GET /repos/{owner}/{repo}/actions/runs/{run_id}/attempts/{attempt}/jobs`
+ * response envelope. */
 export const JobsResponseSchema = z.object({
   total_count: z.number(),
   jobs: z.array(JobSchema),
@@ -103,15 +115,3 @@ export type Repo = z.infer<typeof RepoSchema>;
 
 /** `GET /user/repos` response: a plain array, paginated. */
 export const ReposResponseSchema = z.array(RepoSchema);
-
-/** `GET /rate_limit`: only the `core` (REST) resource is read. */
-export const RateLimitResponseSchema = z.object({
-  resources: z.object({
-    core: z.object({
-      limit: z.number(),
-      remaining: z.number(),
-      reset: z.number(),
-      used: z.number(),
-    }),
-  }),
-});

@@ -9,20 +9,15 @@
 import { beforeAll, describe, expect, it } from 'vitest';
 
 import { demoDashboard } from '@/demo/board';
-import { type BoardModel, createBoardEngine, demoProviders } from '@/engine';
+import type { BoardModel } from '@/engine';
+import { fullModel } from '@/test/boardModel';
 
 import { boardContents, firstLine } from './layoutContents';
 
 let model: BoardModel;
 
 beforeAll(async () => {
-  const engine = createBoardEngine({
-    dashboard: demoDashboard,
-    providers: demoProviders(() => 0),
-    visibility: { isHidden: () => false, onChange: () => () => undefined },
-  });
-  await engine.refreshAll();
-  model = engine.getModel();
+  model = await fullModel(demoDashboard);
 });
 
 describe('boardContents', () => {

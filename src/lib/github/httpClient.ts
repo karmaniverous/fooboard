@@ -1,13 +1,14 @@
 /**
- * The GitHub HTTP core (spec.md §5, C-16): one GET helper that wires
- * together the ETag cache, the per-credential serial queue, rate-limit
- * budget tracking, token-expiry tracking and typed-error mapping. Every
- * adapter method in `reader.ts` goes through `GitHubHttpClient.getJson`.
+ * The GitHub HTTP core (spec.md §3.1, Decision 5): one conditional GET
+ * that sends `If-None-Match` with the ETag the caller kept (the query
+ * layer stores it with the cached data), reports the token's budget from
+ * every response's rate-limit headers, tracks the token's expiry and maps
+ * failures to typed errors. It holds no queue and no cache: requests in
+ * flight are the query layer's limiter's business (§3.2).
  *
  * @module
  */
 import { describeError } from '@/lib/errors';
-import { SerialQueue } from '@/lib/queue/serialQueue';
 
 import {
   GitHubAuthError,
@@ -18,13 +19,13 @@ import {
   GitHubValidationError,
   RateLimitedError,
 } from './errors';
-import { EtagCache } from './etagCache';
 import {
   computeRetryAt,
   isRateLimitResponse,
   parseRateLimitHeaders,
   type RateLimitBudget,
 } from './rateLimit';
+import { HTTP_STATUS } from './status';
 
 /** A `fetch`-compatible function, injectable for tests (spec.md: no real network in tests). */
 export type FetchLike = (
@@ -37,44 +38,44 @@ const SECONDARY_LIMIT = /secondary rate limit/i;
 
 const TOKEN_EXPIRATION_HEADER = 'github-authentication-token-expiration';
 
-/** One GET response: the parsed JSON body plus the raw headers (for pagination). */
+/** A response with a body: the parsed JSON, its ETag and `Link` header,
+ * and whether `fetch` followed a redirect to reach it (a renamed repo,
+ * Decision 26). */
 export interface JsonResponse {
+  notModified: false;
   data: unknown;
-  headers: Headers;
+  etag: string | null;
+  link: string | null;
+  redirected: boolean;
 }
 
-/** Config for a `GitHubHttpClient`: the token and the fraction that triggers a `'low'` budget. */
+/** A `304 Not Modified`: the caller's cached data still holds. */
+export interface NotModifiedResponse {
+  notModified: true;
+}
+
+/** Config for a `GitHubHttpClient`. */
 export interface GitHubHttpClientConfig {
   token: string;
   fetchImpl?: FetchLike;
+  /** Called with the budget every response reports (Decision 6). */
+  onBudget?: (budget: RateLimitBudget) => void;
 }
 
 /**
- * The shared HTTP core for one credential: serial queue, ETag cache, budget
- * and token-expiry tracking, typed-error mapping. Never includes the token
- * in a thrown error's message.
+ * The HTTP core for one credential. Never includes the token in a thrown
+ * error's message.
  */
 export class GitHubHttpClient {
   private readonly token: string;
   private readonly fetchImpl: FetchLike;
-  private readonly cache = new EtagCache();
-  private readonly queue = new SerialQueue();
-  private budget: RateLimitBudget | undefined;
+  private readonly onBudget: (budget: RateLimitBudget) => void;
   private tokenExpiration: string | undefined;
 
-  constructor({ token, fetchImpl }: GitHubHttpClientConfig) {
+  constructor({ token, fetchImpl, onBudget }: GitHubHttpClientConfig) {
     this.token = token;
     this.fetchImpl = fetchImpl ?? ((url, init) => fetch(url, init));
-  }
-
-  /** The latest rate-limit budget seen, if any response carried one. */
-  getBudget(): RateLimitBudget | undefined {
-    return this.budget;
-  }
-
-  /** Record a budget read from the `rate_limit` endpoint's body. */
-  noteBudget(budget: RateLimitBudget): void {
-    this.budget = budget;
+    this.onBudget = onBudget ?? (() => undefined);
   }
 
   /** The token's expiry (`github-authentication-token-expiration`), if sent. */
@@ -82,19 +83,17 @@ export class GitHubHttpClient {
     return this.tokenExpiration;
   }
 
-  /** GET `path`, returning the parsed JSON body and headers; queued and cached per credential. */
-  getJson(path: string): Promise<JsonResponse> {
-    return this.queue.enqueue(() => this.fetchOnce(path));
-  }
-
-  private async fetchOnce(path: string): Promise<JsonResponse> {
-    const cached = this.cache.get(path);
+  /** GET `path`, conditional on `etag` when given. */
+  async get(
+    path: string,
+    etag?: string | null,
+  ): Promise<JsonResponse | NotModifiedResponse> {
     const headers: Record<string, string> = {
       Accept: 'application/vnd.github+json',
       Authorization: `Bearer ${this.token}`,
       'X-GitHub-Api-Version': '2022-11-28',
     };
-    if (cached) headers['If-None-Match'] = cached.etag;
+    if (etag) headers['If-None-Match'] = etag;
 
     let res: Response;
     try {
@@ -103,29 +102,30 @@ export class GitHubHttpClient {
       throw new GitHubNetworkError(path, cause);
     }
 
-    this.recordBudget(res.headers);
-    this.recordTokenExpiration(res.headers);
+    const budget = parseRateLimitHeaders(res.headers);
+    if (budget) this.onBudget(budget);
+    const expiration = res.headers.get(TOKEN_EXPIRATION_HEADER);
+    if (expiration) this.tokenExpiration = expiration;
 
-    if (res.status === 304 && cached) {
-      // A 304 may omit `Link`; restore it so pagination continues.
-      const headers = new Headers(res.headers);
-      if (cached.link && !headers.has('link')) headers.set('link', cached.link);
-      return { data: cached.data, headers };
-    }
-    if (res.status === 401) throw new GitHubAuthError(path);
-    if (res.status === 404) throw new GitHubNotFoundError(path);
+    if (res.status === HTTP_STATUS.notModified && etag)
+      return { notModified: true };
+    if (res.status === HTTP_STATUS.unauthorized)
+      throw new GitHubAuthError(path);
+    if (res.status === HTTP_STATUS.notFound)
+      throw new GitHubNotFoundError(path);
 
     const text = await this.readBody(res, path);
-    if (res.status === 403 || res.status === 429) {
+    if (
+      res.status === HTTP_STATUS.forbidden ||
+      res.status === HTTP_STATUS.tooManyRequests
+    ) {
       // Secondary limits can arrive as a plain 403 whose only signal is
       // the error message.
       if (
         isRateLimitResponse(res.status, res.headers) ||
         SECONDARY_LIMIT.test(text)
       ) {
-        const retryAt = computeRetryAt(res.headers);
-        this.queue.pauseUntil(retryAt);
-        throw new RateLimitedError(path, retryAt);
+        throw new RateLimitedError(path, computeRetryAt(res.headers));
       }
       throw new GitHubForbiddenError(path);
     }
@@ -140,10 +140,13 @@ export class GitHubHttpClient {
         `invalid JSON: ${describeError(err)}`,
       );
     }
-    const etag = res.headers.get('etag');
-    const link = res.headers.get('link');
-    if (etag) this.cache.set(path, { etag, data, link });
-    return { data, headers: res.headers };
+    return {
+      notModified: false,
+      data,
+      etag: res.headers.get('etag'),
+      link: res.headers.get('link'),
+      redirected: res.redirected,
+    };
   }
 
   /** Read the body, mapping a failed read to a network error. */
@@ -153,15 +156,5 @@ export class GitHubHttpClient {
     } catch (cause) {
       throw new GitHubNetworkError(path, cause);
     }
-  }
-
-  private recordBudget(headers: Headers): void {
-    const budget = parseRateLimitHeaders(headers);
-    if (budget) this.budget = budget;
-  }
-
-  private recordTokenExpiration(headers: Headers): void {
-    const value = headers.get(TOKEN_EXPIRATION_HEADER);
-    if (value) this.tokenExpiration = value;
   }
 }

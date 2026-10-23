@@ -15,8 +15,9 @@ npx lefthook install   # install Git hooks (once, after cloning)
 npm run dev          # start the Vite dev server
 npm run build        # type-check (tsc -b) and build the static site to dist/
 npm run preview      # preview the production build locally
-npm run lint         # ESLint (+ Prettier)
-npm run lint:fix     # ESLint --fix
+npm run lint         # ESLint (+ Prettier), then lint:md
+npm run lint:fix     # ESLint --fix, then Prettier --write on Markdown
+npm run lint:md      # Prettier --check on Markdown (not CHANGELOG.md)
 npm run typecheck    # tsc -b --noEmit
 npm test             # Vitest (jsdom, coverage reported)
 npm run knip         # find unused files, dependencies and exports
@@ -66,7 +67,9 @@ These checks **start from the code the PR touched**. That is the point of depart
 - **Don't reinvent the wheel: use [`radash`](https://radash-docs.vercel.app)** for general-purpose utilities (grouping, sorting, picking max/min, uniqueness, deep cloning, retries, debouncing and the like) instead of hand-rolled helpers. Write a local helper only when radash has nothing suitable, and say why in a comment.
 - **Ports and adapters**: pure domain logic in `src/domain`; providers behind interfaces; React components render and hold UI state only.
 - **Files stay under 300 lines** (ESLint `max-lines`). Split by responsibility before that.
+- **Exports state their return types**, test utilities included (ESLint `explicit-module-boundary-types`).
 - **Every non-test module starts with a TSDoc `@module` comment** saying what it is for.
+- **No React act(...) warnings.** One fails the test that logged it (`src/test/actGuard.ts`). Wrap state-changing work the test does directly in `act` (focus an element with `focusElement` from `src/test/focus.ts`, not a bare `element.focus()`), and await async updates with `findBy*` or `waitFor`. Never stub `console.error` to hide one.
 - **Tests sit next to the code** (`*.test.ts(x)`). Use fakes for ports. Provider fixtures are recorded from real API responses, then trimmed and anonymised to `acme/*`.
 - **UI** follows the jeeves-server kit: Tailwind v4 tokens and shadcn-style components in `src/components/ui`, outbound links through `ExternalLink`.
 - **Use library controls.** Build UI from the component library (shadcn-style components over Radix primitives in `src/components/ui`; add the library's component when one is missing) rather than hand-rolling a tooltip, dialog, sheet, tabs, toggle group, checkbox, collapsible or similar. Hand-roll only with a compelling reason the library can't meet, and say why in a comment. (Deliberate exception: `ConfirmButton`'s inline confirm.) ESLint rejects a native `<select>`, `<details>`/`<summary>` or checkbox `<input>` outside the wrappers in `src/components`: use `Choice`, `Disclosure` (or `Collapsible`) and `CheckField`.
@@ -84,9 +87,9 @@ fooboard is static and browser-only; credentials never leave the user's browser 
 
 In the dev server (`npm run dev`) every board is timed (`src/perf`): each request's duration (including any wait in its credential's queue) and outcome, the requests each row needed, and the time to the first status cell and to the full board, from the board opening and, for the first board after a page load, from the page loading. Marks and measures named `fooboard-timing:*` appear in the browser's performance panel; when the board is full, a collapsed `fooboard-timing` group in the console summarises the load against the spec's performance targets (named constants in `src/perf/targets.ts`).
 
-- **Demo latency:** the demo answers at once; open `/demo?latency=300` to delay every demo request by 300 ms, the latency the demo targets assume.
-- **Stray requests:** requests still running for a board no longer shown settle while the next board loads, sharing the credentials' queues, so the summary notes how many did. In development React starts each board's engine twice and discards the first, whose requests still run; a board closed while polling leaves its reads in flight too. Polling after the full board is never part of a board's own load.
-- **Production:** none of this is built. `import.meta.env.DEV` is `false` there, so `src/perf/index.ts` exports pass-throughs, and the build fails if `fooboard-timing` appears in its output (`vite/noDevInstrumentation.ts`).
+- **Demo latency:** the demo answers at once (except the jobs of the run it adds 2.5 minutes in, which take 5 s, to show the refreshing dot); open `/demo?latency=300` to delay every demo request by 300 ms, the latency the demo targets assume. At that latency a read can run just past the 300 ms refreshing delay, so a polling row may show the dot for a moment.
+- **Stray requests:** requests still running for a board no longer shown settle while the next board loads, sharing the credentials' queues, so the summary notes how many did. In development React starts each board's model twice and discards the first, whose requests still run; a board closed while polling leaves its reads in flight too. Polling after the full board is never part of a board's own load.
+- **Production:** none of this is built. `import.meta.env.DEV` is `false` there, so `src/perf/index.ts` exports pass-throughs and `src/query/QueryProvider.tsx` never loads the TanStack Query Devtools (imported lazily, in development only). Each module tests `import.meta.env` itself: the build folds the test to `false` only within the module that makes it. The build fails if `fooboard-timing` or the Devtools appear in its output (`vite/noDevInstrumentation.ts`). Tests run with neither.
 
 ## Browser spikes
 

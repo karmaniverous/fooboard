@@ -14,13 +14,15 @@ abstract class GitHubReaderError extends Error {
 
   constructor(message: string, path: string) {
     super(message);
-    this.name = new.target.name;
     this.path = path;
   }
 }
 
 /** 401: the credential is missing, bad or expired. Maps to "needs credential". */
 export class GitHubAuthError extends GitHubReaderError {
+  /** Literal, so it survives minification (the board shows it). */
+  override readonly name = 'GitHubAuthError';
+
   constructor(path: string) {
     super(
       `GitHub request to ${path} failed: credential is missing or expired (401)`,
@@ -31,6 +33,9 @@ export class GitHubAuthError extends GitHubReaderError {
 
 /** 403 that is not a rate-limit response (e.g. insufficient PAT scope). */
 export class GitHubForbiddenError extends GitHubReaderError {
+  /** Literal, so it survives minification (the board shows it). */
+  override readonly name = 'GitHubForbiddenError';
+
   constructor(path: string) {
     super(`GitHub request to ${path} failed: forbidden (403)`, path);
   }
@@ -38,6 +43,9 @@ export class GitHubForbiddenError extends GitHubReaderError {
 
 /** 404: repo, run, branch or ref not found (or not visible to this token). */
 export class GitHubNotFoundError extends GitHubReaderError {
+  /** Literal, so it survives minification (the board shows it). */
+  override readonly name = 'GitHubNotFoundError';
+
   constructor(path: string) {
     super(`GitHub request to ${path} failed: not found (404)`, path);
   }
@@ -45,6 +53,9 @@ export class GitHubNotFoundError extends GitHubReaderError {
 
 /** The request could not be sent or the response could not be read. */
 export class GitHubNetworkError extends GitHubReaderError {
+  /** Literal, so it survives minification (the board shows it). */
+  override readonly name = 'GitHubNetworkError';
+
   constructor(path: string, cause?: unknown) {
     super(`GitHub request to ${path} failed: network error`, path);
     if (cause !== undefined) this.cause = cause;
@@ -53,6 +64,9 @@ export class GitHubNetworkError extends GitHubReaderError {
 
 /** Primary or secondary rate limit hit; `retryAt` is a unix-ms timestamp. */
 export class RateLimitedError extends GitHubReaderError {
+  /** Literal, so it survives minification (the board shows it). */
+  override readonly name = 'RateLimitedError';
+
   readonly retryAt: number;
 
   constructor(path: string, retryAt: number) {
@@ -68,6 +82,9 @@ export class RateLimitedError extends GitHubReaderError {
 
 /** The response body did not match the expected schema. */
 export class GitHubValidationError extends GitHubReaderError {
+  /** Literal, so it survives minification (the board shows it). */
+  override readonly name = 'GitHubValidationError';
+
   constructor(path: string, issues: string) {
     super(`GitHub response from ${path} failed validation: ${issues}`, path);
   }
@@ -75,6 +92,9 @@ export class GitHubValidationError extends GitHubReaderError {
 
 /** An HTTP status this adapter does not special-case (not 401/403/404/429). */
 export class GitHubHttpError extends GitHubReaderError {
+  /** Literal, so it survives minification (the board shows it). */
+  override readonly name = 'GitHubHttpError';
+
   readonly status: number;
 
   constructor(path: string, status: number) {

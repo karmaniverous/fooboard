@@ -1,54 +1,29 @@
 /**
- * Tests that the demo providers drive the real mapping and derivation code
- * to the states the demo promises (spec.md C-23): representative cells for
+ * Tests that the demo providers drive the real query layer, mapping and
+ * derivation to the states the demo promises (spec.md C-23): cells for
  * each status, both badges, the empty states, the two failing rows, the
  * multi-source Amplify row, and progress over time.
  *
  * @module
  */
-import { describe, expect, it } from 'vitest';
+import { beforeAll, describe, expect, it } from 'vitest';
 
-import { cellRulesFor } from '@/domain/config/cellRules';
-import { computeStaleness, deriveCell } from '@/domain/derivation';
-import { placeCell } from '@/domain/model/cell';
-import { sourceRuleFor } from '@/domain/model/sources';
-import { amplifyRecord } from '@/domain/statuses/documents';
-import { refreshGithubRepo } from '@/engine/githubRow';
-import { collectRowJobs } from '@/lib/amplify/rowJobs';
+import { type BoardModel, cellKey } from '@/engine';
 import { GitHubAuthError, GitHubHttpError } from '@/lib/github/errors';
-import type { GitHubReader } from '@/lib/github/reader';
+import { demoEnv, fullModel } from '@/test/boardModel';
 
-import { createDemoAmplifyReaderFor } from './amplify';
-import { DEMO_AMPLIFY_APPS, demoDashboard } from './board';
-import { createDemoGitHubReader } from './github';
-import { stageBranch } from './scenarios';
+import { demoDashboard } from './board';
+import { createDemoGitHubApi } from './github';
 
-const rowOf = (id: string) => {
-  const row = demoDashboard.rows.find((r) => r.id === id);
-  if (!row) throw new Error(`no row ${id}`);
-  return row;
-};
+let model: BoardModel;
+beforeAll(async () => {
+  model = await fullModel(demoDashboard);
+});
 
-async function githubCell(reader: GitHubReader, repo: string, stageId: string) {
-  const row = rowOf(repo);
-  if (row.type !== 'github') throw new Error(`${repo} is not a GitHub row`);
-  const result = await refreshGithubRepo(
-    {
-      rows: [row],
-      repoRows: [row],
-      stages: demoDashboard.stages,
-      rulesFor: (r, s) => cellRulesFor(demoDashboard, r, s),
-      source: sourceRuleFor(demoDashboard, 'github'),
-    },
-    reader,
-  );
-  if (result.kind !== 'refreshed') throw new Error(result.kind);
-  return result.rows[repo][stageId].derivation;
-}
+const cell = (rowId: string, stageId: string, of: BoardModel = model) =>
+  of.cells[cellKey(rowId, stageId)];
 
 describe('demo GitHub provider', () => {
-  const reader = createDemoGitHubReader(() => 0);
-
   it.each([
     ['api-core', 'dev', 'success'],
     ['api-core', 'spokane', 'running'],
@@ -56,15 +31,15 @@ describe('demo GitHub provider', () => {
     ['web-app', 'texas', 'queued'],
     ['mobile-bff', 'prod', 'failure'],
     ['payments', 'dev', 'cancelled'],
-  ])('%s/%s derives %s', async (repo, stageId, icon) => {
-    expect(await githubCell(reader, repo, stageId)).toMatchObject({
+  ])('%s/%s derives %s', (repo, stageId, icon) => {
+    expect(cell(repo, stageId)?.derivation).toMatchObject({
       kind: 'ok',
       status: { icon },
     });
   });
 
-  it('skips the lint-only run and still derives the dev cell', async () => {
-    expect(await githubCell(reader, 'web-app', 'dev')).toMatchObject({
+  it('skips the lint-only run and still derives the dev cell', () => {
+    expect(cell('web-app', 'dev')?.derivation).toMatchObject({
       kind: 'ok',
       status: { icon: 'success' },
     });
@@ -73,78 +48,73 @@ describe('demo GitHub provider', () => {
   it.each([
     ['auth-service', 'release', 'no-records'],
     ['inventory', 'texas', 'no-records'],
-  ])('%s/%s is empty: %s', async (repo, stageId, state) => {
-    expect(await githubCell(reader, repo, stageId)).toMatchObject({
+  ])('%s/%s is empty: %s', (repo, stageId, state) => {
+    expect(cell(repo, stageId)?.derivation).toMatchObject({
       kind: 'empty',
       state,
     });
   });
 
   it.each([
-    ['billing', 'bali', 'dev', { kind: 'behind', count: 3 }],
-    ['orders', 'spokane', 'dev', { kind: 'diverged', behind: 4, ahead: 2 }],
-    ['api-core', 'bali', 'dev', undefined],
-  ])('%s/%s vs its source stage: %o', async (repo, cell, source, badge) => {
-    const counts = await reader.compare(
-      { owner: 'acme', repo },
-      stageBranch(cell),
-      stageBranch(source),
-    );
-    expect(computeStaleness(counts)).toEqual(badge);
+    ['billing', 'bali', { kind: 'behind', count: 3 }],
+    ['orders', 'spokane', { kind: 'diverged', behind: 4, ahead: 2 }],
+    ['api-core', 'bali', undefined],
+  ])('%s/%s vs its source stage: %o', (repo, stageId, badge) => {
+    expect(cell(repo, stageId)?.badge).toEqual(badge);
   });
 
   it('fails the two broken rows the way real GitHub would', async () => {
+    const api = createDemoGitHubApi(() => 0);
     await expect(
-      reader.listWorkflowRuns({ owner: 'acme', repo: 'legacy-billing' }),
+      api.runsPage({ owner: 'acme', repo: 'legacy-billing' }, 1),
     ).rejects.toBeInstanceOf(GitHubAuthError);
     await expect(
-      reader.listWorkflowRuns({ owner: 'acme', repo: 'flaky-svc' }),
+      api.runsPage({ owner: 'acme', repo: 'flaky-svc' }, 1),
     ).rejects.toBeInstanceOf(GitHubHttpError);
+    expect(cell('legacy-billing', 'dev')?.derivation).toMatchObject({
+      kind: 'empty',
+      state: 'needs-credential',
+    });
+    expect(cell('flaky-svc', 'dev')?.derivation).toMatchObject({
+      kind: 'empty',
+      state: 'error',
+    });
+  });
+
+  it('reports a run in progress while any of its jobs is', async () => {
+    const api = createDemoGitHubApi(() => 0);
+    const runs = await api.runsPage({ owner: 'acme', repo: 'api-core' }, 1);
+    const statuses = runs.notModified ? [] : runs.data.map((r) => r.status);
+    expect(statuses).toContain('in_progress');
+    expect(statuses).toContain('completed');
   });
 
   it('moves started runs on to success as time passes', async () => {
     let now = 0;
-    const live = createDemoGitHubReader(() => now);
+    const env = demoEnv(() => now);
+    // The demo's runs start when its token's port is first built.
+    env.providers.github('demo-github');
     now = 2 * 60_000;
-    expect(await githubCell(live, 'api-core', 'spokane')).toMatchObject({
+    const later = await fullModel(demoDashboard, env);
+    expect(cell('api-core', 'spokane', later)?.derivation).toMatchObject({
       status: { icon: 'success' },
     });
   });
 });
 
 describe('demo Amplify provider', () => {
-  const readerFor = createDemoAmplifyReaderFor(() => 0);
-  const sourcesOf = (row: keyof typeof DEMO_AMPLIFY_APPS) =>
-    DEMO_AMPLIFY_APPS[row].map((s) => ({ credentialId: 'demo-aws', ...s }));
-
-  /** The demo row's cell in `stageId`, from every branch's jobs. */
-  async function amplifyCell(
-    row: keyof typeof DEMO_AMPLIFY_APPS,
-    stageId: string,
-  ) {
-    const records = (await collectRowJobs(sourcesOf(row), readerFor)).map((j) =>
-      amplifyRecord(j),
-    );
-    const rules = cellRulesFor(demoDashboard, rowOf(row), stageId);
-    return deriveCell({
-      placed: placeCell(records, rules),
-      set: rules.set,
-      credentialStatus: 'ok',
-    });
-  }
-
   it.each([
     ['marketing-site', 'spokane', 'running'],
     ['marketing-site', 'prod', 'failure'],
-  ] as const)('%s/%s derives %s', async (row, stageId, icon) => {
-    expect(await amplifyCell(row, stageId)).toMatchObject({
+  ] as const)('%s/%s derives %s', (row, stageId, icon) => {
+    expect(cell(row, stageId)?.derivation).toMatchObject({
       kind: 'ok',
       status: { icon },
     });
   });
 
-  it('prefers the newer of the partner portal sources', async () => {
-    expect(await amplifyCell('partner-portal', 'prod')).toMatchObject({
+  it('prefers the newer of the partner portal sources', () => {
+    expect(cell('partner-portal', 'prod')?.derivation).toMatchObject({
       kind: 'ok',
       document: { _raw: { source: { appId: 'd1demopartnerus' } } },
     });

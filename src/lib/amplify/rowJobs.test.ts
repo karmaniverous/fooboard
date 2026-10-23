@@ -1,7 +1,6 @@
 /**
- * Tests for `collectRowJobs` and `listAppsAcrossRegions` with fake readers:
- * branch-pattern filtering, source tagging across apps, `branchExists`, and
- * which region errors are skipped.
+ * Tests for `chosenBranches` (the branch rule) and `listAppsAcrossRegions`
+ * with fake readers: which region errors are skipped.
  *
  * @module
  */
@@ -15,7 +14,7 @@ import {
 
 import { AmplifyAuthError, AmplifyNotFoundError } from './errors';
 import type { AmplifyReader } from './reader';
-import { collectRowJobs, listAppsAcrossRegions } from './rowJobs';
+import { chosenBranches, listAppsAcrossRegions } from './rowJobs';
 
 function reader({
   branches = [] as string[],
@@ -40,71 +39,25 @@ function reader({
   } satisfies AmplifyReader;
 }
 
-const source = (appId: string, region = 'us-east-1') => ({
-  credentialId: 'aws1',
-  region,
-  appId,
+const glob = (value: string) => ({
+  path: '$.branchName',
+  operator: 'glob' as const,
+  value,
+  ignoreCase: true,
+  quantifier: 'any' as const,
+  not: false,
 });
 
-describe('collectRowJobs', () => {
-  it('reads every branch, tagged by source', async () => {
-    const byApp: Record<string, ReturnType<typeof reader>> = {
-      web: reader({ branches: ['main', 'preview/bali', 'preview/lima'] }),
-      api: reader({ branches: ['preview/oslo'] }),
-    };
-    const readerFor = vi.fn(() => byApp.web);
-    readerFor.mockReturnValueOnce(byApp.web).mockReturnValueOnce(byApp.api);
-
-    const result = await collectRowJobs(
-      [source('web'), source('api', 'eu-west-1')],
-      readerFor,
+describe('chosenBranches', () => {
+  it('keeps the branches the branch rule matches, by name', () => {
+    const branches = ['main', 'preview/bali', 'feature/x'].map((branchName) =>
+      amplifyBranch({ branchName }),
     );
-
-    expect(result.map((j) => `${j.source.appId}:${j.branch}`)).toEqual([
-      'web:main',
-      'web:preview/bali',
-      'web:preview/lima',
-      'api:preview/oslo',
-    ]);
-    expect(result[3]?.source.region).toBe('eu-west-1');
-  });
-
-  it('reads only branches the branch rule keeps, and jobs per branch', async () => {
-    const app = reader({ branches: ['main', 'preview/bali', 'feature/x'] });
-    const result = await collectRowJobs([source('web')], () => app, {
-      jobsPerBranch: 7,
-      branches: {
-        combine: 'or',
-        checks: [
-          {
-            path: '$.branchName',
-            operator: 'glob',
-            value: 'main',
-            ignoreCase: true,
-            quantifier: 'any',
-            not: false,
-          },
-          {
-            path: '$.branchName',
-            operator: 'glob',
-            value: 'preview/*',
-            ignoreCase: true,
-            quantifier: 'any',
-            not: false,
-          },
-        ],
-      },
-    });
-    expect(result.map((j) => j.branch)).toEqual(['main', 'preview/bali']);
-    expect(app.listJobs).toHaveBeenCalledWith('web', 'main', 7);
-    expect(app.listJobs).not.toHaveBeenCalledWith('web', 'feature/x', 7);
-  });
-
-  it('reads nothing from an app without branches', async () => {
-    const result = await collectRowJobs([source('web')], () =>
-      reader({ branches: [] }),
-    );
-    expect(result).toEqual([]);
+    expect(
+      chosenBranches(branches, {
+        branches: { combine: 'or', checks: [glob('main'), glob('preview/*')] },
+      }),
+    ).toEqual(['main', 'preview/bali']);
   });
 });
 
