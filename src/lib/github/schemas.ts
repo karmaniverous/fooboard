@@ -33,13 +33,20 @@ const WorkflowRunSchema = z.object({
 });
 export type WorkflowRun = z.infer<typeof WorkflowRunSchema>;
 
+/** The attempt GitHub omits on runs and jobs from before reruns existed. */
+const FIRST_RUN_ATTEMPT = 1;
+
+/** The run attempt `item` (a run or a job) belongs to. */
+export const attemptOf = (item: { run_attempt?: number }): number =>
+  item.run_attempt ?? FIRST_RUN_ATTEMPT;
+
 /** `GET /repos/{owner}/{repo}/actions/runs` response envelope. */
 export const WorkflowRunsResponseSchema = z.object({
   total_count: z.number(),
   workflow_runs: z.array(WorkflowRunSchema),
 });
 
-/** One job within a workflow run's latest attempt (spec.md 4.3.2-4.3.3). */
+/** One job within a workflow run attempt (spec.md 4.3.2-4.3.3). */
 const JobSchema = z.object({
   id: z.number(),
   run_id: z.number(),
@@ -53,7 +60,8 @@ const JobSchema = z.object({
 });
 export type Job = z.infer<typeof JobSchema>;
 
-/** `GET /repos/{owner}/{repo}/actions/runs/{run_id}/jobs` response envelope. */
+/** `GET /repos/{owner}/{repo}/actions/runs/{run_id}/attempts/{attempt}/jobs`
+ * response envelope. */
 export const JobsResponseSchema = z.object({
   total_count: z.number(),
   jobs: z.array(JobSchema),

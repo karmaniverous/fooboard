@@ -106,7 +106,7 @@ describe('deriveGithubRow rules', () => {
     const runs = await demoRuns(REPO);
     seedRuns(client, REPO, runs);
     for (const run of runs) {
-      const jobs = await demoJobs(REPO, run.id);
+      const jobs = await demoJobs(REPO, run);
       if (jobs.length < 2) {
         seedJobs(client, REPO, run, jobs);
         continue;

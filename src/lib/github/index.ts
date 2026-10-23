@@ -17,10 +17,11 @@ export {
 export { RateLimitedError } from './errors';
 export { mapRunWithJobs, mapWorkflowRun } from './mapToDerivation';
 export { isOverPollingShare, type RateLimitBudget } from './rateLimit';
-export type {
-  Branch,
-  CompareApiResult,
-  Job,
-  Repo,
-  WorkflowRun,
+export {
+  attemptOf,
+  type Branch,
+  type CompareApiResult,
+  type Job,
+  type Repo,
+  type WorkflowRun,
 } from './schemas';

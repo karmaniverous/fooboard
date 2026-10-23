@@ -13,7 +13,7 @@ import { QueryClient } from '@tanstack/query-core';
 import { describe, expect, it, vi } from 'vitest';
 
 import { AmplifyThrottledError } from '@/lib/amplify/errors';
-import type { GitHubApi } from '@/lib/github';
+import { createGitHubApi, type GitHubApi } from '@/lib/github';
 import { RateLimitedError } from '@/lib/github/errors';
 import {
   fakeAmplifyReader,
@@ -21,6 +21,7 @@ import {
   fetched,
   ghRepo,
 } from '@/test/fakeReaders';
+import { response } from '@/test/fetchResponse';
 
 import { createQueryFn, MissingCredentialError } from './fetchers';
 import { type Around, passThrough, type RequestCall } from './instrument';
@@ -132,6 +133,29 @@ describe('createQueryFn', () => {
     await expect(client.query({ queryKey: runs(1) })).rejects.toBeInstanceOf(
       MissingCredentialError,
     );
+  });
+
+  it('reads the jobs of the attempt its key names, never the latest', async () => {
+    const urls: string[] = [];
+    const api = createGitHubApi({
+      token: 't',
+      fetchImpl: (url) => {
+        urls.push(url);
+        return Promise.resolve(response(200, { total_count: 0, jobs: [] }));
+      },
+    });
+    const { client } = setup(api);
+    const key = githubKey('gh', {
+      call: 'jobs',
+      repo: REPO,
+      runId: 7,
+      attempt: 2,
+      page: 3,
+    });
+    await client.query({ queryKey: key });
+    expect(urls).toEqual([
+      'https://api.github.com/repos/acme/api/actions/runs/7/attempts/2/jobs?per_page=100&page=3',
+    ]);
   });
 
   it('runs every request through the instrumentation hook', async () => {

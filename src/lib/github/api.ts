@@ -73,10 +73,12 @@ export interface GitHubApi {
     page: number,
     etag?: string | null,
   ): Promise<Conditional<WorkflowRun[]>>;
-  /** A page of a run's jobs (its latest attempt, `filter=latest`). */
+  /** A page of the jobs of one attempt of a run: a rerun can't mix its
+   * jobs into the attempt the caller asked for. */
   jobsPage(
     repo: RepoRef,
     runId: number,
+    attempt: number,
     page: number,
     etag?: string | null,
   ): Promise<Conditional<Job[]>>;
@@ -173,11 +175,11 @@ export function createGitHubApi({
         // Runs are read page by page until a short page.
         (runs) => runs.length >= GITHUB_PER_PAGE,
       ),
-    jobsPage: (ref, runId, page, etag) =>
+    jobsPage: (ref, runId, attempt, page, etag) =>
       get(
         repoUrl(
           ref,
-          `actions/runs/${String(runId)}/jobs?filter=latest&${pageQuery(page)}`,
+          `actions/runs/${String(runId)}/attempts/${String(attempt)}/jobs?${pageQuery(page)}`,
         ),
         etag,
         JobsResponseSchema,

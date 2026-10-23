@@ -102,7 +102,13 @@ function fetchGithub(
       );
     case 'jobs':
       return conditional(client, key, (etag) =>
-        api.jobsPage(repoRef(request.repo), request.runId, request.page, etag),
+        api.jobsPage(
+          repoRef(request.repo),
+          request.runId,
+          request.attempt,
+          request.page,
+          etag,
+        ),
       );
     case 'compare':
       return conditional(client, key, (etag) =>

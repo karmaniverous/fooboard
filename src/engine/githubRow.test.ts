@@ -162,7 +162,7 @@ describe('deriveGithubRow', () => {
     const runs = await seedDemoRepo(client, REPO);
     const dev = runs.find((r) => r.head_branch === 'dev');
     if (!dev) throw new Error('no dev run');
-    const template = (await demoJobs(REPO, dev.id)).at(0);
+    const template = (await demoJobs(REPO, dev)).at(0);
     if (!template) throw new Error('no job');
     const lint = Array.from({ length: 12 }, (_, i) => ({
       ...dev,

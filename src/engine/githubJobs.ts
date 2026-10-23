@@ -7,16 +7,13 @@
  *
  * @module
  */
-import type { Job, WorkflowRun } from '@/lib/github';
+import { attemptOf, type Job, type WorkflowRun } from '@/lib/github';
 import { githubSnapshot } from '@/query/cache';
 import type { GithubRequest } from '@/query/keys';
 
 import { fullRecord } from './githubCandidates';
 import type { GithubContext } from './githubRow';
 import { type FailureOutcome, failureOutcome } from './providerOutcome';
-
-/** The attempt a run's jobs are keyed by (GitHub omits it on old runs). */
-const FIRST_ATTEMPT = 1;
 
 export interface RunJobs {
   /** The jobs pages to observe. */
@@ -35,7 +32,7 @@ export function jobsOf(ctx: GithubContext, run: WorkflowRun): RunJobs {
       call: 'jobs',
       repo: ctx.repo,
       runId: run.id,
-      attempt: run.run_attempt ?? FIRST_ATTEMPT,
+      attempt: attemptOf(run),
       page,
     } as const;
     requests.push(request);

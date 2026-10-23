@@ -106,9 +106,10 @@ describe('createGitHubApi', () => {
     const { api, urls } = apiAnswering(() =>
       response(200, { total_count: 1, jobs: [job] }, headers),
     );
-    const res = await api.jobsPage(REF, 7, 3);
+    const res = await api.jobsPage(REF, 7, 2, 3);
+    // The attempt asked for, never the latest: a rerun can't slip in.
     expect(urls).toEqual([
-      `${BASE}/repos/acme/api-core/actions/runs/7/jobs?filter=latest&per_page=100&page=3`,
+      `${BASE}/repos/acme/api-core/actions/runs/7/attempts/2/jobs?per_page=100&page=3`,
     ]);
     expect(res).toMatchObject({ data: [job], hasNext });
   });
@@ -150,9 +151,9 @@ describe('createGitHubApi', () => {
 
   it('rejects a body that fails its schema, naming the URL', async () => {
     const { api } = apiAnswering(() => response(200, { jobs: 'nope' }));
-    const err = await api.jobsPage(REF, 7, 1).catch((e: unknown) => e);
+    const err = await api.jobsPage(REF, 7, 1, 1).catch((e: unknown) => e);
     expect(err).toBeInstanceOf(GitHubValidationError);
-    expect(String(err)).toContain('/actions/runs/7/jobs');
+    expect(String(err)).toContain('/actions/runs/7/attempts/1/jobs');
   });
 
   it('lists matching refs under a prefix', async () => {

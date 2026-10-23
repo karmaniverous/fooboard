@@ -14,7 +14,7 @@ import { cellRulesFor } from '@/domain/config/cellRules';
 import type { GithubRow } from '@/domain/config/row';
 import { sourceRuleFor } from '@/domain/model/sources';
 import type { GithubContext } from '@/engine/githubRow';
-import { type Job, repoRef, type WorkflowRun } from '@/lib/github';
+import { attemptOf, type Job, repoRef, type WorkflowRun } from '@/lib/github';
 import { githubKey, type GithubRequest } from '@/query/keys';
 
 import { fetched } from './fakeReaders';
@@ -55,9 +55,12 @@ export async function demoRuns(repo: string): Promise<WorkflowRun[]> {
   return res.notModified ? [] : res.data;
 }
 
-/** The demo's jobs of a run. */
-export async function demoJobs(repo: string, runId: number): Promise<Job[]> {
-  const res = await api.jobsPage(repoRef(repo), runId, 1);
+/** A run, as far as its jobs request needs it. */
+type RunRef = Pick<WorkflowRun, 'id' | 'run_attempt'>;
+
+/** The demo's jobs of a run's attempt. */
+export async function demoJobs(repo: string, run: RunRef): Promise<Job[]> {
+  const res = await api.jobsPage(repoRef(repo), run.id, attemptOf(run), 1);
   return res.notModified ? [] : res.data;
 }
 
@@ -86,12 +89,12 @@ export const keyOf = (need: { key: unknown }): string =>
 /** The jobs request of a run (page 1). */
 export const jobsRequest = (
   repo: string,
-  run: Pick<WorkflowRun, 'id' | 'run_attempt'>,
+  run: RunRef,
 ): Extract<GithubRequest, { call: 'jobs' }> => ({
   call: 'jobs',
   repo,
   runId: run.id,
-  attempt: run.run_attempt ?? 1,
+  attempt: attemptOf(run),
   page: 1,
 });
 
@@ -131,6 +134,6 @@ export async function seedDemoRepo(
   const runs = await demoRuns(repo);
   seedRuns(client, repo, runs);
   for (const run of runs)
-    seedJobs(client, repo, run, await demoJobs(repo, run.id));
+    seedJobs(client, repo, run, await demoJobs(repo, run));
   return runs;
 }

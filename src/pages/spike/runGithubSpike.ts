@@ -10,6 +10,7 @@
  */
 import type { Conditional, GitHubApi } from '@/lib/github/api';
 import type { RateLimitBudget } from '@/lib/github/rateLimit';
+import { attemptOf } from '@/lib/github/schemas';
 
 /** What the spike needs besides the token. */
 export interface GithubSpikeTarget {
@@ -49,7 +50,9 @@ export async function runGithubSpike(
   const first = await api.runsPage(ref, 1);
   const runs = dataOf(first, []);
   const newest = runs.at(0);
-  const jobs = newest ? dataOf(await api.jobsPage(ref, newest.id, 1), []) : [];
+  const jobs = newest
+    ? dataOf(await api.jobsPage(ref, newest.id, attemptOf(newest), 1), [])
+    : [];
   const refs = await api.matchingRefs(ref, prefix);
   const head = refs[0]?.ref.replace(/^refs\/heads\//, '') ?? 'main';
   const compare = dataOf(await api.compare(ref, 'main', head), undefined);

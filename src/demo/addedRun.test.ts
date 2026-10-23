@@ -11,7 +11,7 @@ import { describe, expect, it, vi } from 'vitest';
 
 import { createBoardModel } from '@/engine/boardModel';
 import { cellKey } from '@/engine/types';
-import type { WorkflowRun } from '@/lib/github/schemas';
+import { attemptOf, type WorkflowRun } from '@/lib/github/schemas';
 import { githubKey } from '@/query/keys';
 import { demoEnv, settle } from '@/test/boardModel';
 import { DEMO_TOKEN } from '@/test/githubCache';
@@ -74,9 +74,9 @@ describe('demo added run', () => {
     const { api, waits, branchRuns } = port(() => now);
     now = ADDED_RUN_AT_MS;
     const [added, previous] = await branchRuns();
-    await api.jobsPage(ref, previous.id, 1);
+    await api.jobsPage(ref, previous.id, attemptOf(previous), 1);
     expect(waits).toEqual([]);
-    const jobs = await api.jobsPage(ref, added.id, 1);
+    const jobs = await api.jobsPage(ref, added.id, attemptOf(added), 1);
     expect(waits).toEqual([ADDED_RUN_JOBS_DELAY_MS]);
     expect(jobs.notModified ? [] : jobs.data.map((j) => j.status)).toEqual([
       'in_progress',
