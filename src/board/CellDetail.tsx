@@ -78,7 +78,7 @@ export function CellDetail({
           {derivation.commit && (
             <>
               <dt className="text-muted-foreground">Commit</dt>
-              <dd className="font-mono">
+              <dd className={interactive ? undefined : 'font-mono'}>
                 {interactive ? (
                   <CommitSha sha={derivation.commit} />
                 ) : (
