@@ -1,9 +1,8 @@
 /**
- * The user-facing docs promise only what is built (spec.md Decision 20
- * item 5): README and PRIVACY.md don't offer *Reset*, which N3 builds;
- * until then, closing every fooboard tab and then clearing the site's
- * data is the way to remove everything.
- * N3 restores the wording and this test with it.
+ * The user-facing docs offer *Reset* now that it is built (spec.md §3.9,
+ * N3, reversing N1a's guard): README and PRIVACY.md name it as the way to
+ * remove everything fooboard keeps, and say what the persisted cache keeps
+ * and for how long (§3.4).
  *
  * @module
  */
@@ -18,11 +17,9 @@ describe('docs', () => {
   it.each([
     ['README.md', readme],
     ['PRIVACY.md', privacy],
-  ])(
-    '%s offers no Reset, only closing the tabs and clearing the site data',
-    (_name, text) => {
-      expect(text).not.toMatch(/\bReset\b/);
-      expect(text).toMatch(CLEAR_EVERYTHING_STEPS);
-    },
-  );
+  ])('%s offers Reset and says what is cached, for how long', (_name, text) => {
+    expect(text).toMatch(CLEAR_EVERYTHING_STEPS);
+    expect(text).toMatch(/unencrypted/);
+    expect(text).toMatch(/24 hours/);
+  });
 });

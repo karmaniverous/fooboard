@@ -7,11 +7,9 @@
  */
 import { type KeyValueStore, memoryStorage } from '@/storage/keyValue';
 
-/** The steps that really remove everything: closing the tabs drops the
- * secrets held in their memory, then clearing the site's data removes the
- * rest. */
-export const CLEAR_EVERYTHING_STEPS =
-  /close every fooboard tab, then clear this site's data/i;
+/** What really removes everything: *Reset*, which clears storage and
+ * the secrets held in every open tab's memory. */
+export const CLEAR_EVERYTHING_STEPS = /\bUse Reset\b|_Reset_|\*\*Reset\*\*/;
 
 /** A device store that works until `refuse()`, then throws on every
  * removal, so secrets stored on it can't be forgotten. */
