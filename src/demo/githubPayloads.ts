@@ -28,11 +28,12 @@ export function restState(
   return { status: 'completed', conclusion: state };
 }
 
-/** Plausible commit messages for the demo's richest detail (C-13 rung 5). */
+/** Plausible commit messages for the demo's richest detail (C-13 rung 5);
+ * one has a body, which the detail sheet shows in full (Decision 21). */
 export const DEMO_MESSAGES = [
   'Fix flaky checkout test',
   'Bump dependencies',
-  'Add retry to payment webhook',
+  'Add retry to payment webhook\n\nRetries a failed delivery three times, backing off.\nCloses #214.',
   'Tune cache headers',
   'Refactor auth middleware',
   'Release notes for 24.3',

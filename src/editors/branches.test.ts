@@ -1,6 +1,6 @@
 /**
  * Tests for editor branch discovery (spec.md C-21): each repo read once
- * with its row's inherited token, rows without a token skipped, branch
+ * with its row's inherited token, rows without a token or a repo skipped, branch
  * counts across repos, and pattern previews.
  *
  * @module
@@ -14,7 +14,7 @@ import { testQueryEnv } from '@/test/queryEnv';
 import { branchCounts, discoverBranches, patternPreview } from './branches';
 
 describe('discoverBranches', () => {
-  it('reads each repo once, with the token the row inherits', async () => {
+  it('reads each repo once, with the token the row inherits, skipping rows without a repo', async () => {
     const dashboard = DashboardSchema.parse({
       id: 'd',
       name: 'd',
@@ -28,6 +28,12 @@ describe('discoverBranches', () => {
         { type: 'github', id: 'a2', repo: 'acme/a', displayName: 'a2' },
         { type: 'github', id: 'b', repo: 'acme/b', displayName: 'b' },
         { type: 'github', id: 'c', repo: 'acme/c', displayName: 'c' },
+        {
+          type: 'amplify',
+          id: 'site',
+          displayName: 'site',
+          sources: [{ region: 'us-east-1', appId: 'a1' }],
+        },
       ],
       rowGroups: [
         { id: 'g', memberIds: ['b'], defaultCredentials: { github: 'team' } },

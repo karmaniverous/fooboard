@@ -7,6 +7,7 @@
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { AMPLIFY_REGIONS } from '@/lib/amplify/regions';
 import { amplifyApp } from '@/lib/amplify/sdkShapes';
 import type { GitHubApi } from '@/lib/github';
 import {
@@ -19,8 +20,13 @@ import {
 import { testQueryEnv } from '@/test/queryEnv';
 
 import { EDITOR_STALE_MS } from './intervals';
-import { githubKey } from './keys';
-import { fetchApps, fetchBranches, fetchRepos } from './lookups';
+import { amplifyKey, githubKey } from './keys';
+import {
+  fetchApps,
+  fetchAppsAcrossRegions,
+  fetchBranches,
+  fetchRepos,
+} from './lookups';
 
 describe('editor lookups', () => {
   beforeEach(() => {
@@ -79,5 +85,39 @@ describe('editor lookups', () => {
     ).toEqual(['a1']);
     await fetchApps(client, 'aws', 'eu-west-1');
     expect(listApps).toHaveBeenCalledOnce();
+  });
+
+  it('lists apps across every region, one apps query per region, fresh for EDITOR_STALE_MS', async () => {
+    const asked: string[] = [];
+    const { client } = testQueryEnv({
+      amplifyIn: (region) =>
+        fakeAmplifyReader({
+          listApps: () => {
+            asked.push(region);
+            return Promise.resolve(
+              region === 'eu-west-1' || region === 'us-east-2'
+                ? [amplifyApp({ appId: `${region}-app` })]
+                : [],
+            );
+          },
+        }),
+    });
+    const found = await fetchAppsAcrossRegions(client, 'aws');
+    expect(found.map((f) => [f.region, f.app.appId])).toEqual([
+      ['us-east-2', 'us-east-2-app'],
+      ['eu-west-1', 'eu-west-1-app'],
+    ]);
+    expect([...asked].sort()).toEqual([...AMPLIFY_REGIONS].sort());
+    expect(
+      client.getQueryData(
+        amplifyKey('aws', { call: 'apps', region: 'eu-west-1' }),
+      ),
+    ).toMatchObject({ data: [{ appId: 'eu-west-1-app' }] });
+
+    await fetchAppsAcrossRegions(client, 'aws');
+    expect(asked).toHaveLength(AMPLIFY_REGIONS.length);
+    vi.advanceTimersByTime(EDITOR_STALE_MS + 1);
+    await fetchAppsAcrossRegions(client, 'aws');
+    expect(asked).toHaveLength(2 * AMPLIFY_REGIONS.length);
   });
 });

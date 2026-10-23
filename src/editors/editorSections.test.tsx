@@ -1,7 +1,6 @@
 /**
  * Tests for the editor sections the main editor tests don't reach:
- * Amplify rows from `ListApps` (apps without a GitHub repo can't be
- * added), repo-list failures, labelled column groups, drag reordering,
+ * repo-list failures, labelled column groups, drag reordering,
  * mapping rules and colours.
  *
  * @module
@@ -17,21 +16,6 @@ import { expand } from '@/test/openItem';
 import { setup, tab } from './editorSectionsHarness';
 
 describe('editor sections', () => {
-  it('adds an Amplify row from ListApps, refusing apps without a GitHub repo', async () => {
-    const latest = setup();
-    tab('Rows');
-    fireEvent.click(screen.getByRole('button', { name: 'List Amplify apps' }));
-    const orphan = await screen.findByRole('button', { name: /orphan/ });
-    expect(orphan).toBeDisabled();
-    fireEvent.click(screen.getByRole('button', { name: /site/ }));
-    expect(latest.current.rows.at(-1)).toMatchObject({
-      type: 'amplify',
-      repo: 'acme/site',
-      displayName: 'site',
-      sources: [{ region: 'us-east-1', appId: 'a1' }],
-    });
-  });
-
   it('reports a repo list that fails to load', async () => {
     setup({ reposPage: () => Promise.reject(new Error('Bad credentials')) });
     tab('Rows');

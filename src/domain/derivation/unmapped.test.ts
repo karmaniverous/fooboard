@@ -85,15 +85,18 @@ describe('unmappedReason', () => {
     expect(unmappedReason(r, cells, true)).toEqual(expected);
   });
 
-  it('reports a record without its order key', () => {
-    expect(
-      unmappedReason(
-        { ...record('main', 'deploy'), created: null },
-        [cell()],
-        true,
-      ),
-    ).toEqual({ kind: UNMAPPED.noOrderKey });
-  });
+  it.each([null, ''])(
+    'reports a record whose order key is %j as without one',
+    (created) => {
+      expect(
+        unmappedReason(
+          { ...record('main', 'deploy'), created },
+          [cell()],
+          true,
+        ),
+      ).toEqual({ kind: UNMAPPED.noOrderKey });
+    },
+  );
 
   it('leaves items undecided when they were not read', () => {
     expect(

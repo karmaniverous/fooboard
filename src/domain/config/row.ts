@@ -2,7 +2,7 @@
  * Zod schema for dashboard rows (spec.md §3): a GitHub row (one repo,
  * optionally narrowed by row key tests) or an Amplify row (one or more
  * sources, each a credential + region + app id, plus the repo it builds
- * from for staleness).
+ * from for staleness, when it has one).
  *
  * @module
  */
@@ -62,24 +62,30 @@ export type AmplifySource = z.infer<typeof AmplifySourceSchema>;
 /**
  * An Amplify row: one or more sources (so one row can span apps in
  * different AWS accounts), plus the GitHub repo the app builds from, used
- * for staleness.
+ * for staleness. An app without a connected GitHub repo has none (data
+ * model v5, spec.md §3.3): no badges, and so no GitHub token.
  */
-export const AmplifyRowSchema = z.object({
-  type: z.literal('amplify'),
-  id: z.string().min(1),
-  sources: z.array(AmplifySourceSchema).min(1),
-  repo: RepoSchema,
-  displayName: z.string().min(1),
-  /** Overrides the dashboard's default GitHub token for `repo`. */
-  githubCredentialId: z.string().min(1).optional(),
-  /** Per-stage branch-pattern overrides for this row (spec.md C-14c). */
-  stageRules: RowStageRulesSchema.default(() => ({})),
-  /** Which records belong to this row (spec.md A§4.3.7). */
-  recordRule: RuleSchema.optional(),
-  /** Which of a record's items belong to this row. */
-  itemRule: RuleSchema.optional(),
-  ...rowStatusSets,
-});
+export const AmplifyRowSchema = z
+  .object({
+    type: z.literal('amplify'),
+    id: z.string().min(1),
+    sources: z.array(AmplifySourceSchema).min(1),
+    repo: RepoSchema.optional(),
+    displayName: z.string().min(1),
+    /** Overrides the dashboard's default GitHub token for `repo`. */
+    githubCredentialId: z.string().min(1).optional(),
+    /** Per-stage branch-pattern overrides for this row (spec.md C-14c). */
+    stageRules: RowStageRulesSchema.default(() => ({})),
+    /** Which records belong to this row (spec.md A§4.3.7). */
+    recordRule: RuleSchema.optional(),
+    /** Which of a record's items belong to this row. */
+    itemRule: RuleSchema.optional(),
+    ...rowStatusSets,
+  })
+  .refine((row) => row.repo !== undefined || !row.githubCredentialId, {
+    message: 'an Amplify row without a repo has no GitHub token',
+    path: ['githubCredentialId'],
+  });
 export type AmplifyRow = z.infer<typeof AmplifyRowSchema>;
 
 /** A dashboard row: GitHub or Amplify. */

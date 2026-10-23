@@ -22,7 +22,7 @@ fooboard has no server of its own, no accounts, no database, no cookies, no anal
 
 - **The host** that serves fooboard's files. Like any website, it may keep standard access logs (your IP address, the time, the page requested). It never receives your dashboards or credentials.
 - **GitHub** (`api.github.com`), using your token, to read the repos, branches, workflow runs and jobs on your boards. GitHub's [privacy statement](https://docs.github.com/en/site-policy/privacy-policies/github-general-privacy-statement) applies.
-- **AWS** (Amplify's regional endpoints), using your key, to read the Amplify apps, branches and jobs on your boards. The [AWS privacy notice](https://aws.amazon.com/privacy/) applies.
+- **AWS** (Amplify's regional endpoints), using your key, to read the Amplify apps, branches and jobs on your boards, and, when you list apps to add, the apps in every region that has Amplify Hosting. The [AWS privacy notice](https://aws.amazon.com/privacy/) applies.
 
 These calls go **directly** from your browser to GitHub and AWS. fooboard does not proxy, see or keep them.
 

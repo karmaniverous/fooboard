@@ -95,6 +95,14 @@ export const itemsOf = (record: RecordDoc): RecordDoc[] => {
 export const hasItems = (record: RecordDoc): boolean =>
   Array.isArray(record[RECORD_KEYS.items]);
 
+/** A record's order key, `null` when missing: absent, `null` or an empty
+ * string (Decision 21), so such a record is never placed and is
+ * reported as having no order key. */
+export function orderOf(record: RecordDoc, key: string): JSONValue {
+  const value = record[key] ?? null;
+  return value === '' ? null : value;
+}
+
 /** Compare two order-key (or item time) values: numbers as numbers,
  * anything else as text; `null` sorts first. */
 export function compareOrder(a: JSONValue, b: JSONValue): number {

@@ -4,7 +4,8 @@
  * to the repo without its owner; the row keeps the chosen token), or
  * an Amplify row by choosing credential, region and app (listed via
  * `ListApps`); rename, reorder, remove; per-row token override, row key
- * and item rules (item rules when its source rule reads items), an
+ * (none for an Amplify row without a GitHub repo), row key and item
+ * rules (item rules when its source rule reads items), an
  * Amplify row's sources and their AWS keys, the row's group, its stage-rule overrides, and its
  * group's overrides and default credentials.
  *
@@ -34,7 +35,7 @@ import { SourcesWithItemsContext } from './rules/samples';
 
 /** A row's header summary: its repo, and its kind if not GitHub. */
 const rowSummary = (row: Row): string =>
-  `${row.type === 'amplify' ? 'Amplify · ' : ''}${row.repo}`;
+  `${row.type === 'amplify' ? 'Amplify · ' : ''}${row.repo ?? 'no GitHub repo'}`;
 
 export function RowsEditor({
   dashboard,
@@ -73,31 +74,33 @@ export function RowsEditor({
         {(row) => (
           <div className="flex flex-col gap-2 text-xs">
             <CommitInput
-              label={`Display name for ${row.repo}`}
+              label={`Display name for ${row.repo ?? row.id}`}
               className="h-8 text-xs"
               value={row.displayName}
               onCommit={(displayName) => {
                 replaceRow({ ...row, displayName });
               }}
             />
-            <CredentialSelect
-              dashboard={dashboard}
-              kind="github"
-              value={
-                row.type === 'github'
-                  ? row.credentialId
-                  : row.githubCredentialId
-              }
-              inherited={inheritedCredential(dashboard, row.id, 'github')}
-              label={`GitHub token for ${row.displayName}`}
-              onChange={(id) => {
-                replaceRow(
+            {(row.type === 'github' || row.repo) && (
+              <CredentialSelect
+                dashboard={dashboard}
+                kind="github"
+                value={
                   row.type === 'github'
-                    ? { ...row, credentialId: id }
-                    : { ...row, githubCredentialId: id },
-                );
-              }}
-            />
+                    ? row.credentialId
+                    : row.githubCredentialId
+                }
+                inherited={inheritedCredential(dashboard, row.id, 'github')}
+                label={`GitHub token for ${row.displayName}`}
+                onChange={(id) => {
+                  replaceRow(
+                    row.type === 'github'
+                      ? { ...row, credentialId: id }
+                      : { ...row, githubCredentialId: id },
+                  );
+                }}
+              />
+            )}
             <div className="flex flex-col gap-1">
               <span className="font-semibold">Records for this row</span>
               <RuleEditor

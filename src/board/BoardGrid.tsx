@@ -3,7 +3,8 @@
  * one cell per row and stage, with row and column groups (C-14b). The
  * grid fills its container; every cell is the same size, so all cells show
  * the same detail level, chosen from the measured cell width (C-13). Hover
- * or focus shows a tooltip; a touch tap opens a detail sheet.
+ * or focus shows a tooltip; a touch tap, or Space on a focused cell, opens
+ * a detail sheet.
  *
  * @module
  */
@@ -23,6 +24,7 @@ import { BOUNDARY, GROUP_LABEL } from './gridStyles';
 import { capText, type Layout, LINE_HEIGHT } from './layout';
 import { ProblemMark } from './ProblemMark';
 import { useProblemMarks } from './problemMarksContext';
+import { rowLabel } from './rowLabel';
 import { stageLabel } from './stageLabel';
 import { type CellFilter, matchesFilter } from './summary';
 
@@ -73,7 +75,12 @@ export function BoardGrid({
     ),
   );
 
-  const [tip, setTip] = useState<{ key: string; rect: DOMRect } | null>(null);
+  const [tip, setTip] = useState<{
+    key: string;
+    rect: DOMRect;
+    /** The cell has focus, so the details key works: say so. */
+    focused: boolean;
+  } | null>(null);
   const [sheet, setSheet] = useState<string | null>(null);
   const names = (key: string) => {
     const [rowId, stageId] = CellKeySchema.parse(JSON.parse(key));
@@ -193,7 +200,7 @@ export function BoardGrid({
                   lineOnRow && ri === 0 ? BOUNDARY.top : undefined;
                 return (
                   <div key={row.id} role="row" className="contents">
-                    <WithTooltip label={`${row.displayName} (${row.repo})`}>
+                    <WithTooltip label={rowLabel(row)}>
                       <div
                         role="rowheader"
                         tabIndex={0}
@@ -233,7 +240,11 @@ export function BoardGrid({
                             onInspect={(el) => {
                               setTip(
                                 el
-                                  ? { key, rect: el.getBoundingClientRect() }
+                                  ? {
+                                      key,
+                                      rect: el.getBoundingClientRect(),
+                                      focused: el === document.activeElement,
+                                    }
                                   : null,
                               );
                             }}
@@ -268,7 +279,9 @@ export function BoardGrid({
       </div>
 
       {tip && !sheet && (
-        <CellTooltip rect={tip.rect}>{detail(tip.key, false)}</CellTooltip>
+        <CellTooltip rect={tip.rect} keyHint={tip.focused}>
+          {detail(tip.key, false)}
+        </CellTooltip>
       )}
       {sheet && (
         <CellSheet

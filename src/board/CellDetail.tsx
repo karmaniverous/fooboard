@@ -1,8 +1,11 @@
 /**
- * Cell detail (spec.md C-13): status, phase, branch, commit, exact time,
- * and the behind/diverged commit subjects in both directions. Shown in a
- * hover/focus tooltip (informational: the cell and its badge are the
- * links, C-13a) and in a touch detail sheet, which also carries the links.
+ * Cell detail (spec.md C-13): status, phase, branch, commit, commit
+ * message, exact time, and the behind/diverged commit subjects in both
+ * directions. Shown in a hover/focus tooltip (informational: the cell and
+ * its badge are the links, C-13a; the short SHA and the message's first
+ * line) and in a detail sheet (a touch tap, or Space on a focused cell),
+ * which also carries the links, the
+ * full SHA with *Copy*, and every line of the message (Decision 21).
  * Problems on the cell (a window hint on an empty cell, a status-set
  * problem, spec.md A§4.3.7) are listed under it.
  *
@@ -27,7 +30,14 @@ import type { Problem } from '@/domain/problems/problem';
 import type { BoardCell } from '@/engine';
 import { readmeSection } from '@/lib/site';
 
-import { badgeDescription, EMPTY_LABEL, shortSha } from './cellView';
+import {
+  badgeDescription,
+  DETAILS_KEY,
+  EMPTY_LABEL,
+  firstLine,
+  shortSha,
+} from './cellView';
+import { CommitSha } from './CommitSha';
 
 export function CellDetail({
   cell,
@@ -75,7 +85,29 @@ export function CellDetail({
           {derivation.commit && (
             <>
               <dt className="text-muted-foreground">Commit</dt>
-              <dd className="font-mono">{shortSha(derivation.commit)}</dd>
+              <dd className={interactive ? undefined : 'font-mono'}>
+                {interactive ? (
+                  // Keyed by SHA: a poll that swaps the commit while the
+                  // sheet is open drops the old commit's copy feedback.
+                  <CommitSha key={derivation.commit} sha={derivation.commit} />
+                ) : (
+                  shortSha(derivation.commit)
+                )}
+              </dd>
+            </>
+          )}
+          {derivation.message && (
+            <>
+              <dt className="text-muted-foreground">Message</dt>
+              <dd
+                className={
+                  interactive ? 'whitespace-pre-wrap break-words' : 'truncate'
+                }
+              >
+                {interactive
+                  ? derivation.message
+                  : firstLine(derivation.message)}
+              </dd>
             </>
           )}
           {derivation.time && (
@@ -157,9 +189,12 @@ function SubjectList({
  * and never focused (the cell keeps focus); it has the tooltip role. */
 export function CellTooltip({
   rect,
+  keyHint = false,
   children,
 }: {
   rect: DOMRect;
+  /** The cell has focus: say which key opens its detail sheet. */
+  keyHint?: boolean;
   children: React.ReactNode;
 }): React.JSX.Element {
   const anchor = { current: { getBoundingClientRect: () => rect } };
@@ -177,6 +212,11 @@ export function CellTooltip({
         className="pointer-events-none max-h-[var(--radix-popover-content-available-height)] w-80 max-w-[calc(100vw-12px)] overflow-hidden rounded-lg border-0 bg-slate-900 p-3 text-slate-100 shadow-xl"
       >
         {children}
+        {keyHint && (
+          <p className="mt-2 text-xs text-slate-400">
+            Press {DETAILS_KEY.name} for details
+          </p>
+        )}
       </PopoverContent>
     </Popover>
   );

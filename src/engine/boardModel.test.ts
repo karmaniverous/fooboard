@@ -9,6 +9,7 @@
  *
  * @module
  */
+import { omit } from 'radash';
 import { describe, expect, it } from 'vitest';
 
 import { demoDashboard } from '@/demo/board';
@@ -62,6 +63,32 @@ describe('createBoardModel', () => {
       for (const key of Object.keys(models[i - 1]?.cells ?? {}))
         expect(models[i]?.cells[key]).toBeDefined();
     board.destroy();
+  });
+
+  it('reads no compares for an Amplify row without a repo, so it shows no badges', async () => {
+    const compared = (calls: RequestCall[], repo: string | undefined) =>
+      calls.some((c) => c.kind === 'compare' && c.repo === repo);
+    const linked = demoDashboard.rows.find((r) => r.type === 'amplify');
+    if (!linked) throw new Error('the demo has no Amplify row');
+    const withRepo = recorded();
+    await settle(withRepo.env, withRepo.board);
+    expect(compared(withRepo.calls, linked.repo)).toBe(true);
+    withRepo.board.destroy();
+
+    const noRepo = recorded({
+      ...demoDashboard,
+      rows: demoDashboard.rows.map((r) =>
+        r.id === linked.id ? omit(linked, ['repo']) : r,
+      ),
+    });
+    const final = await settle(noRepo.env, noRepo.board);
+    expect(compared(noRepo.calls, linked.repo)).toBe(false);
+    const cells = Object.values(final.cells).filter(
+      (c) => c?.rowId === linked.id,
+    );
+    expect(cells.length).toBe(demoDashboard.stages.length);
+    expect(cells.every((c) => c?.settled && c.badge === undefined)).toBe(true);
+    noRepo.board.destroy();
   });
 
   it('re-derives only the rows a changed query feeds', async () => {

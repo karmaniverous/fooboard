@@ -17,6 +17,7 @@ import type { SourceRuleOf } from '@/domain/model/sourceRule';
 import {
   compareOrder,
   type KeyProblem,
+  orderOf,
   type RecordDoc,
   translate,
 } from '@/domain/model/translate';
@@ -67,7 +68,7 @@ export function githubCandidates(
   ).slice(0, runs);
   const keyProblems: KeyProblem[] = [];
   const keepDeep = ruleNeedsItems(source.keep);
-  const order = (r: RecordDoc) => r[source.order] ?? null;
+  const order = (r: RecordDoc) => orderOf(r, source.order);
   const candidates = raw
     .filter((run) => !(excludePullRequests && isExcludedEvent(run.event)))
     .map((run) => {

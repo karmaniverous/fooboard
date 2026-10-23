@@ -5,7 +5,8 @@
  * arrangement; rung 0 shows only the icon and badge.
  *
  * The whole cell is a link to the job (or Amplify console) laid under its
- * text; the behind/diverged badge is a separate link to the compare page,
+ * text: a click or Enter follows it, a touch tap or Space opens the detail
+ * sheet; the behind/diverged badge is a separate link to the compare page,
  * placed above it (links can't nest). The cell link's accessible name
  * carries status, time and badge, whatever the rung shows.
  *
@@ -23,15 +24,16 @@ import { gapStyle } from './cellStyles';
 import {
   badgeDescription,
   badgeText,
+  DETAILS_KEY,
   EMPTY_LABEL,
   EMPTY_SYMBOL,
+  firstLine,
   relativeTime,
   shortSha,
   STATUS_GLYPH,
   statusLook,
 } from './cellView';
 import { type Rung, RUNG_SHOWS } from './layout';
-import { firstLine } from './layoutContents';
 import { type LineMap } from './packing';
 import { RefreshingDot } from './RefreshingDot';
 
@@ -43,8 +45,9 @@ export interface CellProps {
   now: number;
   /** Hover or focus: show the tooltip for this cell. */
   onInspect?: (target: HTMLElement | null) => void;
-  /** Open the detail sheet: a touch tap on a status cell, or any activation
-   * of an empty cell (which has no link to follow). */
+  /** Open the detail sheet: a touch tap or the details key (Space) on a
+   * status cell, or any activation of an empty cell (which has no link to
+   * follow). */
   onOpenSheet?: () => void;
 }
 
@@ -207,16 +210,31 @@ export function Cell({
         unstyled
         href={derivation.linkUrl}
         aria-label={name}
+        aria-keyshortcuts={onOpenSheet ? DETAILS_KEY.name : undefined}
         className="absolute inset-0 rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-white"
         onPointerDown={(e) => {
           touched.current = e.pointerType === 'touch';
         }}
         onClick={(e) => {
-          // A tap opens the detail sheet; mouse and keyboard follow the link.
+          // A tap opens the detail sheet; a click and Enter follow the link.
           if (touched.current && onOpenSheet) {
             e.preventDefault();
             onOpenSheet();
           }
+        }}
+        onKeyDown={(e) => {
+          // The details key opens the sheet (and doesn't scroll the page).
+          if (
+            e.key !== DETAILS_KEY.key ||
+            !onOpenSheet ||
+            e.altKey ||
+            e.ctrlKey ||
+            e.metaKey ||
+            e.shiftKey
+          )
+            return;
+          e.preventDefault();
+          onOpenSheet();
         }}
         {...inspect}
       />

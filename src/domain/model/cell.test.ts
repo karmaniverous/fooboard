@@ -119,6 +119,11 @@ describe('placeCell', () => {
     ).toBe(1);
   });
 
+  it('leaves out a record whose order key is an empty string', () => {
+    const empty = { ...doc(1, [{ name: 'keep-1', url: 'a' }]), n: '' };
+    expect(placeCell([empty], rules())).toBeUndefined();
+  });
+
   it('classifies with only counted items, Unknown when nothing matches', () => {
     const both = doc(1, [
       { name: 'keep-2', url: 'a' },

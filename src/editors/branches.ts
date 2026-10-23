@@ -15,8 +15,9 @@ import { matchesBranchPattern } from '@/domain/matching';
 import type { QueryEnv } from '@/query/client';
 import { fetchBranches } from '@/query/lookups';
 
-/** Branch names per repo for `rows` (default: every row). A repo whose
- * row has no usable token is skipped; a read failure rejects. */
+/** Branch names per repo for `rows` (default: every row). A row without
+ * a repo (an Amplify app with none), or whose repo's row has no usable
+ * token, is skipped; a read failure rejects. */
 export async function discoverBranches(
   dashboard: Dashboard,
   env: Pick<QueryEnv, 'client' | 'providers'>,
@@ -24,12 +25,13 @@ export async function discoverBranches(
 ): Promise<Map<string, string[]>> {
   const byRepo = new Map<string, string[]>();
   for (const row of rows) {
-    if (byRepo.has(row.repo)) continue;
+    const { repo } = row;
+    if (repo === undefined || byRepo.has(repo)) continue;
     const id = rowGithubCredentialId(dashboard, row);
     if (!id || !env.providers.github(id)) continue;
-    const branches = await fetchBranches(env.client, id, row.repo);
+    const branches = await fetchBranches(env.client, id, repo);
     byRepo.set(
-      row.repo,
+      repo,
       branches.map((b) => b.name),
     );
   }

@@ -1,8 +1,8 @@
 /**
  * Tests for the board grid over the demo board: every cell renders, group
  * labels appear, cells link to their jobs, badges link to the compare
- * page, empty states show their text, and a touch tap opens the detail
- * sheet instead of following the link.
+ * page, empty states show their text, and a touch tap or Space opens the
+ * detail sheet instead of following the link.
  *
  * @module
  */
@@ -13,8 +13,9 @@ import {
   waitFor,
   within,
 } from '@testing-library/react';
+import { omit } from 'radash';
 import { MemoryRouter } from 'react-router-dom';
-import { beforeAll, describe, expect, it } from 'vitest';
+import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 
 import { demoDashboard } from '@/demo/board';
 import { branchRules } from '@/domain/config/placement';
@@ -50,15 +51,10 @@ beforeAll(async () => {
 });
 
 // The detail sheet links to the credential guide, so render inside a router.
-const renderBoard = (layout: Layout = testLayout) =>
+const renderBoard = (layout: Layout = testLayout, dashboard = demoDashboard) =>
   render(
     <MemoryRouter>
-      <BoardGrid
-        dashboard={demoDashboard}
-        model={model}
-        layout={layout}
-        now={0}
-      />
+      <BoardGrid dashboard={dashboard} model={model} layout={layout} now={0} />
     </MemoryRouter>,
   );
 
@@ -73,6 +69,25 @@ describe('BoardGrid', () => {
     expect(
       screen.getByRole('rowgroup', { name: 'Frontend' }),
     ).toBeInTheDocument();
+  });
+
+  it("names a row's repo in its header's tooltip, and only the name without one", async () => {
+    const amplify = demoDashboard.rows.find((r) => r.type === 'amplify');
+    if (!amplify) throw new Error('the demo has no Amplify row');
+    renderBoard(testLayout, {
+      ...demoDashboard,
+      rows: demoDashboard.rows.map((r) =>
+        r.id === amplify.id ? omit(amplify, ['repo']) : r,
+      ),
+    });
+    focusElement(screen.getByRole('rowheader', { name: 'billing' }));
+    expect(await screen.findByRole('tooltip')).toHaveTextContent(
+      'billing (acme/billing)',
+    );
+    focusElement(screen.getByRole('rowheader', { name: amplify.displayName }));
+    await waitFor(() => {
+      expect(screen.getByRole('tooltip').textContent).toBe(amplify.displayName);
+    });
   });
 
   it('links cells to jobs and badges to the compare page', () => {
@@ -122,6 +137,68 @@ describe('BoardGrid', () => {
     expect(
       screen.getByRole('dialog', { name: 'Cell detail' }),
     ).toBeInTheDocument();
+  });
+
+  describe('from the keyboard', () => {
+    afterEach(() => {
+      Reflect.deleteProperty(navigator, 'clipboard');
+    });
+
+    const focusedCell = () => {
+      renderBoard();
+      const link = screen.getAllByRole('link', { name: /Passed, dev/ })[0];
+      focusElement(link);
+      return link;
+    };
+
+    it('opens the sheet on Space, focused on Copy, and copies the SHA', async () => {
+      const writeText = vi.fn(() => Promise.resolve());
+      Object.defineProperty(navigator, 'clipboard', {
+        value: { writeText },
+        configurable: true,
+      });
+      const link = focusedCell();
+      expect(link).toHaveAttribute('aria-keyshortcuts', 'Space');
+      expect(screen.getByRole('tooltip')).toHaveTextContent(
+        'Press Space for details',
+      );
+      // false: the default (scrolling the page) was prevented.
+      expect(fireEvent.keyDown(link, { key: ' ' })).toBe(false);
+      const sheet = screen.getByRole('dialog', { name: 'Cell detail' });
+      const copy = within(sheet).getByRole('button', {
+        name: 'Copy the commit SHA',
+      });
+      // The modal sheet focuses its first control, Copy.
+      await waitFor(() => {
+        expect(copy).toHaveFocus();
+      });
+      fireEvent.click(copy);
+      expect(await within(sheet).findByRole('status')).toHaveTextContent(
+        'Copied',
+      );
+      expect(writeText).toHaveBeenCalledWith(
+        expect.stringMatching(/^[0-9a-f]{8,}$/),
+      );
+    });
+
+    it.each([
+      ['Enter, which follows the link', { key: 'Enter' }],
+      ['Shift+Space, which scrolls up', { key: ' ', shiftKey: true }],
+      ['Ctrl+Space', { key: ' ', ctrlKey: true }],
+      ['Alt+Space', { key: ' ', altKey: true }],
+      ['Meta+Space', { key: ' ', metaKey: true }],
+    ])('leaves %s alone', (_, init) => {
+      const link = focusedCell();
+      expect(fireEvent.keyDown(link, init)).toBe(true);
+      expect(screen.queryByRole('dialog')).toBeNull();
+    });
+
+    it('hints at Space only while the cell has focus', () => {
+      renderBoard();
+      const link = screen.getAllByRole('link', { name: /Passed, dev/ })[0];
+      fireEvent.mouseEnter(link);
+      expect(screen.getByRole('tooltip')).not.toHaveTextContent('Space');
+    });
   });
 
   it('shows commit subjects in the hover tooltip, without unreachable links', () => {

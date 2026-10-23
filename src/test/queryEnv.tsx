@@ -1,7 +1,8 @@
 /**
  * Test query environments: a real QueryClient, limiters and budget store
  * over fake providers (one GitHub port and one Amplify reader for every
- * credential, unless a test gives per-credential ones), and a wrapper
+ * credential, unless a test gives per-credential or per-region ones), and
+ * a wrapper
  * providing it to components.
  *
  * @module
@@ -17,6 +18,8 @@ export interface TestProviders {
   /** The GitHub port per credential id; `undefined`: no secret. */
   github?: (id: string) => GitHubApi | undefined;
   amplify?: (id: string) => AmplifyReader | undefined;
+  /** The Amplify reader per region (every credential); beats `amplify`. */
+  amplifyIn?: (region: string) => AmplifyReader;
   fingerprint?: (id: string) => string | undefined;
 }
 
@@ -36,6 +39,8 @@ export function testQueryEnv(
       return {
         github: providers.github ?? (() => fakeGitHubApi()),
         amplify: (id) => {
+          const { amplifyIn } = providers;
+          if (amplifyIn) return ({ region }) => amplifyIn(region);
           const reader = providers.amplify
             ? providers.amplify(id)
             : fakeAmplifyReader();
