@@ -3,7 +3,10 @@
  * it reads (each with its credential resolved), their records placed in
  * the row's cells. A cell shows as soon as a landed record places it;
  * until every app's reads have landed it is not settled, and a cell no
- * landed record places stays loading. A failed read of one app shows on
+ * landed record places stays loading. A source whose AWS key can't be
+ * resolved (none chosen or inherited, or no secret entered) leaves every
+ * cell *Needs credential*, with a problem naming it (Decision 21). A
+ * failed read of one app shows on
  * the rows reading that app only. The whole row is refreshing while any
  * of its apps' reads has been fetching longer than the refreshing delay
  * or is older than its poll interval (Decisions 46, 47). Pure.
@@ -16,7 +19,7 @@ import {
   type DefaultCredentials,
   resolveCredentialId,
 } from '@/domain/config/credentialRefs';
-import type { AmplifyRow } from '@/domain/config/row';
+import type { AmplifyRow, AmplifySource } from '@/domain/config/row';
 import type { Stage } from '@/domain/config/stage';
 import { deriveCell } from '@/domain/derivation';
 import { type CellRules, placeCell } from '@/domain/model/cell';
@@ -29,7 +32,7 @@ import { amplifyKey } from '@/query/keys';
 import { type AppState, appState } from './amplifyApp';
 import { emptyViews, finalView } from './cells';
 import type { Need, RowDerivation } from './need';
-import { failedDerivation } from './providerOutcome';
+import { failedDerivation, rowProblem } from './providerOutcome';
 import { isRefreshing, markRefreshing, type RefreshClock } from './refreshing';
 import type { CellView } from './types';
 
@@ -44,24 +47,56 @@ export interface AmplifyContext extends RefreshClock {
   source: SourceRuleOf<'amplify'>;
 }
 
+/** A source whose AWS key can't be resolved, and why. */
+interface Unresolved {
+  source: AmplifySource;
+  /** `key`: none chosen or inherited; `secret`: none entered for it. */
+  missing: 'key' | 'secret';
+}
+
+/** A row's sources with their credentials resolved, and those that can't
+ * be. */
+function resolveSources(
+  ctx: Pick<AmplifyContext, 'defaultsFor' | 'hasReader'>,
+  row: AmplifyRow,
+): { resolved: ResolvedAmplifySource[]; unresolved: Unresolved[] } {
+  const resolved: ResolvedAmplifySource[] = [];
+  const unresolved: Unresolved[] = [];
+  for (const source of row.sources) {
+    const credentialId = resolveCredentialId(
+      ctx.defaultsFor(row),
+      'aws',
+      source.credentialId,
+    );
+    if (!credentialId) unresolved.push({ source, missing: 'key' });
+    else if (!ctx.hasReader(credentialId))
+      unresolved.push({ source, missing: 'secret' });
+    else resolved.push({ ...source, credentialId });
+  }
+  return { resolved, unresolved };
+}
+
 /** A row's apps with their credentials, or `undefined` when one has no
  * credential or no secret. */
 export function resolvedSources(
   ctx: Pick<AmplifyContext, 'defaultsFor' | 'hasReader'>,
   row: AmplifyRow,
 ): ResolvedAmplifySource[] | undefined {
-  const out: ResolvedAmplifySource[] = [];
-  for (const s of row.sources) {
-    const credentialId = resolveCredentialId(
-      ctx.defaultsFor(row),
-      'aws',
-      s.credentialId,
-    );
-    if (!credentialId || !ctx.hasReader(credentialId)) return undefined;
-    out.push({ ...s, credentialId });
-  }
-  return out;
+  const { resolved, unresolved } = resolveSources(ctx, row);
+  return unresolved.length > 0 ? undefined : resolved;
 }
+
+/** The problem naming a source of row `rowId` whose key can't be resolved. */
+const unresolvedProblem = (rowId: string, { source, missing }: Unresolved) =>
+  rowProblem(
+    rowId,
+    `Amplify source ${source.appId} (${source.region}) ${
+      missing === 'key'
+        ? 'has no AWS key: choose one for it, or a default'
+        : "needs its AWS key's secret"
+    }, so no cell of the row shows`,
+    false,
+  );
 
 /** The queries the apps need, polling fast while the row is `active`. */
 const appNeeds = (states: readonly AppState[], active: boolean): Need[] =>
@@ -78,12 +113,12 @@ export function deriveAmplifyRow(
   row: AmplifyRow,
 ): RowDerivation {
   const setFor = (stageId: string) => ctx.rulesFor(row, stageId).set;
-  const apps = resolvedSources(ctx, row);
-  if (!apps)
+  const { resolved: apps, unresolved } = resolveSources(ctx, row);
+  if (unresolved.length > 0)
     return {
       cells: emptyViews(ctx.stages, setFor, 'missing'),
       needs: [],
-      problems: [],
+      problems: unresolved.map((u) => unresolvedProblem(row.id, u)),
     };
   const states = apps.map((app) => appState(ctx.client, app, ctx.source));
   const failedAt = states.findIndex((s) => s.failure);

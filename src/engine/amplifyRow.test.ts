@@ -2,7 +2,8 @@
  * Tests for deriving an Amplify row from the cache (spec.md §3.1): its
  * apps' branch lists then each chosen branch's jobs, cells shown as soon
  * as a landed record places them (unsettled until every read lands), no
- * credential means Needs credential, and a failed app read shows on the
+ * credential means Needs credential (one unresolvable source is enough,
+ * with a problem naming it), and a failed app read shows on the
  * rows reading that app only (Amplify's NotFoundException as not found);
  * the row is refreshing while an app read has been fetching longer than
  * the delay or is overdue, not while every read is fresh and any fetch
@@ -180,6 +181,58 @@ describe('deriveAmplifyRow', () => {
     });
     expect(out.needs).toEqual([]);
   });
+
+  it.each([
+    [
+      'no secret for its key',
+      { credentialId: 'locked' },
+      () => ({ aws: AWS }),
+      "Amplify source x9 (eu-west-1) needs its AWS key's secret, so no cell of the row shows",
+    ],
+    [
+      'no key at all',
+      {},
+      () => ({}),
+      'Amplify source x9 (eu-west-1) has no AWS key: choose one for it, or a default, so no cell of the row shows',
+    ],
+  ])(
+    'shows Needs credential in every cell when one source has %s, naming it in a problem',
+    async (_, key, defaults, message) => {
+      const client = new QueryClient();
+      await seedRow(client, 'marketing-site');
+      const row = rowOf('marketing-site');
+      const [first] = row.sources;
+      const twoSources: AmplifyRow = {
+        ...row,
+        sources: [
+          { ...first, credentialId: AWS },
+          { ...key, region: 'eu-west-1', appId: 'x9' },
+        ],
+      };
+      const out = deriveAmplifyRow(
+        {
+          ...ctx(client),
+          defaultsFor: defaults,
+          hasReader: (id) => id === AWS,
+        },
+        twoSources,
+      );
+      const needsCredential: unknown = expect.objectContaining({
+        state: EMPTY_STATES.needsCredential,
+      });
+      expect(
+        demoDashboard.stages.map((s) => out.cells[s.id]?.derivation),
+      ).toEqual(demoDashboard.stages.map(() => needsCredential));
+      expect(out.needs).toEqual([]);
+      expect(out.problems).toEqual([
+        expect.objectContaining({
+          level: { kind: 'row', id: row.id },
+          message,
+          target: { kind: 'row', id: row.id },
+        }),
+      ]);
+    },
+  );
 
   it('shows a missing app as not found on its own rows only', async () => {
     const client = new QueryClient();
