@@ -94,12 +94,25 @@ const THEME_LABEL: Record<ThemeChoice, string> = {
 
 const THEME_ICON = { system: Monitor, light: Sun, dark: Moon } as const;
 
-export const NavContext = createContext<{ openShare: () => void } | null>(null);
+/** The app's dialogs, opened from the navigation (`AppNavProvider`). */
+export interface NavDialogs {
+  openShare: () => void;
+  /** The *Reset* confirmation (spec.md §3.9). */
+  openReset: () => void;
+}
+
+export const NavContext = createContext<NavDialogs | null>(null);
+
+/** Open the app's dialogs; throws outside `AppNavProvider`. */
+export function useNavDialogs(): NavDialogs {
+  const nav = useContext(NavContext);
+  if (!nav) throw new Error('the app navigation needs AppNavProvider');
+  return nav;
+}
 
 /** The navigation items in their C-19 order, legal ones last. */
 export function useNavItems(): NavItem[] {
-  const nav = useContext(NavContext);
-  if (!nav) throw new Error('useNavItems must be used inside AppNavProvider');
+  const nav = useNavDialogs();
   const { theme, setTheme } = useTheme();
   return [
     {

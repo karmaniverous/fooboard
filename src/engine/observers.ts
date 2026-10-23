@@ -4,7 +4,10 @@
  * A need whose version changed invalidates its query once (a run that
  * completed refetches its jobs one last time; a compare refetches on a
  * new commit). Versions are kept per QueryClient, so they outlive a
- * board and a later board doesn't mistake a cached query for new.
+ * board and a later board doesn't mistake a cached query for new. A query
+ * removed from the cache (its credential's data dropped, here or in
+ * another tab) is observed afresh, so it is read again at once rather
+ * than at its observer's next poll.
  *
  * @module
  */
@@ -75,7 +78,15 @@ export function createObserverSet(client: QueryClient): ObserverSet {
           queryKey: need.key,
           ...need.freshness,
         };
-        const known = observed.get(hash);
+        let known = observed.get(hash);
+        if (
+          known &&
+          known.observer.getCurrentQuery() !== client.getQueryCache().get(hash)
+        ) {
+          known.unsubscribe();
+          observed.delete(hash);
+          known = undefined;
+        }
         if (!known) {
           const observer = new QueryObserver(client, options);
           observed.set(hash, {

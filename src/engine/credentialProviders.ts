@@ -52,8 +52,9 @@ export function credentialProviders(
     secret.kind === 'github'
       ? createGitHubApi({
           token: secret.token,
+          // Tagged with the secret it was read with (fooboard#24).
           onBudget: (budget) => {
-            hooks.onBudget(id, budget);
+            hooks.onBudget(id, budget, fingerprintOf(secret));
           },
         })
       : undefined,

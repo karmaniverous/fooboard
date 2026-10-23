@@ -2,8 +2,9 @@
  * Tests for the query environment (spec.md §3.1): the query defaults
  * (transient failures retry, 4xx answers never do; focus and reconnect
  * refetch only what is due; polling pauses while the tab is hidden),
- * budgets recorded from responses, and a changed secret dropping only
- * that credential's queries.
+ * budgets recorded from responses (only while the secret that read them
+ * is current, fooboard#24), and removing only the named credentials'
+ * queries and budgets.
  *
  * @module
  */
@@ -162,50 +163,34 @@ describe('createQueryEnv', () => {
     expect(heard).toHaveBeenCalledOnce();
   });
 
-  it('drops a credential’s queries when its secret changes, only then', () => {
-    const secrets: Record<string, string> = { gh: 'one', aws: 'key' };
-    const env = testQueryEnv({ fingerprint: (id) => secrets[id] });
+  it('removes only the named credentials’ queries', () => {
+    const env = testQueryEnv();
     const awsKey = amplifyKey('aws', { call: 'apps', region: 'eu' });
-    const seed = () => {
-      env.client.setQueryData(runs('acme/api'), fetched([]));
-      env.client.setQueryData(awsKey, fetched([]));
-    };
-    const cached = () =>
-      [runs('acme/api'), awsKey].map(
+    const other = githubKey('other', {
+      call: 'runs',
+      repo: 'acme/api',
+      page: 1,
+    });
+    for (const key of [runs('acme/api'), awsKey, other])
+      env.client.setQueryData(key, fetched([]));
+    env.removeCredentials(['gh', 'aws']);
+    expect(
+      [runs('acme/api'), awsKey, other].map(
         (key) => env.client.getQueryData(key) !== undefined,
-      );
-    seed();
-    env.secretsChanged(['gh', 'aws']); // first sight: nothing to drop
-    env.secretsChanged(['gh', 'aws']); // unchanged
-    expect(cached()).toEqual([true, true]);
-    secrets.gh = 'two';
-    env.secretsChanged(['gh', 'aws']);
-    expect(cached()).toEqual([false, true]);
+      ),
+    ).toEqual([false, false, true]);
   });
 
-  it.each([
-    ['replaced', 'two'],
-    ['forgotten', undefined],
-  ])('greys a token’s battery and drops its back-off once %s', (_, next) => {
-    const secrets: Record<string, string | undefined> = {
-      gh: 'one',
-      other: 'o',
-      quiet: 'q',
-    };
-    const ids = ['gh', 'other', 'quiet'];
-    const env = testQueryEnv({ fingerprint: (id) => secrets[id] });
+  it('greys a removed credential’s battery and drops its back-off', () => {
+    const env = testQueryEnv();
     const heard = vi.fn();
     env.budgets.subscribe(heard);
-    env.secretsChanged(ids);
     env.report('gh', OVER_SHARE);
     env.report('other', OVER_SHARE);
-    env.secretsChanged(ids); // unchanged: kept
     expect(isOverPollingShare(env.budgets.get('gh'))).toBe(true);
     heard.mockClear();
 
-    secrets.gh = next;
-    secrets.quiet = next; // no budget yet: nothing to tell
-    env.secretsChanged(ids);
+    env.removeCredentials(['gh', 'quiet']); // quiet: no budget, nothing to tell
     expect(env.budgets.get('gh')).toBeUndefined();
     expect(isOverPollingShare(env.budgets.get('gh'))).toBe(false);
     expect(env.budgets.get('other')).toEqual(OVER_SHARE);
@@ -214,5 +199,14 @@ describe('createQueryEnv', () => {
     // The new token's first response fills the battery again.
     env.report('gh', { ...OVER_SHARE, used: 1 });
     expect(env.budgets.get('gh')?.used).toBe(1);
+  });
+
+  it('ignores a budget read with a secret that is no longer the credential’s (#24)', () => {
+    const secrets: Record<string, string> = { gh: 'new' };
+    const env = testQueryEnv({ fingerprint: (id) => secrets[id] });
+    env.report('gh', OVER_SHARE, 'old');
+    expect(env.budgets.get('gh')).toBeUndefined();
+    env.report('gh', OVER_SHARE, 'new');
+    expect(env.budgets.get('gh')).toEqual(OVER_SHARE);
   });
 });

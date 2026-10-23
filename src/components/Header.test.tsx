@@ -64,7 +64,7 @@ describe('Header', () => {
       within(openMenu())
         .getAllByRole('menuitem')
         .map((i) => i.textContent),
-    ).toEqual(['Privacy', 'Terms']);
+    ).toEqual(['Privacy', 'Terms', 'Reset…']);
   });
 
   it('folds buttons into the menu, before the separator, when narrow', () => {
@@ -91,6 +91,7 @@ describe('Header', () => {
       'Report an issue',
       'Privacy',
       'Terms',
+      'Reset…',
     ]);
     const order = [
       ...menu.querySelectorAll('[role^=menuitem], [role=separator]'),

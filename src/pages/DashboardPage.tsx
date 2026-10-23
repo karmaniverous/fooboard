@@ -1,12 +1,14 @@
 /**
  * A saved dashboard (spec.md §2.4): the live board read with this
  * dashboard's credentials through the app's query environment, plus its
- * credentials panel. A changed secret removes what was read with the old
- * one and re-derives the board, so entering a token fills it at once.
+ * credentials panel. The board waits for the persisted cache to be
+ * restored, then shows it at once (§3.4). A changed secret removes what
+ * was read with the old one (`appQueryEnv`) and re-derives the board, so
+ * entering a token fills it at once.
  *
  * @module
  */
-import { useEffect, useState } from 'react';
+import { use, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 
 import { BoardScreen } from '@/board/BoardScreen';
@@ -52,13 +54,9 @@ function SavedDashboard({
   const { config } = stores;
   const env = appQueryEnv(stores);
   const [dashboard, setDashboard] = useState(initial);
+  // A changed secret (new `version`) has dropped what the old one read;
+  // the board re-derives (`refreshKey`).
   const version = useCredentialVersion();
-  // A changed secret (new `version`) drops what the old one read; the
-  // board then re-derives (`refreshKey`).
-  const credentialIds = dashboard.credentials.map((c) => c.id).join('\n');
-  useEffect(() => {
-    env.secretsChanged(credentialIds.split('\n'));
-  }, [env, credentialIds, version]);
   const save = (next: Dashboard) => {
     config.saveDashboard(next);
     setDashboard(next);
@@ -188,6 +186,9 @@ export function DashboardPage(): React.JSX.Element {
   const loaded = stores.config.load();
   const dashboards = dashboardsOf(loaded);
   const dashboard = dashboards.find((d) => d.id === id);
+  const env = appQueryEnv(stores);
+  // The cached board shows once restored (the app's Suspense waits).
+  if (!env.isRestored()) use(env.restored);
   if (!dashboard) {
     return (
       <div className="mx-auto flex max-w-xl flex-col items-center gap-3 px-6 py-24 text-center">
@@ -202,7 +203,7 @@ export function DashboardPage(): React.JSX.Element {
     );
   }
   return (
-    <QueryProvider env={appQueryEnv(stores)}>
+    <QueryProvider env={env}>
       <SavedDashboard
         key={dashboard.id}
         initial={dashboard}

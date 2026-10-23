@@ -14,12 +14,13 @@ import { type AppStores, createAppStores } from '@/storage';
 import { memoryStorage } from '@/storage/keyValue';
 import { StoresContext } from '@/storage/storesContext';
 
-/** Render `ui` in the shell; `theme` is the device's saved choice. */
+/** Render `ui` in the shell over `stores`; `theme` is the device's
+ * saved choice. */
 export function renderShell(
   ui: React.ReactNode,
   theme?: ThemeChoice,
+  stores: AppStores = createAppStores(memoryStorage()),
 ): AppStores {
-  const stores = createAppStores(memoryStorage());
   if (theme) stores.preferences.setTheme(theme);
   render(
     <StoresContext value={stores}>

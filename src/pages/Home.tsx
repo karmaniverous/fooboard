@@ -1,12 +1,15 @@
 /**
- * Home page: the saved dashboards (or a note that they can't be read),
- * creating a dashboard, and the demo. Importing a dashboard (spec.md N6)
+ * Home page: the saved dashboards (or a note that they can't be read,
+ * with *Reset* to start again, spec.md §3.9), creating a dashboard, and
+ * the demo. Importing a dashboard (spec.md N6)
  * and the first-run flow (N7) come later, so the page offers neither.
  *
  * @module
  */
 import { Link } from 'react-router-dom';
 
+import { useNavDialogs } from '@/components/navItems';
+import { Button } from '@/components/ui/button';
 import { buttonVariants } from '@/components/ui/buttonVariants';
 import { CreateDashboard } from '@/editors/CreateDashboard';
 import { site } from '@/lib/site';
@@ -16,6 +19,7 @@ import { useStores } from '@/storage/storesContext';
 export function Home(): React.JSX.Element {
   const loaded = useStores().config.load();
   const dashboards = dashboardsOf(loaded);
+  const { openReset } = useNavDialogs();
   return (
     <div className="mx-auto flex w-full min-w-0 max-w-xl flex-col items-center gap-4 px-6 py-24 text-center">
       <img
@@ -47,10 +51,16 @@ export function Home(): React.JSX.Element {
         </ul>
       )}
       {loaded.kind === 'unreadable' && (
-        <p role="alert" className="text-sm text-status-failure">
-          Saved dashboards can't be read ({loaded.reason}). They have not been
-          changed.
-        </p>
+        <>
+          <p role="alert" className="text-sm text-status-failure">
+            Saved dashboards can't be read ({loaded.reason}). They have not been
+            changed. To start again, reset fooboard: that removes all of its
+            data from this browser.
+          </p>
+          <Button size="sm" variant="outline" onClick={openReset}>
+            Reset…
+          </Button>
+        </>
       )}
       <p className="text-sm text-muted-foreground">
         fooboard shows the deployment state of every repo &times; stage at a

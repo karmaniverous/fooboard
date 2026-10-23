@@ -72,9 +72,11 @@ describe('credentialProviders', () => {
     } finally {
       vi.unstubAllGlobals();
     }
+    // Tagged with the secret it was read with (fooboard#24).
     expect(onBudget).toHaveBeenCalledWith(
       'gh',
       expect.objectContaining({ remaining: 4000 }),
+      providers.fingerprint('gh'),
     );
   });
 

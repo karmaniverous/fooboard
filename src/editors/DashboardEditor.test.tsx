@@ -11,6 +11,7 @@ import { useState } from 'react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { describe, expect, it } from 'vitest';
 
+import { AppNavProvider } from '@/components/AppNavProvider';
 import { type Dashboard, DashboardSchema } from '@/domain/config/dashboard';
 import { branchRules } from '@/domain/config/placement';
 import { Home } from '@/pages/Home';
@@ -176,10 +177,12 @@ describe('Create a dashboard', () => {
     render(
       <StoresContext value={stores}>
         <MemoryRouter>
-          <Routes>
-            <Route path="/" element={<Home />} />
-            <Route path="/d/:id" element={<p>opened</p>} />
-          </Routes>
+          <AppNavProvider>
+            <Routes>
+              <Route path="/" element={<Home />} />
+              <Route path="/d/:id" element={<p>opened</p>} />
+            </Routes>
+          </AppNavProvider>
         </MemoryRouter>
       </StoresContext>,
     );

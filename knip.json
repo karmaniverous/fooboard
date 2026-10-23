@@ -1,6 +1,4 @@
 {
   "project": ["src/**/*.{ts,tsx,css}"],
-  "entry": ["src/domain/index.ts"],
-  "ignore": ["src/components/ui/alert-dialog.tsx"],
-  "ignoreDependencies": ["@radix-ui/react-alert-dialog"]
+  "entry": ["src/domain/index.ts"]
 }

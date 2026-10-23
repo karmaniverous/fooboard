@@ -23,18 +23,23 @@ export interface TestProviders {
   fingerprint?: (id: string) => string | undefined;
 }
 
-/** A query environment over fakes. `budgets` lets a test report budgets
+/** Report a budget as if from a response read with the secret whose
+ * fingerprint is `readWith` (by default the credential's current one). */
+type Report = (id: string, budget: RateLimitBudget, readWith?: string) => void;
+
+/** A query environment over fakes. `report` lets a test report budgets
  * as if from responses. */
 export function testQueryEnv(
   providers: TestProviders = {},
   options: { now?: () => number } = {},
-): QueryEnv & { report: (id: string, budget: RateLimitBudget) => void } {
-  let report: (id: string, budget: RateLimitBudget) => void = () => undefined;
+): QueryEnv & { report: Report } {
+  let report: Report = () => undefined;
+  const fingerprint = providers.fingerprint ?? (() => 'secret');
   const env = createQueryEnv({
     ...options,
     providers: (hooks) => {
-      report = (id, budget) => {
-        hooks.onBudget(id, budget);
+      report = (id, budget, readWith = fingerprint(id)) => {
+        hooks.onBudget(id, budget, readWith);
       };
       return {
         github: providers.github ?? (() => fakeGitHubApi()),
@@ -46,14 +51,14 @@ export function testQueryEnv(
             : fakeAmplifyReader();
           return reader ? () => reader : undefined;
         },
-        fingerprint: providers.fingerprint ?? (() => 'secret'),
+        fingerprint,
       };
     },
   });
   return {
     ...env,
-    report: (id, budget) => {
-      report(id, budget);
+    report: (id, budget, readWith) => {
+      report(id, budget, readWith);
     },
   };
 }

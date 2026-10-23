@@ -5,24 +5,17 @@
  *
  * @module
  */
-import { fireEvent, render, screen } from '@testing-library/react';
-import { MemoryRouter } from 'react-router-dom';
+import { fireEvent, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
 import { createAppStores } from '@/storage';
 import { type KeyValueStore, memoryStorage } from '@/storage/keyValue';
-import { StoresContext } from '@/storage/storesContext';
+import { renderShell } from '@/test/renderShell';
 
 import { Home } from './Home';
 
 const renderHome = (store: KeyValueStore) => {
-  render(
-    <StoresContext value={createAppStores(store)}>
-      <MemoryRouter>
-        <Home />
-      </MemoryRouter>
-    </StoresContext>,
-  );
+  renderShell(<Home />, undefined, createAppStores(store));
 };
 
 describe('Home', () => {
@@ -36,13 +29,17 @@ describe('Home', () => {
 });
 
 describe('Home storage failures', () => {
-  it('offers no Create when the saved configuration is unreadable', () => {
+  it('offers no Create, but Reset, when the saved configuration is unreadable', () => {
     const store = memoryStorage();
     store.setItem('fooboard:config', '{not json');
     renderHome(store);
     expect(
       screen.queryByRole('button', { name: 'Create a dashboard' }),
     ).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'Reset…' }));
+    expect(
+      screen.getByRole('alertdialog', { name: 'Reset fooboard?' }),
+    ).toBeInTheDocument();
   });
 
   it('reports a refused write and keeps the name', () => {

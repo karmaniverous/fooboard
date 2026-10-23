@@ -187,13 +187,13 @@ describe('clearAppData', () => {
 });
 
 describe('createAppStores reset', () => {
-  it('clears remembered and session secrets and the config', () => {
+  it('clears remembered and session secrets and the config', async () => {
     const kv = memoryStorage();
     const stores = createAppStores(kv);
     stores.config.saveDashboard(demoDashboard);
     stores.credentials.set('a', { kind: 'github', token: 't' }, true);
     stores.credentials.set('b', { kind: 'github', token: 't' }, false);
-    stores.reset();
+    await stores.reset();
     expect(stores.credentials.get('a')).toBeUndefined();
     expect(stores.credentials.get('b')).toBeUndefined();
     expect(kv.keys()).toEqual([]);

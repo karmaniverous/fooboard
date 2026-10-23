@@ -39,10 +39,11 @@ function setup() {
   const env = withoutRetryDelay(
     createQueryEnv({
       providers: (hooks) => {
+        const providers = demoProviders(hooks, () => clock.now);
         report = (id, b) => {
-          hooks.onBudget(id, b);
+          hooks.onBudget(id, b, providers.fingerprint(id));
         };
-        return demoProviders(hooks, () => clock.now);
+        return providers;
       },
     }),
   );
