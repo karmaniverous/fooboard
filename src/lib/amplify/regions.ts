@@ -8,7 +8,11 @@
  */
 import type { App } from '@aws-sdk/client-amplify';
 
-import { AmplifyAuthError, AmplifyNotFoundError } from './errors';
+import {
+  AmplifyAuthError,
+  AmplifyNotFoundError,
+  isNetworkFailure,
+} from './errors';
 
 /** Every region with Amplify Hosting (AWS's Amplify endpoints page,
  * 2026-10-23), in the order the picker lists them. */
@@ -36,7 +40,9 @@ export const AMPLIFY_REGIONS = [
 ] as const;
 
 /** The regions an account must opt in to. One it hasn't enabled rejects
- * the key as unrecognised, which elsewhere means a bad key. */
+ * the key as unrecognised, which elsewhere means a bad key; whether the
+ * browser can read that answer, or sees a network failure instead, is
+ * unverified (Decision 48), so both are skipped there. */
 export const OPT_IN_REGIONS: ReadonlySet<string> = new Set([
   'ap-east-1',
   'eu-south-1',
@@ -50,14 +56,17 @@ export interface RegionApp {
 }
 
 /** Does `err` from `region` mean Amplify isn't available there to the
- * account (not found, or an opt-in region it hasn't enabled)? */
+ * account (not found, or an opt-in region it hasn't enabled, which
+ * rejects the key or gives no readable response)? */
 const unavailable = (region: string, err: unknown): boolean =>
   err instanceof AmplifyNotFoundError ||
-  (err instanceof AmplifyAuthError && OPT_IN_REGIONS.has(region));
+  (OPT_IN_REGIONS.has(region) &&
+    (err instanceof AmplifyAuthError || isNetworkFailure(err)));
 
 /** The apps `listIn` finds in each of `regions`, all regions at once,
  * in region order. Regions where Amplify is unavailable are skipped;
- * any other error (a rejected key) throws. */
+ * any other error (a rejected key, a network failure outside the opt-in
+ * regions) throws. */
 export async function listAppsAcrossRegions(
   regions: readonly string[],
   listIn: (region: string) => Promise<App[]>,

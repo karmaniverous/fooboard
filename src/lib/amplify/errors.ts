@@ -87,6 +87,12 @@ function throttleDelayMs(err: Error): number {
   return secondsToMs(raw) ?? DEFAULT_THROTTLE_MS;
 }
 
+/** Did the request get no HTTP response at all? The browser's `fetch`
+ * rejects with a `TypeError` when it is offline, can't reach the host,
+ * or CORS hides the response; the SDK passes it through unmapped. */
+export const isNetworkFailure = (err: unknown): boolean =>
+  err instanceof TypeError;
+
 /** Map an AWS SDK error to a typed Amplify error; other values pass through. */
 export function toAmplifyError(err: unknown, operation: string): unknown {
   if (!(err instanceof Error)) return err;

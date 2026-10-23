@@ -1,8 +1,9 @@
 /**
  * Tests for `listAppsAcrossRegions` over fake per-region listings: apps
  * are tagged with their region in region order, regions where Amplify is
- * unavailable (not found, an opt-in region the account hasn't enabled)
- * are skipped, and a rejected key throws.
+ * unavailable (not found, an opt-in region the account hasn't enabled,
+ * whether it rejects the key or gives no response) are skipped, and a
+ * rejected key or a network failure elsewhere throws.
  *
  * @module
  */
@@ -53,15 +54,35 @@ describe('listAppsAcrossRegions', () => {
     expect(tags(found)).toEqual(['us-east-1:a1']);
   });
 
+  it('skips an opt-in region that gives no response, still listing the other regions', async () => {
+    const found = await listAppsAcrossRegions(
+      ['us-east-1', 'eu-south-1', 'ap-east-1'],
+      listing({
+        'us-east-1': ['a1'],
+        'eu-south-1': new TypeError('Failed to fetch'),
+        'ap-east-1': ['c1'],
+      }),
+    );
+    expect(tags(found)).toEqual(['us-east-1:a1', 'ap-east-1:c1']);
+  });
+
   it.each([
     [
       'a rejected key in a default region',
+      'us-east-1',
       new AmplifyAuthError('denied', 'ListApps'),
     ],
-    ['any other error in an opt-in region', new Error('Failed to fetch')],
-  ])('throws %s', async (_, error) => {
-    const region =
-      error instanceof AmplifyAuthError ? 'us-east-1' : 'ap-east-1';
+    [
+      'a network failure in a default region',
+      'eu-west-1',
+      new TypeError('Failed to fetch'),
+    ],
+    [
+      'any other error in an opt-in region',
+      'ap-east-1',
+      new Error('Internal failure'),
+    ],
+  ])('throws %s', async (_, region, error) => {
     await expect(
       listAppsAcrossRegions([region], listing({ [region]: error })),
     ).rejects.toBe(error);
