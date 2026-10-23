@@ -6,7 +6,7 @@
  */
 import { describe, expect, it } from 'vitest';
 
-import { BADGE_CAP, badgeText, relativeTime } from './cellView';
+import { BADGE_CAP, badgeText, firstLine, relativeTime } from './cellView';
 
 describe('badgeText', () => {
   it('caps counts above the cap', () => {
@@ -37,5 +37,11 @@ describe('relativeTime', () => {
     ['2026-10-16T12:05:00Z', 'now'],
   ])('%s is %s', (iso, expected) => {
     expect(relativeTime(iso, now)).toBe(expected);
+  });
+});
+
+describe('firstLine', () => {
+  it('takes the first line of a commit message', () => {
+    expect(firstLine('Fix flaky test\n\nLonger body')).toBe('Fix flaky test');
   });
 });

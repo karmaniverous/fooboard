@@ -25,13 +25,13 @@ import {
   badgeText,
   EMPTY_LABEL,
   EMPTY_SYMBOL,
+  firstLine,
   relativeTime,
   shortSha,
   STATUS_GLYPH,
   statusLook,
 } from './cellView';
 import { type Rung, RUNG_SHOWS } from './layout';
-import { firstLine } from './layoutContents';
 import { type LineMap } from './packing';
 import { RefreshingDot } from './RefreshingDot';
 

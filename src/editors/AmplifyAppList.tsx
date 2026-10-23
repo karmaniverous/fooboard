@@ -21,7 +21,7 @@ export interface ListedApp {
   repo?: string;
 }
 
-const appKey = (a: ListedApp): string => `${a.region}/${a.appId}`;
+const listKey = (a: ListedApp): string => `${a.region}/${a.appId}`;
 
 export function AmplifyAppList({
   apps,
@@ -37,14 +37,14 @@ export function AmplifyAppList({
     <ul className="max-h-48 overflow-y-auto">
       {apps.length === 0 && <li>No apps in any Amplify region.</li>}
       {apps.map((a) => (
-        <li key={appKey(a)}>
+        <li key={listKey(a)}>
           <button
             type="button"
-            aria-expanded={a.repo ? undefined : asking === appKey(a)}
+            aria-expanded={a.repo ? undefined : asking === listKey(a)}
             className="w-full rounded px-2 py-1 text-left hover:bg-muted"
             onClick={() => {
               if (a.repo) onPick(a, a.repo);
-              else setAsking(asking === appKey(a) ? undefined : appKey(a));
+              else setAsking(asking === listKey(a) ? undefined : listKey(a));
             }}
           >
             {a.name} <span className="font-mono">{a.region}</span>{' '}
@@ -52,7 +52,7 @@ export function AmplifyAppList({
               ({a.repo ?? 'no GitHub repo'})
             </span>
           </button>
-          {asking === appKey(a) && (
+          {asking === listKey(a) && (
             <RepoForApp
               app={a}
               onAdd={(repo) => {

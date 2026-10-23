@@ -20,6 +20,7 @@ import {
   badgeText,
   EMPTY_LABEL,
   EMPTY_SYMBOL,
+  firstLine,
   SHORT_SHA_LENGTH,
 } from './cellView';
 import { capText, type Rung, RUNG_SHOWS } from './layout';
@@ -41,10 +42,6 @@ const shortHeader = (name: string) =>
   name.length > HEADER_MIN_CHARS
     ? `${name.slice(0, HEADER_MIN_CHARS)}\u2026`
     : name;
-
-/** The first line of a commit message. */
-export const firstLine = (message: string): string =>
-  message.split('\n', 1)[0]?.trim() ?? '';
 
 /** Build the per-rung contents for a board. */
 export function boardContents(

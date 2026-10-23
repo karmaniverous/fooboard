@@ -95,3 +95,7 @@ export const SHORT_SHA_LENGTH = 7;
 
 /** Short commit hash. */
 export const shortSha = (sha: string): string => sha.slice(0, SHORT_SHA_LENGTH);
+
+/** The first line of a commit message. */
+export const firstLine = (message: string): string =>
+  message.split('\n', 1)[0]?.trim() ?? '';

@@ -12,7 +12,7 @@ import { demoDashboard } from '@/demo/board';
 import type { BoardModel } from '@/engine';
 import { fullModel } from '@/test/boardModel';
 
-import { boardContents, firstLine } from './layoutContents';
+import { boardContents } from './layoutContents';
 
 let model: BoardModel;
 
@@ -42,9 +42,5 @@ describe('boardContents', () => {
       contents(rung).some((c) => c.items.some((i) => i.free));
     expect(free(3)).toBe(false);
     expect(free(4)).toBe(true);
-  });
-
-  it('takes the first line of a commit message', () => {
-    expect(firstLine('Fix flaky test\n\nLonger body')).toBe('Fix flaky test');
   });
 });

@@ -29,9 +29,8 @@ import type { Problem } from '@/domain/problems/problem';
 import type { BoardCell } from '@/engine';
 import { readmeSection } from '@/lib/site';
 
-import { badgeDescription, EMPTY_LABEL, shortSha } from './cellView';
+import { badgeDescription, EMPTY_LABEL, firstLine, shortSha } from './cellView';
 import { CommitSha } from './CommitSha';
-import { firstLine } from './layoutContents';
 
 export function CellDetail({
   cell,
