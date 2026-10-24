@@ -145,13 +145,13 @@ describe('cacheStorage', () => {
     const storage = cacheStorage(raw);
     const writing = storage.setItem('k', '1');
     const stopped = vi.fn();
-    void storage.stopped.then(stopped);
+    const heard = storage.stopped.then(stopped);
     storage.stop();
     await new Promise((resolve) => setTimeout(resolve, 0));
     expect(stopped).not.toHaveBeenCalled();
     land();
     await writing;
-    await storage.stopped;
+    await heard;
     expect(stopped).toHaveBeenCalledOnce();
     expect(raw.entries.get('k')).toBe('1');
   });

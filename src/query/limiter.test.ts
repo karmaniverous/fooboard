@@ -43,10 +43,12 @@ describe('createLimiter', () => {
     const jobs1 = gate(started, 'jobs1');
     const jobs2 = gate(started, 'jobs2');
     const runs = gate(started, 'runs');
-    void limiter.run('high', a.task);
-    void limiter.run('normal', jobs1.task);
-    void limiter.run('normal', jobs2.task);
-    void limiter.run('high', runs.task);
+    const results = Promise.all([
+      limiter.run('high', a.task),
+      limiter.run('normal', jobs1.task),
+      limiter.run('normal', jobs2.task),
+      limiter.run('high', runs.task),
+    ]);
     expect(started).toEqual(['a']);
     expect(limiter.stats()).toMatchObject({ running: 1, queued: 3 });
     a.open();
@@ -56,6 +58,8 @@ describe('createLimiter', () => {
     jobs1.open();
     await vi.advanceTimersByTimeAsync(0);
     expect(started).toEqual(['a', 'runs', 'jobs1', 'jobs2']);
+    jobs2.open();
+    await expect(results).resolves.toEqual(['a', 'jobs1', 'jobs2', 'runs']);
   });
 
   it('settles as its task does, freeing the slot either way', async () => {
@@ -69,14 +73,16 @@ describe('createLimiter', () => {
     expect(limiter.stats().running).toBe(0);
   });
 
-  it('starts queued requests at once when the cap rises', () => {
+  it('starts queued requests at once when the cap rises', async () => {
     const started: string[] = [];
     const limiter = createLimiter({ max: 1 });
-    for (const name of ['a', 'b', 'c'])
-      void limiter.run('high', gate(started, name).task);
+    const gates = ['a', 'b', 'c'].map((name) => gate(started, name));
+    const results = Promise.all(gates.map((g) => limiter.run('high', g.task)));
     expect(started).toEqual(['a']);
     limiter.setMax(3);
     expect(started).toEqual(['a', 'b', 'c']);
+    for (const g of gates) g.open();
+    await expect(results).resolves.toEqual(['a', 'b', 'c']);
   });
 
   it('starts nothing during a pause, then resumes; a later pause wins', async () => {
@@ -86,11 +92,14 @@ describe('createLimiter', () => {
     limiter.pauseUntil(3_000);
     limiter.pauseUntil(2_000);
     expect(limiter.stats().pausedUntil).toBe(3_000);
-    void limiter.run('high', gate(started, 'a').task);
+    const a = gate(started, 'a');
+    const result = limiter.run('high', a.task);
     expect(started).toEqual([]);
     now = 3_000;
     await vi.advanceTimersByTimeAsync(2_000);
     expect(started).toEqual(['a']);
+    a.open();
+    await expect(result).resolves.toBe('a');
   });
 
   it('lets running requests finish through a pause', async () => {
