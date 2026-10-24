@@ -196,3 +196,54 @@ describe('a stored v4 board', () => {
     expect(resolveSetting(d, d.rows[0], 'prod', 'awsKey').value).toBe('aws');
   });
 });
+
+describe('a malformed v5 field', () => {
+  const v5 = (
+    patch: Record<string, unknown>,
+    row: Record<string, unknown> = {},
+  ) => ({
+    schemaVersion: 5,
+    dashboards: [
+      {
+        id: 'd',
+        name: 'D',
+        rows: [
+          {
+            type: 'amplify',
+            id: 'site',
+            repo: 'acme/site',
+            displayName: 'site',
+            sources: [{ region: 'us-east-1', appId: 'a1' }],
+            ...row,
+          },
+        ],
+        ...patch,
+      },
+    ],
+  });
+
+  it('migrates the well-formed board it is checked against', () => {
+    expect(migrate(v5({})).dashboards[0].rows[0]).toMatchObject({
+      pinnedApps: [{ region: 'us-east-1', appId: 'a1' }],
+    });
+  });
+
+  it.each<[string, Record<string, unknown>, Record<string, unknown>?]>([
+    ['defaultCredentials', { defaultCredentials: 'oops' }],
+    ['statusSets', { statusSets: 'oops' }],
+    ['rowRules', { rowRules: 'oops' }],
+    ['github', { rowRules: { github: 'oops' } }],
+    [
+      'statusSets',
+      { rowGroups: [{ id: 'g', memberIds: ['site'], statusSets: 7 }] },
+    ],
+    ['cellStatusSets', {}, { cellStatusSets: ['oops'] }],
+    ['sources', {}, { sources: 'oops' }],
+    ['sources', {}, { sources: [] }],
+  ])(
+    'refuses the board rather than dropping a malformed %s',
+    (field, patch, row) => {
+      expect(() => migrate(v5(patch, row))).toThrow(`malformed ${field}`);
+    },
+  );
+});

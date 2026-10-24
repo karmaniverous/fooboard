@@ -20,7 +20,9 @@
  * them); one written without them gets v5's defaults, frozen here, so a
  * later built-in never changes what it becomes. A value already in v6's
  * place is kept over the v5 one, so the step is idempotent. A malformed
- * list is left as it is, for validation to refuse.
+ * list is left as it is, for validation to refuse; a v5 field this step
+ * moves that isn't the shape v5 stored throws, so the board is refused
+ * rather than migrated without it (v6's schemas would strip it).
  *
  * @module
  */
@@ -44,6 +46,22 @@ const list = (value: unknown): Rec[] | undefined => {
   return parsed.success ? parsed.data : undefined;
 };
 
+/** `item[key]` as v5 stored it: absent, or `schema`'s shape. Any other
+ * value throws: the step moves it, so leaving it for validation would
+ * lose it. */
+function v5Field<T>(
+  item: Rec,
+  key: string,
+  schema: z.ZodType<T>,
+): T | undefined {
+  const value = item[key];
+  if (value === undefined) return undefined;
+  const parsed = schema.safeParse(value);
+  if (!parsed.success)
+    throw new Error(`can't migrate to data model v6: malformed ${key}`);
+  return parsed.data;
+}
+
 /** The status sets a v5 dashboard defaulted to: frozen here. */
 const V5_STATUS_SET_IDS = { github: 'github-deploy-test', amplify: 'amplify' };
 
@@ -62,16 +80,16 @@ function levelFields(
   level: Rec,
   statusSets: Rec | undefined,
 ): { settings: Rec; rowRules?: Rec } {
-  const credentials = record(level.defaultCredentials) ?? {};
-  const rowRules = record(level.rowRules);
-  const items = Object.fromEntries(
-    SOURCES.map((s) => [s, record(rowRules?.[s])?.items]),
-  );
+  const credentials = v5Field(level, 'defaultCredentials', RecordSchema) ?? {};
+  const rowRules = v5Field(level, 'rowRules', RecordSchema);
+  const bySource = (s: string) =>
+    rowRules ? v5Field(rowRules, s, RecordSchema) : undefined;
+  const items = Object.fromEntries(SOURCES.map((s) => [s, bySource(s)?.items]));
   const records = rowRules
     ? group(
         Object.fromEntries(
           SOURCES.map((s) => {
-            const rules = omit(record(rowRules[s]) ?? {}, ['items']);
+            const rules = omit(bySource(s) ?? {}, ['items']);
             // A source left with no record rule is dropped.
             return [s, Object.keys(rules).length > 0 ? rules : undefined];
           }),
@@ -100,14 +118,18 @@ function settle(level: Rec, derived: Rec, dropped: string[]): Rec {
 
 /** One row group, v5 → v6. */
 function rowGroup(g: Rec): Rec {
-  const { settings, rowRules } = levelFields(g, record(g.statusSets));
+  const { settings, rowRules } = levelFields(
+    g,
+    v5Field(g, 'statusSets', RecordSchema),
+  );
   const out = settle(g, settings, ['defaultCredentials', 'statusSets']);
   return rowRules ? { ...out, rowRules } : out;
 }
 
 /** An Amplify row's pins and shared key, from its v5 sources. */
 function pins(row: Rec): { pinnedApps?: Rec[]; awsKey?: unknown } {
-  const sources = list(row.sources);
+  // v5 required at least one source.
+  const sources = v5Field(row, 'sources', ListSchema.min(1));
   if (!sources) return {};
   const keys = unique(sources.map((s) => s.credentialId));
   return {
@@ -130,10 +152,9 @@ function row(r: Rec): Rec {
     itemRules: r.itemRule === undefined ? undefined : { [type]: r.itemRule },
   });
   const cells = Object.fromEntries(
-    Object.entries(record(r.cellStatusSets) ?? {}).map(([stageId, id]) => [
-      stageId,
-      { statusSets: { [type]: id } },
-    ]),
+    Object.entries(v5Field(r, 'cellStatusSets', RecordSchema) ?? {}).map(
+      ([stageId, id]) => [stageId, { statusSets: { [type]: id } }],
+    ),
   );
   const out = settle(r, derived, [
     'credentialId',
@@ -157,7 +178,7 @@ const withSettings = (item: Rec): Rec => ({ settings: {}, ...item });
 function dashboard(d: Rec): Rec {
   const { settings, rowRules } = levelFields(d, {
     ...V5_STATUS_SET_IDS,
-    ...record(d.statusSets),
+    ...v5Field(d, 'statusSets', RecordSchema),
   });
   const out = settle(d, settings, ['defaultCredentials', 'statusSets']);
   const map = (key: string, change: (item: Rec) => Rec): Rec => {
