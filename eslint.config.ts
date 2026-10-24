@@ -58,8 +58,9 @@ export default defineConfig(
   {
     // CONTRIBUTING (Use library controls): native selects, collapsibles
     // and checkboxes only inside the library wrappers in src/components.
+    // Their tests are not wrappers, so the rule covers them (Decision 50).
     files: ['src/**/*.tsx'],
-    ignores: ['src/components/**'],
+    ignores: ['src/components/**/!(*.test).tsx'],
     rules: {
       'no-restricted-syntax': [
         'error',
