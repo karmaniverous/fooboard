@@ -120,7 +120,7 @@ describe('BoardGrid', () => {
     fireEvent.pointerDown(link, { pointerType: 'touch' });
     fireEvent.click(link);
     expect(
-      screen.getByRole('dialog', { name: 'Cell detail' }),
+      screen.getByRole('dialog', { name: / · / }),
     ).toBeInTheDocument();
   });
 
@@ -149,7 +149,7 @@ describe('BoardGrid', () => {
       );
       // false: the default (scrolling the page) was prevented.
       expect(fireEvent.keyDown(link, { key: ' ' })).toBe(false);
-      const sheet = screen.getByRole('dialog', { name: 'Cell detail' });
+      const sheet = screen.getByRole('dialog', { name: / · / });
       const copy = within(sheet).getByRole('button', {
         name: 'Copy the commit SHA',
       });
@@ -210,7 +210,7 @@ describe('BoardGrid', () => {
     focusElement(cellLink);
     fireEvent.pointerDown(cellLink, { pointerType: 'touch' });
     fireEvent.click(cellLink);
-    const sheet = screen.getByRole('dialog', { name: 'Cell detail' });
+    const sheet = screen.getByRole('dialog', { name: / · / });
     expect(within(sheet).getByText('Compare on GitHub')).toHaveAttribute(
       'target',
       '_blank',
@@ -231,7 +231,7 @@ describe('BoardGrid', () => {
     expect(needs.length).toBeGreaterThan(0);
     expect(needs[0]).toHaveTextContent('needs credential');
     fireEvent.click(needs[0]);
-    const detail = screen.getByRole('dialog', { name: 'Cell detail' });
+    const detail = screen.getByRole('dialog', { name: / · / });
     expect(within(detail).getByText('needs credential')).toBeInTheDocument();
     expect(
       within(detail).getByRole('link', { name: /How to set up a credential/ }),

@@ -14,17 +14,13 @@
 import { useState } from 'react';
 
 import { ExternalLink } from '@/components/ExternalLink';
+import { PanelSheetContent } from '@/components/SidePanel';
 import {
   Popover,
   PopoverAnchor,
   PopoverContent,
 } from '@/components/ui/popover';
-import {
-  Sheet,
-  SheetClose,
-  SheetContent,
-  SheetTitle,
-} from '@/components/ui/sheet';
+import { Sheet } from '@/components/ui/sheet';
 import { EMPTY_STATES } from '@/domain/derivation';
 import type { Problem } from '@/domain/problems/problem';
 import type { BoardCell } from '@/engine';
@@ -32,6 +28,7 @@ import { readmeSection } from '@/lib/site';
 
 import {
   badgeDescription,
+  cellPlace,
   DETAILS_KEY,
   EMPTY_LABEL,
   firstLine,
@@ -57,9 +54,10 @@ export function CellDetail({
   const { derivation, badge, compare } = cell;
   return (
     <div className="flex flex-col gap-1 text-xs">
-      <div className="font-semibold">
-        {rowName} &middot; {stageName}
-      </div>
+      {/* The sheet shows the place as its title. */}
+      {!interactive && (
+        <div className="font-semibold">{cellPlace({ rowName, stageName })}</div>
+      )}
       {derivation.kind === 'empty' ? (
         <div>
           {EMPTY_LABEL[derivation.state]}
@@ -224,11 +222,16 @@ export function CellTooltip({
 
 /** Bottom sheet opened from a cell: the library's Sheet, modal (takes
  * focus, traps Tab, closes on Escape, the backdrop or Close) and returning
- * focus to the cell that opened it. */
+ * focus to the cell that opened it. Laid out by `PanelSheetContent` (spec.md
+ * §3.6): its title (the cell's place) and Close stay pinned while a long
+ * commit message scrolls. */
 export function CellSheet({
+  title,
   onClose,
   children,
 }: {
+  /** The cell's place (`cellPlace`). */
+  title: string;
   onClose: () => void;
   children: React.ReactNode;
 }): React.JSX.Element {
@@ -244,21 +247,17 @@ export function CellSheet({
         if (!open) onClose();
       }}
     >
-      <SheetContent
+      <PanelSheetContent
         side="bottom"
-        closeButton={false}
+        title={title}
         onCloseAutoFocus={(e) => {
           e.preventDefault();
           opener?.focus();
         }}
-        className="gap-0 border-0 bg-slate-900 p-4 text-slate-100"
+        className="border-0 bg-slate-900 text-slate-100"
       >
-        <SheetTitle className="sr-only">Cell detail</SheetTitle>
         {children}
-        <SheetClose className="mt-3 self-start text-sm text-sky-400">
-          Close
-        </SheetClose>
-      </SheetContent>
+      </PanelSheetContent>
     </Sheet>
   );
 }

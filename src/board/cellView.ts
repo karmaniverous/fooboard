@@ -103,5 +103,15 @@ export const SHORT_SHA_LENGTH = 7;
 export const shortSha = (sha: string): string => sha.slice(0, SHORT_SHA_LENGTH);
 
 /** The first line of a commit message. */
+/** A cell's place (row and stage): the tooltip's heading and the detail
+ * sheet's title. */
+export const cellPlace = ({
+  rowName,
+  stageName,
+}: {
+  rowName: string;
+  stageName: string;
+}): string => `${rowName} · ${stageName}`;
+
 export const firstLine = (message: string): string =>
   message.split('\n', 1)[0]?.trim() ?? '';

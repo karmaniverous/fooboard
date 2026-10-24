@@ -18,6 +18,7 @@ import { cn } from '@/lib/utils';
 
 import { Cell } from './Cell';
 import { CellDetail, CellSheet, CellTooltip } from './CellDetail';
+import { cellPlace } from './cellView';
 import { columnLines } from './columnFrame';
 import { ColumnGroupLabels } from './ColumnGroupLabels';
 import { BOUNDARY, GROUP_LABEL } from './gridStyles';
@@ -285,6 +286,7 @@ export function BoardGrid({
       )}
       {sheet && (
         <CellSheet
+          title={cellPlace(names(sheet))}
           onClose={() => {
             setSheet(null);
           }}

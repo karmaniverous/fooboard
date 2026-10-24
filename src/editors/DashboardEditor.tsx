@@ -4,13 +4,16 @@
  * change is validated against the dashboard schema before it is saved, so
  * an edit can never leave a dashboard that won't load. Opened on a fix
  * (spec.md A§4.3.7), it opens and scrolls to the item, and offers a check
- * drafted from the record on the rule.
+ * drafted from the record on the rule. In a side panel its tabs sit in the
+ * panel's pinned header (`PanelTabs`, spec.md §3.6) and the item scrolls
+ * in the panel's body.
  *
  * @module
  */
 import type { JSONValue } from 'json-p3';
 import { useEffect, useMemo, useRef, useState } from 'react';
 
+import { PanelTabs } from '@/components/SidePanel';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { type Dashboard, DashboardSchema } from '@/domain/config/dashboard';
 import { PROVIDERS } from '@/domain/config/providers';
@@ -114,13 +117,15 @@ export function DashboardEditor({
                   if (next) setTab(next);
                 }}
               >
-                <TabsList aria-label="Editor section">
-                  {EDITOR_TABS.map((t) => (
-                    <TabsTrigger key={t} value={t}>
-                      {t}
-                    </TabsTrigger>
-                  ))}
-                </TabsList>
+                <PanelTabs>
+                  <TabsList aria-label="Editor section">
+                    {EDITOR_TABS.map((t) => (
+                      <TabsTrigger key={t} value={t}>
+                        {t}
+                      </TabsTrigger>
+                    ))}
+                  </TabsList>
+                </PanelTabs>
                 {error && (
                   <p role="alert" className="text-xs text-status-failure">
                     Not saved: {error}
