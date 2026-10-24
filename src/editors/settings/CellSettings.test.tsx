@@ -134,6 +134,10 @@ describe('CellSettings', () => {
     fill('Region for a new site pin', 'us-east-1');
     fill('App ID for a new site pin', 'a1');
     expect(screen.getByRole('button', { name: 'Pin' })).toBeDisabled();
+    // The same app id in another region is another app.
+    fill('Region for a new site pin', 'eu-west-1');
+    expect(screen.getByRole('button', { name: 'Pin' })).toBeEnabled();
+    fill('Region for a new site pin', 'us-east-1');
     choose(
       screen.getByRole('combobox', { name: 'AWS key for a new site pin' }),
       'k1',
