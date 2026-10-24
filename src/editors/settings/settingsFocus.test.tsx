@@ -40,6 +40,7 @@ const start = DashboardSchema.parse({
     { id: 'prod', name: 'Prod' },
   ],
   columnGroups: [{ id: 'cg', label: 'Live', memberIds: ['prod'] }],
+  rowGroups: [{ id: 'rg', label: 'Web', memberIds: ['site'] }],
 });
 
 function setup(target?: EditTarget, first: Dashboard = start) {
@@ -74,6 +75,24 @@ function focusedEntry(target: EditTarget & { kind: 'settings' }) {
 
 describe('a setting opened from its problem', () => {
   it.each<[string, EditTarget & { kind: 'settings' }, string]>([
+    [
+      'a row group',
+      {
+        kind: 'settings',
+        place: { level: 'rowGroup', groupId: 'rg' },
+        field: 'awsKey',
+      },
+      'AWS key for Row group Web',
+    ],
+    [
+      'a column group',
+      {
+        kind: 'settings',
+        place: { level: 'columnGroup', groupId: 'cg' },
+        field: 'awsKey',
+      },
+      'AWS key for Column group Live',
+    ],
     [
       'a row',
       {

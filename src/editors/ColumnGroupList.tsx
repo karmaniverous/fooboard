@@ -10,7 +10,7 @@
 import { CollapsibleItem } from '@/components/CollapsibleItem';
 import type { Dashboard } from '@/domain/config/dashboard';
 
-import { targetKey } from './editTarget';
+import { placeKey, targetKey } from './editTarget';
 import { ProviderRules } from './rules/ProviderRules';
 import { SettingsEditor } from './settings/SettingsEditor';
 import { useAccordion } from './useAccordion';
@@ -27,7 +27,10 @@ export function ColumnGroupList({
   const accordion = useAccordion(
     groups.map((g) => ({
       key: g.id,
-      targets: [target(g.id), `columnGroup:${g.id}`],
+      targets: [
+        target(g.id),
+        placeKey({ level: 'columnGroup', groupId: g.id }),
+      ],
     })),
   );
   if (groups.length === 0) return null;
