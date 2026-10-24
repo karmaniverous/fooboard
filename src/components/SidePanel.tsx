@@ -71,7 +71,7 @@ export function PanelSheetContent({
       firstTabbable(tabRow) ??
       firstTabbable(body.current) ??
       firstTabbable(header.current);
-    first?.focus({ preventScroll: true });
+    first?.focus();
   }, [focusAsked, tabRow]);
   return (
     <SheetContent
