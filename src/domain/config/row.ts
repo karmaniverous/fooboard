@@ -1,25 +1,18 @@
 /**
- * Zod schema for dashboard rows (spec.md §3): a GitHub row (one repo,
- * optionally narrowed by row key tests) or an Amplify row (one or more
- * sources, each a credential + region + app id, plus the repo it builds
- * from for staleness, when it has one).
+ * Zod schema for dashboard rows (spec.md §3, §3.11–3.13): a GitHub row
+ * (one repo, optionally narrowed by its record rule) or an Amplify row
+ * (the GitHub repo it builds from, when it has one, and its pinned apps).
+ * Each row holds its own settings object and one per cell
+ * (`cellSettings`, by stage id), beside its per-stage stage rules.
  *
  * @module
  */
 import { z } from 'zod';
 
 import { RuleSchema } from '@/domain/rules/schema';
+import { SettingsSchema } from '@/domain/settings/schema';
 
 import { RowStageRulesSchema } from './placement';
-
-/** A row's status-set overrides (A§4.3.6): its own set, and one per
- * stage for single cells. Cell beats row beats row group beats dashboard. */
-const rowStatusSets = {
-  statusSet: z.string().min(1).optional(),
-  cellStatusSets: z
-    .record(z.string().min(1), z.string().min(1))
-    .default(() => ({})),
-};
 
 /** `owner/name` GitHub repo identifier. */
 export const RepoSchema = z
@@ -29,62 +22,57 @@ export const RepoSchema = z
     message: 'repo must be "owner/name"',
   });
 
-/** A GitHub row: one repo, optionally narrowed by row key tests. */
-export const GithubRowSchema = z.object({
-  type: z.literal('github'),
+/** What every row has beside its source's own fields. */
+const rowFields = {
   id: z.string().min(1),
-  repo: RepoSchema,
   displayName: z.string().min(1),
-  /** Overrides the dashboard's default GitHub token for this row. */
-  credentialId: z.string().min(1).optional(),
   /** Per-stage branch-pattern overrides for this row (spec.md C-14c). */
   stageRules: RowStageRulesSchema.default(() => ({})),
   /** Which records belong to this row (spec.md A§4.3.7). */
   recordRule: RuleSchema.optional(),
-  /** Which of a record's items belong to this row. */
-  itemRule: RuleSchema.optional(),
-  ...rowStatusSets,
+  /** The row's own settings (spec.md §3.11). */
+  settings: SettingsSchema.default(() => ({})),
+  /** Each cell's settings, by stage id (spec.md §3.11). */
+  cellSettings: z.record(z.string().min(1), SettingsSchema).default(() => ({})),
+};
+
+/** A GitHub row: one repo. */
+export const GithubRowSchema = z.object({
+  type: z.literal('github'),
+  repo: RepoSchema,
+  ...rowFields,
 });
 export type GithubRow = z.infer<typeof GithubRowSchema>;
 
 /**
- * One Amplify app to read for a row: region and app id, plus an optional
- * AWS key overriding the dashboard default (for an app in another AWS
- * account). The app id is picked via `ListApps` at edit time, not typed.
+ * One Amplify app pinned to a row (spec.md §3.12): its region and app id,
+ * and optionally the AWS key it serves. A pin with a key serves the cells
+ * that resolve to that key; a pin without one, any cell whose key has no
+ * keyed pin. The app id is picked via `ListApps`, not typed.
  */
-export const AmplifySourceSchema = z.object({
+export const PinnedAppSchema = z.object({
   credentialId: z.string().min(1).optional(),
   region: z.string().min(1),
   appId: z.string().min(1),
 });
-export type AmplifySource = z.infer<typeof AmplifySourceSchema>;
+export type PinnedApp = z.infer<typeof PinnedAppSchema>;
 
 /**
- * An Amplify row: one or more sources (so one row can span apps in
- * different AWS accounts), plus the GitHub repo the app builds from, used
- * for staleness. An app without a connected GitHub repo has none (data
- * model v5, spec.md §3.3): no badges, and so no GitHub token.
+ * An Amplify row: the GitHub repo its apps build from (for staleness and,
+ * from N3c, for finding them), and its pinned apps. It needs a repo or at
+ * least one pin. An app without a connected GitHub repo has none: no
+ * badges, and so no GitHub token.
  */
 export const AmplifyRowSchema = z
   .object({
     type: z.literal('amplify'),
-    id: z.string().min(1),
-    sources: z.array(AmplifySourceSchema).min(1),
     repo: RepoSchema.optional(),
-    displayName: z.string().min(1),
-    /** Overrides the dashboard's default GitHub token for `repo`. */
-    githubCredentialId: z.string().min(1).optional(),
-    /** Per-stage branch-pattern overrides for this row (spec.md C-14c). */
-    stageRules: RowStageRulesSchema.default(() => ({})),
-    /** Which records belong to this row (spec.md A§4.3.7). */
-    recordRule: RuleSchema.optional(),
-    /** Which of a record's items belong to this row. */
-    itemRule: RuleSchema.optional(),
-    ...rowStatusSets,
+    pinnedApps: z.array(PinnedAppSchema).default(() => []),
+    ...rowFields,
   })
-  .refine((row) => row.repo !== undefined || !row.githubCredentialId, {
-    message: 'an Amplify row without a repo has no GitHub token',
-    path: ['githubCredentialId'],
+  .refine((row) => row.repo !== undefined || row.pinnedApps.length > 0, {
+    message: 'an Amplify row needs a repo or a pinned app',
+    path: ['pinnedApps'],
   });
 export type AmplifyRow = z.infer<typeof AmplifyRowSchema>;
 

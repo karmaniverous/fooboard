@@ -1,0 +1,45 @@
+{
+  "schemaVersion": 4,
+  "dashboards": [
+    {
+      "id": "fabrikam",
+      "name": "Fabrikam",
+      "credentials": [
+        { "id": "gh", "kind": "github", "label": "Fabrikam org" },
+        { "id": "aws", "kind": "aws", "label": "Fabrikam account" }
+      ],
+      "defaultCredentials": { "github": "gh" },
+      "statusSets": { "github": "github-single-job", "amplify": "amplify" },
+      "stages": [{ "id": "prod", "name": "Prod", "rules": {} }],
+      "rowGroups": [
+        {
+          "id": "sites",
+          "memberIds": ["shop"],
+          "stageRules": {},
+          "rowRules": {},
+          "defaultCredentials": { "aws": "aws" },
+          "statusSets": {}
+        }
+      ],
+      "rows": [
+        {
+          "type": "amplify",
+          "id": "shop",
+          "repo": "fabrikam/shop",
+          "displayName": "Shop",
+          "sources": [{ "region": "us-east-1", "appId": "d1shop" }],
+          "stageRules": {},
+          "cellStatusSets": {}
+        },
+        {
+          "type": "github",
+          "id": "api",
+          "repo": "fabrikam/api",
+          "displayName": "API",
+          "stageRules": {},
+          "cellStatusSets": {}
+        }
+      ]
+    }
+  ]
+}

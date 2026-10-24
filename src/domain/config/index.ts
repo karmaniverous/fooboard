@@ -11,7 +11,6 @@ export * from './cycle';
 export * from './dashboard';
 export * from './devicePreferences';
 export * from './groups';
-export * from './inheritance';
 export * from './migrate';
 export * from './presets';
 export * from './root';
