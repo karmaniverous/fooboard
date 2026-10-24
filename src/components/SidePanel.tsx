@@ -10,8 +10,9 @@
  * Tabs belong to whatever owns their state, usually the body (the
  * dashboard editor): it renders them in `PanelTabs`, which places them in
  * the header's tab row, so the tab order runs header, then body. On open,
- * focus goes to the first control after the close button (the tabs, else
- * the body, else Close), as it did when the close button came last. Tabs
+ * focus goes to the first control after the close button (the selected
+ * tab, else the body's first control, else Close), as it did when the
+ * close button came last. Tabs
  * reach the header a render after the panel mounts, so that focus waits
  * for the render after Radix asks for it.
  *
@@ -33,6 +34,12 @@ const TabRow = createContext<HTMLElement | null | undefined>(undefined);
 
 /** What Tab skips even with a tab index: disabled, hidden. */
 const UNREACHABLE = ':disabled, input[type="hidden"], [hidden], [hidden] *';
+
+/** The selected tab under `root`, if any. Focus goes to it, not to its
+ * tab list: a browser doesn't pass a list's programmatic focus on. */
+const selectedTab = (root: HTMLElement | null): HTMLElement | undefined =>
+  root?.querySelector<HTMLElement>('[role="tab"][aria-selected="true"]') ??
+  undefined;
 
 /** The first element under `root` that Tab reaches, if any. */
 function firstTabbable(root: HTMLElement | null): HTMLElement | undefined {
@@ -68,7 +75,7 @@ export function PanelSheetContent({
   useEffect(() => {
     if (!focusAsked) return;
     const first =
-      firstTabbable(tabRow) ??
+      selectedTab(tabRow) ??
       firstTabbable(body.current) ??
       firstTabbable(header.current);
     first?.focus();

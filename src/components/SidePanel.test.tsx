@@ -117,6 +117,24 @@ describe('SidePanel', () => {
     expect(document.activeElement).toHaveAccessibleName(name);
   });
 
+  it('focuses the selected tab itself, not its list', () => {
+    const focus = vi.spyOn(HTMLElement.prototype, 'focus');
+    panel(
+      <Tabs defaultValue="two">
+        {sections}
+        <TabsContent value="two">
+          <Button>In the body</Button>
+        </TabsContent>
+      </Tabs>,
+    );
+    const two = screen.getByRole('tab', { name: 'Two' });
+    expect(two).toHaveFocus();
+    expect(focus.mock.contexts).not.toContain(
+      screen.getByRole('tablist', { name: 'Sections' }),
+    );
+    focus.mockRestore();
+  });
+
   it('skips what Tab skips when focusing on open', () => {
     panel(
       <>
