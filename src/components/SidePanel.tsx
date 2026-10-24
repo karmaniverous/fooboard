@@ -57,14 +57,15 @@ export function PanelSheetContent({
   className,
   onCloseAutoFocus,
   children,
-}: {
+}: Pick<
+  React.ComponentPropsWithoutRef<typeof SheetContent>,
+  // Classes for the sheet (e.g. its colours); where focus goes on close
+  // (default: the opener).
+  'className' | 'onCloseAutoFocus'
+> & {
   side: 'right' | 'bottom';
   /** Shown in the header; it names the panel (its dialog). */
   title: React.ReactNode;
-  /** Classes for the sheet (e.g. its colours). */
-  className?: string;
-  /** Where focus goes on close (Radix's handler; default: the opener). */
-  onCloseAutoFocus?: (event: Event) => void;
   /** The body. */
   children: React.ReactNode;
 }): React.JSX.Element {

@@ -19,7 +19,7 @@ import { createAppStores } from '@/storage';
 import { memoryStorage } from '@/storage/keyValue';
 import { StoresContext } from '@/storage/storesContext';
 import { envRender } from '@/test/envRender';
-import { startKeyboardDrag } from '@/test/keyboardDrag';
+import { ITEM_PITCH, startKeyboardDrag } from '@/test/keyboardDrag';
 import {
   applyOverflowUtility,
   scrollContainerOf,
@@ -106,9 +106,10 @@ describe('the dashboard editor in its side panel', () => {
     );
     // The body shows 200 px of 2000 (jsdom doesn't lay out).
     const VIEW = 200;
+    const CONTENT = 2000;
     Object.defineProperties(body, {
       clientHeight: { value: VIEW },
-      scrollHeight: { value: VIEW * 10 },
+      scrollHeight: { value: CONTENT },
       getBoundingClientRect: {
         value: () => new DOMRect(0, 0, VIEW, VIEW),
       },
@@ -120,7 +121,8 @@ describe('the dashboard editor in its side panel', () => {
     );
     await drag.move('down');
     await drag.drop();
+    // The body scrolls one item down to follow the dragged item.
     const [[options]] = scrollTo.mock.calls;
-    expect(options).toMatchObject({ top: 48 });
+    expect(options).toMatchObject({ top: ITEM_PITCH });
   });
 });
