@@ -98,6 +98,7 @@ describe('SidePanel', () => {
     ).toEqual([
       ['', false],
       ['tablist', false],
+      ['tab', false],
       ['tabpanel', true],
       ['In the body', true],
     ]);
@@ -106,10 +107,29 @@ describe('SidePanel', () => {
 
   it.each([
     ['the selected tab', tabbed, 'One'],
-    ['the body when there are no tabs', <Button key="b">First</Button>, 'First'],
+    [
+      'the body when there are no tabs',
+      <Button key="b">First</Button>,
+      'First',
+    ],
   ])('focuses %s on open, not Close', (_, body, name) => {
     panel(body);
     expect(document.activeElement).toHaveAccessibleName(name);
+  });
+
+  it('skips what Tab skips when focusing on open', () => {
+    panel(
+      <>
+        <input type="hidden" name="kept" />
+        <div hidden>
+          <Button>Hidden</Button>
+        </div>
+        <Button disabled>Off</Button>
+        <p tabIndex={-1}>Not in the Tab order</p>
+        <Button>On</Button>
+      </>,
+    );
+    expect(document.activeElement).toHaveAccessibleName('On');
   });
 
   it('focuses Close when nothing else can take focus', () => {

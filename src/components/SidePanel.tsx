@@ -11,11 +11,13 @@
  * dashboard editor): it renders them in `PanelTabs`, which places them in
  * the header's tab row, so the tab order runs header, then body. On open,
  * focus goes to the first control after the close button (the tabs, else
- * the body), as it did when the close button came last.
+ * the body, else Close), as it did when the close button came last. Tabs
+ * reach the header a render after the panel mounts, so that focus waits
+ * for the render after Radix asks for it.
  *
  * @module
  */
-import { createContext, use, useRef, useState } from 'react';
+import { createContext, use, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 
 import {
@@ -29,14 +31,14 @@ import {
 /** The header's tab row: undefined outside a panel, null until mounted. */
 const TabRow = createContext<HTMLElement | null | undefined>(undefined);
 
+/** What Tab skips even with a tab index: disabled, hidden. */
+const UNREACHABLE = ':disabled, input[type="hidden"], [hidden], [hidden] *';
+
 /** The first element under `root` that Tab reaches, if any. */
 function firstTabbable(root: HTMLElement | null): HTMLElement | undefined {
   if (!root) return undefined;
   return [...root.querySelectorAll<HTMLElement>('*')].find(
-    (el) =>
-      el.tabIndex >= 0 &&
-      !el.hidden &&
-      !el.matches(':disabled, input[type="hidden"]'),
+    (el) => el.tabIndex >= 0 && !el.matches(UNREACHABLE),
   );
 }
 
@@ -60,20 +62,29 @@ export function PanelSheetContent({
   children: React.ReactNode;
 }): React.JSX.Element {
   const [tabRow, setTabRow] = useState<HTMLDivElement | null>(null);
+  const header = useRef<HTMLDivElement>(null);
   const body = useRef<HTMLDivElement>(null);
+  const [focusAsked, setFocusAsked] = useState(false);
+  useEffect(() => {
+    if (!focusAsked) return;
+    const first =
+      firstTabbable(tabRow) ??
+      firstTabbable(body.current) ??
+      firstTabbable(header.current);
+    first?.focus({ preventScroll: true });
+  }, [focusAsked, tabRow]);
   return (
     <SheetContent
       side={side}
       className={className}
       onOpenAutoFocus={(e) => {
-        const first = firstTabbable(tabRow) ?? firstTabbable(body.current);
-        if (!first) return;
         e.preventDefault();
-        first.focus({ preventScroll: true });
+        setFocusAsked(true);
       }}
       onCloseAutoFocus={onCloseAutoFocus}
     >
       <div
+        ref={header}
         data-panel-header
         className="flex shrink-0 flex-col gap-3 border-b border-current/10 px-5 pb-3 pt-5"
       >

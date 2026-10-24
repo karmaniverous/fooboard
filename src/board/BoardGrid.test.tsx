@@ -119,9 +119,7 @@ describe('BoardGrid', () => {
     const link = screen.getAllByRole('link', { name: /Passed, dev/ })[0];
     fireEvent.pointerDown(link, { pointerType: 'touch' });
     fireEvent.click(link);
-    expect(
-      screen.getByRole('dialog', { name: / · / }),
-    ).toBeInTheDocument();
+    expect(screen.getByRole('dialog', { name: / · / })).toBeInTheDocument();
   });
 
   describe('from the keyboard', () => {
