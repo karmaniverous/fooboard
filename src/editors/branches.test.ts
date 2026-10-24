@@ -14,6 +14,42 @@ import { testQueryEnv } from '@/test/queryEnv';
 import { branchCounts, discoverBranches, patternPreview } from './branches';
 
 describe('discoverBranches', () => {
+  it('reads with the first token its cells read that has a secret', async () => {
+    const dashboard = DashboardSchema.parse({
+      id: 'd',
+      name: 'd',
+      credentials: [
+        { id: 'unentered', kind: 'github', label: 'unentered' },
+        { id: 'org', kind: 'github', label: 'org' },
+      ],
+      settings: { githubToken: 'org' },
+      stages: [
+        { id: 'dev', name: 'Dev' },
+        { id: 'prod', name: 'Prod' },
+      ],
+      rows: [
+        {
+          type: 'github',
+          id: 'a',
+          repo: 'acme/a',
+          displayName: 'a',
+          cellSettings: { dev: { githubToken: 'unentered' } },
+        },
+      ],
+    });
+    const branchesPage = vi.fn(() =>
+      Promise.resolve(fetched([ghBranch('main')])),
+    );
+    const env = testQueryEnv({
+      github: (id) =>
+        id === 'org' ? fakeGitHubApi({ branchesPage }) : undefined,
+      amplify: () => undefined,
+    });
+    expect([...(await discoverBranches(dashboard, env))]).toEqual([
+      ['acme/a', ['main']],
+    ]);
+  });
+
   it('reads each repo once, with a token its cells read, skipping rows without a repo', async () => {
     const dashboard = DashboardSchema.parse({
       id: 'd',
