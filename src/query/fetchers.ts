@@ -80,7 +80,7 @@ async function conditional<T>(
   if (!res.notModified) {
     const request = key[2];
     if (previous && 'page' in request && request.page === 1)
-      void client.invalidateQueries({
+      client.invalidateQueries({
         predicate: (q) => {
           const other = QueryKeySchema.safeParse(q.queryKey);
           return other.success && isLaterPage(key, other.data);

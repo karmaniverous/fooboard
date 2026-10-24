@@ -89,7 +89,7 @@ export function ShareDialog({
             variant="outline"
             className="gap-1.5"
             onClick={() => {
-              void copyText(url).then((ok) => {
+              copyText(url, (ok) => {
                 setOutcome(ok ? 'copied' : 'copyFailed');
               });
             }}

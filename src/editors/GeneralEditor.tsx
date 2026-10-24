@@ -96,7 +96,7 @@ export function GeneralEditor({
                     rekey,
                   ),
               );
-              void navigate(`/d/${copy.id}`);
+              navigate(`/d/${copy.id}`);
             });
           }}
         >
@@ -114,7 +114,7 @@ export function GeneralEditor({
                 },
                 dashboard,
               );
-              void navigate('/');
+              navigate('/');
             });
           }}
         >

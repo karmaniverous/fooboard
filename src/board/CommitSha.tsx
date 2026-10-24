@@ -23,7 +23,7 @@ export function CommitSha({ sha }: { sha: string }): React.JSX.Element {
         aria-label="Copy the commit SHA"
         className="h-6 gap-1 px-1.5 text-xs text-sky-400 hover:bg-slate-800 hover:text-sky-300"
         onClick={() => {
-          void copyText(sha).then((ok) => {
+          copyText(sha, (ok) => {
             setSaid(ok ? 'Copied' : "Couldn't copy");
           });
         }}

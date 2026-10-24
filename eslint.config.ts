@@ -88,6 +88,34 @@ export default defineConfig(
     },
   },
   {
+    // A promise in the app is awaited or handled, never dropped with
+    // `void` (a rejection would go unreported). Router navigation and
+    // TanStack's invalidation and refetch never reject. Tests may still
+    // fire a promise with `void`: Vitest fails the run on a rejection.
+    files: ['src/**/*.{ts,tsx}'],
+    ignores: ['**/*.test.{ts,tsx}', 'src/test/**'],
+    rules: {
+      '@typescript-eslint/no-floating-promises': [
+        'error',
+        {
+          ignoreVoid: false,
+          allowForKnownSafeCalls: [
+            {
+              from: 'package',
+              package: 'react-router',
+              name: 'NavigateFunction',
+            },
+            {
+              from: 'package',
+              package: '@tanstack/query-core',
+              name: ['invalidateQueries', 'refetchQueries'],
+            },
+          ],
+        },
+      ],
+    },
+  },
+  {
     files: ['**/*.test.{ts,tsx}'],
     extends: [vitest.configs.recommended],
   },

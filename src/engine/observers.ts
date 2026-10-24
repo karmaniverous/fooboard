@@ -102,7 +102,7 @@ export function createObserverSet(client: QueryClient): ObserverSet {
         const before = seen.get(hash);
         seen.set(hash, need.version);
         if (before !== undefined && before !== need.version)
-          void client.invalidateQueries({ queryKey: need.key, exact: true });
+          client.invalidateQueries({ queryKey: need.key, exact: true });
       }
       for (const [hash, { unsubscribe }] of observed)
         if (!needs.has(hash)) {
