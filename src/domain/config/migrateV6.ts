@@ -107,12 +107,28 @@ function levelFields(
   };
 }
 
-/** `level` with v6's settings from `derived` merged under its own, and
- * its v5 fields dropped. */
+/** The per-source settings fields, merged source by source. */
+const PER_SOURCE = ['statusSets', 'itemRules'] as const;
+
+/** `level` with v6's settings from `derived` merged under its own (a
+ * per-source field source by source), and its v5 fields dropped. A value
+ * that isn't a record is kept as it is, for validation to refuse. */
 function settle(level: Rec, derived: Rec, dropped: string[]): Rec {
+  const own = record(level.settings) ?? {};
+  const merged = (key: string): unknown => {
+    const mine = own[key];
+    const v6 = record(mine);
+    if (mine !== undefined && !v6) return mine;
+    const v5 = record(derived[key]);
+    return v5 || v6 ? { ...v5, ...v6 } : undefined;
+  };
   return {
     ...omit(level, dropped),
-    settings: { ...derived, ...record(level.settings) },
+    settings: shake({
+      ...derived,
+      ...own,
+      ...Object.fromEntries(PER_SOURCE.map((key) => [key, merged(key)])),
+    }),
   };
 }
 

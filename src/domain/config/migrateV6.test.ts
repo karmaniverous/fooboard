@@ -63,6 +63,23 @@ describe('toV6', () => {
     });
   });
 
+  it("merges a per-source field source by source, v6's own winning", () => {
+    expect(
+      toV6({
+        dashboards: [
+          {
+            statusSets: { github: 'v5-gh', amplify: 'v5-amp' },
+            settings: { statusSets: { github: 'v6-gh' } },
+          },
+        ],
+      }),
+    ).toEqual({
+      dashboards: [
+        { settings: { statusSets: { github: 'v6-gh', amplify: 'v5-amp' } } },
+      ],
+    });
+  });
+
   it('gives a dashboard v5 stored no status sets the v5 defaults', () => {
     expect(toV6({ dashboards: [{ id: 'd', name: 'D' }] })).toEqual({
       dashboards: [
