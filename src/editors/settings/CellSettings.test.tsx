@@ -118,6 +118,14 @@ describe('CellSettings', () => {
     ]);
   });
 
+  it("keeps a pin's key control, and so its focus, as its key changes", () => {
+    setup();
+    const name = 'AWS key for site pinned app a1';
+    const control = screen.getByRole('combobox', { name });
+    choose(control, 'k1');
+    expect(screen.getByRole('combobox', { name })).toBe(control);
+  });
+
   it("edits a pin's AWS key in place", () => {
     const latest = setup();
     choose(

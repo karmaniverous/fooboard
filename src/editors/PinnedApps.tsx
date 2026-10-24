@@ -39,7 +39,9 @@ export function PinnedApps({
       <span className="font-semibold">Pinned apps</span>
       {row.pinnedApps.map((pin, i) => (
         <div
-          key={`${pin.region}-${pin.appId}-${pin.credentialId ?? ''}`}
+          // Not keyed by the pin's AWS key: editing it would remount the
+          // row and lose focus.
+          key={`${pin.region}-${pin.appId}-${String(i)}`}
           className="flex flex-wrap items-center gap-2"
         >
           <span>
