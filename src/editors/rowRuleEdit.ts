@@ -1,6 +1,7 @@
 /**
  * Row-rule editing (spec.md A§4.3.7): a row group's or the dashboard's
- * record or item rule for one source; `undefined` unsets it. Pure.
+ * record rule for one source; `undefined` unsets it. (Item rules are
+ * settings, spec.md §3.11.) Pure.
  *
  * @module
  */
@@ -12,30 +13,26 @@ import type { Provider } from '@/domain/config/providers';
 import type { Rule } from '@/domain/rules/schema';
 
 type ProviderRowRules = z.infer<typeof ProviderRowRulesSchema>;
-type Part = 'record' | 'items';
 
-function withRule(
+const withRule = (
   rules: ProviderRowRules,
   provider: Provider,
-  part: Part,
   rule: Rule | undefined,
-): ProviderRowRules {
-  const next = { ...rules[provider], [part]: rule };
-  const empty = next.record === undefined && next.items === undefined;
-  return { ...rules, [provider]: empty ? undefined : next };
-}
+): ProviderRowRules => ({
+  ...rules,
+  [provider]: rule === undefined ? undefined : { record: rule },
+});
 
 export const setGroupRowRule = (
   d: Dashboard,
   groupId: string,
   provider: Provider,
-  part: Part,
   rule: Rule | undefined,
 ): Dashboard => ({
   ...d,
   rowGroups: d.rowGroups.map((g) =>
     g.id === groupId
-      ? { ...g, rowRules: withRule(g.rowRules, provider, part, rule) }
+      ? { ...g, rowRules: withRule(g.rowRules, provider, rule) }
       : g,
   ),
 });
@@ -43,9 +40,8 @@ export const setGroupRowRule = (
 export const setDashboardRowRule = (
   d: Dashboard,
   provider: Provider,
-  part: Part,
   rule: Rule | undefined,
 ): Dashboard => ({
   ...d,
-  rowRules: withRule(d.rowRules, provider, part, rule),
+  rowRules: withRule(d.rowRules, provider, rule),
 });

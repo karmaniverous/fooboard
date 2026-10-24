@@ -32,8 +32,9 @@ const row = (id: string): AmplifyRow => ({
   id,
   displayName: id,
   repo: '',
-  sources: [{ region: source.region, appId: source.appId }],
-  cellStatusSets: {},
+  pinnedApps: [{ region: source.region, appId: source.appId }],
+  settings: {},
+  cellSettings: {},
   stageRules: {},
 });
 const rules: CellRules = {

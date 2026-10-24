@@ -103,10 +103,11 @@ describe('credential lists', () => {
         value={undefined}
         onChange={() => undefined}
         label="GitHub token for api"
+        unset={{ label: 'None (no default is set)' }}
       />,
     );
     expect(
       optionsOf(screen.getByRole('combobox', { name: 'GitHub token for api' })),
-    ).toEqual(["None (the dashboard's default is not set)", ...expected]);
+    ).toEqual(['None (no default is set)', ...expected]);
   });
 });

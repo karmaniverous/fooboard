@@ -8,6 +8,8 @@
  * @module
  */
 import type { Provider } from '@/domain/config/providers';
+import type { SettingsPlace } from '@/domain/settings/places';
+import type { SettingField } from '@/domain/settings/schema';
 
 /** Where a problem is marked. */
 export type ProblemLevel =
@@ -27,20 +29,25 @@ export type EditTarget =
   | {
       kind: 'row';
       id: string;
-      part?: 'record' | 'items';
+      part?: 'record';
       stageId?: string;
     }
   | {
       kind: 'rowGroup';
       id: string;
-      part?: 'record' | 'items';
+      part?: 'record';
       stageId?: string;
     }
   | { kind: 'stage'; id: string }
   | { kind: 'columnGroup'; id: string }
+  | { kind: 'dashboard'; part: 'stageRules' | 'rowRules' }
+  /** A field of the settings at a place (spec.md §3.11); `source` for a
+   * per-source field. */
   | {
-      kind: 'dashboard';
-      part: 'stageRules' | 'rowRules' | 'itemRules' | 'statusSets';
+      kind: 'settings';
+      place: SettingsPlace;
+      field: SettingField;
+      source?: Provider;
     };
 
 export interface Problem {
@@ -83,6 +90,23 @@ export const note = (
   message: string,
   target?: EditTarget,
 ): Problem => problem(level, message, true, { severity: 'note', target });
+
+/** The level a problem with the settings at `place` is marked at. */
+export function levelOfPlace(place: SettingsPlace): ProblemLevel {
+  switch (place.level) {
+    case 'dashboard':
+      return { kind: 'dashboard' };
+    case 'rowGroup':
+    case 'columnGroup':
+      return { kind: place.level, id: place.groupId };
+    case 'row':
+      return { kind: 'row', id: place.rowId };
+    case 'column':
+      return { kind: 'stage', id: place.stageId };
+    case 'cell':
+      return { kind: 'cell', rowId: place.rowId, stageId: place.stageId };
+  }
+}
 
 /** Where `p` is fixed: its own target, else its level's item. */
 export function targetOf(p: Pick<Problem, 'level' | 'target'>): EditTarget {

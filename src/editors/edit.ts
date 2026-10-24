@@ -24,8 +24,8 @@ export function uniqueId(base: string, taken: Iterable<string>): string {
 }
 
 /** A GitHub row for a picked repo: the display name defaults to the repo
- * name without its owner, and it keeps the token it was picked with
- * (unset follows the default; spec.md C-21). */
+ * name without its owner, and it keeps the token it was picked with as
+ * its own setting (unset inherits; spec.md C-21, §3.11). */
 export function rowFromRepo(
   fullName: string,
   dashboard: Pick<Dashboard, 'rows'>,
@@ -40,15 +40,15 @@ export function rowFromRepo(
     ),
     repo: fullName,
     displayName: name,
-    ...(credentialId ? { credentialId } : {}),
     stageRules: {},
-    cellStatusSets: {},
+    settings: credentialId ? { githubToken: credentialId } : {},
+    cellSettings: {},
   };
 }
 
-/** An Amplify row for a picked app: named after the app, reading it with
- * the AWS key it was listed with (unset follows the default), and
- * building from `repo` when it has one (spec.md C-21, Decision 21). */
+/** An Amplify row for a picked app: named after the app, the app pinned
+ * under the AWS key it was listed with (spec.md §3.12), and building from
+ * `repo` when it has one (spec.md C-21, Decision 21). */
 export function rowFromApp(
   app: { appId: string; name: string; region: string },
   dashboard: Pick<Dashboard, 'rows'>,
@@ -63,9 +63,16 @@ export function rowFromApp(
     ),
     ...(repo ? { repo } : {}),
     displayName: app.name,
-    sources: [{ credentialId, region: app.region, appId: app.appId }],
+    pinnedApps: [
+      {
+        region: app.region,
+        appId: app.appId,
+        ...(credentialId ? { credentialId } : {}),
+      },
+    ],
     stageRules: {},
-    cellStatusSets: {},
+    settings: {},
+    cellSettings: {},
   };
 }
 
@@ -109,8 +116,8 @@ export function removeRow(dashboard: Dashboard, id: string): Dashboard {
 }
 
 /** Remove a stage: any stage's use of it as a source, its overrides on
- * rows and row groups (C-14c), rows' status-set choices for its cells
- * (A§4.3.6), and its column-group membership. */
+ * rows and row groups (C-14c), its cells' settings (§3.11), and its
+ * column-group membership. */
 export function removeStage(dashboard: Dashboard, id: string): Dashboard {
   const drop = <T extends { stageRules: Record<string, unknown> }>(
     x: T,
@@ -123,7 +130,7 @@ export function removeStage(dashboard: Dashboard, id: string): Dashboard {
       ...dashboard,
       rows: dashboard.rows.map((r) => ({
         ...drop(r),
-        cellStatusSets: omit(r.cellStatusSets, [id]),
+        cellSettings: omit(r.cellSettings, [id]),
       })),
       rowGroups: dashboard.rowGroups.map(drop),
       stages: dashboard.stages

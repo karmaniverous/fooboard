@@ -14,7 +14,7 @@ import { testQueryEnv } from '@/test/queryEnv';
 import { branchCounts, discoverBranches, patternPreview } from './branches';
 
 describe('discoverBranches', () => {
-  it('reads each repo once, with the token the row inherits, skipping rows without a repo', async () => {
+  it('reads each repo once, with a token its cells read, skipping rows without a repo', async () => {
     const dashboard = DashboardSchema.parse({
       id: 'd',
       name: 'd',
@@ -22,7 +22,7 @@ describe('discoverBranches', () => {
         { id: 'org', kind: 'github', label: 'org' },
         { id: 'team', kind: 'github', label: 'team' },
       ],
-      defaultCredentials: { github: 'org' },
+      settings: { githubToken: 'org' },
       rows: [
         { type: 'github', id: 'a', repo: 'acme/a', displayName: 'a' },
         { type: 'github', id: 'a2', repo: 'acme/a', displayName: 'a2' },
@@ -32,11 +32,11 @@ describe('discoverBranches', () => {
           type: 'amplify',
           id: 'site',
           displayName: 'site',
-          sources: [{ region: 'us-east-1', appId: 'a1' }],
+          pinnedApps: [{ region: 'us-east-1', appId: 'a1' }],
         },
       ],
       rowGroups: [
-        { id: 'g', memberIds: ['b'], defaultCredentials: { github: 'team' } },
+        { id: 'g', memberIds: ['b'], settings: { githubToken: 'team' } },
       ],
     });
     const branchesPage = vi.fn(({ repo }: { repo: string }) =>
@@ -62,7 +62,11 @@ describe('discoverBranches', () => {
     expect(branchesPage).toHaveBeenCalledTimes(3);
     expect(new Set(read)).toEqual(new Set(['org', 'team']));
 
-    const noToken = { ...dashboard, defaultCredentials: {}, rowGroups: [] };
+    const noToken = {
+      ...dashboard,
+      settings: { requestsInFlight: dashboard.settings.requestsInFlight },
+      rowGroups: [],
+    };
     const env2 = testQueryEnv({ github: () => undefined });
     expect((await discoverBranches(noToken, env2)).size).toBe(0);
   });

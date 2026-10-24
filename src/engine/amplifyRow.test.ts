@@ -17,21 +17,17 @@ import { describe, expect, it } from 'vitest';
 import { createDemoAmplifyReaderFor } from '@/demo/amplify';
 import { DEMO_AMPLIFY_APPS, demoDashboard } from '@/demo/board';
 import { cellRulesFor } from '@/domain/config/cellRules';
-import { inheritedCredentials } from '@/domain/config/inheritance';
 import type { AmplifyRow } from '@/domain/config/row';
 import { EMPTY_STATES } from '@/domain/derivation';
 import { sourceRuleFor } from '@/domain/model/sources';
+import { resolveSetting } from '@/domain/settings/resolve';
 import { AmplifyNotFoundError } from '@/lib/amplify/errors';
 import { chosenBranches } from '@/lib/amplify/rowJobs';
 import { amplifyKey } from '@/query/keys';
 import { fetched } from '@/test/fakeReaders';
 import { landedAt, markFetching } from '@/test/queryState';
 
-import {
-  type AmplifyContext,
-  deriveAmplifyRow,
-  resolvedSources,
-} from './amplifyRow';
+import { type AmplifyContext, deriveAmplifyRow } from './amplifyRow';
 import { NOT_FOUND } from './providerOutcome';
 import { REFRESHING_DELAY_MS } from './refreshing';
 
@@ -49,7 +45,8 @@ const ctx = (client: QueryClient, hasReader = true): AmplifyContext => ({
   client,
   stages: demoDashboard.stages,
   rulesFor: (row, stageId) => cellRulesFor(demoDashboard, row, stageId),
-  defaultsFor: (row) => inheritedCredentials(demoDashboard, row.id),
+  keyFor: (row, stageId) =>
+    resolveSetting(demoDashboard, row, stageId, 'awsKey').value,
   hasReader: () => hasReader,
   source,
   now: 0,
@@ -185,59 +182,6 @@ describe('deriveAmplifyRow', () => {
     });
     expect(out.needs).toEqual([]);
   });
-
-  it.each([
-    [
-      'no secret for its key',
-      { credentialId: 'locked' },
-      () => ({ aws: AWS }),
-      "Amplify source x9 (eu-west-1) needs its AWS key's secret, so no cell of the row shows",
-    ],
-    [
-      'no key at all',
-      {},
-      () => ({}),
-      'Amplify source x9 (eu-west-1) has no AWS key: choose one for it, or a default, so no cell of the row shows',
-    ],
-  ])(
-    'shows Needs credential in every cell when one source has %s, naming it in a problem',
-    async (_, key, defaults, message) => {
-      const client = new QueryClient();
-      await seedRow(client, 'marketing-site');
-      const row = rowOf('marketing-site');
-      const [first] = row.sources;
-      const twoSources: AmplifyRow = {
-        ...row,
-        sources: [
-          { ...first, credentialId: AWS },
-          { ...key, region: 'eu-west-1', appId: 'x9' },
-        ],
-      };
-      const keys: AmplifyContext = {
-        ...ctx(client),
-        defaultsFor: defaults,
-        hasReader: (id) => id === AWS,
-      };
-      const out = deriveAmplifyRow(keys, twoSources);
-      // The row feeds no app's Unmapped runs or problems either.
-      expect(resolvedSources(keys, twoSources)).toBeUndefined();
-      const needsCredential: unknown = expect.objectContaining({
-        state: EMPTY_STATES.needsCredential,
-      });
-      expect(
-        demoDashboard.stages.map((s) => out.cells[s.id]?.derivation),
-      ).toEqual(demoDashboard.stages.map(() => needsCredential));
-      expect(out.needs).toEqual([]);
-      expect(out.problems).toEqual([
-        expect.objectContaining({
-          level: { kind: 'row', id: row.id },
-          message,
-          dismissable: true,
-          target: { kind: 'row', id: row.id },
-        }),
-      ]);
-    },
-  );
 
   it('shows a missing app as not found on its own rows only', async () => {
     const client = new QueryClient();

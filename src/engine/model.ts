@@ -8,15 +8,15 @@
 import { unique } from 'radash';
 
 import type { Dashboard } from '@/domain/config/dashboard';
-import { rowGithubCredentialId } from '@/domain/config/inheritance';
+import { rowCredentials } from '@/domain/settings/credentials';
 
 import type { BoardModel } from './types';
 
-/** The GitHub tokens `dashboard`'s rows read with (a battery each). */
+/** The GitHub tokens `dashboard`'s cells read with (a battery each). */
 export const githubCredentialIds = (dashboard: Dashboard): string[] =>
   unique(
-    dashboard.rows.flatMap(
-      (row) => rowGithubCredentialId(dashboard, row) ?? [],
+    dashboard.rows.flatMap((row) =>
+      rowCredentials(dashboard, row, 'githubToken'),
     ),
   );
 

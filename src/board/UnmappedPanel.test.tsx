@@ -182,7 +182,7 @@ describe('UnmappedPanel', () => {
       'true',
     );
     expect(
-      screen.getByRole('group', { name: 'Item rule for api' }),
+      screen.getByRole('group', { name: 'Record rule for api' }),
     ).toBeInTheDocument();
   });
 });

@@ -33,7 +33,7 @@ const amplifyRow = {
   id: 'site',
   repo: 'a/site',
   displayName: 'site',
-  sources: [{ region: 'us-east-1', appId: 'x' }],
+  pinnedApps: [{ region: 'us-east-1', appId: 'x' }],
 };
 const all3 = (d: unknown) => configProblems(DashboardSchema.parse(d));
 const messages = (d: unknown) =>
@@ -67,7 +67,7 @@ describe('configProblems', () => {
           {
             ...base.rows[0],
             recordRule: all(check({ path: '$.items[', operator: 'exists' })),
-            itemRule: all(is('$.nme', 'x')),
+            settings: { itemRules: { github: all(is('$.nme', 'x')) } },
           },
         ],
       }),
@@ -106,7 +106,7 @@ describe('configProblems', () => {
     expect(
       messages({
         ...base,
-        rowRules: { amplify: { items: all(is('$.name', 'x')) } },
+        settings: { itemRules: { amplify: all(is('$.name', 'x')) } },
         rows: [],
       }),
     ).toEqual([
@@ -140,13 +140,67 @@ describe('configProblems', () => {
     ]);
   });
 
+  it('names the columns of an Amplify row reading with no GitHub token, dismissably', () => {
+    expect(
+      messages({
+        ...base,
+        credentials: [{ id: 'gh', kind: 'github', label: 'gh' }],
+        stages: [
+          ...base.stages,
+          { id: 'qa', name: 'QA', rules: branchRules('qa') },
+          { id: 'prod', name: 'Prod', rules: branchRules('main') },
+        ],
+        rows: [{ ...amplifyRow, cellSettings: { qa: { githubToken: 'gh' } } }],
+      }),
+    ).toEqual([
+      [
+        { kind: 'row', id: 'site' },
+        'no GitHub credential in Dev, Prod, so no behind or diverged badges',
+        true,
+      ],
+    ]);
+  });
+
+  it('notes a pinned app under a key no column of its row reads with', () => {
+    const aws = (id: string) => ({ id, kind: 'aws', label: id.toUpperCase() });
+    const problems = all3({
+      ...base,
+      credentials: [aws('k1'), aws('k2')],
+      settings: { awsKey: 'k1' },
+      rows: [
+        {
+          ...amplifyRow,
+          pinnedApps: [
+            { region: 'us-east-1', appId: 'a1', credentialId: 'k1' },
+            { region: 'us-east-1', appId: 'a2', credentialId: 'k2' },
+            { region: 'us-east-1', appId: 'a3' },
+          ],
+        },
+      ],
+    }).filter((p) => p.message.startsWith('Amplify app'));
+    expect(
+      problems.map((p) => [p.severity, p.level, p.message, p.target]),
+    ).toEqual([
+      [
+        'note',
+        { kind: 'row', id: 'site' },
+        'Amplify app a2 (us-east-1) is pinned under the AWS key K2, which no column of this row reads with: set that AWS key on the columns that use it',
+        {
+          kind: 'settings',
+          place: { level: 'row', rowId: 'site' },
+          field: 'awsKey',
+        },
+      ],
+    ]);
+  });
+
   it('reports an Amplify row without a GitHub repo, even with a token, dismissably', () => {
     const noRepo = omit(amplifyRow, ['repo']);
     expect(
       messages({
         ...base,
         credentials: [{ id: 'gh', kind: 'github', label: 'gh' }],
-        defaultCredentials: { github: 'gh' },
+        settings: { githubToken: 'gh' },
         rows: [noRepo, { ...amplifyRow, id: 'linked' }],
       }),
     ).toEqual([
@@ -197,7 +251,6 @@ describe('consistency notes and checks', () => {
         rows: [
           {
             ...amplifyRow,
-            githubCredentialId: undefined,
             recordRule: all(is('$.state.x', 'y')),
           },
         ],

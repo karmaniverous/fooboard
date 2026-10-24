@@ -25,8 +25,8 @@ describe('focusKeys', () => {
 
   it('opens a row part or stage override inside its row', () => {
     expect(
-      focusKeys({ kind: 'row', id: 'web', part: 'items', stageId: 'dev' }),
-    ).toEqual(['row:web:items', 'row:web:stage:dev', 'row:web']);
+      focusKeys({ kind: 'row', id: 'web', part: 'record', stageId: 'dev' }),
+    ).toEqual(['row:web:record', 'row:web:stage:dev', 'row:web']);
     expect(focusKeys({ kind: 'rowGroup', id: 'g' })).toEqual(['rowGroup:g']);
   });
 
@@ -35,6 +35,56 @@ describe('focusKeys', () => {
       'stage:dev:rules',
       'stage:dev',
     ]);
+  });
+
+  it.each([
+    [
+      { level: 'dashboard' },
+      ['dashboard:settings:awsKey', 'dashboard:settings'],
+    ],
+    [
+      { level: 'rowGroup', groupId: 'g' },
+      ['rowGroup:g:settings:awsKey', 'rowGroup:g:settings', 'rowGroup:g'],
+    ],
+    [
+      { level: 'columnGroup', groupId: 'c' },
+      [
+        'columnGroup:c:settings:awsKey',
+        'columnGroup:c:settings',
+        'columnGroup:c',
+      ],
+    ],
+    [
+      { level: 'row', rowId: 'web' },
+      ['row:web:settings:awsKey', 'row:web:settings', 'row:web'],
+    ],
+    [
+      { level: 'column', stageId: 'dev' },
+      ['stage:dev:settings:awsKey', 'stage:dev:settings', 'stage:dev'],
+    ],
+    [
+      { level: 'cell', rowId: 'web', stageId: 'dev' },
+      [
+        'row:web:cells:dev:settings:awsKey',
+        'row:web:cells:dev:settings',
+        'row:web:cells:dev',
+      ],
+    ],
+  ] as const)('opens a setting at %o inside its place', (place, keys) => {
+    expect(focusKeys({ kind: 'settings', place, field: 'awsKey' })).toEqual(
+      keys,
+    );
+  });
+
+  it('keys a per-source setting by its source', () => {
+    expect(
+      targetKey({
+        kind: 'settings',
+        place: { level: 'row', rowId: 'web' },
+        field: 'statusSets',
+        source: 'github',
+      }),
+    ).toBe('row:web:settings:statusSets:github');
   });
 
   it('opens a status set inside the status set choice', () => {
@@ -50,8 +100,8 @@ describe('targetKey', () => {
     expect(targetKey({ kind: 'row', id: 'web', part: 'record' })).toBe(
       'row:web:record',
     );
-    expect(targetKey({ kind: 'dashboard', part: 'statusSets' })).toBe(
-      'dashboard:statusSets',
+    expect(targetKey({ kind: 'dashboard', part: 'rowRules' })).toBe(
+      'dashboard:rowRules',
     );
     expect(statusSetItemsKey('s')).toBe('statusSet:s:items');
   });
@@ -64,8 +114,51 @@ describe('tabFor', () => {
     [{ kind: 'rowGroup', id: 'g' }, 'Rows'],
     [{ kind: 'columnGroup', id: 'c' }, 'Stages'],
     [{ kind: 'dashboard', part: 'stageRules' }, 'Stages'],
-    [{ kind: 'dashboard', part: 'statusSets' }, 'Statuses'],
     [{ kind: 'dashboard', part: 'rowRules' }, 'General'],
+    [
+      { kind: 'settings', place: { level: 'dashboard' }, field: 'awsKey' },
+      'General',
+    ],
+    [
+      {
+        kind: 'settings',
+        place: { level: 'rowGroup', groupId: 'g' },
+        field: 'awsKey',
+      },
+      'Rows',
+    ],
+    [
+      {
+        kind: 'settings',
+        place: { level: 'row', rowId: 'r' },
+        field: 'awsKey',
+      },
+      'Rows',
+    ],
+    [
+      {
+        kind: 'settings',
+        place: { level: 'cell', rowId: 'r', stageId: 's' },
+        field: 'awsKey',
+      },
+      'Rows',
+    ],
+    [
+      {
+        kind: 'settings',
+        place: { level: 'column', stageId: 's' },
+        field: 'awsKey',
+      },
+      'Stages',
+    ],
+    [
+      {
+        kind: 'settings',
+        place: { level: 'columnGroup', groupId: 'c' },
+        field: 'awsKey',
+      },
+      'Stages',
+    ],
   ] as const)('puts %o on %s', (target, tab) => {
     expect(tabFor(target)).toBe(tab);
   });

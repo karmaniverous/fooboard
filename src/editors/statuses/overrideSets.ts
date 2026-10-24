@@ -1,72 +1,52 @@
 /**
- * Status-set choices below the dashboard (spec.md A§4.3.6): a row group's
- * per provider, a row's, and a single cell's. `''` clears a choice, so the
- * level inherits again. What each level inherits is shown in the editor.
- * Pure.
+ * Choosing a status set at a place (spec.md A§4.3.6, §3.11): the
+ * `statusSets` setting for one provider, at any of the six levels, and
+ * every choice of one set swapped for another. Pure.
  *
  * @module
  */
-import { omit } from 'radash';
-
 import type { Dashboard } from '@/domain/config/dashboard';
-import { type Provider } from '@/domain/config/providers';
-import type { Row } from '@/domain/config/row';
+import type { Provider } from '@/domain/config/providers';
+import { DEFAULT_STATUS_SET_IDS } from '@/domain/config/statusSets';
+import {
+  mapSettings,
+  setSettings,
+  settingsAt,
+  type SettingsPlace,
+} from '@/domain/settings/places';
+import { readSetting, writeSetting } from '@/domain/settings/schema';
 
-export const setDashboardStatusSet = (
-  dashboard: Dashboard,
+/** `d` with `provider`'s set at `place` chosen as `id`. */
+export const chooseSetAt = (
+  d: Dashboard,
+  place: SettingsPlace,
   provider: Provider,
   id: string,
-): Dashboard => ({
-  ...dashboard,
-  statusSets: { ...dashboard.statusSets, [provider]: id },
-});
+): Dashboard =>
+  setSettings(
+    d,
+    place,
+    writeSetting(settingsAt(d, place) ?? {}, 'statusSets', provider, id),
+  );
 
-export function setGroupStatusSet(
-  dashboard: Dashboard,
-  groupId: string,
+/** Every choice of set `from` (for `provider`) in `d` made `to` instead,
+ * the built-in's use included: a dashboard choosing none while `from` is
+ * the built-in now chooses `to`. */
+export function replaceSet(
+  d: Dashboard,
   provider: Provider,
-  id: string,
+  from: string,
+  to: string,
 ): Dashboard {
-  return {
-    ...dashboard,
-    rowGroups: dashboard.rowGroups.map((g) =>
-      g.id === groupId
-        ? {
-            ...g,
-            statusSets: id
-              ? { ...g.statusSets, [provider]: id }
-              : omit(g.statusSets, [provider]),
-          }
-        : g,
-    ),
-  };
+  const swapped = mapSettings(d, (s) =>
+    s.statusSets?.[provider] === from
+      ? writeSetting(s, 'statusSets', provider, to)
+      : s,
+  );
+  const builtIn =
+    readSetting(d.settings, 'statusSets', provider) === undefined &&
+    DEFAULT_STATUS_SET_IDS[provider] === from;
+  return builtIn
+    ? chooseSetAt(swapped, { level: 'dashboard' }, provider, to)
+    : swapped;
 }
-
-const updateRow = (
-  dashboard: Dashboard,
-  rowId: string,
-  change: (row: Row) => Row,
-): Dashboard => ({
-  ...dashboard,
-  rows: dashboard.rows.map((r) => (r.id === rowId ? change(r) : r)),
-});
-
-export const setRowStatusSet = (
-  dashboard: Dashboard,
-  rowId: string,
-  id: string,
-): Dashboard =>
-  updateRow(dashboard, rowId, (r) => ({ ...r, statusSet: id || undefined }));
-
-export const setCellStatusSet = (
-  dashboard: Dashboard,
-  rowId: string,
-  stageId: string,
-  id: string,
-): Dashboard =>
-  updateRow(dashboard, rowId, (r) => ({
-    ...r,
-    cellStatusSets: id
-      ? { ...r.cellStatusSets, [stageId]: id }
-      : omit(r.cellStatusSets, [stageId]),
-  }));

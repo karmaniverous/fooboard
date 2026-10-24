@@ -8,13 +8,10 @@
  *
  * @module
  */
-import { resolveCredentialId } from '@/domain/config/credentialRefs';
 import type { Dashboard } from '@/domain/config/dashboard';
-import {
-  inheritedCredentials,
-  rowGithubCredentialId,
-} from '@/domain/config/inheritance';
 import type { Row } from '@/domain/config/row';
+import { cellCredentials, rowCredentials } from '@/domain/settings/credentials';
+import { pinsFor } from '@/domain/settings/pins';
 import { type BoardCell, type BoardModel, cellKey } from '@/engine/types';
 import type { Around, RequestCall } from '@/query/instrument';
 
@@ -63,8 +60,8 @@ export interface TimingSession {
 
 /** Does `row` need `call`'s read? GitHub reads are per repo and token (a
  * GitHub row's runs, an Amplify row's compares); Amplify reads per app,
- * region and key (`appKey`), the key being the source's own,
- * else the one its row inherits (spec.md C-1a). */
+ * region and key (`appKey`): a pinned app a cell reads with the key it
+ * resolves to (spec.md C-1a, §3.11–3.12). */
 export function rowNeeds(
   dashboard: Dashboard,
   row: Row,
@@ -74,16 +71,15 @@ export function rowNeeds(
     return (
       call.repo !== undefined &&
       row.repo === call.repo &&
-      rowGithubCredentialId(dashboard, row) === call.credentialId
+      rowCredentials(dashboard, row, 'githubToken').includes(call.credentialId)
     );
   if (row.type !== 'amplify') return false;
-  const defaults = inheritedCredentials(dashboard, row.id);
-  return row.sources.some(
-    (s) =>
-      s.appId === call.appId &&
-      s.region === call.region &&
-      resolveCredentialId(defaults, 'aws', s.credentialId) ===
-        call.credentialId,
+  const keys = new Set(cellCredentials(dashboard, row, 'awsKey').values());
+  return (
+    keys.has(call.credentialId) &&
+    pinsFor(row, call.credentialId).some(
+      (pin) => pin.appId === call.appId && pin.region === call.region,
+    )
   );
 }
 

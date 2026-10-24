@@ -8,15 +8,15 @@
  */
 import type { Branch } from '@aws-sdk/client-amplify';
 
-import type { AmplifySource } from '@/domain/config/row';
+import type { PinnedApp } from '@/domain/config/row';
 import { asJson } from '@/domain/model/json';
 import type { AmplifyReaderOptions } from '@/domain/model/sourceRule';
 import { evaluateRule } from '@/domain/rules/check';
 
 import type { AmplifyReader } from './reader';
 
-/** A source with its credential resolved (override or dashboard default). */
-export type ResolvedAmplifySource = Omit<AmplifySource, 'credentialId'> & {
+/** A pinned app with the AWS key a cell reads it with. */
+export type ResolvedAmplifySource = Omit<PinnedApp, 'credentialId'> & {
   credentialId: string;
 };
 

@@ -3,8 +3,8 @@
  * cells, and *Add status*, which puts a new status on top of the set the
  * cell uses, with a rule drafted to match the cell's record. A preset is copied into the
  * dashboard first, and the copy chosen at the level that chose the preset
- * (cell, row, row group or dashboard), so only cells that already shared
- * the set move to the copy. Pure.
+ * (any of the six, spec.md §3.11; the dashboard for the built-in), so
+ * only cells that already shared the set move to the copy. Pure.
  *
  * @module
  */
@@ -22,16 +22,12 @@ import {
 import { all, exists, is, never, not } from '@/domain/model/ruleBuilders';
 import { escapeGlob } from '@/domain/rules/glob';
 import type { Rule } from '@/domain/rules/schema';
-import { statusSetFor, statusSetSource } from '@/domain/statuses/resolve';
+import { resolveSetting } from '@/domain/settings/resolve';
+import { statusSetFor } from '@/domain/statuses/resolve';
 import { type BoardModel, cellKey } from '@/engine';
 
 import { addCellStatus, copySet, updateSet } from './customSet';
-import {
-  setCellStatusSet,
-  setDashboardStatusSet,
-  setGroupStatusSet,
-  setRowStatusSet,
-} from './overrideSets';
+import { chooseSetAt } from './overrideSets';
 
 export interface UnknownCell {
   rowId: string;
@@ -73,17 +69,13 @@ function chooseAt(
   stageId: string,
   to: string,
 ): Dashboard {
-  const source = statusSetSource(dashboard, row, stageId);
-  switch (source.from) {
-    case 'cell':
-      return setCellStatusSet(dashboard, row.id, stageId, to);
-    case 'row':
-      return setRowStatusSet(dashboard, row.id, to);
-    case 'rowGroup':
-      return setGroupStatusSet(dashboard, source.groupId, row.type, to);
-    case 'dashboard':
-      return setDashboardStatusSet(dashboard, row.type, to);
-  }
+  const { origin } = resolveSetting(dashboard, row, stageId, 'statusSets');
+  return chooseSetAt(
+    dashboard,
+    origin.level === 'builtIn' ? { level: 'dashboard' } : origin,
+    row.type,
+    to,
+  );
 }
 
 /** What a first rule needs of a record: a GitHub run's workflow and

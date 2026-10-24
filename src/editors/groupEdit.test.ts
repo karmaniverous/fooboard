@@ -42,10 +42,9 @@ describe('group lifecycle', () => {
       {
         id: 'group-b',
         memberIds: ['b'],
+        settings: {},
         stageRules: {},
         rowRules: {},
-        defaultCredentials: {},
-        statusSets: {},
       },
     ]);
     const two = setGroup(one, 'rows', 'd', 'group-b');
@@ -67,7 +66,7 @@ describe('group lifecycle', () => {
   it('labels (an empty label clears it) and deletes, on either axis', () => {
     let d = setGroup(base, 'stages', 'prod', 'new');
     expect(d.columnGroups).toEqual([
-      { id: 'group-prod', memberIds: ['prod'], stageRules: {} },
+      { id: 'group-prod', memberIds: ['prod'], settings: {}, stageRules: {} },
     ]);
     d = renameGroup(d, 'stages', 'group-prod', ' Production ');
     expect(d.columnGroups[0]?.label).toBe('Production');
