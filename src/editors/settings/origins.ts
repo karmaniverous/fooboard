@@ -11,9 +11,9 @@
  * @module
  */
 import type { Dashboard } from '@/domain/config/dashboard';
-import { PROVIDER_LABELS, PROVIDERS } from '@/domain/config/providers';
+import { PROVIDER_LABELS } from '@/domain/config/providers';
 import type { Row } from '@/domain/config/row';
-import { sourceRuleFor } from '@/domain/model/sources';
+import { sourcesWithItems } from '@/domain/model/sources';
 import { describeRule } from '@/domain/rules/describe';
 import type { SettingsPlace } from '@/domain/settings/places';
 import { settableEntries, type SettingEntry } from '@/domain/settings/reads';
@@ -163,9 +163,7 @@ export function cellSettingLines(
   row: Row,
   stageId: string,
 ): CellSettingLine[] {
-  const withItems = PROVIDERS.filter(
-    (p) => sourceRuleFor(d, p).items !== undefined,
-  );
+  const withItems = sourcesWithItems(d);
   const place: SettingsPlace = { level: 'cell', rowId: row.id, stageId };
   return settableEntries(d, place, withItems).map((entry) => {
     const { value, origin } = resolveSetting(d, row, stageId, entry.field);
