@@ -81,6 +81,7 @@ export function PinnedApps({
       ))}
       <Pin
         dashboard={dashboard}
+        pinned={row.pinnedApps}
         name={row.displayName}
         onAdd={(pin) => {
           setPins([...row.pinnedApps, pin]);
@@ -92,10 +93,13 @@ export function PinnedApps({
 
 function Pin({
   dashboard,
+  pinned,
   onAdd,
   name,
 }: {
   dashboard: Dashboard;
+  /** The row's pins: the same app under the same key isn't pinned twice. */
+  pinned: readonly PinnedApp[];
   name: string;
   onAdd: (pin: PinnedApp) => void;
 }): React.JSX.Element {
@@ -148,7 +152,16 @@ function Pin({
         type="submit"
         size="sm"
         variant="outline"
-        disabled={!region.trim() || !appId.trim()}
+        disabled={
+          !region.trim() ||
+          !appId.trim() ||
+          pinned.some(
+            (p) =>
+              p.region === region.trim() &&
+              p.appId === appId.trim() &&
+              p.credentialId === credentialId,
+          )
+        }
       >
         Pin
       </Button>

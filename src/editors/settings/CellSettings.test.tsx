@@ -126,6 +126,21 @@ describe('CellSettings', () => {
     expect(screen.getByRole('combobox', { name })).toBe(control);
   });
 
+  it('offers no Pin for an app already pinned under that key', () => {
+    setup();
+    const fill = (label: string, value: string) => {
+      fireEvent.change(screen.getByLabelText(label), { target: { value } });
+    };
+    fill('Region for a new site pin', 'us-east-1');
+    fill('App ID for a new site pin', 'a1');
+    expect(screen.getByRole('button', { name: 'Pin' })).toBeDisabled();
+    choose(
+      screen.getByRole('combobox', { name: 'AWS key for a new site pin' }),
+      'k1',
+    );
+    expect(screen.getByRole('button', { name: 'Pin' })).toBeEnabled();
+  });
+
   it("edits a pin's AWS key in place", () => {
     const latest = setup();
     choose(
