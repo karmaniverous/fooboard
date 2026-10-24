@@ -151,8 +151,6 @@ describe('BoardViewport', () => {
     });
     fireEvent.pointerUp(cell, { pointerId: 2, pointerType: 'touch' });
     fireEvent.click(cell);
-    expect(
-      screen.getByRole('dialog', { name: 'Cell detail' }),
-    ).toBeInTheDocument();
+    expect(screen.getByRole('dialog', { name: / · / })).toBeInTheDocument();
   });
 });

@@ -1,7 +1,9 @@
 /**
  * Sheet: a modal panel sliding from an edge (see `modal` for the shared
  * parts: it takes focus, traps Tab, closes on Escape or the backdrop, and
- * returns focus).
+ * returns focus). The sheet itself doesn't scroll: its content is a
+ * `PanelLayout` (`SidePanel`), whose header stays put over a body that
+ * alone scrolls (spec.md §3.6).
  *
  * @module
  */
@@ -10,11 +12,11 @@ import * as React from 'react';
 
 import { cn } from '@/lib/utils';
 
-import { ModalContent, ModalTitle } from './modal';
+import { ModalClose, ModalContent, ModalTitle } from './modal';
 
 const Sheet = SheetPrimitive.Root;
 const SheetTrigger = SheetPrimitive.Trigger;
-const SheetClose = SheetPrimitive.Close;
+const SheetCloseButton = ModalClose;
 const SheetTitle = ModalTitle;
 
 const SIDE = {
@@ -30,10 +32,11 @@ const SheetContent = React.forwardRef<
 >(({ side = 'right', className, ...props }, ref) => (
   <ModalContent
     ref={ref}
-    className={cn('overflow-y-auto', SIDE[side], className)}
+    closeButton={false}
+    className={cn('gap-0 p-0', SIDE[side], className)}
     {...props}
   />
 ));
 SheetContent.displayName = 'SheetContent';
 
-export { Sheet, SheetClose, SheetContent, SheetTitle, SheetTrigger };
+export { Sheet, SheetCloseButton, SheetContent, SheetTitle, SheetTrigger };

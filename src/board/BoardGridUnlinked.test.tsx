@@ -85,7 +85,7 @@ describe('a status cell without a link', () => {
       // A button: the browser turns Enter and Space into a click.
       fireEvent.keyDown(cell, { key });
       fireEvent.click(cell);
-      const sheet = screen.getByRole('dialog', { name: 'Cell detail' });
+      const sheet = screen.getByRole('dialog', { name: / · / });
       const copy = within(sheet).getByRole('button', {
         name: 'Copy the commit SHA',
       });
@@ -98,7 +98,7 @@ describe('a status cell without a link', () => {
     renderBoard();
     const cell = tabToCell();
     fireEvent.click(cell);
-    const sheet = screen.getByRole('dialog', { name: 'Cell detail' });
+    const sheet = screen.getByRole('dialog', { name: / · / });
     const el = tabUntil(
       sheet,
       (e) =>
