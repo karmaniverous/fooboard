@@ -154,8 +154,11 @@ export const groupOverridePattern = (
     : undefined;
 };
 
-/** Does a row group carry settings that are lost when it disappears? */
-export const carriesSettings = (g: RowGroup): boolean =>
+/** Does a group of either kind carry settings that are lost when it
+ * disappears: its settings, stage rules or (a row group's) row rules? */
+export const carriesSettings = (
+  g: Pick<RowGroup, 'settings'> & { stageRules: object; rowRules?: object },
+): boolean =>
   Object.keys(g.stageRules).length > 0 ||
-  Object.keys(g.rowRules).length > 0 ||
+  Object.keys(g.rowRules ?? {}).length > 0 ||
   countSet(g.settings) > 0;
