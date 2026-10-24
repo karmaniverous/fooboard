@@ -1,7 +1,7 @@
 /**
  * ESLint flat config: strict type-checked TypeScript rules, TSDoc syntax,
  * import sorting, React Hooks / Fast Refresh rules & Prettier for all
- * TS/TSX files; Vitest rules for tests.
+ * TS/TSX files, tests included; Vitest rules added for tests.
  *
  * @module
  */
@@ -88,12 +88,11 @@ export default defineConfig(
     },
   },
   {
-    // A promise in the app is awaited or handled, never dropped with
-    // `void` (a rejection would go unreported). Router navigation and
-    // TanStack's invalidation and refetch never reject. Tests may still
-    // fire a promise with `void`: Vitest fails the run on a rejection.
-    files: ['src/**/*.{ts,tsx}'],
-    ignores: ['**/*.test.{ts,tsx}', 'src/test/**'],
+    // A promise is awaited or handled, never dropped with `void` (a
+    // rejection would go unreported). This covers tests and test
+    // utilities like every other rule. Router navigation and TanStack's
+    // invalidation and refetch never reject.
+    files: ['**/*.{ts,tsx}'],
     rules: {
       '@typescript-eslint/no-floating-promises': [
         'error',
