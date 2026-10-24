@@ -12,14 +12,27 @@ import { never } from '@/domain/model/ruleBuilders';
 import { choose } from '@/test/choose';
 import { expand } from '@/test/openItem';
 
-import { setup, tab } from '../editorSectionsHarness';
+import { setup, start, tab } from '../editorSectionsHarness';
 
 describe('Statuses tab', () => {
+  it('says which set the dashboard uses: the built-in, its own choice, or an unknown id', () => {
+    setup(undefined, undefined, {
+      ...start,
+      settings: { ...start.settings, statusSets: { github: 'gone' } },
+    });
+    tab('Statuses');
+    expect(screen.getByText('gone')).toBeVisible();
+    expect(screen.getByText('Built-in (Amplify)')).toBeVisible();
+    expect(
+      screen.getAllByText(/^Chosen in Settings on the General tab/),
+    ).toHaveLength(2);
+  });
+
   it('customises a set, edits its statuses and keeps it while chosen', () => {
     const latest = setup();
     tab('Statuses');
     fireEvent.click(screen.getAllByRole('button', { name: 'Customise' })[1]);
-    expect(latest.current.statusSets.amplify).toBe('custom-amplify');
+    expect(latest.current.settings.statusSets?.amplify).toBe('custom-amplify');
     const set = screen.getByRole('region', {
       name: 'Status set Amplify (custom)',
     });
@@ -70,12 +83,21 @@ describe('Statuses tab', () => {
     const latest = setup();
     tab('Statuses');
     fireEvent.click(screen.getAllByRole('button', { name: 'Customise' })[1]);
-    choose(screen.getByLabelText('Amplify status set'), 'Amplify');
+    // Choosing the preset again is the dashboard's settings' to do.
+    tab('General');
+    expand('Settings');
+    choose(
+      screen.getByRole('combobox', {
+        name: 'Amplify status set for Dashboard Board',
+      }),
+      'Amplify',
+    );
+    tab('Statuses');
     const set = screen.getByRole('region', {
       name: 'Status set Amplify (custom)',
     });
     fireEvent.click(within(set).getByRole('button', { name: 'Remove' }));
     expect(latest.current.customStatusSets).toEqual([]);
-    expect(latest.current.statusSets.amplify).toBe('amplify');
+    expect(latest.current.settings.statusSets?.amplify).toBe('amplify');
   });
 });

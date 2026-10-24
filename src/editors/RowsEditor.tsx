@@ -3,35 +3,30 @@
  * dashboard default) and picking a repo it can see (display name defaults
  * to the repo without its owner; the row keeps the chosen token), or
  * an Amplify row by choosing credential, region and app (listed via
- * `ListApps`); rename, reorder, remove; per-row token override, row key
- * (none for an Amplify row without a GitHub repo), row key and item
- * rules (item rules when its source rule reads items), an
- * Amplify row's sources and their AWS keys, the row's group, its stage-rule overrides, and its
- * group's overrides and default credentials.
+ * `ListApps`); rename, reorder, remove; the row's record rule, its
+ * *Settings* and *Cell settings* (the shared settings editor, spec.md
+ * §3.11), an Amplify row's pinned apps, the row's group, its stage-rule
+ * overrides, and its group's settings and overrides.
  *
  * @module
  */
-import { useContext } from 'react';
-
 import type { Dashboard } from '@/domain/config/dashboard';
 import { groupOf } from '@/domain/config/groups';
-import { inheritedCredential } from '@/domain/config/inheritance';
 import type { Row } from '@/domain/config/row';
-import { ITEM_NAME_PATH } from '@/domain/model/keys';
 import { always, unlessAlways } from '@/domain/rules/always';
 import { targetKey } from '@/editors/editTarget';
 
-import { AmplifySources } from './AmplifySources';
-import { CredentialSelect } from './CredentialSelect';
 import { removeRow, rowFromRepo } from './edit';
 import { CommitInput } from './fields';
 import { listHandlers } from './groupEdit';
+import { PinnedApps } from './PinnedApps';
 import { ReorderList } from './ReorderList';
 import { RepoPicker } from './RepoPicker';
 import { RowGrouping } from './RowGrouping';
 import { AmplifyPicker } from './rowPickers';
 import { RuleEditor } from './rules/RuleEditor';
-import { SourcesWithItemsContext } from './rules/samples';
+import { CellSettings } from './settings/CellSettings';
+import { SettingsEditor } from './settings/SettingsEditor';
 
 /** A row's header summary: its repo, and its kind if not GitHub. */
 const rowSummary = (row: Row): string =>
@@ -47,7 +42,6 @@ export function RowsEditor({
   /** *Add override*: a branch to offer on the rows reading a record. */
   override?: { branch: string; rowIds: readonly string[] };
 }): React.JSX.Element {
-  const withItems = useContext(SourcesWithItemsContext);
   const replaceRow = (row: Row) => {
     onChange({
       ...dashboard,
@@ -81,26 +75,6 @@ export function RowsEditor({
                 replaceRow({ ...row, displayName });
               }}
             />
-            {(row.type === 'github' || row.repo) && (
-              <CredentialSelect
-                dashboard={dashboard}
-                kind="github"
-                value={
-                  row.type === 'github'
-                    ? row.credentialId
-                    : row.githubCredentialId
-                }
-                inherited={inheritedCredential(dashboard, row.id, 'github')}
-                label={`GitHub token for ${row.displayName}`}
-                onChange={(id) => {
-                  replaceRow(
-                    row.type === 'github'
-                      ? { ...row, credentialId: id }
-                      : { ...row, githubCredentialId: id },
-                  );
-                }}
-              />
-            )}
             <div className="flex flex-col gap-1">
               <span className="font-semibold">Records for this row</span>
               <RuleEditor
@@ -120,31 +94,14 @@ export function RowsEditor({
                 }}
               />
             </div>
-            {withItems.includes(row.type) && (
-              <div className="flex flex-col gap-1">
-                <span className="font-semibold">Items for this row</span>
-                <RuleEditor
-                  label={`Item rule for ${row.displayName}`}
-                  rule={row.itemRule ?? always}
-                  newPath={ITEM_NAME_PATH}
-                  provider={row.type}
-                  scope="item"
-                  target={targetKey({
-                    kind: 'row',
-                    id: row.id,
-                    part: 'items',
-                  })}
-                  onChange={(rule) => {
-                    replaceRow({
-                      ...row,
-                      itemRule: unlessAlways(rule),
-                    });
-                  }}
-                />
-              </div>
-            )}
+            <SettingsEditor
+              dashboard={dashboard}
+              place={{ level: 'row', rowId: row.id }}
+              onChange={onChange}
+            />
+            <CellSettings dashboard={dashboard} row={row} onChange={onChange} />
             {row.type === 'amplify' && (
-              <AmplifySources
+              <PinnedApps
                 dashboard={dashboard}
                 row={row}
                 onChange={replaceRow}

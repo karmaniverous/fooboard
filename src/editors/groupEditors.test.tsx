@@ -34,7 +34,7 @@ const start = DashboardSchema.parse({
     { id: 'org', kind: 'github', label: 'org' },
     { id: 'team', kind: 'github', label: 'team' },
   ],
-  defaultCredentials: { github: 'org' },
+  settings: { githubToken: 'org' },
   rows: [
     { type: 'github', id: 'api', repo: 'acme/api', displayName: 'api' },
     { type: 'github', id: 'web', repo: 'acme/web', displayName: 'web' },
@@ -103,20 +103,26 @@ describe('row groups in the editor', () => {
     expand('api');
     choose(screen.getByLabelText('Group of api'), 'New group from api');
     fireEvent.click(screen.getByRole('button', { name: /^Group settings/ }));
-    choose(screen.getByLabelText('GitHub token for this group'), 'team');
+    choose(
+      screen.getByRole('combobox', { name: 'GitHub token for Row group api' }),
+      'team',
+    );
     commit('prod branch override for this group', 'release/*');
     expect(latest.current.rowGroups).toEqual([
       {
         id: 'group-api',
         memberIds: ['api'],
+        settings: { githubToken: 'team' },
         stageRules: { prod: branchRules('release/*') },
         rowRules: {},
-        defaultCredentials: { github: 'team' },
-        statusSets: {},
       },
     ]);
-    const token = screen.getByLabelText('GitHub token for api');
-    expect(optionsOf(token)[0]).toBe('Group default (team)');
+    fireEvent.click(screen.getAllByRole('button', { name: /^Settings/ })[0]);
+    const token = screen.getByRole('combobox', {
+      name: 'GitHub token for Row api',
+    });
+    expect(optionsOf(token)[0]).toBe('Row group default (team)');
+    expect(screen.getByText('from api')).toBeInTheDocument();
     openOverrides();
     expect(
       screen.getByLabelText('prod branch override for api'),

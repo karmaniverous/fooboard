@@ -46,7 +46,7 @@ describe('the Amplify app picker', () => {
       id: 'site',
       repo: 'acme/site',
       displayName: 'site',
-      sources: [{ region: 'us-east-1', appId: 'a1' }],
+      pinnedApps: [{ credentialId: 'aws', region: 'us-east-1', appId: 'a1' }],
     });
   });
 
@@ -93,7 +93,7 @@ describe('the Amplify app picker', () => {
     expect(latest.current.rows.at(-1)).toMatchObject({
       id: 'orphan',
       repo: 'x/y',
-      sources: [{ region: 'eu-west-1', appId: 'a2' }],
+      pinnedApps: [{ credentialId: 'aws', region: 'eu-west-1', appId: 'a2' }],
     });
     expect(screen.queryByLabelText('GitHub repo for orphan')).toBeNull();
 
@@ -151,7 +151,7 @@ describe('the Amplify app picker', () => {
     choose(key, 'other');
     fireEvent.click(screen.getByRole('button', { name: /^site us-east-1/ }));
     expect(latest.current.rows.at(-1)).toMatchObject({
-      sources: [{ credentialId: 'aws2', region: 'us-east-1', appId: 'a1' }],
+      pinnedApps: [{ credentialId: 'aws2', region: 'us-east-1', appId: 'a1' }],
     });
   });
 

@@ -53,7 +53,7 @@ const start = DashboardSchema.parse({
   id: 'd',
   name: 'Board',
   credentials: [{ id: 'gh', kind: 'github', label: 'gh' }],
-  defaultCredentials: { github: 'gh' },
+  settings: { githubToken: 'gh' },
   rows: [
     { type: 'github', id: 'api', repo: 'acme/api', displayName: 'api' },
     { type: 'github', id: 'web', repo: 'acme/web', displayName: 'web' },
@@ -159,6 +159,7 @@ describe('DashboardEditor', () => {
       id: 'release',
       name: 'Release',
       rules: branchRules('release/**'),
+      settings: {},
     });
   });
 

@@ -242,6 +242,7 @@ describe('BoardGrid', () => {
       id: `s${String(i)}`,
       name: `Stage ${String(i)}`,
       rules: branchRules('main'),
+      settings: {},
     }));
     const big = {
       ...demoDashboard,

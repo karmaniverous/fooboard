@@ -9,12 +9,12 @@ import { useState } from 'react';
 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { resolveCredentialId } from '@/domain/config/credentialRefs';
 import type { Dashboard } from '@/domain/config/dashboard';
 import { fetchRepos } from '@/query/lookups';
 import { useQueryEnv } from '@/query/queryEnvContext';
 
 import { CredentialSelect } from './CredentialSelect';
+import { dashboardDefault } from './dashboardDefault';
 import { LoadStatus } from './LoadStatus';
 import { useLoadFor } from './useLoad';
 
@@ -31,11 +31,8 @@ export function RepoPicker({
   // Results belong to the token they were listed with; changing it hides
   // them until they are listed again.
   const [repos, load] = useLoadFor<string | undefined, string[]>(credentialId);
-  const resolved = resolveCredentialId(
-    dashboard.defaultCredentials,
-    'github',
-    credentialId,
-  );
+  const unset = dashboardDefault(dashboard, 'github');
+  const resolved = credentialId ?? unset.id;
   const env = useQueryEnv();
   const token =
     resolved && env.providers.github(resolved) ? resolved : undefined;
@@ -54,6 +51,7 @@ export function RepoPicker({
           kind="github"
           value={credentialId}
           onChange={setCredentialId}
+          unset={unset}
           label="GitHub token for the new row"
         />
         {(repos.kind === 'idle' || repos.kind === 'error') && (
