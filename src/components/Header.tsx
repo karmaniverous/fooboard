@@ -4,17 +4,19 @@
  * icon buttons in the C-19 order, then the menu. As the row narrows,
  * buttons fold into the menu from the right, then the tagline goes, and
  * README and News & support go last; chosen by measuring the content.
- * Privacy and Terms are always in the menu, never buttons.
+ * Privacy and Terms are always in the menu, never buttons; *Reset* is
+ * the menu's last item (spec.md §3.9), nowhere else in the header.
  *
  * @module
  */
-import { Menu } from 'lucide-react';
+import { Menu, RotateCcw } from 'lucide-react';
 import { useLayoutEffect } from 'react';
 import { Link } from 'react-router-dom';
 
 import {
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
@@ -29,7 +31,7 @@ import {
 import { cn, PINNED_FULL } from '@/lib/utils';
 
 import { NavControl } from './NavControl';
-import { useNavItems } from './navItems';
+import { useNavDialogs, useNavItems } from './navItems';
 import { NavMenuEntry } from './NavMenuEntry';
 
 function Brand(): React.JSX.Element {
@@ -49,6 +51,7 @@ function Brand(): React.JSX.Element {
 
 export function Header(): React.JSX.Element {
   const items = useNavItems();
+  const { openReset } = useNavDialogs();
   const buttons = items.filter((i) => !i.legal);
   const legal = items.filter((i) => i.legal);
   const [ref, folded] = useMeasured<HTMLElement, number>((el) => {
@@ -144,6 +147,11 @@ export function Header(): React.JSX.Element {
             {legal.map((item) => (
               <NavMenuEntry key={item.id} item={item} />
             ))}
+            <DropdownMenuSeparator />
+            <DropdownMenuItem className="gap-2" onSelect={openReset}>
+              <RotateCcw className="size-4" />
+              Reset…
+            </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
       </nav>

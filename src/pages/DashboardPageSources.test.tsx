@@ -41,7 +41,7 @@ const SOURCE_LABEL = 'AWS key for site source a1';
 describe('DashboardPage Amplify sources', () => {
   it('saves a changed key override and reads the changed source with it', async () => {
     const other = { credentialId: 'aws1', region: 'eu-west-1', appId: 'a2' };
-    const stores = renderDashboardPage({
+    const stores = await renderDashboardPage({
       id: 'd',
       name: 'D',
       credentials: [

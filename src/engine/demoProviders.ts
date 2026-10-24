@@ -31,7 +31,7 @@ export function demoProviders(
         createDemoGitHubApi(
           clock,
           (budget) => {
-            hooks.onBudget(id, budget);
+            hooks.onBudget(id, budget, DEMO_FINGERPRINT);
           },
           wait,
         ),

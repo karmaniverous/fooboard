@@ -10,11 +10,10 @@ import { Route, Routes } from 'react-router-dom';
 import { AppNavProvider } from '@/components/AppNavProvider';
 import { Footer } from '@/components/Footer';
 import { Header } from '@/components/Header';
+import { StorageBanner } from '@/components/StorageBanner';
 import { ThemeProvider } from '@/components/ThemeProvider';
 import { useViewportWidthVar } from '@/lib/useViewportWidthVar';
-import { PINNED_FULL } from '@/lib/utils';
 import { Home } from '@/pages/Home';
-import { useStores } from '@/storage/storesContext';
 
 // Board and spike pages load on first visit, so the home page doesn't wait
 // for the board, editors and readers.
@@ -46,15 +45,7 @@ export default function App(): React.JSX.Element {
       <AppNavProvider>
         <div className="flex min-h-screen w-max min-w-full flex-col">
           <Header />
-          {!useStores().persistent && (
-            <p
-              role="status"
-              className={`${PINNED_FULL} bg-badge-behind px-5 py-1 text-center text-xs text-badge-behind-text`}
-            >
-              This browser is blocking storage, so nothing you set up here will
-              be kept after you close the tab.
-            </p>
-          )}
+          <StorageBanner />
           <main className="flex-1">
             <Suspense
               fallback={

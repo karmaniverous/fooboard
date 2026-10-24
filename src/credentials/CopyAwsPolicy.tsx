@@ -43,7 +43,7 @@ export function CopyAwsPolicy({
         className="gap-1.5"
         onClick={() => {
           const json = JSON.stringify(amplifyPolicy(apps), null, 2);
-          void copyText(json).then((ok) => {
+          copyText(json, (ok) => {
             setSaid(copiedMessage(ok, apps.length, skipped));
           });
         }}

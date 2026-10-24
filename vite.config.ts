@@ -4,11 +4,13 @@
  * require: a relative base would resolve assets against the route path on
  * deep links. A production build fails if it contains the development
  * timing instrumentation or the Query Devtools
- * (`vite/noDevInstrumentation.ts`). Vitest extends
- * this config (see `vitest.config.ts`).
+ * (`vite/noDevInstrumentation.ts`). The app's version (`package.json`)
+ * is defined as `__APP_VERSION__` (the persisted cache's buster). Vitest
+ * extends this config (see `vitest.config.ts`).
  *
  * @module
  */
+import { readFileSync } from 'node:fs';
 import path from 'node:path';
 
 import tailwindcss from '@tailwindcss/vite';
@@ -35,8 +37,24 @@ function manualChunks(id: string): string | undefined {
   return VENDOR_CHUNKS.find(([pattern]) => pattern.test(id))?.[1];
 }
 
+/** The app's version, from `package.json`. */
+const version = ((): string => {
+  const pkg: unknown = JSON.parse(
+    readFileSync(path.resolve(import.meta.dirname, 'package.json'), 'utf8'),
+  );
+  if (
+    typeof pkg !== 'object' ||
+    pkg === null ||
+    !('version' in pkg) ||
+    typeof pkg.version !== 'string'
+  )
+    throw new Error('package.json has no version');
+  return pkg.version;
+})();
+
 export default defineConfig({
   plugins: [react(), tailwindcss(), noDevInstrumentation()],
+  define: { __APP_VERSION__: JSON.stringify(version) },
   resolve: {
     alias: {
       '@': path.resolve(import.meta.dirname, './src'),

@@ -12,8 +12,8 @@ import { branchRules } from '@/domain/config/placement';
 import { renderDashboardPage } from '@/test/renderDashboardPage';
 
 describe('DashboardPage', () => {
-  it('shows the saved board and saves a credential added from it', () => {
-    const stores = renderDashboardPage({ id: 'mine', name: 'My board' });
+  it('shows the saved board and saves a credential added from it', async () => {
+    const stores = await renderDashboardPage({ id: 'mine', name: 'My board' });
     expect(screen.getByRole('heading', { name: 'My board' })).toHaveTextContent(
       'My board',
     );
@@ -55,7 +55,7 @@ describe('DashboardPage credential lifecycle', () => {
         ),
       ),
     );
-    renderDashboardPage({
+    await renderDashboardPage({
       id: 'mine',
       name: 'My board',
       rows: [

@@ -44,7 +44,7 @@ const selectedTab = () =>
 
 describe('DashboardPage problems', () => {
   it('counts problems and opens the editor at the fix', async () => {
-    renderDashboardPage({
+    await renderDashboardPage({
       id: 'p',
       name: 'P',
       rows: [githubRow],
@@ -60,8 +60,8 @@ describe('DashboardPage problems', () => {
     expect(selectedTab()).toBe('Stages');
   });
 
-  it('reads Notes when there are only notes', () => {
-    renderDashboardPage({
+  it('reads Notes when there are only notes', async () => {
+    await renderDashboardPage({
       id: 'n',
       name: 'N',
       stages: [{ id: 'dev', name: 'Dev', rules: branchRules('dev') }],
@@ -75,7 +75,7 @@ describe('DashboardPage problems', () => {
 
   it('customises a built-in status set with a problem, saving the copy', async () => {
     const github = builtinSourceFor('github');
-    const stores = renderDashboardPage({
+    const stores = await renderDashboardPage({
       id: 'c',
       name: 'C',
       rows: [githubRow],
@@ -111,8 +111,8 @@ describe('DashboardPage problems', () => {
 });
 
 describe('DashboardPage dismissal', () => {
-  it('drops a dismissed note from the count and remembers it', () => {
-    const stores = renderDashboardPage({
+  it('drops a dismissed note from the count and remembers it', async () => {
+    const stores = await renderDashboardPage({
       id: 'd',
       name: 'D',
       stages: [{ id: 'dev', name: 'Dev', rules: branchRules('dev') }],
@@ -134,7 +134,7 @@ describe('DashboardPage dismissing an unresolvable AWS key', () => {
   const noKey = /^Amplify source a1 \(us-east-1\) has no AWS key/;
 
   it('hides the problem, and the cells still need a credential', async () => {
-    renderDashboardPage({
+    await renderDashboardPage({
       id: 'k',
       name: 'K',
       rows: [
@@ -160,15 +160,15 @@ describe('DashboardPage dismissing an unresolvable AWS key', () => {
 });
 
 describe('DashboardPage editor', () => {
-  it('opens at General from Edit', () => {
-    renderDashboardPage({ id: 'e', name: 'E' });
+  it('opens at General from Edit', async () => {
+    await renderDashboardPage({ id: 'e', name: 'E' });
     fireEvent.click(screen.getByRole('button', { name: 'Edit' }));
     expect(selectedTab()).toBe('General');
   });
 
-  it('deletes the dashboard from General, with its device preferences', () => {
+  it('deletes the dashboard from General, with its device preferences', async () => {
     const device = memoryStorage();
-    const stores = renderDashboardPage({ id: 'x', name: 'Gone' }, device);
+    const stores = await renderDashboardPage({ id: 'x', name: 'Gone' }, device);
     stores.preferences.setView('x', { density: 'compact' });
     stores.preferences.setView('kept', { density: 'compact' });
     const dashboardsWithPreferences = () =>

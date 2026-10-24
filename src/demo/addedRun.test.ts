@@ -117,7 +117,7 @@ describe('demo added run', () => {
 
     now = ADDED_RUN_AT_MS;
     const row = demoDashboard.rows.find((r) => r.id === ADDED_RUN_CELL.rowId);
-    void env.client.refetchQueries({
+    const polled = env.client.refetchQueries({
       queryKey: githubKey(DEMO_TOKEN, {
         call: 'runs',
         repo: row?.repo ?? '',
@@ -131,6 +131,7 @@ describe('demo added run', () => {
     expect(commitOf(board.getModel().cells[key])).toBe(commitOf(before));
 
     release();
+    await polled;
     const after = (await settle(env, board)).cells[key];
     expect(after?.refreshing).toBeUndefined();
     expect(commitOf(after)).not.toBe(commitOf(before));

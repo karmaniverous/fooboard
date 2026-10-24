@@ -43,7 +43,7 @@ export function CreateDashboard(): React.JSX.Element {
         run(() => {
           const dashboard = createDashboard(name.trim(), preset);
           config.saveDashboard(dashboard);
-          void navigate(`/d/${dashboard.id}`);
+          navigate(`/d/${dashboard.id}`);
         });
       }}
     >

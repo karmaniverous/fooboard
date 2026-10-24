@@ -3,7 +3,8 @@
  * one observer per query, polling at the fastest rate any row asks and
  * remembering every row it feeds; syncing observes exactly the needs
  * given; a changed version invalidates its query once (never on first
- * sight, so a reload reads nothing extra); destroying stops observing.
+ * sight, so a reload reads nothing extra); a removed query is read
+ * again at once; destroying stops observing.
  *
  * @module
  */
@@ -117,5 +118,22 @@ describe('createObserverSet', () => {
     expect(invalidated()).toBe(false);
     observers.destroy();
     again.destroy();
+  });
+
+  it('reads a removed query again at once, not at its next poll', async () => {
+    const { env, observers, jobsPage, observersOf } = setup();
+    const needs = mergeNeeds([['a', [need(1)]]]);
+    observers.sync(needs);
+    await vi.waitFor(() => {
+      expect(env.client.getQueryData(key(1))).toBeDefined();
+    });
+    env.client.removeQueries({ queryKey: key(1) });
+    observers.sync(needs);
+    expect(observersOf(1)).toBe(1);
+    await vi.waitFor(() => {
+      expect(jobsPage).toHaveBeenCalledTimes(2);
+    });
+    expect(observers.size()).toBe(1);
+    observers.destroy();
   });
 });

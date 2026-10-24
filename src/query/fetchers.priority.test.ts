@@ -16,6 +16,7 @@ import { createQueryFn } from './fetchers';
 import { passThrough } from './instrument';
 import { githubKey } from './keys';
 import { createLimiters } from './limiters';
+import { createReadWith } from './readWith';
 
 const CREDENTIAL = 'gh';
 const BLOCKING_RUN = 1;
@@ -83,17 +84,24 @@ function setup() {
           limiters,
           now: Date.now,
           around: () => passThrough,
+          readWith: createReadWith(),
         }),
       },
     },
   });
+  /** Requests in flight or queued, settled by `drain`. */
+  const pending: Promise<unknown>[] = [];
+  /** Start a request, to be settled by `drain`. */
+  const send = (request: Promise<unknown>) => {
+    pending.push(request);
+  };
   /** Hold the slot, then queue a run's jobs and a compare behind it. */
   const queueDependents = () => {
-    void client.query({ queryKey: jobs(BLOCKING_RUN) });
-    void client.query({ queryKey: jobs(QUEUED_RUN) });
-    void client.query({ queryKey: compare });
+    send(client.query({ queryKey: jobs(BLOCKING_RUN) }));
+    send(client.query({ queryKey: jobs(QUEUED_RUN) }));
+    send(client.query({ queryKey: compare }));
   };
-  /** Free the slot and let everything queued run. */
+  /** Free the slot, let everything queued run and settle every request. */
   const drain = async () => {
     release();
     await vi.waitFor(() => {
@@ -102,26 +110,27 @@ function setup() {
         queued: 0,
       });
     });
+    await Promise.all(pending);
   };
-  return { client, started, queueDependents, drain };
+  return { client, started, send, queueDependents, drain };
 }
 
 describe('createQueryFn priority', () => {
   it("queues a root read's later poll behind jobs and compares", async () => {
-    const { client, started, queueDependents, drain } = setup();
+    const { client, started, send, queueDependents, drain } = setup();
     client.setQueryData(runs('acme/api'), fetched([]));
     queueDependents();
-    void client.refetchQueries({ queryKey: runs('acme/api') });
+    send(client.refetchQueries({ queryKey: runs('acme/api') }));
     await drain();
     expect(started).toEqual(['jobs 1', 'jobs 2', 'compare', 'runs api']);
   });
 
   it("puts a root read's first load ahead of jobs, compares and polls", async () => {
-    const { client, started, queueDependents, drain } = setup();
+    const { client, started, send, queueDependents, drain } = setup();
     client.setQueryData(runs('acme/api'), fetched([]));
     queueDependents();
-    void client.refetchQueries({ queryKey: runs('acme/api') });
-    void client.query({ queryKey: runs('acme/web') });
+    send(client.refetchQueries({ queryKey: runs('acme/api') }));
+    send(client.query({ queryKey: runs('acme/web') }));
     await drain();
     expect(started).toEqual([
       'jobs 1',
@@ -133,12 +142,12 @@ describe('createQueryFn priority', () => {
   });
 
   it('puts an editor lookup ahead of jobs, compares and polls, even cached', async () => {
-    const { client, started, queueDependents, drain } = setup();
+    const { client, started, send, queueDependents, drain } = setup();
     client.setQueryData(runs('acme/api'), fetched([]));
     client.setQueryData(repos, fetched([]));
     queueDependents();
-    void client.refetchQueries({ queryKey: runs('acme/api') });
-    void client.refetchQueries({ queryKey: repos });
+    send(client.refetchQueries({ queryKey: runs('acme/api') }));
+    send(client.refetchQueries({ queryKey: repos }));
     await drain();
     expect(started).toEqual([
       'jobs 1',

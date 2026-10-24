@@ -5,26 +5,26 @@
  * arrangement; rung 0 shows only the icon and badge.
  *
  * The whole cell is a link to the job (or Amplify console) laid under its
- * text: a click or Enter follows it, a touch tap or Space opens the detail
- * sheet; the behind/diverged badge is a separate link to the compare page,
- * placed above it (links can't nest). The cell link's accessible name
- * carries status, time and badge, whatever the rung shows.
+ * text (`CellCover`): a click or Enter follows it, a touch tap or Space
+ * opens the detail sheet; a record with no link gets a button instead,
+ * which opens the sheet, as an empty cell does. The behind/diverged badge
+ * is a separate link to the compare page, placed above it (links can't
+ * nest). The cover's accessible name carries status, time and badge,
+ * whatever the rung shows.
  *
  * @module
  */
-import { useRef } from 'react';
-
 import { ExternalLink } from '@/components/ExternalLink';
 import type { BoardCell } from '@/engine';
 import { cn } from '@/lib/utils';
 
+import { CellCover, type Inspect } from './CellCover';
 import { type Keyed, Lines } from './CellLines';
 import { markedLook, markWords } from './cellMarks';
 import { gapStyle } from './cellStyles';
 import {
   badgeDescription,
   badgeText,
-  DETAILS_KEY,
   EMPTY_LABEL,
   EMPTY_SYMBOL,
   firstLine,
@@ -70,8 +70,7 @@ export function Cell({
   onInspect,
   onOpenSheet,
 }: CellProps): React.JSX.Element {
-  const touched = useRef(false);
-  const inspect = {
+  const inspect: Inspect = {
     onMouseEnter: (e: React.MouseEvent<HTMLElement>) =>
       onInspect?.(e.currentTarget),
     onMouseLeave: () => onInspect?.(null),
@@ -206,37 +205,11 @@ export function Cell({
       )}
       style={look.style}
     >
-      <ExternalLink
-        unstyled
+      <CellCover
         href={derivation.linkUrl}
-        aria-label={name}
-        aria-keyshortcuts={onOpenSheet ? DETAILS_KEY.name : undefined}
-        className="absolute inset-0 rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-white"
-        onPointerDown={(e) => {
-          touched.current = e.pointerType === 'touch';
-        }}
-        onClick={(e) => {
-          // A tap opens the detail sheet; a click and Enter follow the link.
-          if (touched.current && onOpenSheet) {
-            e.preventDefault();
-            onOpenSheet();
-          }
-        }}
-        onKeyDown={(e) => {
-          // The details key opens the sheet (and doesn't scroll the page).
-          if (
-            e.key !== DETAILS_KEY.key ||
-            !onOpenSheet ||
-            e.altKey ||
-            e.ctrlKey ||
-            e.metaKey ||
-            e.shiftKey
-          )
-            return;
-          e.preventDefault();
-          onOpenSheet();
-        }}
-        {...inspect}
+        name={name}
+        inspect={inspect}
+        onOpenSheet={onOpenSheet}
       />
       <RefreshingDot cell={cell} />
       {/* Text sits above the cover link but lets clicks through; the badge

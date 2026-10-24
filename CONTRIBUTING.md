@@ -43,7 +43,8 @@ npm run knip
 npm run build
 ```
 
-- `eslint-disable`, `@ts-ignore` and `@ts-expect-error` are forbidden. Fix the code. If a rule seems wrong, raise it in the PR instead of suppressing it.
+- **Lint rules cover tests.** Every rule applies to tests and test utilities (`*.test.ts(x)`, `src/test/**`) exactly as to app code; tests only gain rules (Vitest's recommended set).
+- `@ts-ignore` and `@ts-expect-error` are forbidden, and so is `eslint-disable`, with one exception: a single test may disable one rule, on the one line that needs it (`// eslint-disable-next-line <rule> -- <reason>`), only when the test intrinsically requires code that breaks the rule. The reason in the comment must be compelling and say why; list each such disable in the PR body. Otherwise fix the code, and if a rule seems wrong, raise it in the PR instead of suppressing it.
 - Don't loosen lint, TypeScript or knip configuration to make a check pass.
 
 ## Before review (every PR)
@@ -68,6 +69,7 @@ These checks **start from the code the PR touched**. That is the point of depart
 - **Ports and adapters**: pure domain logic in `src/domain`; providers behind interfaces; React components render and hold UI state only.
 - **Files stay under 300 lines** (ESLint `max-lines`). Split by responsibility before that.
 - **Exports state their return types**, test utilities included (ESLint `explicit-module-boundary-types`).
+- **No floating promises, tests included** (ESLint `no-floating-promises`, `void` not accepted): await a promise, return it, or handle its rejection. A test that must leave a request in flight holds its promise and settles it before the test ends. Only router navigation and TanStack's invalidation and refetch, which never reject, may be called without awaiting.
 - **Every non-test module starts with a TSDoc `@module` comment** saying what it is for.
 - **No React act(...) warnings.** One fails the test that logged it (`src/test/actGuard.ts`). Wrap state-changing work the test does directly in `act` (focus an element with `focusElement` from `src/test/focus.ts`, not a bare `element.focus()`), and await async updates with `findBy*` or `waitFor`. Never stub `console.error` to hide one.
 - **Tests sit next to the code** (`*.test.ts(x)`). Use fakes for ports. Provider fixtures are recorded from real API responses, then trimmed and anonymised to `acme/*`.

@@ -1,7 +1,7 @@
 /**
  * ESLint flat config: strict type-checked TypeScript rules, TSDoc syntax,
  * import sorting, React Hooks / Fast Refresh rules & Prettier for all
- * TS/TSX files; Vitest rules for tests.
+ * TS/TSX files, tests included; Vitest rules added for tests.
  *
  * @module
  */
@@ -58,8 +58,9 @@ export default defineConfig(
   {
     // CONTRIBUTING (Use library controls): native selects, collapsibles
     // and checkboxes only inside the library wrappers in src/components.
+    // Their tests are not wrappers, so the rule covers them (Decision 50).
     files: ['src/**/*.tsx'],
-    ignores: ['src/components/**'],
+    ignores: ['src/components/**/!(*.test).tsx'],
     rules: {
       'no-restricted-syntax': [
         'error',
@@ -83,6 +84,33 @@ export default defineConfig(
             "JSXOpeningElement[name.name='input'] > JSXAttribute[name.name='type'] > JSXExpressionContainer > Literal[value='checkbox']",
           message:
             'Use CheckField (the library Checkbox with its Label), not a native checkbox.',
+        },
+      ],
+    },
+  },
+  {
+    // A promise is awaited or handled, never dropped with `void` (a
+    // rejection would go unreported). This covers tests and test
+    // utilities like every other rule. Router navigation and TanStack's
+    // invalidation and refetch never reject.
+    files: ['**/*.{ts,tsx}'],
+    rules: {
+      '@typescript-eslint/no-floating-promises': [
+        'error',
+        {
+          ignoreVoid: false,
+          allowForKnownSafeCalls: [
+            {
+              from: 'package',
+              package: 'react-router',
+              name: 'NavigateFunction',
+            },
+            {
+              from: 'package',
+              package: '@tanstack/query-core',
+              name: ['invalidateQueries', 'refetchQueries'],
+            },
+          ],
         },
       ],
     },

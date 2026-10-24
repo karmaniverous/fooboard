@@ -7,9 +7,17 @@
  * independent copy under a new id. Secrets never leave this module except
  * to the providers that use them.
  *
+ * Subscribers hear which credential changed and whether what was read
+ * with it must go (spec.md §3.1, §3.4, Decision 27): a replaced secret,
+ * *Forget* (removing a credential and deleting a dashboard forget its
+ * secrets) and unticking *Remember* drop its data; entering a first
+ * secret, entering the same one again and ticking *Remember* don't.
+ *
  * @module
  */
 import { z } from 'zod';
+
+import { fingerprintOf } from '@/lib/fingerprint';
 
 import {
   KEY_PREFIX,
@@ -33,12 +41,21 @@ const CredentialSecretSchema = z.discriminatedUnion('kind', [
 ]);
 export type CredentialSecret = z.infer<typeof CredentialSecretSchema>;
 
+/** Hears a change to credential `id`; `dropsData`: its data must go. */
+type CredentialListener = (id: string, dropsData: boolean) => void;
+
 const keyFor = (id: string): string => `${KEY_PREFIX}credential:${id}`;
 
 export interface CredentialStore {
   get(id: string): CredentialSecret | undefined;
   /** Is this secret kept on the device (vs. this session only)? */
   isRemembered(id: string): boolean;
+  /** The fingerprint of the secret a read uses now (the session's, else
+   * the device's). */
+  fingerprint(id: string): string | undefined;
+  /** The fingerprint of the secret kept on the device, if any: only what
+   * was read with it may be kept at rest (Decision 27). */
+  rememberedFingerprint(id: string): string | undefined;
   set(id: string, secret: CredentialSecret, remember: boolean): void;
   /** *Forget*: remove from the device and the session. */
   forget(id: string): void;
@@ -46,16 +63,17 @@ export interface CredentialStore {
   copy(fromId: string, toId: string): void;
   /** Drop the session-only secrets (part of *Reset*). */
   clearSession(): void;
-  /** Called after any change, so readers built from secrets can rebuild. */
-  subscribe(listener: (id: string) => void): () => void;
+  /** Called after any change, so readers built from secrets can rebuild;
+   * `dropsData` says whether what was read with the credential must go. */
+  subscribe(listener: CredentialListener): () => void;
 }
 
 /** `device` is local storage; session secrets stay in this object. */
 export function createCredentialStore(device: KeyValueStore): CredentialStore {
   let session = memoryStorage();
-  const listeners = new Set<(id: string) => void>();
-  const changed = (id: string): void => {
-    for (const listener of listeners) listener(id);
+  const listeners = new Set<CredentialListener>();
+  const changed = (id: string, dropsData: boolean): void => {
+    for (const listener of listeners) listener(id, dropsData);
   };
 
   const read = (store: KeyValueStore, id: string) => {
@@ -68,13 +86,18 @@ export function createCredentialStore(device: KeyValueStore): CredentialStore {
   const store: CredentialStore = {
     get: (id) => read(session, id) ?? read(device, id),
     isRemembered: (id) => read(device, id) !== undefined,
+    fingerprint: (id) => fingerprintOf(store.get(id)),
+    rememberedFingerprint: (id) => fingerprintOf(read(device, id)),
     set: (id, secret, remember) => {
       const value = JSON.stringify(CredentialSecretSchema.parse(secret));
+      const before = store.get(id);
+      const replaced = before !== undefined && JSON.stringify(before) !== value;
+      const unremembered = !remember && store.isRemembered(id);
       // Exactly one home. Write the new home first, so a failed write (e.g.
       // storage quota) leaves the existing copy in place.
       (remember ? device : session).setItem(keyFor(id), value);
       (remember ? session : device).removeItem(keyFor(id));
-      changed(id);
+      changed(id, replaced || unremembered);
     },
     forget: (id) => {
       // The session copy first, and subscribers told even if the device
@@ -83,7 +106,7 @@ export function createCredentialStore(device: KeyValueStore): CredentialStore {
       try {
         device.removeItem(keyFor(id));
       } finally {
-        changed(id);
+        changed(id, true);
       }
     },
     copy: (fromId, toId) => {
