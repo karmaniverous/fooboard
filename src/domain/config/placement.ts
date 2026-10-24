@@ -33,10 +33,10 @@ export const GroupStageRulesSchema = z.record(
 /** A row's stage-rule overrides, by stage id. */
 export const RowStageRulesSchema = z.record(z.string().min(1), RuleSchema);
 
-/** The row axis's rules at one level, for one source. */
+/** The row axis's rules at one level, for one source: its record rule
+ * (item rules are settings, spec.md §3.11). */
 const RowRulesSchema = z.object({
   record: RuleSchema.optional(),
-  items: RuleSchema.optional(),
 });
 
 /** The row axis's rules per source, at a level several sources share. */
@@ -69,7 +69,6 @@ interface PlacedRow {
   type: Provider;
   stageRules: Record<string, Rule>;
   recordRule?: Rule;
-  itemRule?: Rule;
 }
 
 /** The stage rule for `row`'s cell in `stageId`, or `undefined` when no
@@ -93,24 +92,16 @@ export function stageRuleFor(
   );
 }
 
-/** `row`'s record and item rules; unset at every level, everything
- * matches (a row reads only its own repo or app). */
-export function rowRulesFor(
-  scope: PlacementScope,
-  row: PlacedRow,
-): { record: Rule; items: Rule } {
+/** `row`'s record rule; unset at every level, everything matches (a row
+ * reads only its own repo or app). Its item rule is a setting
+ * (`resolveSetting`, spec.md §3.11). */
+export function recordRuleFor(scope: PlacementScope, row: PlacedRow): Rule {
   const p = row.type;
   const group = scope.rowGroups.find((g) => g.memberIds.includes(row.id));
-  return {
-    record:
-      row.recordRule ??
-      group?.rowRules[p]?.record ??
-      scope.rowRules[p]?.record ??
-      always,
-    items:
-      row.itemRule ??
-      group?.rowRules[p]?.items ??
-      scope.rowRules[p]?.items ??
-      always,
-  };
+  return (
+    row.recordRule ??
+    group?.rowRules[p]?.record ??
+    scope.rowRules[p]?.record ??
+    always
+  );
 }

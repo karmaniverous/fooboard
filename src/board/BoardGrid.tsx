@@ -13,11 +13,12 @@ import { Fragment, useState } from 'react';
 import { WithTooltip } from '@/components/ui/tooltip';
 import type { Dashboard } from '@/domain/config/dashboard';
 import { groupSegments } from '@/domain/groups/segments';
-import { type BoardModel, cellKey, CellKeySchema } from '@/engine';
+import { type BoardModel, cellKey } from '@/engine';
 import { cn } from '@/lib/utils';
 
 import { Cell } from './Cell';
 import { CellDetail, CellSheet, CellTooltip } from './CellDetail';
+import { cellNames, cellSettingsAt } from './cellNames';
 import { cellPlace } from './cellView';
 import { columnLines } from './columnFrame';
 import { ColumnGroupLabels } from './ColumnGroupLabels';
@@ -83,13 +84,7 @@ export function BoardGrid({
     focused: boolean;
   } | null>(null);
   const [sheet, setSheet] = useState<string | null>(null);
-  const names = (key: string) => {
-    const [rowId, stageId] = CellKeySchema.parse(JSON.parse(key));
-    return {
-      rowName: rows.find((r) => r.id === rowId)?.displayName ?? rowId,
-      stageName: stages.find((s) => s.id === stageId)?.name ?? stageId,
-    };
-  };
+  const names = (key: string) => cellNames(dashboard, key);
   const detail = (key: string, interactive: boolean) => {
     const cell = model.cells[key];
     return cell ? (
@@ -97,6 +92,7 @@ export function BoardGrid({
         cell={cell}
         interactive={interactive}
         problems={marks.cells.get(key)}
+        settings={interactive ? cellSettingsAt(dashboard, key) : []}
         {...names(key)}
       />
     ) : null;

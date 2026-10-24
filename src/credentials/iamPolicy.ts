@@ -142,14 +142,14 @@ export const accountPolicy = (): IamPolicy => policyOver([]);
 export const policyTemplate = (): IamPolicy => policyOver([TEMPLATE_APP_ARN]);
 
 /** Every Amplify app a dashboard reads (each once), across its rows'
- * sources, and how many sources were skipped for an invalid region or app
- * id. */
+ * pinned apps, and how many pins were skipped for an invalid region or
+ * app id. */
 export function dashboardApps(dashboard: Dashboard): {
   apps: PolicyApp[];
   skipped: number;
 } {
   const sources = dashboard.rows.flatMap((r) =>
-    r.type === 'amplify' ? r.sources : [],
+    r.type === 'amplify' ? r.pinnedApps : [],
   );
   const valid = sources.flatMap((s) => {
     const app = PolicyAppSchema.safeParse(s);

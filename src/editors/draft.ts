@@ -107,7 +107,12 @@ export function draftFor(
     case UNMAPPED.noItemCounts: {
       const row = rowsFor(run, dashboard, UNMAPPED.noItemCounts).at(0);
       if (!row) return { tab: 'Statuses' };
-      const set = statusSetFor(dashboard, row);
+      // The row's set in its first column: an unmapped run is in none.
+      const set = statusSetFor(
+        dashboard,
+        row,
+        dashboard.stages.at(0)?.id ?? '',
+      );
       const item = itemsOf(record).at(0);
       return {
         tab: 'Statuses',

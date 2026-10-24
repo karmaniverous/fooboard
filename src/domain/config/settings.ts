@@ -1,13 +1,17 @@
 /**
- * Dashboard settings (spec.md §3.2–3.3, Decision 10): requests in flight
- * per credential, one setting per platform. Each GitHub token and each
- * AWS key of the dashboard may have this many requests running at once,
- * per tab. Higher fills the board faster; bursts can trigger the
+ * Dashboard settings (spec.md §3.2–3.3, §3.11; Decisions 10 and 51): the
+ * shared settings object (`SettingsSchema`) at the dashboard level, beside
+ * requests in flight per credential, one setting per platform, which
+ * stays dashboard-only and is not part of the shared object. Each GitHub
+ * token and each AWS key of the dashboard may have this many requests
+ * running at once, per tab. Higher fills the board faster; bursts can trigger the
  * provider's secondary limits or throttling; 1 sends one at a time.
  *
  * @module
  */
 import { z } from 'zod';
+
+import { SettingsSchema } from '@/domain/settings/schema';
 
 import type { CredentialKind } from './credentials';
 
@@ -24,8 +28,9 @@ const RequestsInFlightSchema = z
   .max(REQUESTS_IN_FLIGHT_MAX)
   .default(DEFAULT_REQUESTS_IN_FLIGHT);
 
-/** A dashboard's settings, defaulted field by field. */
-export const DashboardSettingsSchema = z.object({
+/** A dashboard's settings: the shared object, and requests in flight
+ * defaulted field by field. */
+export const DashboardSettingsSchema = SettingsSchema.extend({
   requestsInFlight: z
     .object({ github: RequestsInFlightSchema, aws: RequestsInFlightSchema })
     .default(() => defaultRequestsInFlight()),

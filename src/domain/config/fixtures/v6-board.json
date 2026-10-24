@@ -1,0 +1,210 @@
+{
+  "schemaVersion": 5,
+  "dashboards": [
+    {
+      "id": "northwind",
+      "name": "Northwind deploys",
+      "credentials": [
+        { "id": "gh-org", "kind": "github", "label": "Northwind org" },
+        { "id": "aws-dev", "kind": "aws", "label": "Dev account" },
+        { "id": "aws-stage", "kind": "aws", "label": "Stage account" },
+        { "id": "aws-prod", "kind": "aws", "label": "Prod account" }
+      ],
+      "customStatusSets": [],
+      "sourceRules": { "github": "github", "amplify": "amplify" },
+      "customSourceRules": [],
+      "stageRules": {},
+      "rowRules": {
+        "github": {
+          "record": {
+            "combine": "and",
+            "checks": [
+              {
+                "path": "$.name",
+                "operator": "glob",
+                "value": "Deploy*",
+                "ignoreCase": true,
+                "quantifier": "any",
+                "not": false
+              }
+            ]
+          }
+        }
+      },
+      "settings": {
+        "githubToken": "gh-org",
+        "awsKey": "aws-dev",
+        "statusSets": { "github": "github-deploy-test", "amplify": "amplify" },
+        "itemRules": {
+          "github": {
+            "combine": "and",
+            "checks": [
+              {
+                "path": "$.name",
+                "operator": "glob",
+                "value": "*deploy*",
+                "ignoreCase": true,
+                "quantifier": "any",
+                "not": false
+              }
+            ]
+          }
+        },
+        "requestsInFlight": { "github": 8, "aws": 4 }
+      },
+      "stages": [
+        { "id": "dev", "name": "Dev", "rules": {}, "settings": {} },
+        {
+          "id": "test",
+          "name": "Test",
+          "rules": {},
+          "sourceStageId": "dev",
+          "settings": {}
+        },
+        {
+          "id": "stage",
+          "name": "Stage",
+          "rules": {},
+          "sourceStageId": "test",
+          "settings": {}
+        },
+        {
+          "id": "prod",
+          "name": "Prod",
+          "rules": {},
+          "sourceStageId": "stage",
+          "settings": {}
+        }
+      ],
+      "columnGroups": [
+        {
+          "id": "pre",
+          "label": "Pre-production",
+          "memberIds": ["dev", "test"],
+          "stageRules": {},
+          "settings": {}
+        },
+        {
+          "id": "live",
+          "memberIds": ["stage", "prod"],
+          "stageRules": {},
+          "settings": {}
+        }
+      ],
+      "rowGroups": [
+        {
+          "id": "web",
+          "label": "Web apps",
+          "memberIds": ["portal", "admin"],
+          "stageRules": {},
+          "rowRules": {},
+          "settings": {
+            "awsKey": "aws-stage",
+            "statusSets": { "amplify": "amplify" },
+            "itemRules": {
+              "amplify": {
+                "combine": "and",
+                "checks": [
+                  {
+                    "path": "$.jobType",
+                    "operator": "glob",
+                    "value": "RELEASE",
+                    "ignoreCase": true,
+                    "quantifier": "any",
+                    "not": false
+                  }
+                ]
+              }
+            }
+          }
+        },
+        {
+          "id": "svc",
+          "label": "Services",
+          "memberIds": ["orders-api", "billing-api"],
+          "stageRules": {},
+          "rowRules": {},
+          "settings": { "githubToken": "gh-org" }
+        }
+      ],
+      "rows": [
+        {
+          "type": "amplify",
+          "id": "portal",
+          "repo": "northwind/portal",
+          "displayName": "Portal",
+          "settings": { "githubToken": "gh-org" },
+          "pinnedApps": [
+            { "credentialId": "aws-dev", "region": "us-east-1", "appId": "d1portaldev" },
+            { "credentialId": "aws-stage", "region": "us-east-1", "appId": "d1portalstage" },
+            { "credentialId": "aws-prod", "region": "us-west-2", "appId": "d1portalprod" }
+          ],
+          "stageRules": {},
+          "cellSettings": { "prod": { "statusSets": { "amplify": "amplify" } } }
+        },
+        {
+          "type": "amplify",
+          "id": "admin",
+          "repo": "northwind/admin",
+          "displayName": "Admin",
+          "settings": {
+            "awsKey": "aws-prod",
+            "statusSets": { "amplify": "amplify" }
+          },
+          "pinnedApps": [
+            { "credentialId": "aws-prod", "region": "us-east-1", "appId": "d1adminstage" },
+            { "credentialId": "aws-prod", "region": "us-east-1", "appId": "d1adminprod" }
+          ],
+          "stageRules": {},
+          "cellSettings": {}
+        },
+        {
+          "type": "amplify",
+          "id": "kiosk",
+          "displayName": "Kiosk",
+          "settings": {},
+          "pinnedApps": [{ "region": "eu-west-1", "appId": "d1kiosk" }],
+          "stageRules": {},
+          "cellSettings": {}
+        },
+        {
+          "type": "github",
+          "id": "orders-api",
+          "repo": "northwind/orders-api",
+          "displayName": "Orders API",
+          "settings": {
+            "githubToken": "gh-org",
+            "itemRules": {
+              "github": {
+                "combine": "and",
+                "checks": [
+                  {
+                    "path": "$.name",
+                    "operator": "glob",
+                    "value": "*orders*",
+                    "ignoreCase": true,
+                    "quantifier": "any",
+                    "not": false
+                  }
+                ]
+              }
+            }
+          },
+          "stageRules": {},
+          "cellSettings": {
+            "dev": { "statusSets": { "github": "github-single-job" } }
+          }
+        },
+        {
+          "type": "github",
+          "id": "billing-api",
+          "repo": "northwind/billing-api",
+          "displayName": "Billing API",
+          "settings": { "statusSets": { "github": "github-single-job" } },
+          "stageRules": {},
+          "cellSettings": {}
+        }
+      ]
+    }
+  ]
+}

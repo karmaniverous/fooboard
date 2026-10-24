@@ -42,7 +42,7 @@ const withGh = (store: CredentialStore) => {
     id: 'd',
     name: 'D',
     credentials: [{ id: 'gh', kind: 'github', label: 'gh' }],
-    defaultCredentials: { github: 'gh' },
+    settings: { githubToken: 'gh' },
   });
 };
 
@@ -117,7 +117,7 @@ describe('credential operations', () => {
     const ref = copy.credentials[0];
     expect(ref).toMatchObject({ kind: 'github', label: 'gh' });
     expect(ref.id).not.toBe('gh');
-    expect(copy.defaultCredentials.github).toBe(ref.id);
+    expect(copy.settings.githubToken).toBe(ref.id);
     expect(store.get(ref.id)).toBeUndefined();
   });
 

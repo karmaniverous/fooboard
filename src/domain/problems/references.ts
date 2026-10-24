@@ -16,15 +16,11 @@ import {
 import { DEFAULT_STATUS_SET_IDS } from '@/domain/config/statusSets';
 import { builtinSourceFor } from '@/domain/model/builtinSources';
 import { findSourceRule } from '@/domain/model/sources';
+import { heldSettings } from '@/domain/settings/places';
 import { presetById } from '@/domain/statuses/presets';
 import { findStatusSet } from '@/domain/statuses/resolve';
 
-import {
-  type EditTarget,
-  type Problem,
-  problem,
-  type ProblemLevel,
-} from './problem';
+import { levelOfPlace, type Problem, problem } from './problem';
 
 /** Why `found` can't serve `provider`, or `undefined` when it can. */
 function mismatch(
@@ -63,62 +59,40 @@ function sourceRefProblems(d: Dashboard): Problem[] {
   });
 }
 
-/** Status sets chosen at each level that are unknown, or for another
- * source than the rows there. */
+/** Status sets chosen at each level (spec.md §3.11) that are unknown,
+ * or for another source than the one they are set for. */
 function statusSetRefProblems(d: Dashboard): Problem[] {
-  const out: Problem[] = [];
-  const check = (
-    id: string | undefined,
-    provider: Provider,
-    level: ProblemLevel,
-    target: EditTarget,
-  ) => {
-    if (id === undefined) return;
-    const why = mismatch(
-      id,
-      findStatusSet(id, d.customStatusSets),
-      provider,
-      'status set',
-    );
-    if (why)
-      out.push(
-        problem(
-          level,
-          `${why}: using ${presetById(DEFAULT_STATUS_SET_IDS[provider]).name}`,
-          false,
-          { target },
-        ),
-      );
-  };
-  for (const p of PROVIDERS)
-    check(
-      d.statusSets[p],
-      p,
-      { kind: 'dashboard' },
-      {
-        kind: 'dashboard',
-        part: 'statusSets',
-      },
-    );
-  for (const g of d.rowGroups) {
-    const level = { kind: 'rowGroup', id: g.id } as const;
-    for (const p of PROVIDERS) check(g.statusSets[p], p, level, level);
-  }
   const stageIds = new Set(d.stages.map((s) => s.id));
-  for (const row of d.rows) {
-    const p: Provider = row.type;
-    const level = { kind: 'row', id: row.id } as const;
-    check(row.statusSet, p, level, level);
-    for (const [stageId, id] of Object.entries(row.cellStatusSets))
-      if (stageIds.has(stageId))
-        check(
-          id,
-          p,
-          { kind: 'cell', rowId: row.id, stageId },
-          { ...level, stageId },
-        );
-  }
-  return out;
+  return heldSettings(d).flatMap(({ place, settings }) =>
+    PROVIDERS.flatMap((provider) => {
+      const id = settings.statusSets?.[provider];
+      if (id === undefined) return [];
+      if (place.level === 'cell' && !stageIds.has(place.stageId)) return [];
+      const why = mismatch(
+        id,
+        findStatusSet(id, d.customStatusSets),
+        provider,
+        'status set',
+      );
+      return why
+        ? [
+            problem(
+              levelOfPlace(place),
+              `${why}: using ${presetById(DEFAULT_STATUS_SET_IDS[provider]).name}`,
+              false,
+              {
+                target: {
+                  kind: 'settings',
+                  place,
+                  field: 'statusSets',
+                  source: provider,
+                },
+              },
+            ),
+          ]
+        : [];
+    }),
+  );
 }
 
 /** Every reference in `d` that doesn't resolve. */

@@ -38,6 +38,7 @@ describe('editor sections', () => {
         id: 'group-prod',
         label: 'Production',
         memberIds: ['prod'],
+        settings: {},
         stageRules: {},
       },
     ]);
@@ -53,7 +54,7 @@ describe('editor sections', () => {
     expect(latest.current.stages.map((s) => s.id)).toEqual(['prod', 'dev']);
   });
 
-  it('customises a source rule and edits what it reads, and the status sets', () => {
+  it('customises a source rule and edits what it reads, and the status set in the settings', () => {
     const latest = setup();
     tab('Sources');
     fireEvent.click(screen.getAllByRole('button', { name: 'Customise' })[0]);
@@ -69,8 +70,16 @@ describe('editor sections', () => {
       screen.getByText('3 requests per repo per poll'),
     ).toBeInTheDocument();
 
-    tab('Statuses');
-    choose(screen.getByLabelText('GitHub status set'), 'GitHub single job');
-    expect(latest.current.statusSets.github).toBe(PRESET_IDS.githubSingleJob);
+    tab('General');
+    expand('Settings');
+    choose(
+      screen.getByRole('combobox', {
+        name: 'GitHub status set for Dashboard Board',
+      }),
+      'GitHub single job',
+    );
+    expect(latest.current.settings.statusSets?.github).toBe(
+      PRESET_IDS.githubSingleJob,
+    );
   });
 });

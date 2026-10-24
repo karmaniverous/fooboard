@@ -161,7 +161,7 @@ describe('item rules follow the source rule', () => {
           id: 'site',
           repo: 'acme/site',
           displayName: 'site',
-          sources: [{ region: 'us-east-1', appId: 'a' }],
+          pinnedApps: [{ region: 'us-east-1', appId: 'a' }],
         },
       ],
       rowGroups: [],
@@ -177,8 +177,11 @@ describe('item rules follow the source rule', () => {
     });
     setup(withItems, { tab: 'Rows' });
     expand('site');
+    fireEvent.click(screen.getAllByRole('button', { name: /^Settings/ })[0]);
     expect(
-      screen.getByRole('group', { name: 'Item rule for site' }),
+      screen.getByRole('button', {
+        name: 'Set here: Amplify item rule for Row site',
+      }),
     ).toBeInTheDocument();
     expect(
       within(

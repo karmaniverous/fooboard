@@ -38,7 +38,8 @@ export interface CellStaleness {
   settled: boolean;
 }
 
-/** Where a row's compares go: its git link. */
+/** Where a cell's compares go: its git link, with the token the cell
+ * reads (spec.md §3.11). */
 export interface GitLink {
   client: QueryClient;
   credentialId: string;
@@ -72,15 +73,17 @@ const pointOf = (d: CellPoint | undefined) =>
 const answered = (snap: Snapshot<GithubData['compare']>) =>
   snap.failed && !isRateLimit(snap.error) ? undefined : snap.data?.data;
 
-/** Every stage's staleness for one row, and the compares it needs. */
+/** Every stage's staleness for one row, and the compares it needs; each
+ * compare goes through the link of the cell being compared. */
 export function rowStaleness(
-  link: GitLink | undefined,
+  linkFor: (stageId: string) => GitLink | undefined,
   stages: readonly Stage[],
   cells: Readonly<Partial<Record<string, { derivation: CellPoint }>>>,
 ): { staleness: Partial<Record<string, CellStaleness>>; needs: Need[] } {
   const staleness: Partial<Record<string, CellStaleness>> = {};
   const needs: Need[] = [];
   for (const stage of stages) {
+    const link = linkFor(stage.id);
     const own = pointOf(cells[stage.id]?.derivation);
     const source = stage.sourceStageId
       ? pointOf(cells[stage.sourceStageId]?.derivation)

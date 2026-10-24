@@ -32,7 +32,7 @@ export const start = DashboardSchema.parse({
     { id: 'gh', kind: 'github', label: 'gh' },
     { id: 'aws', kind: 'aws', label: 'aws' },
   ],
-  defaultCredentials: { github: 'gh', aws: 'aws' },
+  settings: { githubToken: 'gh', awsKey: 'aws' },
   rows: [
     { type: 'github', id: 'api', repo: 'acme/api', displayName: 'api' },
     { type: 'github', id: 'web', repo: 'acme/web', displayName: 'web' },

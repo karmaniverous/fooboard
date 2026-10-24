@@ -1,30 +1,21 @@
 /**
- * Which status set a cell uses (spec.md A§4.3.6), and checks that every
- * reference to one resolves. A set is a bundled preset or one of the
- * dashboard's own (custom) sets, for one provider. The cell's own choice
- * beats its row's, then its row group's, then the dashboard's default for
- * the row's provider; a chosen set replaces the inherited one outright.
+ * Which status set a cell uses (spec.md A§4.3.6, §3.11), and checks that
+ * every reference to one resolves. A set is a bundled preset or one of
+ * the dashboard's own (custom) sets, for one provider. The set id is a
+ * setting, resolved per cell by the settings resolver; a chosen set
+ * replaces the inherited one outright.
  *
  * @module
  */
-import { groupOf, type RowGroup } from '@/domain/config/groups';
-import { type Provider } from '@/domain/config/providers';
+import type { Dashboard } from '@/domain/config/dashboard';
 import type { Row } from '@/domain/config/row';
 import {
   DEFAULT_STATUS_SET_IDS,
   type StatusSet,
 } from '@/domain/config/statusSets';
+import { resolveSetting } from '@/domain/settings/resolve';
 
 import { presetById, PRESETS } from './presets';
-
-/** What resolution needs of a dashboard. */
-export interface StatusSetScope {
-  statusSets: Record<Provider, string>;
-  customStatusSets: readonly StatusSet[];
-  rowGroups: readonly RowGroup[];
-}
-
-const providerOf = (row: Pick<Row, 'type'>): Provider => row.type;
 
 /** The set with `id`: a bundled preset, or one of `custom`. */
 export const findStatusSet = (
@@ -33,64 +24,28 @@ export const findStatusSet = (
 ): StatusSet | undefined =>
   PRESETS.find((p) => p.id === id) ?? custom.find((s) => s.id === id);
 
-/** The id of the set a row inherits: its row group's, else the
- * dashboard's, for the row's provider. */
-export function inheritedStatusSetId(
-  scope: Pick<StatusSetScope, 'statusSets' | 'rowGroups'>,
-  row: Row,
-): string {
-  const provider = providerOf(row);
-  return (
-    groupOf(scope.rowGroups, row.id)?.statusSets[provider] ??
-    scope.statusSets[provider]
-  );
-}
-
-/** Where the set a row's cell uses is chosen; a row group names itself. */
-export type StatusSetSource =
-  | { id: string; from: 'cell' | 'row' | 'dashboard' }
-  | { id: string; from: 'rowGroup'; groupId: string };
-
-/** The id of the set a row's cell in `stageId` uses, and the level that
- * chose it. */
-export function statusSetSource(
-  scope: Pick<StatusSetScope, 'statusSets' | 'rowGroups'>,
-  row: Row,
-  stageId?: string,
-): StatusSetSource {
-  const cell = stageId === undefined ? undefined : row.cellStatusSets[stageId];
-  if (cell) return { id: cell, from: 'cell' };
-  if (row.statusSet) return { id: row.statusSet, from: 'row' };
-  const group = groupOf(scope.rowGroups, row.id);
-  const fromGroup = group?.statusSets[providerOf(row)];
-  if (group && fromGroup)
-    return { id: fromGroup, from: 'rowGroup', groupId: group.id };
-  return { id: inheritedStatusSetId(scope, row), from: 'dashboard' };
-}
-
 /** The set a row's cell in `stageId` uses. An unknown id, or a set for
  * another source, falls back to the provider's default preset and is
  * reported as a rule problem (spec.md A§4.3.7), never thrown. */
 export function statusSetFor(
-  scope: StatusSetScope,
-  row: Row,
-  stageId?: string,
+  dashboard: Dashboard,
+  row: Pick<Row, 'id' | 'type'>,
+  stageId: string,
 ): StatusSet {
-  const { id } = statusSetSource(scope, row, stageId);
-  const provider = providerOf(row);
-  const found = findStatusSet(id, scope.customStatusSets);
-  if (found?.provider === provider) return found;
-  return presetById(DEFAULT_STATUS_SET_IDS[provider]);
+  const id = resolveSetting(dashboard, row, stageId, 'statusSets').value;
+  const found = findStatusSet(id, dashboard.customStatusSets);
+  if (found?.provider === row.type) return found;
+  return presetById(DEFAULT_STATUS_SET_IDS[row.type]);
 }
 
 type Issue = { message: string; path: (string | number)[] };
 
-/** Integrity problems with status sets: custom sets clashing with a
- * preset or each other, and cell choices for stages the dashboard doesn't
- * have. (References that don't resolve are rule problems.) */
+/** Integrity problems with status sets and cells: custom sets clashing
+ * with a preset or each other, and cell settings for stages the dashboard
+ * doesn't have. (References that don't resolve are rule problems.) */
 export function statusSetReferenceIssues(
-  dashboard: Pick<StatusSetScope, 'customStatusSets'> & {
-    rows: readonly Row[];
+  dashboard: Pick<Dashboard, 'customStatusSets'> & {
+    rows: readonly Pick<Row, 'cellSettings'>[];
     stages: readonly { id: string }[];
   },
 ): Issue[] {
@@ -107,11 +62,11 @@ export function statusSetReferenceIssues(
   });
   const stageIds = new Set(dashboard.stages.map((s) => s.id));
   dashboard.rows.forEach((row, ri) => {
-    for (const stageId of Object.keys(row.cellStatusSets))
+    for (const stageId of Object.keys(row.cellSettings))
       if (!stageIds.has(stageId))
         issues.push({
-          message: `status set for unknown stage: ${stageId}`,
-          path: ['rows', ri, 'cellStatusSets', stageId],
+          message: `settings for unknown stage: ${stageId}`,
+          path: ['rows', ri, 'cellSettings', stageId],
         });
   });
   return issues;

@@ -16,12 +16,10 @@ import {
   SourceRefsSchema,
   sourceRuleReferenceIssues,
 } from '@/domain/model/sources';
+import { rowSettingsIssues } from '@/domain/settings/integrity';
 import { statusSetReferenceIssues } from '@/domain/statuses/resolve';
 
-import {
-  credentialReferenceIssues,
-  DefaultCredentialsSchema,
-} from './credentialRefs';
+import { credentialReferenceIssues } from './credentialRefs';
 import { CredentialRefSchema } from './credentials';
 import { findAnyCycle } from './cycle';
 import { ColumnGroupSchema, type Group, RowGroupSchema } from './groups';
@@ -29,11 +27,7 @@ import { ProviderRowRulesSchema, ProviderRulesSchema } from './placement';
 import { RowSchema } from './row';
 import { DashboardSettingsSchema, defaultSettings } from './settings';
 import { StageSchema } from './stage';
-import {
-  DashboardStatusSetsSchema,
-  DEFAULT_STATUS_SET_IDS,
-  StatusSetSchema,
-} from './statusSets';
+import { StatusSetSchema } from './statusSets';
 
 type Issue = { message: string; path: (string | number)[] };
 
@@ -118,12 +112,6 @@ export const DashboardSchema = z
     /** Column groups replacing dividers (spec.md C-14b). */
     columnGroups: z.array(ColumnGroupSchema).default(() => []),
     credentials: z.array(CredentialRefSchema).default(() => []),
-    /** Default GitHub token and AWS key; rows and sources may override. */
-    defaultCredentials: DefaultCredentialsSchema.default(() => ({})),
-    /** The status set per provider (A§4.3.6); levels below may override. */
-    statusSets: DashboardStatusSetsSchema.default(() => ({
-      ...DEFAULT_STATUS_SET_IDS,
-    })),
     /** The dashboard's own status sets (customised presets), so it stays
      * self-contained for sharing and export. */
     customStatusSets: z.array(StatusSetSchema).default(() => []),
@@ -134,7 +122,8 @@ export const DashboardSchema = z
     })),
     /** The dashboard's own source rules (customised built-ins). */
     customSourceRules: z.array(SourceRuleSchema).default(() => []),
-    /** Requests in flight per credential, per platform (spec.md §3.2). */
+    /** The dashboard's settings (spec.md §3.11), beside requests in
+     * flight per credential, per platform (spec.md §3.2). */
     settings: DashboardSettingsSchema.default(() => defaultSettings()),
   })
   .superRefine((dashboard, ctx) => {
@@ -149,6 +138,7 @@ export const DashboardSchema = z
       ...duplicateIdIssues(dashboard.rows, 'rows', 'row'),
       ...duplicateStages,
       ...credentialReferenceIssues(dashboard),
+      ...dashboard.rows.flatMap((row, index) => rowSettingsIssues(row, index)),
       ...statusSetReferenceIssues(dashboard),
       ...sourceRuleReferenceIssues(dashboard),
       ...groupIssues(dashboard.rowGroups, dashboard.rows, 'rowGroups', 'row'),

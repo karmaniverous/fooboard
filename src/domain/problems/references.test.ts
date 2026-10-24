@@ -28,18 +28,43 @@ describe('references that do not resolve', () => {
     const problems = all3({
       ...base,
       sourceRules: { github: 'nope', amplify: 'github' },
-      statusSets: { github: 'gone', amplify: 'amplify' },
+      settings: { statusSets: { github: 'gone', amplify: 'amplify' } },
+      stages: [
+        {
+          ...base.stages[0],
+          settings: { statusSets: { amplify: 'gone-a' } },
+        },
+      ],
       rowGroups: [
-        { id: 'g', memberIds: ['web'], statusSets: { github: 'amplify' } },
+        {
+          id: 'g',
+          memberIds: ['web'],
+          settings: { statusSets: { github: 'amplify' } },
+        },
+      ],
+      columnGroups: [
+        {
+          id: 'cg',
+          memberIds: ['dev'],
+          settings: { statusSets: { github: 'gone-cg' } },
+        },
       ],
       rows: [
         {
           ...base.rows[0],
-          statusSet: 'amplify',
-          cellStatusSets: { dev: 'missing' },
+          settings: { statusSets: { github: 'amplify' } },
+          cellSettings: { dev: { statusSets: { github: 'missing' } } },
         },
       ],
     }).filter((p) => p.severity === 'problem');
+    const at = (place: object, source = 'github') => ({
+      kind: 'settings',
+      place,
+      field: 'statusSets',
+      source,
+    });
+    const wrong =
+      'status set amplify is for Amplify, not GitHub: using GitHub deploy and test';
     expect(problems.map((p) => [p.level, p.message, p.target])).toEqual([
       [
         { kind: 'dashboard' },
@@ -54,22 +79,28 @@ describe('references that do not resolve', () => {
       [
         { kind: 'dashboard' },
         'unknown status set gone: using GitHub deploy and test',
-        { kind: 'dashboard', part: 'statusSets' },
+        at({ level: 'dashboard' }),
       ],
       [
         { kind: 'rowGroup', id: 'g' },
-        'status set amplify is for Amplify, not GitHub: using GitHub deploy and test',
-        { kind: 'rowGroup', id: 'g' },
+        wrong,
+        at({ level: 'rowGroup', groupId: 'g' }),
       ],
       [
-        { kind: 'row', id: 'web' },
-        'status set amplify is for Amplify, not GitHub: using GitHub deploy and test',
-        { kind: 'row', id: 'web' },
+        { kind: 'columnGroup', id: 'cg' },
+        'unknown status set gone-cg: using GitHub deploy and test',
+        at({ level: 'columnGroup', groupId: 'cg' }),
       ],
+      [
+        { kind: 'stage', id: 'dev' },
+        'unknown status set gone-a: using Amplify',
+        at({ level: 'column', stageId: 'dev' }, 'amplify'),
+      ],
+      [{ kind: 'row', id: 'web' }, wrong, at({ level: 'row', rowId: 'web' })],
       [
         { kind: 'cell', rowId: 'web', stageId: 'dev' },
         'unknown status set missing: using GitHub deploy and test',
-        { kind: 'row', id: 'web', stageId: 'dev' },
+        at({ level: 'cell', rowId: 'web', stageId: 'dev' }),
       ],
     ]);
   });

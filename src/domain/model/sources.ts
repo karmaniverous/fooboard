@@ -9,7 +9,7 @@
  */
 import { z } from 'zod';
 
-import type { Provider } from '@/domain/config/providers';
+import { type Provider, PROVIDERS } from '@/domain/config/providers';
 
 import {
   BUILTIN_SOURCES,
@@ -52,6 +52,11 @@ export function sourceRuleFor<P extends Provider>(
   );
   return isSourceRuleFor(rule, provider) ? rule : builtinSourceFor(provider);
 }
+
+/** The sources whose source rule reads items (spec.md A§4.3.7: item
+ * rules are offered only for those). */
+export const sourcesWithItems = (scope: SourceScope): Provider[] =>
+  PROVIDERS.filter((p) => sourceRuleFor(scope, p).items !== undefined);
 
 /** Integrity problems with a dashboard's own source rules: ids shadowing
  * a built-in or repeated (references that don't resolve are rule

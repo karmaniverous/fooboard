@@ -15,7 +15,7 @@ import { translationProblems } from '@/domain/problems/runtime';
 import { appKey, type ResolvedAmplifySource } from '@/lib/amplify/rowJobs';
 
 import { appState } from './amplifyApp';
-import { resolvedSources } from './amplifyRow';
+import { rowApps } from './amplifyRow';
 import { amplifyUnmapped } from './amplifyUnmapped';
 import { githubGroup } from './githubGroup';
 import {
@@ -53,21 +53,24 @@ export function planGroups(
   const ctx = amplifyContext(env, dashboard);
   for (const row of dashboard.rows) {
     if (row.type === 'github') {
-      const credentialId = githubAccess(env, dashboard, row);
-      if (!credentialId) continue;
-      const id = githubGroupId(credentialId, row.repo);
-      const plan = plans.get(id);
-      if (plan?.kind === 'github') plan.rows.push(row);
-      else
-        plans.set(id, {
-          kind: 'github',
-          credentialId,
-          repo: row.repo,
-          rows: [row],
-        });
+      // One group per token the row's cells read with.
+      const tokens = new Set(githubAccess(env, dashboard, row).values());
+      for (const credentialId of tokens) {
+        if (!credentialId) continue;
+        const id = githubGroupId(credentialId, row.repo);
+        const plan = plans.get(id);
+        if (plan?.kind === 'github') plan.rows.push(row);
+        else
+          plans.set(id, {
+            kind: 'github',
+            credentialId,
+            repo: row.repo,
+            rows: [row],
+          });
+      }
       continue;
     }
-    const apps = resolvedSources(ctx, row) ?? [];
+    const apps = rowApps(ctx, row);
     for (const app of apps) {
       const id = amplifyGroupId(appKey(app));
       const plan = plans.get(id);

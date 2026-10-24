@@ -16,8 +16,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { PanelTabs } from '@/components/SidePanel';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { type Dashboard, DashboardSchema } from '@/domain/config/dashboard';
-import { PROVIDERS } from '@/domain/config/providers';
-import { sourceRuleFor } from '@/domain/model/sources';
+import { sourcesWithItems } from '@/domain/model/sources';
 import type { Problem } from '@/domain/problems/problem';
 import { describeError } from '@/lib/errors';
 
@@ -86,9 +85,7 @@ export function DashboardEditor({
   useEffect(() => {
     if (root.current && draft?.focus) focusItem(root.current, draft.focus);
   }, [draft]);
-  const withItems = PROVIDERS.filter(
-    (p) => sourceRuleFor(dashboard, p).items !== undefined,
-  );
+  const withItems = sourcesWithItems(dashboard);
   const update = (next: Dashboard) => {
     const parsed = DashboardSchema.safeParse(next);
     if (parsed.success) {

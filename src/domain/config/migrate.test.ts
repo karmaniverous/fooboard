@@ -23,6 +23,9 @@ vi.mock('./settings', async (importOriginal) => ({
  * today's defaults can't move them. */
 const V5_SETTINGS = { requestsInFlight: { github: 10, aws: 10 } };
 
+/** The status sets v6 gives a dashboard v5 stored none for: literal too. */
+const V5_STATUS_SETS = { github: 'github-deploy-test', amplify: 'amplify' };
+
 describe('migrate', () => {
   it('validates and returns current data, defaulting missing dashboards', () => {
     const input = { schemaVersion: CURRENT_SCHEMA_VERSION, dashboards: [] };
@@ -63,7 +66,7 @@ describe('migrate', () => {
     expect(out.schemaVersion).toBe(CURRENT_SCHEMA_VERSION);
   });
 
-  it('migrates v4 to v5, giving each dashboard default settings', () => {
+  it('migrates v4 through v5 to v6, giving each dashboard default settings', () => {
     const v4 = {
       schemaVersion: FIRST_VERSION,
       dashboards: [
@@ -78,8 +81,8 @@ describe('migrate', () => {
     const out = migrate(v4);
     expect(out.schemaVersion).toBe(CURRENT_SCHEMA_VERSION);
     expect(out.dashboards.map((d) => d.settings)).toEqual([
-      V5_SETTINGS,
-      { requestsInFlight: { github: 3, aws: 4 } },
+      { ...V5_SETTINGS, statusSets: V5_STATUS_SETS },
+      { requestsInFlight: { github: 3, aws: 4 }, statusSets: V5_STATUS_SETS },
     ]);
     expect(out.dashboards.map((d) => d.name)).toEqual(['A', 'B']);
   });

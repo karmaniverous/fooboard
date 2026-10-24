@@ -3,14 +3,13 @@
  * an AWS key's apps in every Amplify Hosting region, one `ListApps` query
  * per region, each app shown with its region. The GitHub repo picker is
  * in `RepoPicker`; the listed apps and adding one are in `AmplifyAppList`;
- * an Amplify row's sources are edited in `AmplifySources`.
+ * an Amplify row's pinned apps are edited in `PinnedApps`.
  *
  * @module
  */
 import { useState } from 'react';
 
 import { Button } from '@/components/ui/button';
-import { resolveCredentialId } from '@/domain/config/credentialRefs';
 import type { Dashboard } from '@/domain/config/dashboard';
 import type { AmplifyRow } from '@/domain/config/row';
 import type { RegionApp } from '@/lib/amplify/regions';
@@ -19,6 +18,7 @@ import { useQueryEnv } from '@/query/queryEnvContext';
 
 import { AmplifyAppList, type ListedApp } from './AmplifyAppList';
 import { CredentialSelect } from './CredentialSelect';
+import { dashboardDefault } from './dashboardDefault';
 import { repoFromUrl, rowFromApp } from './edit';
 import { LoadStatus } from './LoadStatus';
 import { useLoadFor } from './useLoad';
@@ -49,15 +49,13 @@ export function AmplifyPicker({
   const [credentialId, setCredentialId] = useState<string | undefined>();
   // Results and the add action use the key they were listed with;
   // changing it hides them until the list is fetched again.
+  const unset = dashboardDefault(dashboard, 'aws');
+  const resolved = credentialId ?? unset.id;
+  // An app is pinned under the key it was listed with (spec.md §3.12).
   const [apps, load] = useLoadFor<
     { credentialId: string | undefined },
     ListedApp[]
-  >({ credentialId });
-  const resolved = resolveCredentialId(
-    dashboard.defaultCredentials,
-    'aws',
-    credentialId,
-  );
+  >({ credentialId: resolved });
   const env = useQueryEnv();
   const key =
     resolved && env.providers.amplify(resolved) ? resolved : undefined;
@@ -76,6 +74,7 @@ export function AmplifyPicker({
           kind="aws"
           value={credentialId}
           onChange={setCredentialId}
+          unset={unset}
           label="AWS key for the new Amplify row"
         />
         <Button

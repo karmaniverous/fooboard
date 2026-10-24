@@ -30,6 +30,7 @@ import { GroupControl } from './GroupControl';
 import { listHandlers } from './groupEdit';
 import { ReorderList } from './ReorderList';
 import { ProviderRules } from './rules/ProviderRules';
+import { SettingsEditor } from './settings/SettingsEditor';
 import { useLoad } from './useLoad';
 
 /** The most matching branches a new stage's preview names. */
@@ -60,6 +61,7 @@ function AddStage({
       ),
       name: n,
       rules: branchRules(p),
+      settings: {},
     });
     setPattern('');
     setName('');
@@ -211,6 +213,11 @@ export function StagesEditor({
               onValueChange={(v) => {
                 replace({ ...stage, sourceStageId: v || undefined });
               }}
+            />
+            <SettingsEditor
+              dashboard={dashboard}
+              place={{ level: 'column', stageId: stage.id }}
+              onChange={onChange}
             />
             <GroupControl
               dashboard={dashboard}

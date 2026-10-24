@@ -7,13 +7,15 @@
  * The chain starts at version 4 (spec.md §3.3 *Data model version*):
  * earlier development versions are refused. v4 → v5 adds each
  * dashboard's `settings` (requests in flight) with the v5 defaults, frozen
- * in the step.
+ * in the step. v5 → v6 moves every value that may differ by row, column
+ * or cell into the settings object at its level (`migrateV6.ts`).
  * Steps are pure and idempotent.
  *
  * @module
  */
 import { z } from 'zod';
 
+import { toV6 } from './migrateV6';
 import type { ConfigRoot } from './root';
 import { ConfigRootSchema, CURRENT_SCHEMA_VERSION } from './root';
 
@@ -64,6 +66,7 @@ export const addSettings: Migration = (input) => {
  * data model adds one. */
 const migrations: Partial<Record<number, Migration>> = {
   [FIRST_VERSION]: addSettings,
+  5: toV6,
 };
 
 /** The data model version `input` says it was written with (0: none). */

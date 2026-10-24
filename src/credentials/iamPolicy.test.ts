@@ -90,7 +90,7 @@ describe('dashboardApps', () => {
           id: 'web',
           displayName: 'web',
           repo: 'acme/web',
-          sources: [
+          pinnedApps: [
             { region: 'us-east-1', appId: 'd1' },
             { region: 'eu-west-1', appId: 'd2', credentialId: 'k' },
             { region: 'us-east-1', appId: 'd1' },

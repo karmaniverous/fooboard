@@ -6,7 +6,8 @@
  * line) and in a detail sheet (a touch tap, or Space on a focused cell),
  * which also carries the links, the
  * full SHA with *Copy*, and every line of the message (Decision 21).
- * Problems on the cell (a window hint on an empty cell, a status-set
+ * The sheet lists the settings the cell reads, each with its origin
+ * (spec.md §3.11). Problems on the cell (a window hint on an empty cell, a status-set
  * problem, spec.md A§4.3.7) are listed under it.
  *
  * @module
@@ -23,6 +24,7 @@ import {
 import { Sheet } from '@/components/ui/sheet';
 import { EMPTY_STATES } from '@/domain/derivation';
 import type { Problem } from '@/domain/problems/problem';
+import type { CellSettingLine } from '@/editors/settings/origins';
 import type { BoardCell } from '@/engine';
 import { readmeSection } from '@/lib/site';
 
@@ -42,8 +44,11 @@ export function CellDetail({
   stageName,
   interactive,
   problems = [],
+  settings = [],
 }: {
   cell: BoardCell;
+  /** The settings the cell reads, with origins (shown in the sheet). */
+  settings?: readonly CellSettingLine[];
   /** Problems marked on this cell. */
   problems?: readonly Problem[];
   rowName: string;
@@ -148,6 +153,22 @@ export function CellDetail({
         >
           Open job
         </ExternalLink>
+      )}
+      {interactive && settings.length > 0 && (
+        <dl
+          aria-label="Settings"
+          className="mt-1 grid grid-cols-[auto_1fr] gap-x-3"
+        >
+          {settings.map((s) => (
+            <div key={s.name} className="contents">
+              <dt className="text-muted-foreground">{s.name}</dt>
+              <dd>
+                {s.value}{' '}
+                <span className="text-muted-foreground">({s.origin})</span>
+              </dd>
+            </div>
+          ))}
+        </dl>
       )}
       {problems.length > 0 && (
         <ul className="mt-1 text-amber-600 dark:text-amber-400">

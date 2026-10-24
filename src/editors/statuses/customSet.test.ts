@@ -23,17 +23,16 @@ import {
 const base = DashboardSchema.parse({ id: 'd', name: 'D' });
 
 describe('customise', () => {
-  it('copies a preset under a fresh id and chooses it for its provider', () => {
+  it('copies a preset under a fresh id and chooses it wherever the preset was', () => {
     const once = customise(base, PRESET_IDS.githubDeployTest);
     const twice = customise(once, PRESET_IDS.githubDeployTest);
     expect(twice.customStatusSets.map((s) => s.id)).toEqual([
       'custom-github',
       'custom-github-2',
     ]);
-    expect(twice.statusSets).toEqual({
-      github: 'custom-github-2',
-      amplify: 'amplify',
-    });
+    // The dashboard used the built-in: it now chooses the first copy; the
+    // preset is then chosen nowhere, so the second copy is chosen nowhere.
+    expect(twice.settings.statusSets).toEqual({ github: 'custom-github' });
     expect(once.customStatusSets[0]?.name).toBe(
       'GitHub deploy and test (custom)',
     );
@@ -61,7 +60,7 @@ describe('removing a set', () => {
     expect(setInUse(d, 'custom-amplify')).toBe(true);
     const unchosen = {
       ...d,
-      statusSets: { ...d.statusSets, amplify: 'amplify' },
+      settings: { ...d.settings, statusSets: { amplify: 'amplify' } },
     };
     expect(setInUse(unchosen, 'custom-amplify')).toBe(false);
     expect(removeSet(unchosen, 'custom-amplify').customStatusSets).toEqual([]);

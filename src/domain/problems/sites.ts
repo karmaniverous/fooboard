@@ -14,10 +14,12 @@ import {
 } from '@/domain/config/providers';
 import type { NamedKey } from '@/domain/rules/pathKeys';
 import type { Rule } from '@/domain/rules/schema';
+import { heldSettings, type SettingsPlace } from '@/domain/settings/places';
+import { rowsUnder } from '@/domain/settings/reads';
 import { PRESETS } from '@/domain/statuses/presets';
 import { statusSetFor } from '@/domain/statuses/resolve';
 
-import type { EditTarget, ProblemLevel } from './problem';
+import { type EditTarget, levelOfPlace, type ProblemLevel } from './problem';
 
 export interface RuleSite {
   level: ProblemLevel;
@@ -35,13 +37,39 @@ export interface RuleSite {
 /** The status sets `d` uses or owns, each once. */
 function statusSets(d: Dashboard) {
   const used = d.rows.flatMap((row) =>
-    [undefined, ...d.stages.map((s) => s.id)].map((stageId) =>
-      statusSetFor(d, row, stageId),
-    ),
+    d.stages.map((s) => statusSetFor(d, row, s.id)),
   );
   const presets = PRESETS.filter((p) => used.some((u) => u.id === p.id));
   return [...presets, ...d.customStatusSets];
 }
+
+/** The rows a settings place reaches, when it is shared by sources: a
+ * row or a cell is its row's own. */
+const reached = (d: Dashboard, place: SettingsPlace): string[] | undefined =>
+  place.level === 'row' || place.level === 'cell'
+    ? undefined
+    : rowsUnder(d, place).map((r) => r.id);
+
+/** The item rules set at every level (spec.md §3.11). */
+const itemRuleSites = (d: Dashboard): RuleSite[] =>
+  heldSettings(d).flatMap(({ place, settings }) =>
+    PROVIDERS.flatMap((p): RuleSite[] => {
+      const rule = settings.itemRules?.[p];
+      if (rule === undefined) return [];
+      const sharedBy = reached(d, place);
+      return [
+        {
+          level: levelOfPlace(place),
+          target: { kind: 'settings', place, field: 'itemRules', source: p },
+          what: sharedBy ? `${PROVIDER_LABELS[p]} item rule` : 'item rule',
+          provider: p,
+          rule,
+          scope: 'item',
+          ...(sharedBy ? { sharedBy } : {}),
+        },
+      ];
+    }),
+  );
 
 /** Every placement and status rule in `d`. */
 export function ruleSites(d: Dashboard): RuleSite[] {
@@ -82,13 +110,6 @@ export function ruleSites(d: Dashboard): RuleSite[] {
       d.rowRules[p]?.record,
       'record',
     );
-    shared(
-      dash,
-      { kind: 'dashboard', part: 'itemRules' },
-      'item rule',
-      d.rowRules[p]?.items,
-      'item',
-    );
     for (const g of d.columnGroups) {
       const level = { kind: 'columnGroup', id: g.id } as const;
       shared(level, level, 'stage rule', g.stageRules[p], 'record');
@@ -106,14 +127,6 @@ export function ruleSites(d: Dashboard): RuleSite[] {
         'row rule',
         g.rowRules[p]?.record,
         'record',
-        members,
-      );
-      shared(
-        level,
-        { ...level, part: 'items' },
-        'item rule',
-        g.rowRules[p]?.items,
-        'item',
         members,
       );
       for (const [stageId, rules] of Object.entries(g.stageRules))
@@ -139,14 +152,6 @@ export function ruleSites(d: Dashboard): RuleSite[] {
         rule: row.recordRule,
         scope: 'record',
       },
-      {
-        level,
-        target: { ...level, part: 'items' },
-        what: 'item rule',
-        provider: p,
-        rule: row.itemRule,
-        scope: 'item',
-      },
       ...Object.entries(row.stageRules).map(([stageId, rule]) => ({
         level,
         target: { ...level, stageId },
@@ -157,6 +162,7 @@ export function ruleSites(d: Dashboard): RuleSite[] {
       })),
     );
   }
+  sites.push(...itemRuleSites(d));
   for (const set of statusSets(d)) {
     const level = { kind: 'statusSet', id: set.id } as const;
     const owned = d.customStatusSets.includes(set);

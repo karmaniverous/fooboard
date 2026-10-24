@@ -16,6 +16,7 @@ import {
   removeRow,
   removeStage,
   repoFromUrl,
+  rowFromApp,
   rowFromRepo,
   uniqueId,
 } from './edit';
@@ -52,26 +53,26 @@ describe('removing rows and stages', () => {
     expect(removeRow(d, 'r')).toMatchObject({ rows: [], rowGroups: [] });
     const s = DashboardSchema.parse(removeStage(d, 'a'));
     expect(s.stages).toEqual([
-      { id: 'b', name: 'b', rules: branchRules('dev') },
+      { id: 'b', name: 'b', rules: branchRules('dev'), settings: {} },
     ]);
     expect(s.columnGroups).toEqual([]);
     expect(s.rowGroups[0]?.stageRules).toEqual({});
   });
 
-  it("drops a row's status-set choice for the removed stage, so the dashboard still saves", () => {
+  it("drops a row's settings for the removed stage's cell, so the dashboard still saves", () => {
     const chosen = DashboardSchema.parse({
       ...d,
       rows: d.rows.map((r) => ({
         ...r,
-        cellStatusSets: {
-          a: PRESET_IDS.githubSingleJob,
-          b: PRESET_IDS.githubSingleJob,
+        cellSettings: {
+          a: { statusSets: { github: PRESET_IDS.githubSingleJob } },
+          b: { statusSets: { github: PRESET_IDS.githubSingleJob } },
         },
       })),
     });
     const s = DashboardSchema.parse(removeStage(chosen, 'a'));
-    expect(s.rows[0]?.cellStatusSets).toEqual({
-      b: PRESET_IDS.githubSingleJob,
+    expect(s.rows[0]?.cellSettings).toEqual({
+      b: { statusSets: { github: PRESET_IDS.githubSingleJob } },
     });
   });
 });
@@ -85,7 +86,22 @@ describe('uniqueId and rowFromRepo', () => {
       id: 'api-core',
       repo: 'acme/api-core',
       displayName: 'api-core',
+      settings: {},
     });
+    expect(rowFromRepo('acme/api-core', d, 'tok').settings).toEqual({
+      githubToken: 'tok',
+    });
+    const app = { appId: 'a1', name: 'site', region: 'us-east-1' };
+    expect(rowFromApp(app, d, 'k1', undefined).pinnedApps).toEqual([
+      { region: 'us-east-1', appId: 'a1', credentialId: 'k1' },
+    ]);
+    expect(rowFromApp(app, d, undefined, 'acme/site')).toMatchObject({
+      repo: 'acme/site',
+      pinnedApps: [{ region: 'us-east-1', appId: 'a1' }],
+    });
+    expect(rowFromApp(app, d, undefined, undefined).pinnedApps).toEqual([
+      { region: 'us-east-1', appId: 'a1' },
+    ]);
   });
 });
 
@@ -95,14 +111,15 @@ describe('duplicateDashboard', () => {
       id: 'd',
       name: 'D',
       credentials: [{ id: 'c', kind: 'github', label: 'gh' }],
-      defaultCredentials: { github: 'c' },
+      settings: { githubToken: 'c' },
       rows: [
         {
           type: 'github',
           id: 'r',
           repo: 'o/r',
           displayName: 'r',
-          credentialId: 'c',
+          settings: { githubToken: 'c' },
+          cellSettings: { s: { githubToken: 'c' } },
           stageRules: { s: branchRule('rc/*') },
         },
       ],
@@ -112,7 +129,7 @@ describe('duplicateDashboard', () => {
           id: 'g',
           memberIds: ['r'],
           stageRules: { s: branchRules('release/*') },
-          defaultCredentials: { github: 'c' },
+          settings: { githubToken: 'c' },
         },
       ],
     });
@@ -121,10 +138,14 @@ describe('duplicateDashboard', () => {
     );
     expect(copy).toMatchObject({ id: 'd2', name: 'D copy' });
     expect(JSON.stringify(copy)).not.toMatch(/"c"/);
-    expect(copy.defaultCredentials.github).toBe('c-new');
+    expect(copy.settings.githubToken).toBe('c-new');
     expect(copy.rowGroups[0]).toMatchObject({
       stageRules: { s: branchRules('release/*') },
-      defaultCredentials: { github: 'c-new' },
+      settings: { githubToken: 'c-new' },
+    });
+    expect(copy.rows[0]).toMatchObject({
+      settings: { githubToken: 'c-new' },
+      cellSettings: { s: { githubToken: 'c-new' } },
     });
     expect(copy.rows[0]?.stageRules).toEqual({ s: branchRule('rc/*') });
     expect(d.credentials[0]?.id).toBe('c');

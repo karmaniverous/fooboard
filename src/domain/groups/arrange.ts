@@ -7,17 +7,17 @@
  *
  * @module
  */
-import type { Group } from '@/domain/config/groups';
+import type { GroupShape } from '@/domain/config/groups';
 import { freshId } from '@/lib/ids';
 
 /** An item list and its groups, changed together. */
-export interface Arranged<T extends { id: string }, G extends Group> {
+export interface Arranged<T extends { id: string }, G extends GroupShape> {
   items: T[];
   groups: G[];
 }
 
 /** Which group each member id belongs to. */
-export function memberIndex<G extends Pick<Group, 'memberIds'>>(
+export function memberIndex<G extends Pick<GroupShape, 'memberIds'>>(
   groups: readonly G[],
 ): Map<string, G> {
   const index = new Map<string, G>();
@@ -27,7 +27,7 @@ export function memberIndex<G extends Pick<Group, 'memberIds'>>(
 
 /** Items reordered so every group is contiguous, and groups synced to
  * that order (unknown ids dropped, empty groups removed). */
-export function regroup<T extends { id: string }, G extends Group>(
+export function regroup<T extends { id: string }, G extends GroupShape>(
   items: readonly T[],
   groups: readonly G[],
 ): Arranged<T, G> {
@@ -61,7 +61,7 @@ export function regroup<T extends { id: string }, G extends Group>(
 }
 
 /** `id` moved into the group `target`, or out of every group. */
-export function assign<G extends Group>(
+export function assign<G extends GroupShape>(
   groups: readonly G[],
   id: string,
   target: string | undefined,
@@ -77,7 +77,7 @@ export function assign<G extends Group>(
 /** A group id not yet used, derived from the member it starts with. */
 export function newGroupId(
   memberId: string,
-  groups: readonly Pick<Group, 'id'>[],
+  groups: readonly Pick<GroupShape, 'id'>[],
 ): string {
   return freshId(
     `group-${memberId}`,
@@ -88,7 +88,7 @@ export function newGroupId(
 /** Drag `fromId` onto `toId`: it takes the target's place and the
  * target's group (or none), so dragging across a group edge moves it into,
  * out of or between groups. */
-export function dropOnto<T extends { id: string }, G extends Group>(
+export function dropOnto<T extends { id: string }, G extends GroupShape>(
   { items, groups }: Arranged<T, G>,
   fromId: string,
   toId: string,
@@ -105,7 +105,7 @@ export function dropOnto<T extends { id: string }, G extends Group>(
 /** *Move up* / *Move down* one step: an item at its group's edge first
  * leaves the group; an ungrouped item next to a group first joins it;
  * otherwise it swaps with its neighbour. Undefined when it can't move. */
-export function step<T extends { id: string }, G extends Group>(
+export function step<T extends { id: string }, G extends GroupShape>(
   { items, groups }: Arranged<T, G>,
   id: string,
   delta: -1 | 1,

@@ -10,7 +10,11 @@
  * @module
  */
 import type { StatusSet } from '@/domain/config/statusSets';
-import { type Problem, problem } from '@/domain/problems/problem';
+import {
+  type EditTarget,
+  type Problem,
+  problem,
+} from '@/domain/problems/problem';
 import { errorMessage } from '@/lib/errors';
 import { isAuthFailure, isNotFound, isRateLimit } from '@/query/errors';
 
@@ -79,9 +83,9 @@ export function rowProblem(
   rowId: string,
   message: string,
   dismissable: boolean,
+  target: EditTarget = { kind: 'row', id: rowId },
 ): Problem {
-  const scope = { kind: 'row', id: rowId } as const;
-  return problem(scope, message, dismissable, { target: scope });
+  return problem({ kind: 'row', id: rowId }, message, dismissable, { target });
 }
 
 /** The board problem for `outcome` reading `what` for row `rowId`. */

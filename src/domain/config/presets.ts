@@ -45,17 +45,20 @@ export function buildPresetStages(
         id: nextStageId(),
         name: 'dev',
         rules: branchRules('dev'),
+        settings: {},
       };
       const staging: Stage = {
         id: nextStageId(),
         name: 'staging',
         rules: branchRules('staging'),
+        settings: {},
         sourceStageId: dev.id,
       };
       const prod: Stage = {
         id: nextStageId(),
         name: 'prod',
         rules: branchRules('main'),
+        settings: {},
         sourceStageId: staging.id,
       };
       return [dev, staging, prod];
@@ -65,17 +68,20 @@ export function buildPresetStages(
         id: nextStageId(),
         name: 'dev',
         rules: branchRules('develop'),
+        settings: {},
       };
       const test: Stage = {
         id: nextStageId(),
         name: 'test',
         rules: branchRules('release/**'),
+        settings: {},
         sourceStageId: dev.id,
       };
       const prod: Stage = {
         id: nextStageId(),
         name: 'prod',
         rules: branchRules('main'),
+        settings: {},
         sourceStageId: test.id,
       };
       return [dev, test, prod];
@@ -85,23 +91,27 @@ export function buildPresetStages(
         id: nextStageId(),
         name: 'dev',
         rules: branchRules('dev'),
+        settings: {},
       };
       const previews: Stage[] = (options.previewNames ?? []).map((name) => ({
         id: nextStageId(),
         name,
         rules: branchRules(`preview/${name}`),
+        settings: {},
         sourceStageId: dev.id,
       }));
       const release: Stage = {
         id: nextStageId(),
         name: 'release',
         rules: branchRules('release/**'),
+        settings: {},
         sourceStageId: dev.id,
       };
       const prod: Stage = {
         id: nextStageId(),
         name: 'prod',
         rules: branchRules('main'),
+        settings: {},
         sourceStageId: release.id,
       };
       return [dev, ...previews, release, prod];

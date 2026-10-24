@@ -36,11 +36,11 @@ vi.mock('@/engine/credentialProviders', async () => {
   };
 });
 
-const SOURCE_LABEL = 'AWS key for site source a1';
+const KEY_LABEL = 'AWS key for Row site';
 
-describe('DashboardPage Amplify sources', () => {
-  it('saves a changed key override and reads the changed source with it', async () => {
-    const other = { credentialId: 'aws1', region: 'eu-west-1', appId: 'a2' };
+describe('DashboardPage Amplify pinned apps', () => {
+  it("saves a row's AWS key and reads the pin serving it, with it", async () => {
+    const keyed = { credentialId: 'aws2', region: 'eu-west-1', appId: 'a2' };
     const stores = await renderDashboardPage({
       id: 'd',
       name: 'D',
@@ -48,18 +48,19 @@ describe('DashboardPage Amplify sources', () => {
         { id: 'aws1', kind: 'aws', label: 'first' },
         { id: 'aws2', kind: 'aws', label: 'second' },
       ],
-      defaultCredentials: { aws: 'aws1' },
+      settings: { awsKey: 'aws1' },
       rows: [
         {
           type: 'amplify',
           id: 'site',
           repo: 'acme/site',
           displayName: 'site',
-          sources: [{ region: 'us-east-1', appId: 'a1' }, other],
+          pinnedApps: [{ region: 'us-east-1', appId: 'a1' }, keyed],
         },
       ],
       stages: [{ id: 'dev', name: 'Dev', rules: branchRules('dev') }],
     });
+    // aws1 has no keyed pin: the unkeyed one serves it.
     await waitFor(() => {
       expect(new Set(readsBy)).toEqual(new Set(['aws1']));
     });
@@ -70,25 +71,19 @@ describe('DashboardPage Amplify sources', () => {
       button: 0,
     });
     expand('site');
+    expand('Settings');
     readsBy.length = 0;
-    choose(screen.getByRole('combobox', { name: SOURCE_LABEL }), 'second');
+    choose(screen.getByRole('combobox', { name: KEY_LABEL }), 'second');
 
     const loaded = stores.config.load();
     expect(
       loaded.kind === 'ok' && loaded.root.dashboards[0]?.rows[0],
-    ).toMatchObject({
-      sources: [
-        { credentialId: 'aws2', region: 'us-east-1', appId: 'a1' },
-        other,
-      ],
-    });
-    // Only the changed source reads again: the unchanged one's queries
-    // keep their key (credential, region, app), so the cache serves it.
+    ).toMatchObject({ settings: { awsKey: 'aws2' } });
     await waitFor(() => {
       expect(new Set(readsBy)).toEqual(new Set(['aws2']));
     });
     expect(
-      screen.getByRole('combobox', { name: SOURCE_LABEL, hidden: true }),
+      screen.getByRole('combobox', { name: KEY_LABEL, hidden: true }),
     ).toHaveTextContent('second');
   });
 });
