@@ -42,11 +42,25 @@ describe('idbCacheStore', () => {
     expect(await idbCacheStore().getItem('b')).toBeUndefined();
   });
 
-  it('fails the storage where IndexedDB is missing', async () => {
+  it('rejects a clear IndexedDB refuses', async () => {
+    const request: { error: DOMException; onerror?: () => void } = {
+      error: new DOMException('blocked', 'UnknownError'),
+    };
+    vi.stubGlobal('indexedDB', {
+      open: () => {
+        setTimeout(() => request.onerror?.(), 0);
+        return request;
+      },
+    });
+    await expect(idbCacheStore().clear()).rejects.toThrow('blocked');
+  });
+
+  it('fails the storage where IndexedDB is missing, with nothing to clear', async () => {
     vi.stubGlobal('indexedDB', undefined);
     const storage = cacheStorage(idbCacheStore());
     expect(await storage.getItem('a')).toBeUndefined();
     expect(storage.failed()).toBe(true);
+    await expect(storage.clear()).resolves.toBeUndefined();
   });
 });
 
@@ -85,12 +99,11 @@ describe('cacheStorage', () => {
     expect(await storage.getItem('k')).toBeUndefined();
     await storage.setItem('k', 'again');
     expect(raw.entries.get('k')).toBe('stray');
-    vi.spyOn(store, 'clear').mockRejectedValue(quota());
-    await storage.clear();
+    storage.fail();
     expect(heard).toHaveBeenCalledOnce();
   });
 
-  it.each(['getItem', 'removeItem', 'clear'] as const)(
+  it.each(['getItem', 'removeItem'] as const)(
     'turns persistence off when %s fails',
     async (op) => {
       const { store, fail } = failing(op);
@@ -100,6 +113,48 @@ describe('cacheStorage', () => {
       expect(storage.failed()).toBe(true);
     },
   );
+
+  it('rejects a failed clear, for Reset to report', async () => {
+    const { store, fail } = failing('clear');
+    const storage = cacheStorage(store);
+    fail();
+    await expect(storage.clear()).rejects.toThrow('full');
+  });
+
+  it('turns persistence off when told to (a refused lock), telling subscribers', () => {
+    const storage = cacheStorage(memoryCacheStore());
+    const heard = vi.fn();
+    storage.subscribe(heard);
+    storage.fail();
+    expect(storage.failed()).toBe(true);
+    expect(heard).toHaveBeenCalledOnce();
+  });
+
+  it('settles a stop once the write under way has landed', async () => {
+    const raw = memoryCacheStore();
+    let land = (): void => undefined;
+    vi.spyOn(raw, 'setItem').mockImplementationOnce(
+      (key, value) =>
+        new Promise((resolve) => {
+          land = () => {
+            raw.entries.set(key, value);
+            resolve();
+          };
+        }),
+    );
+    const storage = cacheStorage(raw);
+    const writing = storage.setItem('k', '1');
+    const stopped = vi.fn();
+    void storage.stopped.then(stopped);
+    storage.stop();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(stopped).not.toHaveBeenCalled();
+    land();
+    await writing;
+    await storage.stopped;
+    expect(stopped).toHaveBeenCalledOnce();
+    expect(raw.entries.get('k')).toBe('1');
+  });
 
   it('writes nothing once stopped, but still clears', async () => {
     const raw = memoryCacheStore();

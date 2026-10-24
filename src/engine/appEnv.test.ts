@@ -55,7 +55,7 @@ describe('appQueryEnv persistence', () => {
     const { shared, stores, env, written } = await persistingTab();
     stores.credentials.set('kept', github('a'), true);
     stores.credentials.set('session', github('b'), false);
-    seedRuns(env.client, 'kept', 'session');
+    seedRuns(env, 'kept', 'session');
     await written();
     expect(storedCredentials(shared.idb.entries)).toEqual(['kept']);
 
@@ -67,7 +67,7 @@ describe('appQueryEnv persistence', () => {
 
   it('keeps an unobserved query a day, not five minutes', async () => {
     const { env } = await persistingTab();
-    seedRuns(env.client, 'gh');
+    seedRuns(env, 'gh');
     await vi.advanceTimersByTimeAsync(6 * 60 * 1000);
     expect(env.client.getQueryData(runsKey('gh'))).toBeDefined();
   });
@@ -75,7 +75,7 @@ describe('appQueryEnv persistence', () => {
   it('keeps data through ticking Remember and entering the same secret', async () => {
     const { stores, env } = await persistingTab();
     stores.credentials.set('gh', github('a'), false);
-    seedRuns(env.client, 'gh');
+    seedRuns(env, 'gh');
     stores.credentials.set('gh', github('a'), true);
     stores.credentials.set('gh', github('a'), true);
     expect(env.client.getQueryData(runsKey('gh'))).toBeDefined();
@@ -85,7 +85,7 @@ describe('appQueryEnv persistence', () => {
     const { shared, stores, env, written } = await persistingTab();
     stores.credentials.set('gh', github('one'), true);
     stores.credentials.set('other', github('o'), true);
-    seedRuns(env.client, 'gh', 'other');
+    seedRuns(env, 'gh', 'other');
     await written();
     stores.credentials.set('gh', github('two'), true);
     expect(env.client.getQueryData(runsKey('gh'))).toBeUndefined();
@@ -104,7 +104,7 @@ describe('appQueryEnv persistence', () => {
     };
     stores.credentials.set('gh', github('a'), true);
     stores.credentials.set('other', github('o'), true);
-    seedRuns(env.client, 'gh', 'gone', 'other');
+    seedRuns(env, 'gh', 'gone', 'other');
     deleteWithSecrets(stores.credentials, () => undefined, dashboard);
     expect(env.client.getQueryData(runsKey('gone'))).toBeUndefined();
     await written();
@@ -114,7 +114,7 @@ describe('appQueryEnv persistence', () => {
   it('keeps editor lookups and secrets out of the cache', async () => {
     const { shared, stores, env, written } = await persistingTab();
     stores.credentials.set('gh', github('ghp_never_at_rest'), true);
-    seedRuns(env.client, 'gh');
+    seedRuns(env, 'gh');
     env.client.setQueryData(
       githubKey('gh', { call: 'repos', page: 1 }),
       fetched([]),

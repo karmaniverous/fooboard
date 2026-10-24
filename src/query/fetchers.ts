@@ -31,6 +31,7 @@ import {
   QueryKeySchema,
 } from './keys';
 import type { Limiters } from './limiters';
+import type { ReadWith } from './readWith';
 
 /** Readers for the credentials one QueryClient serves; `undefined` means
  * no secret is entered (the board shows *needs credential*). */
@@ -55,6 +56,8 @@ export interface FetchEnv {
   limiters: Limiters;
   now: () => number;
   around: () => Around;
+  /** Where each answer's secret is noted (Decision 27). */
+  readWith: ReadWith;
 }
 
 /** An answer without an ETag or pages (Amplify). */
@@ -148,7 +151,8 @@ export function createQueryFn(env: FetchEnv): QueryFunction {
     const key = QueryKeySchema.parse(queryKey);
     const [provider, credentialId] = key;
     const limiter = env.limiters.for(provider, credentialId);
-    const send = (): Promise<Fetched<unknown>> => {
+    const query = client.getQueryCache().find({ queryKey: key, exact: true });
+    const read = (): Promise<Fetched<unknown>> => {
       if (key[0] === 'github') {
         const api = env.providers.github(credentialId);
         if (!api) throw new MissingCredentialError(credentialId);
@@ -157,6 +161,14 @@ export function createQueryFn(env: FetchEnv): QueryFunction {
       const readerFor = env.providers.amplify(credentialId);
       if (!readerFor) throw new MissingCredentialError(credentialId);
       return fetchAmplify(readerFor, key);
+    };
+    /** Read, noting the secret the reader was built from as it lands. */
+    const send = async (): Promise<Fetched<unknown>> => {
+      const fingerprint = env.providers.fingerprint(credentialId);
+      const answer = await read();
+      if (query && fingerprint !== undefined)
+        env.readWith.note(query, fingerprint);
+      return answer;
     };
     const cached = client.getQueryData(key) !== undefined;
     return limiter.run(priorityOf(key, cached), async () => {

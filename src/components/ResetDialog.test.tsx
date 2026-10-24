@@ -41,14 +41,14 @@ const openReset = () => {
 
 /** Stores with a fooboard key, a session secret and a cached copy, whose
  * reloads and posts to other tabs are recorded. */
-function filledStores(device = memoryStorage()) {
+function filledStores(device = memoryStorage(), clear?: () => Promise<void>) {
   const idb = memoryCacheStore();
   const hub = tabHub();
   const heard: TabMessage[] = [];
   hub.channel().subscribe((m) => heard.push(m));
   const reload = vi.fn();
   const stores = createAppStores(device, {
-    cache: cacheStorage(idb),
+    cache: cacheStorage(clear ? { ...idb, clear } : idb),
     tabs: hub.channel(),
     reload,
   });
@@ -81,7 +81,7 @@ describe('Reset', () => {
     expect(device.keys()).toEqual(['other-app']);
     expect(stores.credentials.get('gh')).toBeUndefined();
     expect(idb.entries.size).toBe(0);
-    expect(heard).toEqual([{ type: 'reset' }]);
+    expect(heard).toEqual([{ type: 'resetting' }, { type: 'reset' }]);
   });
 
   it('says why when the browser refuses, and stays open', async () => {
@@ -96,6 +96,28 @@ describe('Reset', () => {
     );
     expect(reload).not.toHaveBeenCalled();
     expect(screen.getByRole('alertdialog')).toBeInTheDocument();
+  });
+
+  it('says why when the cache can’t be cleared, and stays open with nothing else cleared', async () => {
+    const blocked = () =>
+      Promise.reject(new DOMException('blocked', 'UnknownError'));
+    const { stores, reload, idb, heard, device } = filledStores(
+      memoryStorage(),
+      blocked,
+    );
+    renderShell(<Header />, undefined, stores);
+    const dialog = openReset();
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Reset' }));
+    expect(await within(dialog).findByRole('alert')).toHaveTextContent(
+      /^Not reset: .*blocked/,
+    );
+    expect(reload).not.toHaveBeenCalled();
+    expect(screen.getByRole('alertdialog')).toBeInTheDocument();
+    expect(idb.entries.size).toBe(1);
+    expect(device.keys()).toContain('other-app');
+    expect(device.keys().length).toBeGreaterThan(1);
+    expect(stores.credentials.get('gh')).toBeDefined();
+    expect(heard).toEqual([{ type: 'resetting' }]);
   });
 });
 

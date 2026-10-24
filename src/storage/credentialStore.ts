@@ -17,6 +17,8 @@
  */
 import { z } from 'zod';
 
+import { fingerprintOf } from '@/lib/fingerprint';
+
 import {
   KEY_PREFIX,
   type KeyValueStore,
@@ -48,6 +50,12 @@ export interface CredentialStore {
   get(id: string): CredentialSecret | undefined;
   /** Is this secret kept on the device (vs. this session only)? */
   isRemembered(id: string): boolean;
+  /** The fingerprint of the secret a read uses now (the session's, else
+   * the device's). */
+  fingerprint(id: string): string | undefined;
+  /** The fingerprint of the secret kept on the device, if any: only what
+   * was read with it may be kept at rest (Decision 27). */
+  rememberedFingerprint(id: string): string | undefined;
   set(id: string, secret: CredentialSecret, remember: boolean): void;
   /** *Forget*: remove from the device and the session. */
   forget(id: string): void;
@@ -78,6 +86,8 @@ export function createCredentialStore(device: KeyValueStore): CredentialStore {
   const store: CredentialStore = {
     get: (id) => read(session, id) ?? read(device, id),
     isRemembered: (id) => read(device, id) !== undefined,
+    fingerprint: (id) => fingerprintOf(store.get(id)),
+    rememberedFingerprint: (id) => fingerprintOf(read(device, id)),
     set: (id, secret, remember) => {
       const value = JSON.stringify(CredentialSecretSchema.parse(secret));
       const before = store.get(id);

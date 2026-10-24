@@ -3,7 +3,10 @@
  * BroadcastChannel named `fooboard` carrying removals and Reset, and
  * nothing else (configuration isn't synced). A removal names the
  * credentials whose queries every tab drops, so the tab that persists the
- * cache can't write them back; Reset makes every tab clear and reload.
+ * cache can't write them back. Reset comes in two: `resetting` makes
+ * every tab stop writing the cache, so the resetting tab can clear it,
+ * and `reset`, once the shared storage is cleared, makes every tab drop
+ * its session secrets and reload.
  * Messages that don't parse are ignored. Where the browser has no
  * BroadcastChannel, nothing is sent or heard.
  *
@@ -16,6 +19,7 @@ export const TAB_CHANNEL = 'fooboard';
 
 const TabMessageSchema = z.discriminatedUnion('type', [
   z.object({ type: z.literal('remove'), credentialIds: z.array(z.string()) }),
+  z.object({ type: z.literal('resetting') }),
   z.object({ type: z.literal('reset') }),
 ]);
 export type TabMessage = z.infer<typeof TabMessageSchema>;

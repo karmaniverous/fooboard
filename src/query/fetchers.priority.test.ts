@@ -16,6 +16,7 @@ import { createQueryFn } from './fetchers';
 import { passThrough } from './instrument';
 import { githubKey } from './keys';
 import { createLimiters } from './limiters';
+import { createReadWith } from './readWith';
 
 const CREDENTIAL = 'gh';
 const BLOCKING_RUN = 1;
@@ -83,6 +84,7 @@ function setup() {
           limiters,
           now: Date.now,
           around: () => passThrough,
+          readWith: createReadWith(),
         }),
       },
     },

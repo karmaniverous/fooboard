@@ -72,6 +72,13 @@ async function readBefore() {
   );
   const env = appQueryEnv(before);
   await env.restored;
+  // Read with the remembered token: the queries are noted as read with
+  // it, then the answers land again, so the next write keeps them.
+  await seedDemoRepo(env.client, REPO);
+  const fingerprint = env.providers.fingerprint(DEMO_TOKEN);
+  if (fingerprint === undefined) throw new Error('no token entered');
+  for (const query of env.client.getQueryCache().getAll())
+    env.readWith.note(query, fingerprint);
   await seedDemoRepo(env.client, REPO);
   const runs = JSON.stringify(
     githubKey(DEMO_TOKEN, { call: 'runs', repo: REPO, page: 1 }),

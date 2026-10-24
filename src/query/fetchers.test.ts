@@ -27,6 +27,7 @@ import { createQueryFn, MissingCredentialError } from './fetchers';
 import { type Around, passThrough, type RequestCall } from './instrument';
 import { amplifyKey, githubKey } from './keys';
 import { createLimiters } from './limiters';
+import { createReadWith } from './readWith';
 
 const NOW = 1_000_000;
 const REPO = 'acme/api';
@@ -37,9 +38,13 @@ const repos = (page: number) => githubKey('gh', { call: 'repos', page });
 /** A client whose queries fetch through `api` (or none) for every token. */
 function setup(
   api: GitHubApi | undefined,
-  { around = passThrough }: { around?: Around } = {},
+  {
+    around = passThrough,
+    fingerprint = () => 'secret',
+  }: { around?: Around; fingerprint?: () => string } = {},
 ) {
   const limiters = createLimiters({ now: () => NOW });
+  const readWith = createReadWith();
   const client = new QueryClient({
     defaultOptions: {
       queries: {
@@ -54,19 +59,55 @@ function setup(
                     new AmplifyThrottledError('slow down', 'ListApps', 7_000),
                   ),
               }),
-            fingerprint: () => 'secret',
+            fingerprint,
           },
           limiters,
           now: () => NOW,
           around: () => around,
+          readWith,
         }),
       },
     },
   });
-  return { client, limiters };
+  return { client, limiters, readWith };
 }
 
 describe('createQueryFn', () => {
+  it('notes the secret an answer was sent with as it lands, and nothing for a failure', async () => {
+    let secret = 'one';
+    let land = (): void => undefined;
+    const runsPage = vi
+      .fn<GitHubApi['runsPage']>()
+      .mockImplementationOnce(
+        () =>
+          new Promise((resolve) => {
+            land = () => {
+              resolve(fetched([]));
+            };
+          }),
+      )
+      .mockRejectedValueOnce(new Error('offline'));
+    const { client, readWith } = setup(fakeGitHubApi({ runsPage }), {
+      fingerprint: () => secret,
+    });
+    const noted = (page: number) => {
+      const query = client
+        .getQueryCache()
+        .find({ queryKey: runs(page), exact: true });
+      return query && readWith.of(query);
+    };
+    const answer = client.query({ queryKey: runs(1) });
+    await vi.waitFor(() => {
+      expect(runsPage).toHaveBeenCalledOnce();
+    });
+    secret = 'two';
+    land();
+    await answer;
+    expect(noted(1)).toBe('one');
+    await client.query({ queryKey: runs(2) }).catch(() => undefined);
+    expect(noted(2)).toBeUndefined();
+  });
+
   it('sends the cached ETag and reuses the cached data on a 304', async () => {
     const reposPage = vi
       .fn<GitHubApi['reposPage']>()

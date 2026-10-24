@@ -14,7 +14,7 @@ import {
   idbCacheStore,
   memoryCacheStore,
 } from '@/persist/cacheStorage';
-import type { Locks } from '@/persist/persistLock';
+import { type Locks, withPersistLock } from '@/persist/persistLock';
 import {
   broadcastTabChannel,
   silentTabChannel,
@@ -54,8 +54,13 @@ export interface AppStores extends Omit<StoreIo, 'reload'> {
   /** False when browser storage is unavailable: nothing outlives the tab. */
   persistent: boolean;
   /** *Reset* (C-4, §3.9): in every open tab, every fooboard key, every
-   * session secret and the persisted cache; then each tab reloads, so
-   * none writes its configuration or cache back. The UI confirms first. */
+   * session secret and the persisted cache; then each tab reloads. Every
+   * tab first stops writing the cache (`resetting`), and the cache is
+   * cleared holding the persisting lock, so no write lands after it; then
+   * local storage; only then do the other tabs hear `reset` and reload,
+   * so none reloads to the old configuration. Rejects, and no tab
+   * reloads, if either can't be cleared (the cache first: losing it alone
+   * costs nothing). The UI confirms first. */
   reset(): Promise<void>;
 }
 
@@ -112,14 +117,13 @@ export function createAppStores(
     ...io,
   };
   const credentials = createCredentialStore(store);
-  /** This tab's part of a Reset: no more cache writes, then none kept. */
-  const clearTab = async (): Promise<void> => {
-    cache.stop();
-    credentials.clearSession();
-    await cache.clear();
-  };
+  // Another tab's Reset: stop writing, so it can clear the cache; once it
+  // has cleared the shared storage, drop the session secrets and reload.
   tabs.subscribe((message) => {
-    if (message.type === 'reset') void clearTab().then(reload);
+    if (message.type === 'resetting') cache.stop();
+    if (message.type !== 'reset') return;
+    credentials.clearSession();
+    reload();
   });
   return {
     config: createConfigStore(store),
@@ -130,9 +134,12 @@ export function createAppStores(
     tabs,
     locks,
     reset: async () => {
-      tabs.post({ type: 'reset' });
-      await clearTab();
+      cache.stop();
+      tabs.post({ type: 'resetting' });
+      await withPersistLock(locks, () => cache.clear());
       clearAppData(store);
+      credentials.clearSession();
+      tabs.post({ type: 'reset' });
       reload();
     },
   };

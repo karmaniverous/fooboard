@@ -7,8 +7,12 @@
  * nothing, and it tells its subscribers, so the app shows the
  * blocked-storage banner. A failed write also tries to remove what was
  * stored before, so a removal the write carried can't be undone by an
- * older copy coming back on the next load. Reset stops it for good, so no
- * write lands after the cache is cleared.
+ * older copy coming back on the next load. The persisting lock's refusal
+ * turns it off the same way. Reset stops it for good: `stopped` settles
+ * once a write already started has landed, and the tab lets the
+ * persisting lock go, so Reset can clear the cache holding it with no
+ * write landing after. A failed clear is Reset's to report, so it
+ * rejects, unlike the other calls.
  *
  * @module
  */
@@ -25,7 +29,7 @@ export interface CacheStore {
   getItem(key: string): Promise<string | null | undefined>;
   setItem(key: string, value: string): Promise<void>;
   removeItem(key: string): Promise<void>;
-  /** Remove every entry (Reset). */
+  /** Remove every entry (Reset); rejects if it can't. */
   clear(): Promise<void>;
 }
 
@@ -33,10 +37,16 @@ export interface CacheStore {
 export interface CacheStorage extends CacheStore {
   /** Has storage failed in this tab (persistence is off)? */
   failed(): boolean;
+  /** Turn persistence off and tell the subscribers, as a failed call
+   * does (the persisting lock was refused). */
+  fail(): void;
   /** Hear when storage fails. */
   subscribe(listener: () => void): () => void;
-  /** Write nothing more in this tab (Reset; the tab is about to reload). */
+  /** Write nothing more in this tab (Reset). */
   stop(): void;
+  /** Settles once `stop` is called and a write already started has
+   * landed (or failed). */
+  stopped: Promise<void>;
 }
 
 /** The IndexedDB store, opened on first use. */
@@ -48,7 +58,11 @@ export function idbCacheStore(): CacheStore {
     getItem: (key) => get<string>(key, opened()),
     setItem: (key, value) => set(key, value, opened()),
     removeItem: (key) => del(key, opened()),
-    clear: () => clear(opened()),
+    // Without IndexedDB nothing can have been kept, so there's nothing
+    // to clear (Reset still works where the browser blocks it).
+    clear: async () => {
+      if (typeof indexedDB !== 'undefined') await clear(opened());
+    },
   };
 }
 
@@ -78,7 +92,13 @@ export function memoryCacheStore(): CacheStore & {
 /** The app's cache storage over `raw`. */
 export function cacheStorage(raw: CacheStore): CacheStorage {
   let failed = false;
-  let stopped = false;
+  let stopping = false;
+  let markStopped = (): void => undefined;
+  const stopped = new Promise<void>((resolve) => {
+    markStopped = resolve;
+  });
+  /** Writes started and not yet landed. */
+  const writing = new Set<Promise<void>>();
   const listeners = new Set<() => void>();
   const fail = (): void => {
     if (failed) return;
@@ -94,34 +114,42 @@ export function cacheStorage(raw: CacheStore): CacheStorage {
       return undefined;
     }
   };
+  const write = async (key: string, value: string): Promise<void> => {
+    try {
+      await raw.setItem(key, value);
+    } catch {
+      fail();
+      // Don't leave an older copy behind a write that failed.
+      await raw.removeItem(key).catch(() => undefined);
+    }
+  };
   return {
     failed: () => failed,
+    fail,
     subscribe(listener) {
       listeners.add(listener);
       return () => {
         listeners.delete(listener);
       };
     },
+    stopped,
     stop() {
-      stopped = true;
+      stopping = true;
+      // A write never rejects (a failure turns persistence off).
+      Promise.all(writing).then(markStopped, markStopped);
     },
     getItem: async (key) =>
       failed ? undefined : await attempt(() => raw.getItem(key)),
     async setItem(key, value) {
-      if (failed || stopped) return;
-      try {
-        await raw.setItem(key, value);
-      } catch {
-        fail();
-        // Don't leave an older copy behind a write that failed.
-        await raw.removeItem(key).catch(() => undefined);
-      }
+      if (failed || stopping) return;
+      const landed = write(key, value);
+      writing.add(landed);
+      await landed;
+      writing.delete(landed);
     },
     async removeItem(key) {
       await attempt(() => raw.removeItem(key));
     },
-    async clear() {
-      await attempt(() => raw.clear());
-    },
+    clear: () => raw.clear(),
   };
 }

@@ -10,6 +10,7 @@
  */
 import { createAmplifyReader } from '@/lib/amplify/reader';
 import type { AmplifyReaderFor } from '@/lib/amplify/rowJobs';
+import { fingerprintOf } from '@/lib/fingerprint';
 import { createGitHubApi, type GitHubApi } from '@/lib/github';
 import { getOrCreate } from '@/lib/memo';
 import type { ProviderHooks } from '@/query/client';
@@ -18,10 +19,6 @@ import type {
   CredentialSecret,
   CredentialStore,
 } from '@/storage/credentialStore';
-
-/** A secret's fingerprint: changes whenever the secret does. */
-const fingerprintOf = (secret: CredentialSecret | undefined) =>
-  secret ? JSON.stringify(secret) : undefined;
 
 /** Build a value from a secret once, rebuilding when the secret changes. */
 function cachedBySecret<T>(
@@ -76,6 +73,6 @@ export function credentialProviders(
   return {
     github,
     amplify,
-    fingerprint: (id) => fingerprintOf(store.get(id)),
+    fingerprint: (id) => store.fingerprint(id),
   };
 }

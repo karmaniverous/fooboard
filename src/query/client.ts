@@ -30,6 +30,7 @@ import { type Around, passThrough } from './instrument';
 import { credentialPrefix } from './keys';
 import type { Timers } from './limiter';
 import { createLimiters, type Limiters } from './limiters';
+import { createReadWith, type ReadWith } from './readWith';
 
 /** What providers may report back to the environment. */
 export interface ProviderHooks {
@@ -47,6 +48,8 @@ export interface QueryEnv {
   providers: QueryProviders;
   limiters: Limiters;
   budgets: BudgetStore;
+  /** The secret each query's data was read with (Decision 27). */
+  readWith: ReadWith;
   /** Instrument every request from now on (development only). */
   setAround(around: Around | undefined): void;
   /** Remove the queries and the budget of every one of `credentialIds`
@@ -71,6 +74,7 @@ export function createQueryEnv({
 }): QueryEnv {
   const budgets = createBudgetStore();
   const limiters = createLimiters({ now, timers });
+  const readWith = createReadWith();
   const providers = build({
     onBudget: (id, b, fingerprint) => {
       if (fingerprint === providers.fingerprint(id)) budgets.note(id, b);
@@ -85,6 +89,7 @@ export function createQueryEnv({
           limiters,
           now,
           around: () => around,
+          readWith,
         }),
         retry: shouldRetry,
         retryDelay,
@@ -100,6 +105,7 @@ export function createQueryEnv({
     providers,
     limiters,
     budgets,
+    readWith,
     setAround(next) {
       around = next ?? passThrough;
     },

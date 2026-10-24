@@ -3,24 +3,30 @@
  * TanStack's persister writes the app's QueryClient to IndexedDB at most
  * once a second, and every tab restores it on load, so a reload shows the
  * last known board at once. Only successful queries that `keeps` accepts
- * are written (the app keeps none of an editor lookup's, nor any of a
- * credential whose secret isn't remembered); a restored copy is filtered
- * the same way, so nothing the rule excludes shows from the cache even if
- * an older copy holds it. A copy older than `CACHE_MAX_AGE_MS`, or written
- * under another buster (app version and data model version), is
- * discarded. Only the tab holding the persisting lock writes.
+ * are written, each with the fingerprint of the secret its data was read
+ * with (never the secret); a restored copy is filtered the same way, with
+ * the stored fingerprints, so nothing the rule now excludes shows from
+ * the cache even if an older copy holds it (a secret replaced just before
+ * a reload, ahead of the next write). A copy older than
+ * `CACHE_MAX_AGE_MS`, or written under another buster (app version and
+ * data model version), is discarded. Only the tab holding the persisting
+ * lock writes, until its storage stops (Reset); if the browser refuses
+ * the lock, the storage reports it as a failure.
  *
  * @module
  */
 import { createAsyncStoragePersister } from '@tanstack/query-async-storage-persister';
-import type { Query, QueryClient, QueryKey } from '@tanstack/query-core';
+import type { DehydratedState, Query, QueryClient } from '@tanstack/query-core';
 import {
   type PersistedClient,
   persistQueryClientRestore,
   persistQueryClientSubscribe,
 } from '@tanstack/query-persist-client-core';
 
+import type { ReadWith } from '@/query/readWith';
+
 import type { CacheStorage } from './cacheStorage';
+import type { Keeps } from './keeps';
 import { holdPersistLock, type Locks } from './persistLock';
 
 /** At most one write per second (TanStack's default throttle). */
@@ -45,7 +51,9 @@ export interface PersistOptions {
   /** Discards a copy written under another value. */
   buster: string;
   /** May this query be kept at rest? */
-  keeps: (queryKey: QueryKey) => boolean;
+  keeps: Keeps;
+  /** The secret each query's data was read with. */
+  readWith: ReadWith;
   locks: Locks | undefined;
 }
 
@@ -57,6 +65,14 @@ export interface CachePersistence {
   stop(): void;
 }
 
+type StoredQuery = DehydratedState['queries'][number];
+
+/** The fingerprint stored with a persisted query, if it has one. */
+const storedReadWith = (query: StoredQuery): string | undefined =>
+  'readWith' in query && typeof query.readWith === 'string'
+    ? query.readWith
+    : undefined;
+
 /** Restore `client` from storage, then persist it while this tab holds
  * the persisting lock. */
 export function persistQueryCache({
@@ -64,6 +80,7 @@ export function persistQueryCache({
   storage,
   buster,
   keeps,
+  readWith,
   locks,
 }: PersistOptions): CachePersistence {
   const base = createAsyncStoragePersister({
@@ -71,24 +88,39 @@ export function persistQueryCache({
     key: CACHE_KEY,
     throttleTime: PERSIST_THROTTLE_MS,
   });
+  const cache = client.getQueryCache();
+  const readWithOf = (hash: string): string | undefined => {
+    const query = cache.get(hash);
+    return query && readWith.of(query);
+  };
+  /** The queries the restore hydrated, to note their secrets after. */
+  let kept: StoredQuery[] = [];
   const persister = {
-    persistClient: (client: PersistedClient) => base.persistClient(client),
+    persistClient: ({ clientState, ...rest }: PersistedClient) =>
+      base.persistClient({
+        ...rest,
+        clientState: {
+          ...clientState,
+          queries: clientState.queries.map((q) => ({
+            ...q,
+            readWith: readWithOf(q.queryHash),
+          })),
+        },
+      }),
     removeClient: () => base.removeClient(),
     restoreClient: async () => {
       const stored = await base.restoreClient();
       if (!stored) return undefined;
       const { clientState } = stored;
-      return {
-        ...stored,
-        clientState: {
-          ...clientState,
-          queries: clientState.queries.filter((q) => keeps(q.queryKey)),
-        },
-      };
+      kept = clientState.queries.filter((q) =>
+        keeps(q.queryKey, storedReadWith(q)),
+      );
+      return { ...stored, clientState: { ...clientState, queries: kept } };
     },
   };
   const shouldDehydrateQuery = (query: Query): boolean =>
-    query.state.status === 'success' && keeps(query.queryKey);
+    query.state.status === 'success' &&
+    keeps(query.queryKey, readWith.of(query));
 
   let stopped = false;
   let unsubscribe = (): void => undefined;
@@ -99,17 +131,32 @@ export function persistQueryCache({
     maxAge: CACHE_MAX_AGE_MS,
     buster,
   })
+    .then(() => {
+      for (const q of kept) {
+        const query = cache.get(q.queryHash);
+        const fingerprint = storedReadWith(q);
+        // A query already read in this tab keeps its own secret.
+        if (query && fingerprint && !readWith.of(query))
+          readWith.note(query, fingerprint);
+      }
+    })
     // An unreadable copy is discarded by the restore; start empty.
     .catch(() => undefined)
     .then(() => {
       if (stopped) return;
-      release = holdPersistLock(locks, () => {
-        unsubscribe = persistQueryClientSubscribe({
-          queryClient: client,
-          persister,
-          buster,
-          dehydrateOptions: { shouldDehydrateQuery },
-        });
+      release = holdPersistLock(locks, {
+        onHeld: () => {
+          unsubscribe = persistQueryClientSubscribe({
+            queryClient: client,
+            persister,
+            buster,
+            dehydrateOptions: { shouldDehydrateQuery },
+          });
+        },
+        until: storage.stopped,
+        onRefused: () => {
+          storage.fail();
+        },
       });
     });
   return {

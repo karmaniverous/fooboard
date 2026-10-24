@@ -12,10 +12,11 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { demoDashboard } from '@/demo/board';
 import { PERSIST_THROTTLE_MS } from '@/persist/persistence';
+import { dashboardsOf } from '@/storage/configStore';
 import { runsKey, seedRuns, storedCredentials } from '@/test/persisted';
 import { browser, openTab } from '@/test/tabs';
 
-import { appQueryEnv } from './appEnv';
+import { type AppQueryEnv, appQueryEnv } from './appEnv';
 
 const github = (token: string) => ({ kind: 'github' as const, token });
 
@@ -50,8 +51,8 @@ describe('the persisted cache across tabs', () => {
     const { shared, first, second, written } = await twoTabs();
     first.stores.credentials.set('a', github('a'), true);
     first.stores.credentials.set('b', github('b'), true);
-    seedRuns(first.env.client, 'a');
-    seedRuns(second.env.client, 'b');
+    seedRuns(first.env, 'a');
+    seedRuns(second.env, 'b');
     await written();
     expect(storedCredentials(shared.idb.entries)).toEqual(['a']);
     expect(shared.locks.holders()).toBe(1);
@@ -74,8 +75,8 @@ describe('the persisted cache across tabs', () => {
     const { shared, first, second, written } = await twoTabs();
     first.stores.credentials.set('gh', github('one'), true);
     first.stores.credentials.set('other', github('o'), true);
-    seedRuns(first.env.client, 'gh', 'other');
-    seedRuns(second.env.client, 'gh');
+    seedRuns(first.env, 'gh', 'other');
+    seedRuns(second.env, 'gh');
     await written();
     expect(storedCredentials(shared.idb.entries)).toEqual(['gh', 'other']);
 
@@ -93,7 +94,7 @@ describe('the persisted cache across tabs', () => {
     first.stores.credentials.set('session', github('s'), false);
     first.stores.config.saveDashboard(demoDashboard);
     shared.device.setItem('other-app', 'kept');
-    seedRuns(first.env.client, 'gh');
+    seedRuns(first.env, 'gh');
     await written();
     // A write still pending in the writing tab when Reset comes.
     first.env.client.setQueryData(runsKey('gh', 'acme/web'), []);
@@ -104,5 +105,84 @@ describe('the persisted cache across tabs', () => {
     expect(shared.device.keys()).toEqual(['other-app']);
     expect(first.stores.credentials.get('session')).toBeUndefined();
     expect(reloads).toEqual({ first: 1, second: 1 });
+  });
+
+  it('Reset clears the cache only once a write under way has landed', async () => {
+    const shared = browser();
+    let land = (): void => undefined;
+    const writer = openTab({
+      ...shared,
+      idb: {
+        ...shared.idb,
+        setItem: (key, value) =>
+          new Promise<void>((resolve) => {
+            land = () => {
+              shared.idb.entries.set(key, value);
+              resolve();
+            };
+          }),
+      },
+    });
+    const writerEnv = appQueryEnv(writer);
+    await writerEnv.restored;
+    await vi.advanceTimersByTimeAsync(0);
+    const resetting = openTab(shared);
+    await appQueryEnv(resetting).restored;
+    writer.credentials.set('gh', github('one'), true);
+    seedRuns(writerEnv, 'gh');
+    await vi.advanceTimersByTimeAsync(PERSIST_THROTTLE_MS);
+
+    const reset = resetting.reset();
+    await vi.advanceTimersByTimeAsync(PERSIST_THROTTLE_MS);
+    land();
+    await reset;
+    expect(shared.idb.entries.size).toBe(0);
+  });
+
+  it('Reset clears the shared storage before another tab reloads, so it reloads to nothing', async () => {
+    const shared = browser();
+    // The other tab, rebuilt from the shared storage when it reloads.
+    const rebuilt: { stores: ReturnType<typeof openTab>; env: AppQueryEnv }[] =
+      [];
+    const other = openTab(shared, () => {
+      const stores = openTab(shared);
+      rebuilt.push({ stores, env: appQueryEnv(stores) });
+    });
+    const otherEnv = appQueryEnv(other);
+    await otherEnv.restored;
+    await vi.advanceTimersByTimeAsync(0);
+    // The resetting tab, whose clear of the cache takes a while.
+    let cleared = (): void => undefined;
+    const clearing = new Promise<void>((resolve) => {
+      cleared = resolve;
+    });
+    const resetting = openTab({
+      ...shared,
+      idb: {
+        ...shared.idb,
+        clear: async () => {
+          await clearing;
+          await shared.idb.clear();
+        },
+      },
+    });
+    await appQueryEnv(resetting).restored;
+    other.credentials.set('gh', github('one'), true);
+    other.config.saveDashboard(demoDashboard);
+    seedRuns(otherEnv, 'gh');
+    await vi.advanceTimersByTimeAsync(PERSIST_THROTTLE_MS);
+
+    const reset = resetting.reset();
+    await vi.advanceTimersByTimeAsync(PERSIST_THROTTLE_MS);
+    expect(rebuilt).toEqual([]);
+    cleared();
+    await reset;
+    expect(rebuilt).toHaveLength(1);
+    const [after] = rebuilt;
+    await after.env.restored;
+    expect(dashboardsOf(after.stores.config.load())).toEqual([]);
+    expect(after.stores.credentials.get('gh')).toBeUndefined();
+    expect(after.env.client.getQueryCache().getAll()).toEqual([]);
+    expect(shared.idb.entries.size).toBe(0);
   });
 });
