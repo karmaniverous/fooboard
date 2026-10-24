@@ -31,7 +31,7 @@ describe('ColumnGroupLabels', () => {
   it('renders nothing when no column group has a label', () => {
     strip([
       {
-        group: { id: 'g', memberIds: ['a'], stageRules: {} },
+        group: { id: 'g', memberIds: ['a'], settings: {}, stageRules: {} },
         start: 0,
         span: 1,
       },
@@ -47,6 +47,7 @@ describe('ColumnGroupLabels', () => {
           id: 'g',
           label: 'Preview',
           memberIds: ['b', 'c'],
+          settings: {},
           stageRules: {},
         },
         start: 1,

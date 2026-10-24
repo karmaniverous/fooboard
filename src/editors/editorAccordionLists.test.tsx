@@ -94,7 +94,9 @@ describe('the editor opened on a fix', () => {
   it("opens a row group's settings in its member's row", () => {
     open({ tab: 'Rows', focus: ['rowGroup:g:record', 'rowGroup:g'] });
     expect(isOpen('api')).toBe(true);
-    expect(screen.getByLabelText('GitHub token for Back')).toBeVisible();
+    expect(
+      screen.getByRole('combobox', { name: 'GitHub token for Row group Back' }),
+    ).toBeVisible();
   });
 });
 

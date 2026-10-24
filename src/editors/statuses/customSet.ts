@@ -10,10 +10,11 @@ import { STATUS_COLORS } from '@/domain/config/colors';
 import type { Dashboard } from '@/domain/config/dashboard';
 import type { CellStatus, StatusSet } from '@/domain/config/statusSets';
 import { never } from '@/domain/model/ruleBuilders';
+import { heldSettings } from '@/domain/settings/places';
 import { findStatusSet } from '@/domain/statuses/resolve';
 import { freshId } from '@/lib/ids';
 
-import { setDashboardStatusSet } from './overrideSets';
+import { replaceSet } from './overrideSets';
 
 /** The dashboard with a copy of set `id` it owns (not yet chosen
  * anywhere), and the copy; `undefined` for an unknown set. */
@@ -40,16 +41,13 @@ export function copySet(
   };
 }
 
-/** A copy of set `id` the dashboard owns, chosen for its provider, so the
- * board looks the same until it is edited. */
+/** A copy of set `id` the dashboard owns, chosen wherever `id` was
+ * (the built-in's use included), so the board looks the same until it is
+ * edited. */
 export function customise(dashboard: Dashboard, id: string): Dashboard {
   const copied = copySet(dashboard, id);
   return copied
-    ? setDashboardStatusSet(
-        copied.dashboard,
-        copied.copy.provider,
-        copied.copy.id,
-      )
+    ? replaceSet(copied.dashboard, copied.copy.provider, id, copied.copy.id)
     : dashboard;
 }
 
@@ -70,12 +68,8 @@ export function updateSet(
 /** Is the dashboard's own set `id` chosen anywhere? A set in use can't be
  * removed (its references would dangle). */
 export function setInUse(dashboard: Dashboard, id: string): boolean {
-  return (
-    Object.values(dashboard.statusSets).includes(id) ||
-    dashboard.rowGroups.some((g) => Object.values(g.statusSets).includes(id)) ||
-    dashboard.rows.some(
-      (r) => r.statusSet === id || Object.values(r.cellStatusSets).includes(id),
-    )
+  return heldSettings(dashboard).some(({ settings }) =>
+    Object.values(settings.statusSets ?? {}).includes(id),
   );
 }
 

@@ -13,7 +13,7 @@ import { always } from '@/domain/rules/always';
 import { branchRule } from '@/domain/rules/branch';
 
 import { DashboardSchema } from './dashboard';
-import { branchRules, rowRulesFor, stageRuleFor } from './placement';
+import { branchRules, recordRuleFor, stageRuleFor } from './placement';
 
 const r = (p: string) => branchRule(p);
 const d = DashboardSchema.parse({
@@ -37,26 +37,32 @@ const d = DashboardSchema.parse({
       repo: 'a/web',
       displayName: 'web',
       stageRules: { own: r('row') },
-      itemRule: all(is('$.name', 'x')),
+    },
+    {
+      type: 'github',
+      id: 'own',
+      repo: 'a/own',
+      displayName: 'own',
+      recordRule: all(is('$.workflow', 'Own')),
     },
     {
       type: 'amplify',
       id: 'site',
       repo: 'a/site',
       displayName: 'site',
-      sources: [{ region: 'us-east-1', appId: 'a1' }],
+      pinnedApps: [{ region: 'us-east-1', appId: 'a1' }],
     },
     { type: 'github', id: 'api', repo: 'a/api', displayName: 'api' },
   ],
   rowGroups: [
     {
       id: 'g',
-      memberIds: ['web', 'site'],
+      memberIds: ['web', 'own', 'site'],
       stageRules: {
         own: { github: r('group') },
         grouped: { amplify: r('group-a') },
       },
-      rowRules: { github: { items: all(is('$.name', 'g')) } },
+      rowRules: { github: { record: all(is('$.workflow', 'Group')) } },
     },
   ],
 });
@@ -89,19 +95,13 @@ describe('stageRuleFor', () => {
   });
 });
 
-describe('rowRulesFor', () => {
-  it('takes the most specific record and item rules, else everything', () => {
-    expect(rowRulesFor(d, row('web'))).toEqual({
-      record: all(is('$.workflow', 'CI')),
-      items: all(is('$.name', 'x')),
-    });
-    expect(rowRulesFor(d, row('api')).items).toEqual({
-      combine: 'and',
-      checks: [],
-    });
-    expect(rowRulesFor(d, row('site'))).toEqual({
-      record: always,
-      items: always,
-    });
+describe('recordRuleFor', () => {
+  it.each([
+    ["the row's own", 'own', all(is('$.workflow', 'Own'))],
+    ["the row group's", 'web', all(is('$.workflow', 'Group'))],
+    ["the dashboard's", 'api', all(is('$.workflow', 'CI'))],
+    ['everything, set nowhere for the source', 'site', always],
+  ])('takes %s record rule', (_label, id, rule) => {
+    expect(recordRuleFor(d, row(id))).toEqual(rule);
   });
 });

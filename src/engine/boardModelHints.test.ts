@@ -10,14 +10,13 @@
 import { describe, expect, it } from 'vitest';
 
 import { demoDashboard } from '@/demo/board';
-import { resolveCredentialId } from '@/domain/config/credentialRefs';
 import type { Dashboard } from '@/domain/config/dashboard';
-import { inheritedCredentials } from '@/domain/config/inheritance';
 import type { Provider } from '@/domain/config/providers';
 import type { Row } from '@/domain/config/row';
 import { EMPTY_STATES } from '@/domain/derivation';
 import { sourceRuleFor } from '@/domain/model/sources';
 import type { Problem } from '@/domain/problems/problem';
+import { rowSetting } from '@/domain/settings/resolve';
 import { customiseSource } from '@/editors/sources/customSource';
 import { fullModel } from '@/test/boardModel';
 
@@ -86,22 +85,15 @@ describe('board model window hints', () => {
       if (level?.kind !== 'cell') throw new Error('no cell hint');
       const original = base.rows.find((r) => r.id === level.rowId);
       if (!original) throw new Error('no hinted row');
-      // The twin sits outside the original's row group, so it names the
-      // credentials the original inherits.
-      const defaults = inheritedCredentials(base, original.id);
+      // The twin sits outside the original's row group, so it sets the
+      // AWS key the original inherits.
+      const awsKey = rowSetting(base, original, 'awsKey').value;
       const twin: Row =
         original.type === 'amplify'
           ? {
               ...original,
               id: `${original.id}-twin`,
-              sources: original.sources.map((s) => ({
-                ...s,
-                credentialId: resolveCredentialId(
-                  defaults,
-                  'aws',
-                  s.credentialId,
-                ),
-              })),
+              settings: { ...original.settings, awsKey },
             }
           : { ...original, id: `${original.id}-twin` };
       const model = await fullModel({ ...base, rows: [...base.rows, twin] });

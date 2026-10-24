@@ -77,7 +77,7 @@ describe('CredentialsPanel', () => {
     addToken('acme', 'github_pat_1');
     const [ref] = latest.current.credentials;
     expect(ref).toMatchObject({ kind: 'github', label: 'acme' });
-    expect(latest.current.defaultCredentials.github).toBe(ref.id);
+    expect(latest.current.settings.githubToken).toBe(ref.id);
     expect(
       screen.getByText("Dashboard's default GitHub token"),
     ).toBeInTheDocument();
@@ -101,7 +101,7 @@ describe('CredentialsPanel', () => {
     expect(latest.current.credentials).toHaveLength(1);
     fireEvent.click(screen.getByRole('button', { name: 'Remove acme' }));
     expect(latest.current.credentials).toHaveLength(0);
-    expect(latest.current.defaultCredentials.github).toBeUndefined();
+    expect(latest.current.settings.githubToken).toBeUndefined();
   });
 
   it('copies a credential from another dashboard as an independent one', () => {
@@ -109,7 +109,7 @@ describe('CredentialsPanel', () => {
       id: 'o',
       name: 'Other',
       credentials: [{ id: 'src', kind: 'github', label: 'shared' }],
-      defaultCredentials: { github: 'src' },
+      settings: { githubToken: 'src' },
     });
     const { stores, latest } = setup({
       others: [other],
@@ -204,7 +204,7 @@ describe('CredentialsPanel failures and form hygiene', () => {
             id: 'web',
             displayName: 'web',
             repo: 'acme/web',
-            sources: [{ region: 'eu-west-1', appId: 'd2' }],
+            pinnedApps: [{ region: 'eu-west-1', appId: 'd2' }],
           },
         ],
       }),

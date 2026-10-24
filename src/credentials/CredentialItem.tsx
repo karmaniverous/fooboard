@@ -15,7 +15,7 @@ import type { Dashboard } from '@/domain/config/dashboard';
 import { useStores } from '@/storage/storesContext';
 
 import { removeWithSecret } from './credentialOps';
-import { setDefaultCredential } from './dashboardCredentials';
+import { FIELD_OF, setDefaultCredential } from './dashboardCredentials';
 import { expiryWarning } from './expiry';
 import { KIND_LABEL } from './kindLabel';
 import { SecretFields } from './SecretFields';
@@ -38,7 +38,7 @@ export function CredentialItem({
   const [openedAt] = useState(() => Date.now());
   const { id, kind, label } = credential;
   const entered = credentials.get(id) !== undefined;
-  const isDefault = dashboard.defaultCredentials[kind] === id;
+  const isDefault = dashboard.settings[FIELD_OF[kind]] === id;
   const warning =
     kind === 'github' ? expiryWarning(tokenExpiry?.(id), openedAt) : undefined;
   return (
@@ -61,7 +61,7 @@ export function CredentialItem({
         <div className="ml-auto flex gap-1">
           {isDefault ? (
             <WithTooltip
-              label={`Rows use this ${KIND_LABEL[kind]} unless they or their group choose another.`}
+              label={`Cells use this ${KIND_LABEL[kind]} unless a group, row, column or cell sets another.`}
             >
               <span tabIndex={0} className="text-xs text-muted-foreground">
                 {`Dashboard's default ${KIND_LABEL[kind]}`}

@@ -1,8 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
 import { demoDashboard } from '@/demo/board';
-import type { Dashboard } from '@/domain/config/dashboard';
-import type { Row } from '@/domain/config/row';
 import { emptyModel } from '@/engine/model';
 import type { BoardModel } from '@/engine/types';
 import { GitHubAuthError } from '@/lib/github/errors';
@@ -12,11 +10,6 @@ import { fullModel as readFully } from '@/test/boardModel';
 import { createTimingSession, rowNeeds, type TimingSink } from './session';
 import type { TimingSummary } from './summary';
 import { TIMING_NAMES } from './targets';
-
-/** AWS keys an Amplify source may read with, by where they're set. */
-const SOURCE_KEY = 'source-aws';
-const GROUP_KEY = 'group-aws';
-const DASHBOARD_KEY = 'dashboard-aws';
 
 const github = (repo?: string, credentialId = 'demo-github'): RequestCall => ({
   provider: 'github',
@@ -58,87 +51,6 @@ describe('rowNeeds', () => {
       false,
     );
     expect(rowNeeds(demoDashboard, api, app)).toBe(false);
-  });
-});
-
-describe('rowNeeds for Amplify reads', () => {
-  const site = rowById('marketing-site');
-  if (site.type !== 'amplify') throw new Error('marketing-site is Amplify');
-  // The demo's frontends inherit their group's AWS key (demo-aws).
-  const frontend = demoDashboard.rowGroups.find((g) =>
-    g.memberIds.includes(site.id),
-  );
-  if (!frontend) throw new Error('marketing-site is in a group');
-  const app = (credentialId: string): RequestCall => ({
-    provider: 'amplify',
-    kind: 'listJobs',
-    credentialId,
-    region: 'us-east-1',
-    appId: 'd1demomarketing',
-  });
-  // The demo's sources set no key of their own.
-  const inheriting: Row = site;
-  /** `site` with `credentialId` on each of its sources. */
-  const withSourceKey = (credentialId: string): Row => ({
-    ...site,
-    sources: site.sources.map((s) => ({ ...s, credentialId })),
-  });
-  /** The demo board with `site` as `row`, and the defaults given. */
-  const board = (
-    row: Row,
-    defaults: { group?: string; dashboard?: string },
-  ): Dashboard => ({
-    ...demoDashboard,
-    rows: demoDashboard.rows.map((r) => (r.id === site.id ? row : r)),
-    rowGroups: demoDashboard.rowGroups.map((g) =>
-      g === frontend
-        ? {
-            ...g,
-            defaultCredentials:
-              defaults.group === undefined ? {} : { aws: defaults.group },
-          }
-        : g,
-    ),
-    defaultCredentials: {
-      ...demoDashboard.defaultCredentials,
-      ...(defaults.dashboard === undefined ? {} : { aws: defaults.dashboard }),
-    },
-  });
-  /** Which of `keys` `row` on `dashboard` reads its app with. */
-  const readsWith = (dashboard: Dashboard, row: Row) =>
-    [GROUP_KEY, DASHBOARD_KEY, SOURCE_KEY].filter((k) =>
-      rowNeeds(dashboard, row, app(k)),
-    );
-
-  it("matches the source's own key over any default", () => {
-    const row = withSourceKey(SOURCE_KEY);
-    const dashboard = board(row, {
-      group: GROUP_KEY,
-      dashboard: DASHBOARD_KEY,
-    });
-    expect(readsWith(dashboard, row)).toEqual([SOURCE_KEY]);
-  });
-
-  it("matches the group's key over the dashboard's", () => {
-    const row = inheriting;
-    const dashboard = board(row, {
-      group: GROUP_KEY,
-      dashboard: DASHBOARD_KEY,
-    });
-    expect(readsWith(dashboard, row)).toEqual([GROUP_KEY]);
-  });
-
-  it("matches the dashboard's key when the group sets none", () => {
-    const row = inheriting;
-    expect(readsWith(board(row, { dashboard: DASHBOARD_KEY }), row)).toEqual([
-      DASHBOARD_KEY,
-    ]);
-  });
-
-  it('matches no read when the source has no key to read with', () => {
-    expect(site.sources.every((s) => s.credentialId === undefined)).toBe(true);
-    const row = inheriting;
-    expect(readsWith(board(row, {}), row)).toEqual([]);
   });
 });
 

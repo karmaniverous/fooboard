@@ -1,7 +1,7 @@
 /**
- * The column groups' stage rules on the Stages tab (spec.md C-14b, C-21):
- * each group collapses to its header (label and members), one open at a
- * time; its stage rules show when it is open, and the editor opened on a
+ * The column groups on the Stages tab (spec.md C-14b, C-21, §3.11): each
+ * group collapses to its header (label and members), one open at a time;
+ * its stage rules and settings show when it is open, and the editor opened on a
  * fix opens its group. Groups are started, labelled and deleted from
  * their stages (`GroupControl`).
  *
@@ -10,8 +10,9 @@
 import { CollapsibleItem } from '@/components/CollapsibleItem';
 import type { Dashboard } from '@/domain/config/dashboard';
 
-import { targetKey } from './editTarget';
+import { placeKey, targetKey } from './editTarget';
 import { ProviderRules } from './rules/ProviderRules';
+import { SettingsEditor } from './settings/SettingsEditor';
 import { useAccordion } from './useAccordion';
 
 export function ColumnGroupList({
@@ -24,7 +25,13 @@ export function ColumnGroupList({
   const groups = dashboard.columnGroups;
   const target = (id: string) => targetKey({ kind: 'columnGroup', id });
   const accordion = useAccordion(
-    groups.map((g) => ({ key: g.id, targets: [target(g.id)] })),
+    groups.map((g) => ({
+      key: g.id,
+      targets: [
+        target(g.id),
+        placeKey({ level: 'columnGroup', groupId: g.id }),
+      ],
+    })),
   );
   if (groups.length === 0) return null;
   const stageName = (id: string) =>
@@ -58,6 +65,11 @@ export function ColumnGroupList({
                   ),
                 });
               }}
+            />
+            <SettingsEditor
+              dashboard={dashboard}
+              place={{ level: 'columnGroup', groupId: g.id }}
+              onChange={onChange}
             />
           </CollapsibleItem>
         );

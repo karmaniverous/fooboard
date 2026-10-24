@@ -14,7 +14,7 @@
 import { unique } from 'radash';
 
 import type { Dashboard } from '@/domain/config/dashboard';
-import { rowGithubCredentialId } from '@/domain/config/inheritance';
+import { rowCredentials } from '@/domain/settings/credentials';
 import type { QueryEnv } from '@/query/client';
 
 import { createFetchStarts } from './fetchStarts';
@@ -195,7 +195,8 @@ export function createBoardModel({
       if ((wasOverBudget.get(id) ?? false) === over) continue;
       wasOverBudget.set(id, over);
       for (const row of dashboard.rows)
-        if (rowGithubCredentialId(dashboard, row) === id) dirty.add(row.id);
+        if (rowCredentials(dashboard, row, 'githubToken').includes(id))
+          dirty.add(row.id);
     }
     schedule();
   });

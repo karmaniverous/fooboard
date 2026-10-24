@@ -38,7 +38,7 @@ export const DEMO_GITHUB_REPOS = [
   'flaky-svc',
 ] as const;
 
-/** Amplify rows: app ids per source, in the demo AWS account. */
+/** Amplify rows: the apps each pins, in the demo AWS account. */
 export const DEMO_AMPLIFY_APPS = {
   'marketing-site': [{ region: 'us-east-1', appId: 'd1demomarketing' }],
   'partner-portal': [
@@ -59,7 +59,9 @@ const github = DEMO_GITHUB_REPOS.map((name) => ({
   displayName: name,
   ...(name === DEMO_KEYED_REPO
     ? {
-        itemRule: all(is(ITEM_NAME_PATH, `*${name}*`)),
+        settings: {
+          itemRules: { github: all(is(ITEM_NAME_PATH, `*${name}*`)) },
+        },
       }
     : {}),
 }));
@@ -69,7 +71,7 @@ const amplify = Object.entries(DEMO_AMPLIFY_APPS).map(([name, sources]) => ({
   id: name,
   repo: `acme/${name}`,
   displayName: name,
-  sources: sources.map((s) => ({ ...s })),
+  pinnedApps: sources.map((s) => ({ ...s })),
 }));
 
 /** The demo dashboard, validated by the real schema. */
@@ -123,8 +125,8 @@ export const demoDashboard: Dashboard = DashboardSchema.parse({
       label: 'Frontend',
       memberIds: amplify.map((r) => r.id),
       stageRules: { release: branchRules('preview/release') },
-      // The frontends' AWS key is the group's, not the dashboard's (C-1a).
-      defaultCredentials: { aws: DEMO_AWS_CREDENTIAL },
+      // The frontends' AWS key is the group's, not the dashboard's (§3.11).
+      settings: { awsKey: DEMO_AWS_CREDENTIAL },
     },
   ],
   columnGroups: [
@@ -138,7 +140,7 @@ export const demoDashboard: Dashboard = DashboardSchema.parse({
     { id: DEMO_GITHUB_CREDENTIAL, kind: 'github', label: 'Demo GitHub' },
     { id: DEMO_AWS_CREDENTIAL, kind: 'aws', label: 'Demo AWS' },
   ],
-  defaultCredentials: { github: DEMO_GITHUB_CREDENTIAL },
+  settings: { githubToken: DEMO_GITHUB_CREDENTIAL },
 });
 
 /** The demo stage ids, in column order. */

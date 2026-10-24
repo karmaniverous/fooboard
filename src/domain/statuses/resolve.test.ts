@@ -1,7 +1,8 @@
 /**
- * Tests for status-set resolution: the level that chose a cell's set, the
- * set a row inherits, the default-preset fallback for a dangling id, and
- * every reference problem the dashboard schema reports.
+ * Tests for status-set resolution: a cell uses the set the settings
+ * resolver gives it, falling back to the provider's default preset for a
+ * dangling id or another source's set; and the integrity issues the
+ * dashboard schema reports.
  *
  * @module
  */
@@ -13,12 +14,7 @@ import type { Row } from '@/domain/config/row';
 import { PRESET_IDS } from '@/domain/config/statusSets';
 
 import { presetById } from './presets';
-import {
-  inheritedStatusSetId,
-  statusSetFor,
-  statusSetReferenceIssues,
-  statusSetSource,
-} from './resolve';
+import { statusSetFor, statusSetReferenceIssues } from './resolve';
 
 const dashboard = DashboardSchema.parse({
   id: 'd',
@@ -29,64 +25,34 @@ const dashboard = DashboardSchema.parse({
 });
 const [web] = dashboard.rows;
 const withRow = (
-  change: Partial<Pick<Row, 'statusSet' | 'cellStatusSets'>>,
-): Row => ({ ...web, ...change });
-const grouped = {
+  change: Pick<Row, 'settings'> | Pick<Row, 'cellSettings'>,
+): Row => ({
+  ...web,
+  ...change,
+});
+const choosing = (id: string) => ({
   ...dashboard,
-  rowGroups: [
-    {
-      ...dashboard.rowGroups[0],
-      statusSets: { github: PRESET_IDS.githubSingleJob },
-    },
-  ],
-};
-
-describe('statusSetSource', () => {
-  it('names the level that chose the set', () => {
-    expect(statusSetSource(dashboard, web, 'dev')).toEqual({
-      id: PRESET_IDS.githubDeployTest,
-      from: 'dashboard',
-    });
-    expect(statusSetSource(grouped, web, 'dev')).toEqual({
-      id: PRESET_IDS.githubSingleJob,
-      from: 'rowGroup',
-      groupId: 'g',
-    });
-    expect(
-      statusSetSource(
-        grouped,
-        withRow({ statusSet: PRESET_IDS.githubDeployTest }),
-        'dev',
-      ),
-    ).toEqual({ id: PRESET_IDS.githubDeployTest, from: 'row' });
-    expect(
-      statusSetSource(
-        grouped,
-        withRow({
-          statusSet: PRESET_IDS.githubDeployTest,
-          cellStatusSets: { dev: 'x' },
-        }),
-        'dev',
-      ),
-    ).toEqual({ id: 'x', from: 'cell' });
-  });
-
-  it("gives a row its group's set to inherit, ignoring its own choice", () => {
-    expect(
-      inheritedStatusSetId(
-        grouped,
-        withRow({ statusSet: PRESET_IDS.githubDeployTest }),
-      ),
-    ).toBe(PRESET_IDS.githubSingleJob);
-    expect(inheritedStatusSetId(dashboard, web)).toBe(
-      PRESET_IDS.githubDeployTest,
-    );
-  });
+  rows: [withRow({ settings: { statusSets: { github: id } } })],
 });
 
 describe('statusSetFor', () => {
-  it("falls back to the provider's default preset for a dangling id", () => {
-    expect(statusSetFor(dashboard, withRow({ statusSet: 'gone' }), 'dev')).toBe(
+  it('uses the set the cell resolves to', () => {
+    expect(statusSetFor(choosing(PRESET_IDS.githubSingleJob), web, 'dev')).toBe(
+      presetById(PRESET_IDS.githubSingleJob),
+    );
+  });
+
+  it("uses the provider's default preset when nothing chooses one", () => {
+    expect(statusSetFor(dashboard, web, 'dev')).toBe(
+      presetById(PRESET_IDS.githubDeployTest),
+    );
+  });
+
+  it.each([
+    ['a dangling id', 'gone'],
+    ["another source's set", PRESET_IDS.amplify],
+  ])("falls back to the provider's default preset for %s", (_label, id) => {
+    expect(statusSetFor(choosing(id), web, 'dev')).toBe(
       presetById(PRESET_IDS.githubDeployTest),
     );
   });
@@ -98,7 +64,14 @@ describe('statusSetReferenceIssues', () => {
     const issues = statusSetReferenceIssues({
       ...dashboard,
       customStatusSets: [custom, custom, { ...custom, id: 'amplify' }],
-      rows: [withRow({ cellStatusSets: { qa: PRESET_IDS.githubSingleJob } })],
+      rows: [
+        withRow({
+          cellSettings: {
+            dev: { statusSets: { github: 'gone' } },
+            qa: { statusSets: { github: PRESET_IDS.githubSingleJob } },
+          },
+        }),
+      ],
     });
     expect(issues).toEqual([
       {
@@ -110,8 +83,8 @@ describe('statusSetReferenceIssues', () => {
         path: ['customStatusSets', 2, 'id'],
       },
       {
-        message: 'status set for unknown stage: qa',
-        path: ['rows', 0, 'cellStatusSets', 'qa'],
+        message: 'settings for unknown stage: qa',
+        path: ['rows', 0, 'cellSettings', 'qa'],
       },
     ]);
   });

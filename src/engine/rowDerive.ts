@@ -1,6 +1,7 @@
 /**
  * One row of the board from the cache (spec.md §3.1): its provider's
- * derivation, then staleness through its git link, giving the row's
+ * derivation, then staleness through its git link, each cell reading with
+ * the credentials it resolves to (spec.md §3.11), giving the row's
  * board cells, the queries it needs and the groups (a token's repo, an
  * Amplify app) whose Unmapped runs and problems it feeds. Pure.
  *
@@ -10,23 +11,19 @@ import type { QueryClient } from '@tanstack/query-core';
 
 import { cellRulesFor } from '@/domain/config/cellRules';
 import type { Dashboard } from '@/domain/config/dashboard';
-import {
-  inheritedCredentials,
-  rowGithubCredentialId,
-} from '@/domain/config/inheritance';
 import type { AmplifyRow, GithubRow, Row } from '@/domain/config/row';
+import type { Stage } from '@/domain/config/stage';
 import { sourceRuleFor } from '@/domain/model/sources';
+import { cellCredentials } from '@/domain/settings/credentials';
+import { resolveSetting } from '@/domain/settings/resolve';
 import { appKey } from '@/lib/amplify/rowJobs';
 import { isOverPollingShare } from '@/lib/github';
 import type { BudgetStore } from '@/query/budgets';
 import type { QueryProviders } from '@/query/fetchers';
 
-import {
-  type AmplifyContext,
-  deriveAmplifyRow,
-  resolvedSources,
-} from './amplifyRow';
+import { type AmplifyContext, deriveAmplifyRow, rowApps } from './amplifyRow';
 import { emptyViews } from './cells';
+import { mergeDerivations, segments } from './cellSegments';
 import { deriveGithubRow, type GithubContext } from './githubRow';
 import type { Need, RowDerivation } from './need';
 import type { RefreshClock } from './refreshing';
@@ -69,13 +66,14 @@ export function githubContext(
   dashboard: Dashboard,
   credentialId: string,
   repo: string,
+  stages: readonly Stage[] = dashboard.stages,
 ): GithubContext {
   return {
     client: env.client,
     credentialId,
     repo,
     source: sourceRuleFor(dashboard, 'github'),
-    stages: dashboard.stages,
+    stages,
     rulesFor: (row: GithubRow, stageId) =>
       cellRulesFor(dashboard, row, stageId),
     overBudget: overBudget(env, credentialId),
@@ -93,7 +91,8 @@ export function amplifyContext(
     stages: dashboard.stages,
     rulesFor: (row: AmplifyRow, stageId) =>
       cellRulesFor(dashboard, row, stageId),
-    defaultsFor: (row) => inheritedCredentials(dashboard, row.id),
+    keyFor: (row, stageId) =>
+      resolveSetting(dashboard, row, stageId, 'awsKey').value,
     hasReader: (id) => env.providers.amplify(id) !== undefined,
     source: sourceRuleFor(dashboard, 'amplify'),
     now: env.now(),
@@ -101,49 +100,58 @@ export function amplifyContext(
   };
 }
 
-/** The GitHub token a row reads with, when its secret is entered. */
+/** The GitHub token each cell of `row` reads with, by stage id, when its
+ * secret is entered. */
 export function githubAccess(
-  env: DeriveEnv,
+  env: Pick<DeriveEnv, 'providers'>,
   dashboard: Dashboard,
   row: Row,
-): string | undefined {
-  const id = rowGithubCredentialId(dashboard, row);
-  return id && env.providers.github(id) ? id : undefined;
+): Map<string, string | undefined> {
+  const tokens = cellCredentials(dashboard, row, 'githubToken');
+  return new Map(
+    [...tokens].map(([stageId, id]) => [
+      stageId,
+      id && env.providers.github(id) ? id : undefined,
+    ]),
+  );
 }
 
 function providerDerivation(
   env: DeriveEnv,
   dashboard: Dashboard,
   row: Row,
+  access: Map<string, string | undefined>,
 ): { derivation: RowDerivation; groups: string[] } {
   if (row.type === 'amplify') {
     const ctx = amplifyContext(env, dashboard);
-    const apps = resolvedSources(ctx, row) ?? [];
     return {
       derivation: deriveAmplifyRow(ctx, row),
-      groups: apps.map((app) => amplifyGroupId(appKey(app))),
+      groups: rowApps(ctx, row).map((app) => amplifyGroupId(appKey(app))),
     };
   }
-  const credentialId = githubAccess(env, dashboard, row);
-  if (!credentialId)
-    return {
-      derivation: {
-        cells: emptyViews(
-          dashboard.stages,
-          (stageId) => cellRulesFor(dashboard, row, stageId).set,
-          'missing',
-        ),
-        needs: [],
-        problems: [],
-      },
-      groups: [],
-    };
+  const parts = segments(dashboard.stages, (stageId) => access.get(stageId));
   return {
-    derivation: deriveGithubRow(
-      githubContext(env, dashboard, credentialId, row.repo),
-      row,
+    derivation: mergeDerivations(
+      parts.map(({ key, stages }) =>
+        key
+          ? deriveGithubRow(
+              githubContext(env, dashboard, key, row.repo, stages),
+              row,
+            )
+          : {
+              cells: emptyViews(
+                stages,
+                (stageId) => cellRulesFor(dashboard, row, stageId).set,
+                'missing',
+              ),
+              needs: [],
+              problems: [],
+            },
+      ),
     ),
-    groups: [githubGroupId(credentialId, row.repo)],
+    groups: parts.flatMap(({ key }) =>
+      key ? [githubGroupId(key, row.repo)] : [],
+    ),
   };
 }
 
@@ -153,19 +161,27 @@ export function deriveRow(
   dashboard: Dashboard,
   row: Row,
 ): RowEntry {
-  const { derivation, groups } = providerDerivation(env, dashboard, row);
-  const linkId = row.repo ? githubAccess(env, dashboard, row) : undefined;
-  const link: GitLink | undefined =
-    linkId && row.repo
+  const access = githubAccess(env, dashboard, row);
+  const { derivation, groups } = providerDerivation(
+    env,
+    dashboard,
+    row,
+    access,
+  );
+  const { repo } = row;
+  const linkFor = (stageId: string): GitLink | undefined => {
+    const id = access.get(stageId);
+    return id && repo
       ? {
           client: env.client,
-          credentialId: linkId,
-          repo: row.repo,
-          overBudget: overBudget(env, linkId),
+          credentialId: id,
+          repo,
+          overBudget: overBudget(env, id),
         }
       : undefined;
+  };
   const { staleness, needs } = rowStaleness(
-    link,
+    linkFor,
     dashboard.stages,
     derivation.cells,
   );

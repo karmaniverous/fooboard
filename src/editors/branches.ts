@@ -1,6 +1,7 @@
 /**
  * Branch discovery for the editors (spec.md C-21): branch names per repo,
- * each read with the row's own GitHub token (C-1a) through the board's
+ * each read with a GitHub token the row's cells read (C-1a, §3.11),
+ * through the board's
  * queries (spec.md §3.1), and what they show:
  * how many repos have each branch, and what a pattern would match.
  *
@@ -9,14 +10,14 @@
 import { unique } from 'radash';
 
 import type { Dashboard } from '@/domain/config/dashboard';
-import { rowGithubCredentialId } from '@/domain/config/inheritance';
 import type { Row } from '@/domain/config/row';
 import { matchesBranchPattern } from '@/domain/matching';
+import { rowCredentials } from '@/domain/settings/credentials';
 import type { QueryEnv } from '@/query/client';
 import { fetchBranches } from '@/query/lookups';
 
 /** Branch names per repo for `rows` (default: every row). A row without
- * a repo (an Amplify app with none), or whose repo's row has no usable
+ * a repo (an Amplify app with none), or whose cells read with no usable
  * token, is skipped; a read failure rejects. */
 export async function discoverBranches(
   dashboard: Dashboard,
@@ -27,8 +28,10 @@ export async function discoverBranches(
   for (const row of rows) {
     const { repo } = row;
     if (repo === undefined || byRepo.has(repo)) continue;
-    const id = rowGithubCredentialId(dashboard, row);
-    if (!id || !env.providers.github(id)) continue;
+    const id = rowCredentials(dashboard, row, 'githubToken').find(
+      (token) => env.providers.github(token) !== undefined,
+    );
+    if (!id) continue;
     const branches = await fetchBranches(env.client, id, repo);
     byRepo.set(
       repo,

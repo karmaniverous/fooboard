@@ -75,7 +75,7 @@ function setup(overBudget = false) {
 describe('rowStaleness', () => {
   it('needs the forward compare first, versioned by the commits', () => {
     const { link } = setup();
-    const { staleness, needs } = rowStaleness(link, stages, cells);
+    const { staleness, needs } = rowStaleness(() => link, stages, cells);
     expect(needs.map((n) => n.key[2])).toEqual([forward]);
     expect(needs[0]).toMatchObject({
       freshness: { refetchInterval: IDLE_INTERVAL_MS },
@@ -88,13 +88,13 @@ describe('rowStaleness', () => {
   it('reads the reverse compare only when the cell has commits its source lacks', () => {
     const behind = setup();
     behind.seed(forward, 3, 2, 'src');
-    const both = rowStaleness(behind.link, stages, cells);
+    const both = rowStaleness(() => behind.link, stages, cells);
     expect(both.needs.map((n) => n.key[2])).toEqual([forward, reverse]);
     expect(both.staleness.bali).toEqual({ badge: undefined, settled: false });
 
     const contained = setup();
     contained.seed(forward, 3, 0, 'src');
-    const one = rowStaleness(contained.link, stages, cells);
+    const one = rowStaleness(() => contained.link, stages, cells);
     expect(one.needs.map((n) => n.key[2])).toEqual([forward]);
     expect(one.staleness.bali).toMatchObject({
       settled: true,
@@ -105,7 +105,7 @@ describe('rowStaleness', () => {
 
   it('backs off four times over budget', () => {
     const { link } = setup(true);
-    const { needs } = rowStaleness(link, stages, cells);
+    const { needs } = rowStaleness(() => link, stages, cells);
     expect(needs[0]?.freshness.refetchInterval).toBe(
       IDLE_INTERVAL_MS * BUDGET_BACKOFF,
     );
@@ -115,7 +115,7 @@ describe('rowStaleness', () => {
     const { link, seed } = setup();
     seed(forward, 12, 2, 'src');
     seed(reverse, 2, 12, 'own');
-    const { staleness } = rowStaleness(link, stages, cells);
+    const { staleness } = rowStaleness(() => link, stages, cells);
     expect(staleness.bali).toMatchObject({
       settled: true,
       badge: { kind: 'diverged', behind: 12, ahead: 2 },
@@ -133,7 +133,9 @@ describe('rowStaleness', () => {
     failed.seed(forward, 1, 0, 'src');
     failed.seed(reverse, 0, 1, 'own');
     await seedError(failed.client, forward, new GitHubHttpError('c', 500));
-    expect(rowStaleness(failed.link, stages, cells).staleness.bali).toEqual({
+    expect(
+      rowStaleness(() => failed.link, stages, cells).staleness.bali,
+    ).toEqual({
       badge: undefined,
       settled: true,
     });
@@ -142,7 +144,7 @@ describe('rowStaleness', () => {
     limited.seed(reverse, 0, 1, 'own');
     await seedError(limited.client, forward, new RateLimitedError('c', 0));
     expect(
-      rowStaleness(limited.link, stages, cells).staleness.bali?.badge,
+      rowStaleness(() => limited.link, stages, cells).staleness.bali?.badge,
     ).toEqual({
       kind: 'behind',
       count: 1,
@@ -151,13 +153,23 @@ describe('rowStaleness', () => {
 
   it('needs nothing without a git link, a source cell or a branch difference', () => {
     const { link } = setup();
-    expect(rowStaleness(undefined, stages, cells).needs).toEqual([]);
-    expect(rowStaleness(link, stages, { bali: cells.bali }).needs).toEqual([]);
+    expect(rowStaleness(() => undefined, stages, cells).needs).toEqual([]);
     expect(
-      rowStaleness(link, stages, {
+      rowStaleness(() => link, stages, { bali: cells.bali }).needs,
+    ).toEqual([]);
+    expect(
+      rowStaleness(() => link, stages, {
         dev: ok('dev', 'd1'),
         bali: ok('dev', 'd2'),
       }).needs,
     ).toEqual([]);
+  });
+
+  it("compares through the link of the cell being compared, not its source's", () => {
+    const { link } = setup();
+    const only = (stageId: string) => (id: string) =>
+      id === stageId ? link : undefined;
+    expect(rowStaleness(only('dev'), stages, cells).needs).toEqual([]);
+    expect(rowStaleness(only('bali'), stages, cells).needs).toHaveLength(1);
   });
 });

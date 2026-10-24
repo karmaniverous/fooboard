@@ -21,23 +21,12 @@ export const PRESET_IDS = {
   amplify: 'amplify',
 } as const;
 
-/** The set each provider uses unless a level overrides it: bundled presets. */
+/** The set each provider uses unless a level sets one (the built-in of
+ * the `statusSets` setting, spec.md §3.11): bundled presets. */
 export const DEFAULT_STATUS_SET_IDS = {
   github: PRESET_IDS.githubDeployTest,
   amplify: PRESET_IDS.amplify,
 } as const satisfies Record<Provider, string>;
-
-/** A status set per provider, either unset (inherit), for a row group. */
-export const StatusSetRefsSchema = z.object({
-  github: z.string().min(1).optional(),
-  amplify: z.string().min(1).optional(),
-});
-
-/** A dashboard's status set per provider, the bundled presets by default. */
-export const DashboardStatusSetsSchema = z.object({
-  github: z.string().min(1).default(DEFAULT_STATUS_SET_IDS.github),
-  amplify: z.string().min(1).default(DEFAULT_STATUS_SET_IDS.amplify),
-});
 
 /** The glyphs a status can show (the board's status icons). */
 const StatusIconSchema = z.enum([

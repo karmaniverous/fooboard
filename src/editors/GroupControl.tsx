@@ -36,11 +36,12 @@ export function GroupControl({
 }): React.JSX.Element {
   const groups = groupsOn(dashboard, axis);
   const current = groupOf(groups, itemId);
-  // Leaving a row group as its last member deletes what it carries.
-  const rowGroup =
-    axis === 'rows' ? groupOf(dashboard.rowGroups, itemId) : undefined;
-  const losesSettings =
-    rowGroup?.memberIds.length === 1 && carriesSettings(rowGroup);
+  // Leaving a group as its last member deletes what it carries.
+  const own =
+    axis === 'rows'
+      ? groupOf(dashboard.rowGroups, itemId)
+      : groupOf(dashboard.columnGroups, itemId);
+  const losesSettings = own?.memberIds.length === 1 && carriesSettings(own);
   return (
     <div className="flex flex-wrap items-center gap-1 text-xs">
       <Choice
@@ -83,8 +84,8 @@ export function GroupControl({
       )}
       {losesSettings && (
         <span className="text-status-failure">
-          Moving this row out deletes its group and the group&apos;s overrides
-          and credentials.
+          Moving this {axis === 'rows' ? 'row' : 'stage'} out deletes its group
+          and the group&apos;s settings and overrides.
         </span>
       )}
     </div>

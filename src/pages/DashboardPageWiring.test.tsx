@@ -131,7 +131,7 @@ describe('DashboardPage dismissal', () => {
 });
 
 describe('DashboardPage dismissing an unresolvable AWS key', () => {
-  const noKey = /^Amplify source a1 \(us-east-1\) has no AWS key/;
+  const noKey = /^Dev have no AWS key/;
 
   it('hides the problem, and the cells still need a credential', async () => {
     await renderDashboardPage({
@@ -143,7 +143,7 @@ describe('DashboardPage dismissing an unresolvable AWS key', () => {
           id: 'site',
           displayName: 'site',
           repo: 'acme/site',
-          sources: [{ region: 'us-east-1', appId: 'a1' }],
+          pinnedApps: [{ region: 'us-east-1', appId: 'a1' }],
         },
       ],
       stages: [{ id: 'dev', name: 'Dev', rules: branchRules('dev') }],

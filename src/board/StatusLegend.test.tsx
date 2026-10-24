@@ -28,7 +28,9 @@ const dashboard = DashboardSchema.parse({
       id: 'b',
       repo: 'acme/b',
       displayName: 'b',
-      cellStatusSets: { prod: PRESET_IDS.githubSingleJob },
+      cellSettings: {
+        prod: { statusSets: { github: PRESET_IDS.githubSingleJob } },
+      },
     },
   ],
 });

@@ -1,6 +1,6 @@
 /**
  * Tests for row-rule editing: set and unset a group's or the dashboard's
- * record and item rules per source, dropping a source with neither.
+ * record rule per source, dropping a source with none.
  *
  * @module
  */
@@ -14,33 +14,32 @@ import { setDashboardRowRule, setGroupRowRule } from './rowRuleEdit';
 const d = DashboardSchema.parse({
   id: 'd',
   name: 'd',
-  rows: [{ type: 'github', id: 'web', repo: 'a/web', displayName: 'web' }],
-  rowGroups: [{ id: 'g', memberIds: ['web'] }],
+  rows: [
+    { type: 'github', id: 'web', repo: 'a/web', displayName: 'web' },
+    { type: 'github', id: 'api', repo: 'a/api', displayName: 'api' },
+  ],
+  rowGroups: [
+    { id: 'g', memberIds: ['web'] },
+    { id: 'h', memberIds: ['api'] },
+  ],
 });
 const rule = all(is('$.workflow', 'CI'));
 
 describe('row rule editing', () => {
-  it("sets and unsets a group's rules per source", () => {
-    const set = setGroupRowRule(d, 'g', 'github', 'record', rule);
+  it("sets and unsets a group's record rule per source", () => {
+    const set = setGroupRowRule(d, 'g', 'github', rule);
     expect(set.rowGroups[0]?.rowRules.github).toEqual({ record: rule });
-    const both = setGroupRowRule(set, 'g', 'github', 'items', rule);
-    expect(both.rowGroups[0]?.rowRules.github).toEqual({
-      record: rule,
-      items: rule,
-    });
-    const back = setGroupRowRule(
-      setGroupRowRule(both, 'g', 'github', 'record', undefined),
-      'g',
-      'github',
-      'items',
-      undefined,
-    );
+    expect(set.rowGroups[0]?.rowRules.amplify).toBeUndefined();
+    expect(set.rowGroups[1]).toBe(d.rowGroups[1]);
+    const back = setGroupRowRule(set, 'g', 'github', undefined);
     expect(back.rowGroups[0]?.rowRules.github).toBeUndefined();
   });
 
-  it("sets the dashboard's", () => {
+  it("sets and unsets the dashboard's", () => {
+    const set = setDashboardRowRule(d, 'amplify', rule);
+    expect(set.rowRules.amplify).toEqual({ record: rule });
     expect(
-      setDashboardRowRule(d, 'amplify', 'record', rule).rowRules.amplify,
-    ).toEqual({ record: rule });
+      setDashboardRowRule(set, 'amplify', undefined).rowRules.amplify,
+    ).toBeUndefined();
   });
 });

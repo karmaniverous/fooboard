@@ -16,6 +16,7 @@ import { branchRules } from '@/domain/config/placement';
 import { createAppStores } from '@/storage';
 import { memoryStorage } from '@/storage/keyValue';
 import { StoresContext } from '@/storage/storesContext';
+import { choose } from '@/test/choose';
 import { envRender } from '@/test/envRender';
 
 import { DashboardEditor } from './DashboardEditor';
@@ -83,11 +84,33 @@ describe('DashboardEditor save errors', () => {
     expect(store.saved.name).toBe('Platform 2');
   });
 
+  it('says a setting that failed to save was not saved', () => {
+    const store = setup({
+      ...start,
+      credentials: [{ id: 'k1', kind: 'aws', label: 'k1' }],
+    });
+    fireEvent.click(screen.getByRole('button', { name: /^Settings/ }));
+    store.failing = true;
+    choose(
+      screen.getByRole('combobox', { name: 'AWS key for Dashboard Board' }),
+      'k1',
+    );
+    expect(screen.getByRole('alert')).toHaveTextContent(
+      'Not saved: QuotaExceededError: The quota has been exceeded.',
+    );
+    expect(store.saved.settings.awsKey).toBeUndefined();
+  });
+
   it('refuses an edit the schema rejects, saying why', () => {
     // The editors' own controls can't produce an invalid dashboard, but a
     // dashboard that is already invalid (two stages with one id) can't be
     // saved with any edit.
-    const stage = { id: 'dev', name: 'dev', rules: branchRules('dev') };
+    const stage = {
+      id: 'dev',
+      name: 'dev',
+      rules: branchRules('dev'),
+      settings: {},
+    };
     const invalid = { ...start, stages: [stage, { ...stage }] };
     const store = setup(invalid);
     rename('Platform');
