@@ -2,8 +2,8 @@
  * The *Reset* confirmation (spec.md C-4, §3.9, Decisions 15 and 38): an
  * alert dialog saying what goes (every dashboard, credential, setting and
  * cached answer fooboard keeps in this browser, in every open tab) before
- * the stores' Reset clears it and reloads. If clearing local storage
- * fails, the dialog stays open and says so.
+ * the stores' Reset clears it and reloads. If the cache or local storage
+ * can't be cleared, the dialog stays open and says so.
  *
  * @module
  */
