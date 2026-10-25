@@ -44,10 +44,10 @@ describe('useBoardModel', () => {
     );
     await waitFor(
       () => {
-        expect(
-          Object.values(result.current.model.cells).filter((c) => c?.settled)
-            .length,
-        ).toBeGreaterThan(0);
+        // Every cell present (an Amplify row's search can land later).
+        expect(Object.keys(result.current.model.cells)).toHaveLength(
+          demoDashboard.rows.length * demoDashboard.stages.length,
+        );
       },
       { timeout: FILL_TIMEOUT_MS },
     );

@@ -9,71 +9,13 @@
 import { QueryClient } from '@tanstack/query-core';
 import { describe, expect, it } from 'vitest';
 
-import { createDemoAmplifyReaderFor } from '@/demo/amplify';
-import { DEMO_AMPLIFY_APPS, demoDashboard } from '@/demo/board';
-import { cellRulesFor } from '@/domain/config/cellRules';
+import { demoDashboard } from '@/demo/board';
 import type { AmplifyRow } from '@/domain/config/row';
 import { EMPTY_STATES } from '@/domain/derivation';
-import { sourceRuleFor } from '@/domain/model/sources';
-import { resolveSetting } from '@/domain/settings/resolve';
-import { chosenBranches } from '@/lib/amplify/rowJobs';
-import { amplifyKey } from '@/query/keys';
-import { fetched } from '@/test/fakeReaders';
+import { amplifyCtx as ctx, AWS, rowOf, seedRow } from '@/test/amplifyRows';
 
-import { type AmplifyContext, deriveAmplifyRow, rowApps } from './amplifyRow';
-
-const AWS = 'demo-aws';
-const readerFor = createDemoAmplifyReaderFor(() => 0);
-const source = sourceRuleFor(demoDashboard, 'amplify');
-
-const rowOf = (id: string): AmplifyRow => {
-  const row = demoDashboard.rows.find((r) => r.id === id);
-  if (row?.type !== 'amplify') throw new Error(`${id} is not an Amplify row`);
-  return row;
-};
-
-const ctx = (client: QueryClient, hasReader = true): AmplifyContext => ({
-  client,
-  stages: demoDashboard.stages,
-  rulesFor: (row, stageId) => cellRulesFor(demoDashboard, row, stageId),
-  keyFor: (row, stageId) =>
-    resolveSetting(demoDashboard, row, stageId, 'awsKey').value,
-  hasReader: () => hasReader,
-  source,
-  now: 0,
-  fetchStartedAt: () => undefined,
-});
-
-/** Seed one demo app's branch list and, unless `branchesOnly`, its jobs. */
-async function seedApp(
-  client: QueryClient,
-  region: string,
-  appId: string,
-  branchesOnly = false,
-) {
-  const reader = readerFor({ credentialId: AWS, region });
-  const branches = await reader.listBranches(appId);
-  client.setQueryData(
-    amplifyKey(AWS, { call: 'branches', region, appId }),
-    fetched(branches),
-  );
-  if (branchesOnly) return;
-  const max = source.reader.jobsPerBranch;
-  for (const branch of chosenBranches(branches, source.reader))
-    client.setQueryData(
-      amplifyKey(AWS, { call: 'jobs', region, appId, branch, max }),
-      fetched(await reader.listJobs(appId, branch, max)),
-    );
-}
-
-const seedRow = async (
-  client: QueryClient,
-  id: keyof typeof DEMO_AMPLIFY_APPS,
-  branchesOnly = false,
-) => {
-  for (const s of DEMO_AMPLIFY_APPS[id])
-    await seedApp(client, s.region, s.appId, branchesOnly);
-};
+import { rowApps } from './amplifyAccess';
+import { type AmplifyContext, deriveAmplifyRow } from './amplifyRow';
 
 describe('deriveAmplifyRow per key', () => {
   describe('each cell reading with its own key', () => {

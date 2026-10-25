@@ -71,6 +71,7 @@ const model: BoardModel = {
   unmapped: [],
   problems: [],
   amplifyBranches: [],
+  amplifyKeyApps: {},
   budgets: {},
   refreshedAt: {},
 };

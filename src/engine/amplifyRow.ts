@@ -1,16 +1,20 @@
 /**
  * One Amplify row derived from the cache (spec.md §3.1, §2.3, §3.12):
- * each cell reads the pinned apps serving the AWS key it resolves to
- * (`pinsFor`), so the row's columns derive in parts, one per key, and
- * merge. A cell shows as soon as a landed record places it; until every
- * app its part reads has landed it is not settled, and a cell no landed
- * record places stays loading. A cell whose key can't be resolved (none
- * set at any level, or no secret entered) shows *Needs credential*, with
- * one dismissable problem per missing kind naming the row's columns
- * (Decisions 21, 48). A failed read of one app shows on the cells reading
- * that app only. A part is refreshing while any of its apps' reads has
- * been fetching longer than the refreshing delay or is older than its
- * poll interval (Decisions 46, 47). Pure.
+ * each cell reads the apps its AWS key gives it (`amplifyAccess`: pinned
+ * apps, else the apps the key's search finds building the row's repo), so
+ * the row's columns derive in parts, one per key, and merge. A cell shows
+ * as soon as a landed record places it; until every app its part reads
+ * has landed it is not settled, and a cell no landed record places stays
+ * loading, as do the cells of a part whose search hasn't finished. A cell
+ * whose key can't be resolved (none set at any level, or no secret
+ * entered) shows *Needs credential*, with one dismissable problem per
+ * missing kind naming the row's columns (Decisions 21, 48). A part whose
+ * search failed shows *Error* naming the region; one with no app shows
+ * *No app* with its problem; one reading several found apps pools them,
+ * with the *Pin* problem. A failed read of one app shows on the cells
+ * reading that app only. A part is refreshing while any of its apps'
+ * reads has been fetching longer than the refreshing delay or is older
+ * than its poll interval (Decisions 46, 47). Pure.
  *
  * @module
  */
@@ -21,72 +25,46 @@ import type { Stage } from '@/domain/config/stage';
 import { deriveCell } from '@/domain/derivation';
 import { type CellRules, placeCell } from '@/domain/model/cell';
 import type { SourceRuleOf } from '@/domain/model/sourceRule';
-import { pinsFor } from '@/domain/settings/pins';
-import { appKey, type ResolvedAmplifySource } from '@/lib/amplify/rowJobs';
+import type { ResolvedAmplifySource } from '@/lib/amplify/rowJobs';
 import { amplifySnapshot } from '@/query/cache';
 import { rootFreshness } from '@/query/intervals';
 import { amplifyKey } from '@/query/keys';
 
+import {
+  type AccessContext,
+  type Part,
+  rowParts,
+  searchedKeys,
+  searchNeeds,
+} from './amplifyAccess';
 import { type AppState, appState } from './amplifyApp';
-import { emptyViews, finalView } from './cells';
-import { mergeDerivations, type Segment, segments } from './cellSegments';
+import {
+  type KeyLabel,
+  noAppProblem,
+  noAppReason,
+  severalProblem,
+  skippedRegionsNote,
+  unpinNotes,
+} from './amplifyProblems';
+import { emptyViews, finalView, noAppViews } from './cells';
+import { mergeDerivations } from './cellSegments';
 import type { Need, RowDerivation } from './need';
-import { failedDerivation, rowProblem } from './providerOutcome';
+import {
+  failedDerivation,
+  failedViews,
+  failureProblem,
+  rowProblem,
+} from './providerOutcome';
 import { isRefreshing, markRefreshing, type RefreshClock } from './refreshing';
 import type { CellView } from './types';
 
 /** What every Amplify row derivation shares. */
-export interface AmplifyContext extends RefreshClock {
+export interface AmplifyContext extends RefreshClock, AccessContext {
   client: QueryClient;
-  stages: readonly Stage[];
   rulesFor: (row: AmplifyRow, stageId: string) => CellRules;
-  /** The AWS key a row's cell resolves to (spec.md §3.11). */
-  keyFor: (row: AmplifyRow, stageId: string) => string | undefined;
-  /** A secret is entered for the AWS credential. */
-  hasReader: (credentialId: string) => boolean;
   source: SourceRuleOf<'amplify'>;
-}
-
-/** What a part of a row reads: its apps, or why it can't. */
-type Access =
-  | { kind: 'apps'; apps: ResolvedAmplifySource[] }
-  /** `key`: none set at any level; `secret`: none entered for it. */
-  | { kind: 'missing'; missing: 'key' | 'secret' };
-
-/** What a cell resolving to `key` reads. */
-const accessFor = (
-  ctx: Pick<AmplifyContext, 'hasReader'>,
-  row: AmplifyRow,
-  key: string | undefined,
-): Access =>
-  key === undefined
-    ? { kind: 'missing', missing: 'key' }
-    : ctx.hasReader(key)
-      ? {
-          kind: 'apps',
-          apps: pinsFor(row, key).map((pin) => ({ ...pin, credentialId: key })),
-        }
-      : { kind: 'missing', missing: 'secret' };
-
-/** `row`'s columns split by the key their cells resolve to. */
-const keySegments = (
-  ctx: Pick<AmplifyContext, 'stages' | 'keyFor'>,
-  row: AmplifyRow,
-): Segment<string | undefined>[] =>
-  segments(ctx.stages, (stageId) => ctx.keyFor(row, stageId));
-
-/** Every app any cell of `row` reads, once each. */
-export function rowApps(
-  ctx: Pick<AmplifyContext, 'stages' | 'keyFor' | 'hasReader'>,
-  row: AmplifyRow,
-): ResolvedAmplifySource[] {
-  const apps = keySegments(ctx, row).flatMap(({ key }) => {
-    const access = accessFor(ctx, row, key);
-    return access.kind === 'apps' ? access.apps : [];
-  });
-  return apps.filter(
-    (app, i) => apps.findIndex((a) => appKey(a) === appKey(app)) === i,
-  );
+  /** Names a key in problems. */
+  keyLabel: KeyLabel;
 }
 
 /** The problem naming the columns of row `rowId` whose cells can't read
@@ -175,30 +153,86 @@ function deriveApps(
   };
 }
 
+/** The part `part` of `row` derived, unless its key or secret is
+ * missing. */
+function derivePart(
+  ctx: AmplifyContext,
+  row: AmplifyRow,
+  { stages, access }: Part,
+): RowDerivation {
+  const empty: RowDerivation = { cells: {}, needs: [], problems: [] };
+  const setFor = (stageId: string) => ctx.rulesFor(row, stageId).set;
+  switch (access.kind) {
+    case 'missing':
+      return { ...empty, cells: emptyViews(stages, setFor, 'missing') };
+    case 'searching':
+      return empty;
+    case 'failed': {
+      const problem = failureProblem(
+        access.outcome,
+        row.id,
+        `the Amplify apps of the AWS key ${ctx.keyLabel(access.key)} in ${access.region}`,
+      );
+      return {
+        ...empty,
+        cells: failedViews(access.outcome, stages, setFor),
+        problems: problem ? [problem] : [],
+      };
+    }
+    case 'none':
+      return {
+        ...empty,
+        cells: noAppViews(stages, noAppReason(row)),
+        problems: [noAppProblem(row, access.key, stages, ctx.keyLabel)],
+      };
+    case 'apps': {
+      const derived = deriveApps(ctx, row, access.apps, stages);
+      const { search } = access;
+      return search && search.found.length > 1
+        ? {
+            ...derived,
+            problems: [
+              ...derived.problems,
+              severalProblem(row.id, access.key, search, ctx.keyLabel),
+            ],
+          }
+        : derived;
+    }
+  }
+}
+
 /** `row` derived from the cache: one part per AWS key its cells resolve
- * to, merged. */
+ * to, merged, with the search's queries and notes for every key. */
 export function deriveAmplifyRow(
   ctx: AmplifyContext,
   row: AmplifyRow,
 ): RowDerivation {
-  const setFor = (stageId: string) => ctx.rulesFor(row, stageId).set;
-  const unresolved: Record<'key' | 'secret', Stage[]> = { key: [], secret: [] };
-  const parts = keySegments(ctx, row).map(({ key, stages }) => {
-    const access = accessFor(ctx, row, key);
-    if (access.kind === 'apps')
-      return deriveApps(ctx, row, access.apps, stages);
-    unresolved[access.missing].push(...stages);
-    return {
-      cells: emptyViews(stages, setFor, 'missing'),
-      needs: [],
-      problems: [],
-    };
+  const parts = rowParts(ctx, row);
+  const merged = mergeDerivations(parts.map((p) => derivePart(ctx, row, p)));
+  const unresolved = (['key', 'secret'] as const).flatMap((missing) => {
+    const stages = parts.flatMap((p) =>
+      p.access.kind === 'missing' && p.access.missing === missing
+        ? p.stages
+        : [],
+    );
+    return stages.length > 0
+      ? [unresolvedProblem(row.id, missing, stages)]
+      : [];
   });
-  const merged = mergeDerivations(parts);
-  const problems = (['key', 'secret'] as const).flatMap((missing) =>
-    unresolved[missing].length > 0
-      ? [unresolvedProblem(row.id, missing, unresolved[missing])]
-      : [],
-  );
-  return { ...merged, problems: [...problems, ...merged.problems] };
+  const regionNotes = searchedKeys(ctx, parts).flatMap((key) => {
+    const search = ctx.search(key).state;
+    return search.kind === 'done'
+      ? skippedRegionsNote(key, search.noted, ctx.keyLabel)
+      : [];
+  });
+  return {
+    ...merged,
+    needs: [...merged.needs, ...searchNeeds(ctx, parts)],
+    problems: [
+      ...unresolved,
+      ...merged.problems,
+      ...unpinNotes(ctx, row, parts, ctx.keyLabel),
+      ...regionNotes,
+    ],
+  };
 }

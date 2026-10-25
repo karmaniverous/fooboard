@@ -14,75 +14,24 @@
 import { QueryClient } from '@tanstack/query-core';
 import { describe, expect, it } from 'vitest';
 
-import { createDemoAmplifyReaderFor } from '@/demo/amplify';
 import { DEMO_AMPLIFY_APPS, demoDashboard } from '@/demo/board';
 import { cellRulesFor } from '@/domain/config/cellRules';
-import type { AmplifyRow } from '@/domain/config/row';
 import { EMPTY_STATES } from '@/domain/derivation';
-import { sourceRuleFor } from '@/domain/model/sources';
-import { resolveSetting } from '@/domain/settings/resolve';
 import { AmplifyNotFoundError } from '@/lib/amplify/errors';
-import { chosenBranches } from '@/lib/amplify/rowJobs';
+import { AMPLIFY_REGIONS } from '@/lib/amplify/regions';
 import { amplifyKey } from '@/query/keys';
-import { fetched } from '@/test/fakeReaders';
+import {
+  amplifyCtx as ctx,
+  amplifySource as source,
+  AWS,
+  rowOf,
+  seedRow,
+} from '@/test/amplifyRows';
 import { landedAt, markFetching } from '@/test/queryState';
 
 import { type AmplifyContext, deriveAmplifyRow } from './amplifyRow';
 import { NOT_FOUND } from './providerOutcome';
 import { REFRESHING_DELAY_MS } from './refreshing';
-
-const AWS = 'demo-aws';
-const readerFor = createDemoAmplifyReaderFor(() => 0);
-const source = sourceRuleFor(demoDashboard, 'amplify');
-
-const rowOf = (id: string): AmplifyRow => {
-  const row = demoDashboard.rows.find((r) => r.id === id);
-  if (row?.type !== 'amplify') throw new Error(`${id} is not an Amplify row`);
-  return row;
-};
-
-const ctx = (client: QueryClient, hasReader = true): AmplifyContext => ({
-  client,
-  stages: demoDashboard.stages,
-  rulesFor: (row, stageId) => cellRulesFor(demoDashboard, row, stageId),
-  keyFor: (row, stageId) =>
-    resolveSetting(demoDashboard, row, stageId, 'awsKey').value,
-  hasReader: () => hasReader,
-  source,
-  now: 0,
-  fetchStartedAt: () => undefined,
-});
-
-/** Seed one demo app's branch list and, unless `branchesOnly`, its jobs. */
-async function seedApp(
-  client: QueryClient,
-  region: string,
-  appId: string,
-  branchesOnly = false,
-) {
-  const reader = readerFor({ credentialId: AWS, region });
-  const branches = await reader.listBranches(appId);
-  client.setQueryData(
-    amplifyKey(AWS, { call: 'branches', region, appId }),
-    fetched(branches),
-  );
-  if (branchesOnly) return;
-  const max = source.reader.jobsPerBranch;
-  for (const branch of chosenBranches(branches, source.reader))
-    client.setQueryData(
-      amplifyKey(AWS, { call: 'jobs', region, appId, branch, max }),
-      fetched(await reader.listJobs(appId, branch, max)),
-    );
-}
-
-const seedRow = async (
-  client: QueryClient,
-  id: keyof typeof DEMO_AMPLIFY_APPS,
-  branchesOnly = false,
-) => {
-  for (const s of DEMO_AMPLIFY_APPS[id])
-    await seedApp(client, s.region, s.appId, branchesOnly);
-};
 
 describe('deriveAmplifyRow', () => {
   it('marks cells refreshing while an app read is fetching past the delay or overdue, not while fresh', async () => {
@@ -141,13 +90,18 @@ describe('deriveAmplifyRow', () => {
       });
   });
 
-  it('needs each app branch list first, showing nothing yet', () => {
+  it("needs each app branch list first, and its key's search, showing nothing yet", () => {
     const out = deriveAmplifyRow(
       ctx(new QueryClient()),
       rowOf('marketing-site'),
     );
     expect(out.cells).toEqual({});
-    expect(out.needs.map((n) => n.key[2].call)).toEqual(['branches']);
+    const calls = out.needs.map((n) => n.key[2].call);
+    expect(calls.filter((c) => c !== 'apps')).toEqual(['branches']);
+    // A pinned row's key is searched too, for the notes on its pins.
+    expect(calls.filter((c) => c === 'apps')).toHaveLength(
+      AMPLIFY_REGIONS.length,
+    );
   });
 
   it('needs a jobs query per chosen branch once the list lands', async () => {
