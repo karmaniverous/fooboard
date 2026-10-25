@@ -17,6 +17,7 @@ import {
   type Rung,
 } from './layout';
 import { type Content, minWidth, packContent } from './packing';
+import { HEADER_GEAR_EM } from './settingsGearSize';
 import { layoutAtZoom, snapZoom, stepZoom, zoomLabel, zoomRange } from './zoom';
 
 /** Every character is 0.6 em wide. */
@@ -57,6 +58,7 @@ const input = (over: Partial<LayoutInput> = {}): LayoutInput => ({
   contents: (rung) => [cell(rung)],
   measure,
   density: 'default',
+  headerGears: true,
   ...over,
 });
 
@@ -181,6 +183,23 @@ describe('fitLayout', () => {
   it('caps the row-name column at 30% of the grid area', () => {
     const l = fitLayout(input({ width: 800, rowNames: ['x'.repeat(300)] }), 13);
     expect(l.rowNameWidth).toBeCloseTo(0.3 * 800);
+  });
+
+  it('keeps room in the row-name column for the header gear, and none without (a narrow screen)', () => {
+    const l = fitLayout(input(), 13);
+    const narrow = fitLayout(input({ headerGears: false }), 13);
+    const name = measure('api-core', 13);
+    expect(l.rowNameWidth).toBeCloseTo(name + 2 * l.padX + HEADER_GEAR_EM * 13);
+    expect(narrow.rowNameWidth).toBeCloseTo(name + 2 * narrow.padX);
+    expect([l.headerGears, narrow.headerGears]).toEqual([true, false]);
+  });
+
+  it('keeps room after a header lead for its gear', () => {
+    const header: Content = { lead: 'Release', items: [], trail: 1 };
+    // 7 characters at 6 px, and 1 em of 10 px.
+    expect(minWidth(header, 10, measure)).toBe(42 + 10);
+    expect(packContent(header, 51, 10, measure)).toBeNull();
+    expect(packContent(header, 52, 10, measure)?.lines).toBe(1);
   });
 });
 

@@ -63,7 +63,8 @@ describe('ColumnGroupLabels', () => {
     expect(header).toHaveClass('sticky');
     expect(header.style.height).toBe('24px');
     expect(header.style.marginBottom).toBe('-4px');
-    expect(screen.getByText('Preview').style.left).toBe('140px');
+    // The pinned span holds the label and its gear.
+    expect(screen.getByText('Preview').parentElement?.style.left).toBe('140px');
 
     const ungrouped = container.querySelector('[role=presentation]');
     expect(ungrouped).not.toBeNull();

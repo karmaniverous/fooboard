@@ -21,6 +21,7 @@ import {
   inheritedWords,
   placeLabel,
   shadowWords,
+  unlabelledGroup,
 } from './origins';
 
 const d = DashboardSchema.parse({
@@ -112,5 +113,22 @@ describe('origins in words', () => {
         "Which of a record's items count, for Amplify rows.",
       ],
     ]);
+  });
+});
+
+describe('unlabelledGroup', () => {
+  const labelled = DashboardSchema.parse({
+    ...d,
+    rowGroups: [{ id: 'rg', label: 'Backend', memberIds: ['api'] }],
+  });
+  it.each([
+    [{ level: 'rowGroup', groupId: 'rg' } as const, d, true],
+    [{ level: 'columnGroup', groupId: 'cg' } as const, d, true],
+    [{ level: 'rowGroup', groupId: 'rg' } as const, labelled, false],
+    [{ level: 'rowGroup', groupId: 'gone' } as const, d, false],
+    [{ level: 'row', rowId: 'api' } as const, d, false],
+    [{ level: 'dashboard' } as const, d, false],
+  ])('finds %j an unlabelled group: %#', (origin, board, found) => {
+    expect(unlabelledGroup(board, origin)).toEqual(found ? origin : undefined);
   });
 });

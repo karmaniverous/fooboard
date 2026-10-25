@@ -31,6 +31,11 @@ const sizeClasses: Record<ButtonSize, string> = {
   icon: 'h-10 w-10',
 };
 
+/** The close button of a modal, sheet or popover: an X whose hover is a
+ * tint of the text colour, so it shows on any background. */
+export const CLOSE_BUTTON_CLASS =
+  'rounded-md p-1 hover:bg-current/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring';
+
 /** Compose the classes for a button of the given variant and size. */
 export function buttonVariants({
   variant = 'default',

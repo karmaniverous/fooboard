@@ -15,7 +15,7 @@ import { is } from '@/domain/model/ruleBuilders';
 import { problem } from '@/domain/problems/problem';
 import type { UnmappedRun } from '@/engine';
 
-import { draftFor, overrideDraftFor, problemDraft } from './draft';
+import { draftFor, overrideDraftFor, placeDraft, problemDraft } from './draft';
 
 const dashboard = DashboardSchema.parse({
   id: 'd',
@@ -157,5 +157,38 @@ describe('problemDraft', () => {
         }),
       ),
     ).toEqual({ tab: 'Stages', focus: ['dashboard:stageRules'] });
+  });
+});
+
+describe('placeDraft', () => {
+  it.each([
+    [{ level: 'dashboard' } as const, 'General', ['dashboard:settings']],
+    [
+      { level: 'row', rowId: 'r' } as const,
+      'Rows',
+      ['row:r:settings', 'row:r'],
+    ],
+    [
+      { level: 'cell', rowId: 'r', stageId: 's' } as const,
+      'Rows',
+      ['row:r:cells:s:settings', 'row:r:cells:s'],
+    ],
+    [
+      { level: 'rowGroup', groupId: 'g' } as const,
+      'Rows',
+      ['rowGroup:g:settings', 'rowGroup:g'],
+    ],
+    [
+      { level: 'column', stageId: 's' } as const,
+      'Stages',
+      ['stage:s:settings', 'stage:s'],
+    ],
+    [
+      { level: 'columnGroup', groupId: 'g' } as const,
+      'Stages',
+      ['columnGroup:g:settings', 'columnGroup:g'],
+    ],
+  ])('opens the editor at %j', (place, tab, focus) => {
+    expect(placeDraft(place)).toEqual({ tab, focus });
   });
 });

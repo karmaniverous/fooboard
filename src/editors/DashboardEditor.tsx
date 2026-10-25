@@ -15,14 +15,14 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 
 import { PanelTabs } from '@/components/SidePanel';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { type Dashboard, DashboardSchema } from '@/domain/config/dashboard';
+import type { Dashboard } from '@/domain/config/dashboard';
 import { sourcesWithItems } from '@/domain/model/sources';
 import type { Problem } from '@/domain/problems/problem';
-import { describeError } from '@/lib/errors';
 
 import type { EditorDraft } from './draft';
 import { EditFocusContext, EDITOR_TABS, type EditorTab } from './editTarget';
 import { GeneralEditor } from './GeneralEditor';
+import { NotSaved } from './NotSaved';
 import { RowsEditor } from './RowsEditor';
 import {
   BranchSamplesContext,
@@ -34,6 +34,7 @@ import { SourcesEditor } from './sources/SourcesEditor';
 import { StagesEditor } from './StagesEditor';
 import { StatusSetsEditor } from './statuses/StatusSetsEditor';
 import type { UnknownCell } from './statuses/unknownRuns';
+import { useValidatedChange } from './useValidatedChange';
 
 const FOCUS_RING = ['ring-2', 'ring-amber-500'];
 
@@ -76,7 +77,6 @@ export function DashboardEditor({
   problems?: readonly Problem[];
 }): React.JSX.Element {
   const [tab, setTab] = useState<EditorTab>(draft?.tab ?? 'General');
-  const [error, setError] = useState<string | null>(null);
   const root = useRef<HTMLDivElement>(null);
   const focus = useMemo(
     () => ({ focus: draft?.focus ?? [], check: draft?.check }),
@@ -86,19 +86,7 @@ export function DashboardEditor({
     if (root.current && draft?.focus) focusItem(root.current, draft.focus);
   }, [draft]);
   const withItems = sourcesWithItems(dashboard);
-  const update = (next: Dashboard) => {
-    const parsed = DashboardSchema.safeParse(next);
-    if (parsed.success) {
-      try {
-        onChange(parsed.data);
-        setError(null);
-      } catch (err) {
-        setError(describeError(err));
-      }
-    } else {
-      setError(parsed.error.issues.map((i) => i.message).join('; '));
-    }
-  };
+  const { update, error } = useValidatedChange(onChange);
   const props = { dashboard, onChange: update };
   return (
     <EditFocusContext value={focus}>
@@ -123,11 +111,7 @@ export function DashboardEditor({
                     ))}
                   </TabsList>
                 </PanelTabs>
-                {error && (
-                  <p role="alert" className="text-xs text-status-failure">
-                    Not saved: {error}
-                  </p>
-                )}
+                <NotSaved error={error} />
                 {/* Only the open tab's panel is mounted (Radix's default). */}
                 <TabsContent value="General">
                   <GeneralEditor {...props} />

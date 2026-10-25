@@ -5,7 +5,9 @@
  * change the layout through them. Badges are taken as shown (capped at
  * 99+): every status cell reserves the widest badge on the board, so all
  * cells pack alike. Free text (branches, commit messages, stage names,
- * group labels) is taken as it is, capped. Pure.
+ * group labels) is taken as it is, capped. Stage headers and labelled
+ * group labels keep room for their settings gear (spec.md §3.11), always
+ * shown. Pure.
  *
  * @module
  */
@@ -23,6 +25,7 @@ import {
   firstLine,
   SHORT_SHA_LENGTH,
 } from './cellView';
+import { headerGearEm } from './headerGears';
 import { capText, type Rung, RUNG_SHOWS } from './layout';
 import { type Content, type Item } from './packing';
 
@@ -47,7 +50,10 @@ const shortHeader = (name: string) =>
 export function boardContents(
   dashboard: Pick<Dashboard, 'stages' | 'columnGroups' | 'customStatusSets'>,
   model: Pick<BoardModel, 'cells'>,
+  /** Headers carry settings gears (spec.md §3.11): keep room for them. */
+  headerGears: boolean,
 ): (rung: Rung) => Content[] {
+  const trail = headerGearEm(headerGears);
   const status = longestStatus(dashboard.customStatusSets);
   const badges = Object.values(model.cells).flatMap((c) =>
     c?.badge ? [badgeText(c.badge)] : [],
@@ -65,11 +71,13 @@ export function boardContents(
   const headers = (rung: Rung): Content[] => [
     ...dashboard.stages.map((s) => ({
       lead: rung === 0 ? shortHeader(s.name) : capText(s.name),
+      trail,
       items: [],
     })),
     ...groups.map((g) => ({
       span: g.span,
       lead: capText(g.label),
+      trail,
       items: [],
     })),
   ];

@@ -16,6 +16,7 @@
  */
 import { useEffect, useMemo, useRef, useState } from 'react';
 
+import { useMediaQuery } from '@/components/useMediaQuery';
 import type { Dashboard } from '@/domain/config/dashboard';
 import type { BoardModel } from '@/engine';
 import { cn } from '@/lib/utils';
@@ -24,8 +25,13 @@ import { BoardGrid } from './BoardGrid';
 import { BoardToolbar } from './BoardToolbar';
 import { type LayoutInput } from './layout';
 import { boardContents } from './layoutContents';
+import {
+  SETTINGS_NARROW_QUERY,
+  useSettingsPopup,
+} from './settingsPopupContext';
 import type { CellFilter } from './summary';
 import { createTextMeasure } from './textMeasure';
+import { useAreaSize } from './useAreaSize';
 import type { BoardView } from './useBoardView';
 import { useStableModel } from './useStableModel';
 import { layoutAtZoom, snapZoom, stepZoom, zoomRange } from './zoom';
@@ -38,37 +44,6 @@ const DRAG_THRESHOLD = 8;
 const INTERACTION_MS = 5_000;
 /** Accumulated wheel delta that makes one 10% zoom step. */
 const WHEEL_STEP_DELTA = 50;
-
-/** The grid area (C-13): the window's width less the page's side margins,
- * and the window height below the grid's top when the page is scrolled to
- * the top. Both come from the window, never from the grid's own size:
- * the page grows with a wide grid, so measuring the grid would feed each
- * layout back into the next and never settle. */
-function useAreaSize(ref: React.RefObject<HTMLElement | null>) {
-  const [size, setSize] = useState({ width: 0, height: 0 });
-  useEffect(() => {
-    const el = ref.current;
-    if (!el) return;
-    const update = () => {
-      const rect = el.getBoundingClientRect();
-      const top = rect.top + window.scrollY;
-      const left = rect.left + window.scrollX;
-      const windowWidth = document.documentElement.clientWidth;
-      setSize({
-        width: Math.max(0, windowWidth - 2 * left),
-        height: Math.max(0, window.innerHeight - top - 8),
-      });
-    };
-    const observer = new ResizeObserver(update);
-    observer.observe(el);
-    window.addEventListener('resize', update);
-    return () => {
-      observer.disconnect();
-      window.removeEventListener('resize', update);
-    };
-  }, [ref]);
-  return size;
-}
 
 /** The editable zoom percentage: Enter or leaving the field applies it,
  * snapped to 10% and clamped to the board's range (C-13). */
@@ -92,6 +67,8 @@ export function BoardViewport({
   const scroller = useRef<HTMLDivElement>(null);
   const area = useAreaSize(scroller);
   const [measure] = useState(createTextMeasure);
+  // No header gears on a narrow screen (spec.md §3.11).
+  const headerGears = !useMediaQuery(SETTINGS_NARROW_QUERY);
 
   const lastActivity = useRef(0);
   const touch = () => {
@@ -100,10 +77,13 @@ export function BoardViewport({
   // Pointer state: pinch (two pointers), pan (one), double-tap. A pointer
   // held down always counts as interacting, however long the gesture.
   const pointers = useRef(new Map<number, { x: number; y: number }>());
+  // An open settings popup counts as interaction (spec.md §3.11).
+  const popupOpen = useSettingsPopup()?.request != null;
   const sizingModel = useStableModel(
     model,
     `${dashboard.id}:${String(dashboard.rows.length)}x${String(dashboard.stages.length)}`,
     () =>
+      popupOpen ||
       pointers.current.size > 0 ||
       Date.now() - lastActivity.current < INTERACTION_MS,
   );
@@ -119,11 +99,20 @@ export function BoardViewport({
         dashboard.rowGroups.filter((g) => g.label).length +
         (dashboard.columnGroups.some((g) => g.label) ? 1 : 0),
       rowNames: dashboard.rows.map((r) => r.displayName),
-      contents: boardContents(dashboard, sizingModel),
+      contents: boardContents(dashboard, sizingModel, headerGears),
       measure,
       density,
+      headerGears,
     }),
-    [area.width, area.height, dashboard, sizingModel, measure, density],
+    [
+      area.width,
+      area.height,
+      dashboard,
+      sizingModel,
+      measure,
+      density,
+      headerGears,
+    ],
   );
   const range = useMemo(() => zoomRange(input), [input]);
   const layout = useMemo(

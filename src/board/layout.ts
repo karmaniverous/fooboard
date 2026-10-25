@@ -20,6 +20,7 @@
  */
 import type { Density } from '@/domain/config/devicePreferences';
 
+import { headerGearEm } from './headerGears';
 import {
   type CellFormat,
   type Content,
@@ -86,6 +87,9 @@ export interface LayoutInput {
   contents: (rung: Rung) => readonly Content[];
   measure: Measure;
   density: Density;
+  /** Headers carry settings gears (not on a narrow screen, spec.md
+   * §3.11): the row-name column keeps room for one. */
+  headerGears: boolean;
 }
 
 export interface Layout {
@@ -109,6 +113,8 @@ export interface Layout {
   overflowY: boolean;
   /** The whole board's height, in px. */
   boardHeight: number;
+  /** Headers carry settings gears (`LayoutInput.headerGears`). */
+  headerGears: boolean;
 }
 
 /** Geometry shared by every layout at one text size. */
@@ -123,7 +129,8 @@ function frame(input: LayoutInput, fontPx: number) {
   const rowNameWidth = Math.min(
     (input.width < PHONE_WIDTH ? PHONE_ROW_NAME_SHARE : ROW_NAME_SHARE) *
       input.width,
-    longestName + 2 * padX,
+    // A row header keeps room for its settings gear (spec.md §3.11).
+    longestName + 2 * padX + headerGearEm(input.headerGears) * fontPx,
   );
   const stages = Math.max(1, input.stages);
   const colWidth = Math.max(
@@ -178,6 +185,7 @@ export function layoutAtRung(
     overflowX,
     overflowY: total > input.height + PX_SLACK,
     boardHeight: total,
+    headerGears: input.headerGears,
   };
 }
 

@@ -6,7 +6,8 @@
  * record with no link (possible with a custom source rule) has nothing to
  * follow, so the cover is a button, as an empty cell is: a click, a tap,
  * Enter or Space opens the sheet. Either way the cell is reached with Tab,
- * shows its tooltip on focus and says Space opens its details.
+ * shows its tooltip on focus and says Space opens its details (and, on a
+ * board with settings, that `,` opens its settings: `keyshortcuts`).
  *
  * @module
  */
@@ -14,7 +15,7 @@ import { useRef } from 'react';
 
 import { ExternalLink } from '@/components/ExternalLink';
 
-import { DETAILS_KEY } from './cellView';
+import { cellKeyshortcuts, DETAILS_KEY } from './cellView';
 
 /** Hover and focus handlers showing the cell's tooltip. */
 export interface Inspect {
@@ -32,6 +33,7 @@ export function CellCover({
   name,
   inspect,
   onOpenSheet,
+  settingsKey,
 }: {
   /** Where the cell leads; absent when its record has no link. */
   href: string | undefined;
@@ -39,9 +41,11 @@ export function CellCover({
   name: string;
   inspect: Inspect;
   onOpenSheet?: () => void;
+  /** The board has a settings popup, which `,` opens. */
+  settingsKey?: boolean;
 }): React.JSX.Element {
   const touched = useRef(false);
-  const keyshortcuts = onOpenSheet ? DETAILS_KEY.name : undefined;
+  const keyshortcuts = onOpenSheet ? cellKeyshortcuts(settingsKey) : undefined;
   if (href === undefined) {
     return (
       <button

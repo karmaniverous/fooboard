@@ -2,7 +2,8 @@
  * The column-group label strip above the stage headers (spec.md C-14b),
  * shown when any column group has a label: each group framed along the top
  * and both sides, its label left-aligned and pinned just right of the row
- * names while any of the group is in view.
+ * names while any of the group is in view, with its settings gear (spec.md
+ * §3.11; an unlabelled group has none).
  *
  * @module
  */
@@ -11,6 +12,7 @@ import type { GroupSegment } from '@/domain/groups/segments';
 import { cn } from '@/lib/utils';
 
 import { BOUNDARY, GROUP_LABEL } from './gridStyles';
+import { SettingsGear } from './SettingsGear';
 
 /** Pinned to the top while the board scrolls down, below the app header. */
 const PIN_TOP = 'sticky top-[var(--app-header-h,0px)] z-20 bg-background';
@@ -62,10 +64,16 @@ export function ColumnGroupLabels({
           {/* Left-aligned, and pinned just right of the row names
               while any of the group is in view (C-14b). */}
           <span
-            className="sticky truncate px-[var(--cell-pad-x)]"
+            className="sticky flex min-w-0 items-center px-[var(--cell-pad-x)]"
             style={{ left: labelLeft }}
           >
-            {g.group?.label}
+            <span className="truncate">{g.group?.label}</span>
+            {g.group?.label && (
+              <SettingsGear
+                place={{ level: 'columnGroup', groupId: g.group.id }}
+                spot="header"
+              />
+            )}
           </span>
         </div>
       ))}

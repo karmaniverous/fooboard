@@ -1,8 +1,9 @@
 /**
  * A dashboard's board screen: title, summary filters, budget, and the
  * fit/zoom viewport over the live grid. Shared by *Try the demo* and saved
- * dashboards, which differ only in their query environment and header
- * extras.
+ * dashboards, which differ only in their query environment, header
+ * extras and where settings edits go (spec.md §3.11: saved, or the demo's
+ * in-memory copy).
  *
  * @module
  */
@@ -19,6 +20,10 @@ import { BoardViewport } from './BoardViewport';
 import { ProblemMark } from './ProblemMark';
 import { problemMarks } from './problemMarks';
 import { ProblemMarksContext } from './problemMarksContext';
+import {
+  type SettingsPopupActions,
+  SettingsPopupProvider,
+} from './SettingsPopup';
 import { StatusLegend } from './StatusLegend';
 import { useCellFilter } from './summary';
 import { useBoardModel } from './useBoardModel';
@@ -31,7 +36,9 @@ export function BoardScreen({
   refreshKey,
   actions,
   onOpenProblem,
-}: {
+  onChange,
+  onOpenSettings,
+}: SettingsPopupActions & {
   dashboard: Dashboard;
   /** Wraps every request (the demo's simulated latency); keep stable. */
   around?: Around;
@@ -88,21 +95,27 @@ export function BoardScreen({
         </div>
       </div>
       <ProblemMarksContext value={marks}>
-        <BoardViewport
+        <SettingsPopupProvider
           dashboard={dashboard}
-          model={model}
-          now={now}
-          view={view}
-          filter={filter}
-          lead={({ words }) => (
-            <BoardSummary
-              model={model}
-              filter={filter}
-              onFilter={setFilter}
-              words={words}
-            />
-          )}
-        />
+          onChange={onChange}
+          onOpenSettings={onOpenSettings}
+        >
+          <BoardViewport
+            dashboard={dashboard}
+            model={model}
+            now={now}
+            view={view}
+            filter={filter}
+            lead={({ words }) => (
+              <BoardSummary
+                model={model}
+                filter={filter}
+                onFilter={setFilter}
+                words={words}
+              />
+            )}
+          />
+        </SettingsPopupProvider>
       </ProblemMarksContext>
     </div>
   );
