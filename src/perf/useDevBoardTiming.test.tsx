@@ -2,7 +2,7 @@ import { renderHook, waitFor } from '@testing-library/react';
 import { useEffect, useState } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { demoDashboard } from '@/demo/board';
+import { measureBoard } from '@/demo/scenarios/measure';
 import type { Dashboard } from '@/domain/config/dashboard';
 import { createBoardModel } from '@/engine';
 import { emptyModel } from '@/engine/model';
@@ -68,7 +68,7 @@ describe('useDevBoardTiming', () => {
     const page: PageTiming = { boardShown: false, stopped: [] };
     const reports: TimingSummary[] = [];
     renderHook(() =>
-      useTimedBoard(demoDashboard, {
+      useTimedBoard(measureBoard, {
         ...capturing(page, reports),
         navigation: () => 'reload',
       }),
@@ -84,7 +84,7 @@ describe('useDevBoardTiming', () => {
       kind: 'demo',
       demoLatencyMs: 300,
       pageLoad: 'reload',
-      cells: demoDashboard.rows.length * demoDashboard.stages.length,
+      cells: measureBoard.rows.length * measureBoard.stages.length,
     });
     expect(summary.firstCell).toBeDefined();
     // Every row needed requests: its repo's runs, or its app's jobs.
@@ -95,7 +95,7 @@ describe('useDevBoardTiming', () => {
   it('times a board opened later in the page from opening only', async () => {
     const page: PageTiming = { boardShown: true, stopped: [] };
     const reports: TimingSummary[] = [];
-    const other = { ...demoDashboard, id: 'saved' };
+    const other = { ...measureBoard, id: 'saved' };
     const { unmount } = renderHook(() =>
       useTimedBoard(other, capturing(page, reports)),
     );
@@ -120,10 +120,10 @@ describe('useDevBoardTiming', () => {
       ({ model }) => useDevBoardTiming(model, capturing(page, reports)),
       { initialProps: { model: emptyModel() } },
     );
-    const older = result.current(demoDashboard);
-    result.current(demoDashboard);
+    const older = result.current(measureBoard);
+    result.current(measureBoard);
     older.stop();
-    rerender({ model: await fullModel(demoDashboard) });
+    rerender({ model: await fullModel(measureBoard) });
     // The newer session still receives commits and reports its board.
     expect(reports).toHaveLength(1);
   });
@@ -147,15 +147,15 @@ describe('useDevBoardTiming', () => {
         resolve([]);
       };
     });
-    const full = await fullModel(demoDashboard);
+    const full = await fullModel(measureBoard);
 
-    const first = result.current(demoDashboard);
+    const first = result.current(measureBoard);
     await first.around(runsCall, () => Promise.resolve([]));
     rerender({ model: full });
     expect(reports).toHaveLength(1);
     const poll = first.around({ ...runsCall, kind: 'repos' }, () => polled);
     first.stop();
-    result.current(demoDashboard);
+    result.current(measureBoard);
     settle();
     await poll;
     rerender({ model: { ...full } });
@@ -189,7 +189,7 @@ describe('useDevBoardTiming', () => {
       // Only the page state is injected: clock, URL, navigation entry and
       // sink are the browser's.
       renderHook(() =>
-        useTimedBoard(demoDashboard, {
+        useTimedBoard(measureBoard, {
           page: { boardShown: false, stopped: [] },
         }),
       );
@@ -233,7 +233,7 @@ describe('useDevBoardTiming', () => {
       const reports: TimingSummary[] = [];
       const page: PageTiming = { boardShown: false, stopped: [] };
       // No `navigation` override: the hook reads the entry above.
-      renderHook(() => useTimedBoard(demoDashboard, capturing(page, reports)));
+      renderHook(() => useTimedBoard(measureBoard, capturing(page, reports)));
       await waitFor(
         () => {
           expect(reports).toHaveLength(1);

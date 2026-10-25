@@ -12,7 +12,7 @@
 import { omit } from 'radash';
 import { describe, expect, it } from 'vitest';
 
-import { demoDashboard } from '@/demo/board';
+import { measureBoard } from '@/demo/scenarios/measure';
 import { DashboardSchema } from '@/domain/config/dashboard';
 import { branchRules } from '@/domain/config/placement';
 import { PRESET_IDS } from '@/domain/config/statusSets';
@@ -47,7 +47,7 @@ const notes = (d: unknown) =>
 
 describe('configProblems', () => {
   it('finds none on the demo board or a plain board', () => {
-    expect(configProblems(demoDashboard).filter((p) => !p.dismissable)).toEqual(
+    expect(configProblems(measureBoard).filter((p) => !p.dismissable)).toEqual(
       [],
     );
     expect(messages(base)).toEqual([]);

@@ -13,7 +13,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { deleteWithSecrets } from '@/credentials/credentialOps';
-import { demoDashboard } from '@/demo/board';
+import { measureBoard } from '@/demo/scenarios/measure';
 import { isOverPollingShare } from '@/lib/github';
 import { PERSIST_THROTTLE_MS } from '@/persist/persistence';
 import { githubKey } from '@/query/keys';
@@ -96,7 +96,7 @@ describe('appQueryEnv persistence', () => {
   it('removes the queries of every credential a deleted dashboard held', async () => {
     const { shared, stores, env, written } = await persistingTab();
     const dashboard = {
-      ...demoDashboard,
+      ...measureBoard,
       credentials: [
         { id: 'gh', kind: 'github' as const, label: 'token' },
         { id: 'gone', kind: 'github' as const, label: 'no secret here' },

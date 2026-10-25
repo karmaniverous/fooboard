@@ -7,7 +7,7 @@
  */
 import { describe, expect, it } from 'vitest';
 
-import { demoDashboard } from '@/demo/board';
+import { measureBoard } from '@/demo/scenarios/measure';
 import { EMPTY_STATES } from '@/domain/derivation';
 import { sourceRuleFor } from '@/domain/model/sources';
 
@@ -20,7 +20,7 @@ const empty = {
   },
 } as const;
 const cells = () => ({ dev: empty, prod: empty });
-const source = sourceRuleFor(demoDashboard, 'amplify');
+const source = sourceRuleFor(measureBoard, 'amplify');
 
 describe('fullReadHints', () => {
   it('hints only the empty cells the full read serves', () => {

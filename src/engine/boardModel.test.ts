@@ -12,7 +12,7 @@
 import { omit } from 'radash';
 import { describe, expect, it } from 'vitest';
 
-import { demoDashboard } from '@/demo/board';
+import { measureBoard } from '@/demo/scenarios/measure';
 import type { Dashboard } from '@/domain/config/dashboard';
 import type { RequestCall } from '@/query/instrument';
 import { demoEnv, settle } from '@/test/boardModel';
@@ -21,7 +21,7 @@ import { createBoardModel } from './boardModel';
 import type { BoardModel } from './types';
 
 /** A demo board whose requests and published models are recorded. */
-function recorded(dashboard: Dashboard = demoDashboard) {
+function recorded(dashboard: Dashboard = measureBoard) {
   const env = demoEnv();
   const calls: RequestCall[] = [];
   env.setAround((call, run) => {
@@ -68,7 +68,7 @@ describe('createBoardModel', () => {
   it('reads no compares for an Amplify row without a repo, so it shows no badges', async () => {
     const compared = (calls: RequestCall[], repo: string | undefined) =>
       calls.some((c) => c.kind === 'compare' && c.repo === repo);
-    const linked = demoDashboard.rows.find((r) => r.type === 'amplify');
+    const linked = measureBoard.rows.find((r) => r.type === 'amplify');
     if (!linked) throw new Error('the demo has no Amplify row');
     const withRepo = recorded();
     await settle(withRepo.env, withRepo.board);
@@ -76,8 +76,8 @@ describe('createBoardModel', () => {
     withRepo.board.destroy();
 
     const noRepo = recorded({
-      ...demoDashboard,
-      rows: demoDashboard.rows.map((r) =>
+      ...measureBoard,
+      rows: measureBoard.rows.map((r) =>
         r.id === linked.id ? omit(linked, ['repo']) : r,
       ),
     });
@@ -86,7 +86,7 @@ describe('createBoardModel', () => {
     const cells = Object.values(final.cells).filter(
       (c) => c?.rowId === linked.id,
     );
-    expect(cells.length).toBe(demoDashboard.stages.length);
+    expect(cells.length).toBe(measureBoard.stages.length);
     expect(cells.every((c) => c?.settled && c.badge === undefined)).toBe(true);
     noRepo.board.destroy();
   });
@@ -114,7 +114,7 @@ describe('createBoardModel', () => {
       new Set(keys.map((key) => after.cells[key]?.rowId));
     expect(changed.length).toBeGreaterThan(0);
     expect(changed.length).toBeLessThan(Object.keys(after.cells).length);
-    const repoRows = demoDashboard.rows
+    const repoRows = measureBoard.rows
       .filter((r) => r.type === 'github' && r.repo === runs?.repo)
       .map((r) => r.id);
     expect(
@@ -128,9 +128,9 @@ describe('createBoardModel', () => {
     const before = await settle(env, board);
     const read = calls.length;
     const next: Dashboard = {
-      ...demoDashboard,
+      ...measureBoard,
       settings: {
-        ...demoDashboard.settings,
+        ...measureBoard.settings,
         requestsInFlight: { github: 3, aws: 40 },
       },
     };
@@ -154,10 +154,10 @@ describe('createBoardModel', () => {
     const { env, board } = recorded();
     await settle(env, board);
     const watching = observed(env);
-    const [gone] = demoDashboard.rows;
+    const [gone] = measureBoard.rows;
     board.setDashboard({
-      ...demoDashboard,
-      rows: demoDashboard.rows.slice(1),
+      ...measureBoard,
+      rows: measureBoard.rows.slice(1),
     });
     const after = board.getModel();
     expect(Object.values(after.cells).some((c) => c?.rowId === gone.id)).toBe(
@@ -188,7 +188,7 @@ describe('createBoardModel', () => {
         heard.push(1);
         listener();
       });
-    const board = createBoardModel({ dashboard: demoDashboard, env });
+    const board = createBoardModel({ dashboard: measureBoard, env });
     await settle(env, board);
     expect(env.client.getQueryCache().hasListeners()).toBe(true);
     board.destroy();
@@ -225,8 +225,8 @@ describe('createBoardModel', () => {
     if (!run) throw new Error('the demo has no Unmapped runs');
     const readers = new Set(run.rows.map((r) => r.rowId));
     board.setDashboard({
-      ...demoDashboard,
-      rows: demoDashboard.rows.filter((r) => !readers.has(r.id)),
+      ...measureBoard,
+      rows: measureBoard.rows.filter((r) => !readers.has(r.id)),
     });
     expect(board.getModel().unmapped.map((u) => u.id)).not.toContain(run.id);
     board.destroy();
@@ -235,7 +235,7 @@ describe('createBoardModel', () => {
   it('re-derives the rows a removed query fed', async () => {
     const { env, board, models } = recorded();
     await settle(env, board);
-    const row = demoDashboard.rows.find((r) => r.type === 'github');
+    const row = measureBoard.rows.find((r) => r.type === 'github');
     if (row?.type !== 'github') throw new Error('no GitHub row');
     const shown = (m: BoardModel) =>
       Object.values(m.cells).some((c) => c?.rowId === row.id);

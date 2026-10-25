@@ -93,25 +93,14 @@ fooboard is static and browser-only; credentials never leave the user's browser 
 
 In the dev server (`npm run dev`) every board is timed (`src/perf`): each request's duration (including any wait in its credential's queue) and outcome, the requests each row needed, and the time to the first status cell and to the full board, from the board opening and, for the first board after a page load, from the page loading. Marks and measures named `fooboard-timing:*` appear in the browser's performance panel; when the board is full, a collapsed `fooboard-timing` group in the console summarises the load against the spec's performance targets (named constants in `src/perf/targets.ts`).
 
-- **Demo latency:** the demo answers at once (except the jobs of the run it adds 2.5 minutes in, which take 5 s, to show the refreshing dot); open `/demo?latency=300` to delay every demo request by 300 ms, the latency the demo targets assume. At that latency a read can run just past the 300 ms refreshing delay, so a polling row may show the dot for a moment.
+- **Demo latency and scenario:** the demo answers at once (except the jobs of the run it starts two minutes in, which take 5 s, to show the refreshing dot); open `/demo?latency=300` and the simulator delays every response by 300 ms, the latency the demo targets assume, and add `scenario=measure` (`/demo?scenario=measure&latency=300`) to time the 19 × 6 measurement scenario those targets are set on. At that latency a read can run just past the 300 ms refreshing delay, so a polling row may show the dot for a moment.
 - **Stray requests:** requests still running for a board no longer shown settle while the next board loads, sharing the credentials' queues, so the summary notes how many did. In development React starts each board's model twice and discards the first, whose requests still run; a board closed while polling leaves its reads in flight too. Polling after the full board is never part of a board's own load.
-- **Production:** none of this is built. `import.meta.env.DEV` is `false` there, so `src/perf/index.ts` exports pass-throughs and `src/query/QueryProvider.tsx` never loads the TanStack Query Devtools (imported lazily, in development only). Each module tests `import.meta.env` itself: the build folds the test to `false` only within the module that makes it. The build fails if `fooboard-timing` or the Devtools appear in its output (`vite/noDevInstrumentation.ts`). Tests run with neither.
+- **Production:** none of this is built. `import.meta.env.DEV` is `false` there, so `src/perf/index.ts` exports pass-throughs and `src/query/QueryProvider.tsx` never loads the TanStack Query Devtools (imported lazily, in development only). Each module tests `import.meta.env` itself: the build folds the test to `false` only within the module that makes it. The build fails if `fooboard-timing`, the Devtools or the demo's measurement scenario appear in its output (`vite/noDevInstrumentation.ts`). Tests run with neither.
 
-## Browser spikes
+## The simulated demo
 
-Two dev pages confirm that fooboard's providers work directly from a browser: `/spike/amplify` and `/spike/github`. Nothing in the product UI links to them, so open them directly in the dev server or a deployed build. Each is labelled as a dev aid on the page itself, and both are removed before release.
+The demo (`/demo`, `src/demo`) is the real board over a simulated GitHub and AWS (spec.md §3.14). The readers send through a _transport_ (`src/lib/transport.ts`): the browser's `fetch` and GitHub's API base on a real board, the simulator's in the demo. The simulator answers `api.github.com` and Amplify's regional endpoints from a world computed from the scenario, its seed and the clock, and fails every other request as a network error. The AWS SDK still signs and parses each request (its `FetchHttpHandler` sends through the transport's `fetch`).
 
-On both pages, credentials are held only in the page's React state. They are never saved to local storage or cookies, never logged, and sent only to the service being called. Errors (CORS, authentication, rate limits) are shown verbatim.
-
-### Amplify (`/spike/amplify`)
-
-1. Run `npm run dev` and open `http://localhost:5173/spike/amplify`.
-2. Enter an AWS access key ID and secret for an IAM user with read-only Amplify permissions (`ListApps`, `ListBranches`, `ListJobs`, `GetJob`). `GetJob` is for this spike only: the board never calls it, so the policy from **Copy AWS policy** (and the README's) leaves it out. Add it to the spike user's policy yourself. Then enter a region and an Amplify app ID. Branch is optional; leave it blank to use the first branch the app returns.
-3. Submit. The page calls `ListBranches`, then `ListJobs` (5 jobs), then `GetJob` on the newest job. It shows the raw responses and the AWS console link to that deployment.
-
-### GitHub (`/spike/github`)
-
-1. Run `npm run dev` and open `http://localhost:5173/spike/github`.
-2. Enter a fine-grained personal access token with read-only access (Metadata, Contents, Actions) to the repo you want to test, plus the repo owner and name. Branch prefix is optional; it defaults to `main`.
-3. Submit. The page lists workflow runs (pull-request runs excluded), the newest run's jobs, branches matching the prefix, and a compare between `main` and the first matching branch.
-4. It then repeats the runs request and reports whether GitHub honoured the ETag. A `304 Not Modified` leaves the rate-limit budget unchanged, which is what keeps polling cheap.
+- **Scenarios** are data, one module each under `src/demo/scenarios/`: repos with their branches and workflows, AWS keys and Amplify apps, promotions, pinned events and the dashboard. `acme.ts` ships; `measure.ts` is the 19 × 6 measurement scenario for the demo targets, development only (`/demo?scenario=measure`). Adding a repo and its row needs no engine change.
+- **The engine** (`src/demo/sim/`) is pure in the scenario, seed and time: the same inputs give byte-identical answers, ETags included. Tests read it through `src/test/simDemo.ts` (the measurement scenario unless given) and `src/test/simScenario.ts` (a small world).
+- **Coverage:** `acme.coverage.test.ts` proves that within `DEMO_COVERAGE_WINDOW_MS` the demo shows everything §3.14 lists; `fidelity.test.ts` parses every simulated answer with the readers' own schemas and the SDK. Change the scenario, and they say what it no longer shows.

@@ -8,14 +8,14 @@
  */
 import { describe, expect, it } from 'vitest';
 
-import { demoDashboard } from '@/demo/board';
+import { measureBoard } from '@/demo/scenarios/measure';
 import { SETTLED } from '@/query/intervals';
 import { githubKey } from '@/query/keys';
 
 import type { RowEntry } from './rowDerive';
 import { failedRow } from './rowFailure';
 
-const [row] = demoDashboard.rows;
+const [row] = measureBoard.rows;
 
 const previous: RowEntry = {
   cells: [],
@@ -31,9 +31,9 @@ const previous: RowEntry = {
 
 describe('failedRow', () => {
   it('shows the error on every cell, with a dismissable problem on the row', () => {
-    const entry = failedRow(demoDashboard, row, new Error('boom'), undefined);
+    const entry = failedRow(measureBoard, row, new Error('boom'), undefined);
     expect(entry.cells.map((c) => c.stageId)).toEqual(
-      demoDashboard.stages.map((s) => s.id),
+      measureBoard.stages.map((s) => s.id),
     );
     for (const cell of entry.cells)
       expect(cell.derivation).toEqual({
@@ -53,7 +53,7 @@ describe('failedRow', () => {
   });
 
   it('keeps observing and feeding what the row did before', () => {
-    const entry = failedRow(demoDashboard, row, new Error('boom'), previous);
+    const entry = failedRow(measureBoard, row, new Error('boom'), previous);
     expect(entry.needs).toBe(previous.needs);
     expect(entry.groups).toBe(previous.groups);
   });

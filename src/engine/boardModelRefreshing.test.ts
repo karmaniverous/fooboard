@@ -9,7 +9,7 @@
  */
 import { describe, expect, it } from 'vitest';
 
-import { demoDashboard } from '@/demo/board';
+import { measureBoard } from '@/demo/scenarios/measure';
 import { EMPTY_STATES } from '@/domain/derivation';
 import { ACTIVE_INTERVAL_MS, BUDGET_BACKOFF } from '@/query/intervals';
 import { demoEnv, OVERDUE_MS, settle } from '@/test/boardModel';
@@ -31,7 +31,7 @@ const anyRefreshing = (model: BoardModel) =>
 /** A demo board read once, then closed, over the env it read into. */
 async function readOnce() {
   const env = demoEnv();
-  const first = createBoardModel({ dashboard: demoDashboard, env });
+  const first = createBoardModel({ dashboard: measureBoard, env });
   const filled = await settle(env, first);
   first.destroy();
   return { env, filled };
@@ -40,7 +40,7 @@ async function readOnce() {
 describe('board model refreshing', () => {
   it('shows fresh cached data at once, unmarked, when a board reopens', async () => {
     const { env, filled } = await readOnce();
-    const later = createBoardModel({ dashboard: demoDashboard, env });
+    const later = createBoardModel({ dashboard: measureBoard, env });
     const warm = later.getModel();
     expect(Object.keys(warm.cells)).toEqual(Object.keys(filled.cells));
     expect(withData(warm).length).toBeGreaterThan(0);
@@ -51,7 +51,7 @@ describe('board model refreshing', () => {
   it('marks data older than its poll interval', async () => {
     const { env } = await readOnce();
     const later = createBoardModel({
-      dashboard: demoDashboard,
+      dashboard: measureBoard,
       env,
       now: () => Date.now() + OVERDUE_MS,
     });
@@ -65,13 +65,13 @@ describe('board model refreshing', () => {
     const { env } = await readOnce();
     // Past the in-progress interval, within the idle one.
     const later = createBoardModel({
-      dashboard: demoDashboard,
+      dashboard: measureBoard,
       env,
       now: () => Date.now() + ACTIVE_INTERVAL_MS * BUDGET_BACKOFF + 1,
     });
     const model = later.getModel();
-    const rows = demoDashboard.rows.map((row) => {
-      const cells = demoDashboard.stages.flatMap(
+    const rows = measureBoard.rows.map((row) => {
+      const cells = measureBoard.stages.flatMap(
         (s) => model.cells[cellKey(row.id, s.id)] ?? [],
       );
       return {

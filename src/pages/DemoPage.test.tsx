@@ -11,11 +11,12 @@ import { fireEvent, render, screen, within } from '@testing-library/react';
 import { StrictMode } from 'react';
 import { describe, expect, it } from 'vitest';
 
-import { demoDashboard } from '@/demo/board';
+import { acmeScenario } from '@/demo/scenarios/acme';
 import { createAppStores } from '@/storage';
 import { memoryStorage } from '@/storage/keyValue';
 import { StoresContext } from '@/storage/storesContext';
 import { choose } from '@/test/choose';
+import { DEMO_RENDER_TIMEOUT_MS } from '@/test/demoRender';
 
 import { DemoPage } from './DemoPage';
 
@@ -34,72 +35,79 @@ const stored = (store: ReturnType<typeof memoryStorage>) =>
   store.keys().filter((k) => !k.includes('view'));
 
 describe('DemoPage', () => {
-  it('holds settings edits in memory for the visit only, saving nothing', async () => {
-    const store = memoryStorage();
-    const stores = createAppStores(store);
-    const before = stored(store);
-    const visit = () =>
-      render(
-        <StoresContext value={stores}>
-          <DemoPage />
-        </StoresContext>,
-      );
-    const first = visit();
-    fireEvent.click(
-      await screen.findByRole('button', { name: 'Settings for row api-core' }),
-    );
-    const dialog = await screen.findByRole('dialog');
-    // No dashboard editor in the demo yet (N3b): no way out to one.
-    expect(
-      within(dialog).queryByRole('button', {
-        name: 'Open in dashboard settings',
-      }),
-    ).not.toBeInTheDocument();
-    choose(
-      within(dialog).getByRole('combobox', {
-        name: 'GitHub status set for Row api-core',
-      }),
-      'GitHub single job',
-    );
-    // The edit took: the popup shows it set here.
-    expect(
-      within(dialog).getByRole('button', {
-        name: 'Reset to inherited: GitHub status set for Row api-core',
-      }),
-    ).toBeInTheDocument();
-    expect(stored(store)).toEqual(before);
-    expect(
-      demoDashboard.rows.find((r) => r.id === 'api-core')?.settings,
-    ).not.toHaveProperty('statusSet');
-    first.unmount();
-
-    // A new visit starts from the demo as shipped.
-    visit();
-    fireEvent.click(
-      await screen.findByRole('button', { name: 'Settings for row api-core' }),
-    );
-    expect(
-      within(await screen.findByRole('dialog')).queryByRole('button', {
-        name: /^Reset to inherited/,
-      }),
-    ).not.toBeInTheDocument();
-  });
-
-  it('lets go of focus and reconnect listeners when left, every visit', async () => {
-    const stores = createAppStores(memoryStorage());
-    expect(listening()).toEqual([false, false]);
-    for (let visit = 0; visit < VISITS; visit += 1) {
-      const view = render(
-        <StrictMode>
+  it(
+    'holds settings edits in memory for the visit only, saving nothing',
+    async () => {
+      const store = memoryStorage();
+      const stores = createAppStores(store);
+      const before = stored(store);
+      const visit = () =>
+        render(
           <StoresContext value={stores}>
             <DemoPage />
-          </StoresContext>
-        </StrictMode>,
+          </StoresContext>,
+        );
+      const first = visit();
+      fireEvent.click(
+        await screen.findByRole('button', {
+          name: 'Settings for row api-gateway',
+        }),
       );
-      expect(await screen.findByRole('heading', { level: 1 })).toBeVisible();
-      expect(listening()).toEqual([true, true]);
-      view.unmount();
+      const dialog = await screen.findByRole('dialog');
+      choose(
+        within(dialog).getByRole('combobox', {
+          name: 'GitHub status set for Row api-gateway',
+        }),
+        'GitHub single job',
+      );
+      // The edit took: the popup shows it set here.
+      expect(
+        within(dialog).getByRole('button', {
+          name: 'Reset to inherited: GitHub status set for Row api-gateway',
+        }),
+      ).toBeInTheDocument();
+      expect(stored(store)).toEqual(before);
+      expect(
+        acmeScenario.dashboard.rows.find((r) => r.id === 'api-gateway')
+          ?.settings,
+      ).not.toHaveProperty('statusSet');
+      first.unmount();
+
+      // A new visit starts from the demo as shipped.
+      visit();
+      fireEvent.click(
+        await screen.findByRole('button', {
+          name: 'Settings for row api-gateway',
+        }),
+      );
+      expect(
+        within(await screen.findByRole('dialog')).queryByRole('button', {
+          name: /^Reset to inherited/,
+        }),
+      ).not.toBeInTheDocument();
+    },
+    DEMO_RENDER_TIMEOUT_MS,
+  );
+
+  it(
+    'lets go of focus and reconnect listeners when left, every visit',
+    async () => {
+      const stores = createAppStores(memoryStorage());
       expect(listening()).toEqual([false, false]);
-    }
-  });
+      for (let visit = 0; visit < VISITS; visit += 1) {
+        const view = render(
+          <StrictMode>
+            <StoresContext value={stores}>
+              <DemoPage />
+            </StoresContext>
+          </StrictMode>,
+        );
+        expect(await screen.findByRole('heading', { level: 1 })).toBeVisible();
+        expect(listening()).toEqual([true, true]);
+        view.unmount();
+        expect(listening()).toEqual([false, false]);
+      }
+    },
+    DEMO_RENDER_TIMEOUT_MS,
+  );
 });

@@ -6,7 +6,7 @@
  */
 import { describe, expect, it } from 'vitest';
 
-import { demoDashboard } from '@/demo/board';
+import { measureBoard } from '@/demo/scenarios/measure';
 
 import { type BoardPlace, gearLabel, popupTitle } from './settingsGearWords';
 
@@ -38,7 +38,7 @@ describe('settings gear words', () => {
       'Cell settings: api-core \u00d7 Bali',
     ],
   ])('names %j', (place, label, title) => {
-    expect(gearLabel(demoDashboard, place)).toBe(label);
-    expect(popupTitle(demoDashboard, place)).toBe(title);
+    expect(gearLabel(measureBoard, place)).toBe(label);
+    expect(popupTitle(measureBoard, place)).toBe(title);
   });
 });

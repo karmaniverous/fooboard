@@ -26,6 +26,8 @@ fooboard has no server of its own, no accounts, no database, no cookies, no anal
 
 These calls go **directly** from your browser to GitHub and AWS. fooboard does not proxy, see or keep them.
 
+**The demo** talks to neither: its GitHub and AWS are simulated inside the page, and it sends no request to them or anyone else. Its demo tokens and keys, and anything you change in it, stay in the tab's memory until you reload or leave; only zoom and density are saved, as for any board.
+
 ## Links and sharing
 
 Links to X, GitHub and other sites are ordinary links: nothing is sent until you follow one, and then that site's own privacy policy applies. _Share_ uses your device's share menu or your clipboard; fooboard doesn't see what you do with them.

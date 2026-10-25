@@ -8,7 +8,7 @@
  */
 import { describe, expect, it } from 'vitest';
 
-import { demoDashboard } from '@/demo/board';
+import { measureBoard } from '@/demo/scenarios/measure';
 import { CURRENT_SCHEMA_VERSION } from '@/domain/config/root';
 import { refusingDevice } from '@/test/refusingDevice';
 
@@ -30,10 +30,10 @@ describe('config store', () => {
       kind: 'ok',
       root: { schemaVersion: CURRENT_SCHEMA_VERSION, dashboards: [] },
     });
-    const second = { ...demoDashboard, id: 'second', name: 'Second' };
-    store.saveDashboard(demoDashboard);
+    const second = { ...measureBoard, id: 'second', name: 'Second' };
+    store.saveDashboard(measureBoard);
     store.saveDashboard(second);
-    store.saveDashboard({ ...demoDashboard, name: 'Renamed' });
+    store.saveDashboard({ ...measureBoard, name: 'Renamed' });
     const loaded = store.load();
     expect(
       loaded.kind === 'ok' && loaded.root.dashboards.map((d) => d.name),
@@ -53,7 +53,7 @@ describe('config store', () => {
     const store = createConfigStore(kv);
     expect(store.load().kind).toBe('unreadable');
     expect(() => {
-      store.saveDashboard(demoDashboard);
+      store.saveDashboard(measureBoard);
     }).toThrow(/Refusing to overwrite/);
     expect(kv.getItem('fooboard:config')).toBe(stored);
   });
@@ -190,7 +190,7 @@ describe('createAppStores reset', () => {
   it('clears remembered and session secrets and the config', async () => {
     const kv = memoryStorage();
     const stores = createAppStores(kv);
-    stores.config.saveDashboard(demoDashboard);
+    stores.config.saveDashboard(measureBoard);
     stores.credentials.set('a', { kind: 'github', token: 't' }, true);
     stores.credentials.set('b', { kind: 'github', token: 't' }, false);
     await stores.reset();

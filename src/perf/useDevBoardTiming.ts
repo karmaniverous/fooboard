@@ -10,7 +10,7 @@
  */
 import { useCallback, useLayoutEffect, useRef } from 'react';
 
-import { demoDashboard } from '@/demo/board';
+import { DEMO_DASHBOARD_ID } from '@/demo/constants';
 import type { Dashboard } from '@/domain/config/dashboard';
 import type { BoardModel } from '@/engine/types';
 import type { Around } from '@/query/instrument';
@@ -101,9 +101,9 @@ export function useDevBoardTiming(
     const session = createTimingSession({
       dashboard,
       // The demo's latency comes from its URL (`?latency=300`).
-      kind: dashboard.id === demoDashboard.id ? 'demo' : 'real',
+      kind: dashboard.id === DEMO_DASHBOARD_ID ? 'demo' : 'real',
       demoLatencyMs:
-        dashboard.id === demoDashboard.id ? demoLatencyMs(search()) : 0,
+        dashboard.id === DEMO_DASHBOARD_ID ? demoLatencyMs(search()) : 0,
       ...(page.boardShown ? {} : { pageLoad: navigation() }),
       clock,
       sink: {

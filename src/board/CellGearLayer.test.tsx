@@ -19,7 +19,7 @@ import {
 import { MemoryRouter } from 'react-router-dom';
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { demoDashboard } from '@/demo/board';
+import { measureBoard } from '@/demo/scenarios/measure';
 import { type BoardModel, cellKey } from '@/engine';
 import { TEST_LAYOUT } from '@/test/boardLayout';
 import { fullModel } from '@/test/boardModel';
@@ -47,7 +47,7 @@ vi.mock('./Cell', async (importOriginal) => {
 
 let model: BoardModel;
 beforeAll(async () => {
-  model = await fullModel(demoDashboard);
+  model = await fullModel(measureBoard);
 });
 beforeEach(() => {
   renders.count = 0;
@@ -84,16 +84,16 @@ const gearName = () => shownCellGear()?.getAttribute('aria-label');
 
 describe('the cell gear', () => {
   it('is one gear for the whole grid, whatever its size', () => {
-    for (const rows of [3, demoDashboard.rows.length]) {
+    for (const rows of [3, measureBoard.rows.length]) {
       const { view } = renderSettingsBoard(
         {
-          ...demoDashboard,
-          rows: demoDashboard.rows.slice(0, rows),
+          ...measureBoard,
+          rows: measureBoard.rows.slice(0, rows),
           rowGroups: [],
         },
         model,
       );
-      expect(gridCells()).toHaveLength(rows * demoDashboard.stages.length);
+      expect(gridCells()).toHaveLength(rows * measureBoard.stages.length);
       for (const cell of gridCells().slice(0, 8)) {
         hover(cell);
         expect(cellGears()).toHaveLength(1);
@@ -103,7 +103,7 @@ describe('the cell gear', () => {
   });
 
   it('moves to the hovered cell, laid over its top-right corner', () => {
-    renderSettingsBoard(demoDashboard, model);
+    renderSettingsBoard(measureBoard, model);
     const [first, second] = gridCells();
     placeAt(layerOf(), 10, 20, 900, 600);
     placeAt(second, 200, 60, 100, 30);
@@ -122,7 +122,7 @@ describe('the cell gear', () => {
   });
 
   it('moves to the keyboard-focused cell, and back to it when the pointer leaves', () => {
-    renderSettingsBoard(demoDashboard, model);
+    renderSettingsBoard(measureBoard, model);
     const cells = gridCells();
     // Focus a click leaves behind doesn't take it.
     hover(cells[4]);
@@ -146,17 +146,17 @@ describe('the cell gear', () => {
   });
 
   it('is not a Tab stop', () => {
-    renderSettingsBoard(demoDashboard, model);
+    renderSettingsBoard(measureBoard, model);
     hover(gridCells()[0]);
     expect(shownCellGear()?.tabIndex).toBe(-1);
   });
 
   it('opens the focused cell’s popup on comma, anchored to the gear', async () => {
-    renderSettingsBoard(demoDashboard, model);
+    renderSettingsBoard(measureBoard, model);
     const cells = gridCells();
     hover(cells[0]);
     // web-app (the second row) at Spokane.
-    const link = linkIn(cells[demoDashboard.stages.length + 1]);
+    const link = linkIn(cells[measureBoard.stages.length + 1]);
     tabTo(link);
     fireEvent.keyDown(link, { key: ',' });
     const dialog = await screen.findByRole('dialog');
@@ -170,7 +170,7 @@ describe('the cell gear', () => {
 
   it('has no place on a cell still loading', () => {
     const loading = cellKey('api-core', 'bali');
-    renderSettingsBoard(demoDashboard, {
+    renderSettingsBoard(measureBoard, {
       ...model,
       cells: { ...model.cells, [loading]: undefined },
     });
@@ -181,7 +181,7 @@ describe('the cell gear', () => {
   });
 
   it('stays when the pointer moves from the cell onto it', () => {
-    renderSettingsBoard(demoDashboard, model);
+    renderSettingsBoard(measureBoard, model);
     const cell = gridCells()[0];
     hover(cell);
     const gear = shownCellGear();
@@ -193,7 +193,7 @@ describe('the cell gear', () => {
   });
 
   it('goes when its cell leaves the board, until the pointer picks another', () => {
-    const flat = { ...demoDashboard, rowGroups: [] };
+    const flat = { ...measureBoard, rowGroups: [] };
     const board = (dashboard: typeof flat) => (
       <MemoryRouter>
         <SettingsPopupProvider dashboard={dashboard} onChange={vi.fn()}>
@@ -223,13 +223,13 @@ describe('the cell gear', () => {
   });
 
   it('ignores a touch, where the detail sheet carries the gear', () => {
-    renderSettingsBoard(demoDashboard, model);
+    renderSettingsBoard(measureBoard, model);
     fireEvent.pointerOver(gridCells()[0], { pointerType: 'touch' });
     expect(shownCellGear()).toBeNull();
   });
 
   it('takes two clicks to open a cell’s popup while another is open: the first only closes it (Decision 60)', async () => {
-    renderSettingsBoard(demoDashboard, model);
+    renderSettingsBoard(measureBoard, model);
     fireEvent.click(
       screen.getByRole('button', { name: 'Settings for row api-core' }),
     );
@@ -254,7 +254,7 @@ describe('the cell gear', () => {
   });
 
   it('moves without re-rendering a cell', () => {
-    renderSettingsBoard(demoDashboard, model);
+    renderSettingsBoard(measureBoard, model);
     const before = renders.count;
     expect(before).toBeGreaterThan(100);
     for (const cell of gridCells().slice(0, 12)) hover(cell);

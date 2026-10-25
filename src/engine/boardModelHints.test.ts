@@ -9,7 +9,7 @@
  */
 import { describe, expect, it } from 'vitest';
 
-import { demoDashboard } from '@/demo/board';
+import { measureBoard } from '@/demo/scenarios/measure';
 import type { Dashboard } from '@/domain/config/dashboard';
 import type { Provider } from '@/domain/config/providers';
 import type { Row } from '@/domain/config/row';
@@ -25,8 +25,8 @@ import { cellKey } from './types';
 /** The demo with `provider`'s source reading a single record. */
 function readingOne(provider: Provider): Dashboard {
   const custom = customiseSource(
-    demoDashboard,
-    sourceRuleFor(demoDashboard, provider).id,
+    measureBoard,
+    sourceRuleFor(measureBoard, provider).id,
   );
   return {
     ...custom,
@@ -48,7 +48,7 @@ const hints = (problems: Problem[], provider: Provider) =>
 
 describe('board model window hints', () => {
   it('gives none when every read came back short', async () => {
-    const model = await fullModel(demoDashboard);
+    const model = await fullModel(measureBoard);
     expect(hints(model.problems, 'github')).toEqual([]);
     expect(hints(model.problems, 'amplify')).toEqual([]);
   });

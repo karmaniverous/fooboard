@@ -8,14 +8,14 @@
  */
 import { describe, expect, it, vi } from 'vitest';
 
-import { demoDashboard } from '@/demo/board';
+import { measureBoard } from '@/demo/scenarios/measure';
 import { EMPTY_STATES } from '@/domain/derivation';
 import { demoEnv, settle } from '@/test/boardModel';
 
 import { createBoardModel } from './boardModel';
 import type * as RowDerive from './rowDerive';
 
-const [broken] = demoDashboard.rows;
+const [broken] = measureBoard.rows;
 const BOOM = 'derivation exploded';
 
 vi.mock('./rowDerive', async (importOriginal) => {
@@ -32,12 +32,12 @@ vi.mock('./rowDerive', async (importOriginal) => {
 describe('board model errors', () => {
   it('shows a row that fails to derive as Error with a dismissable problem, other rows filled', async () => {
     const env = demoEnv();
-    const board = createBoardModel({ dashboard: demoDashboard, env });
+    const board = createBoardModel({ dashboard: measureBoard, env });
     const model = await settle(env, board);
     const cells = Object.values(model.cells);
 
     const own = cells.filter((c) => c?.rowId === broken.id);
-    expect(own).toHaveLength(demoDashboard.stages.length);
+    expect(own).toHaveLength(measureBoard.stages.length);
     for (const cell of own) {
       expect(cell?.derivation).toMatchObject({
         kind: 'empty',
@@ -53,7 +53,7 @@ describe('board model errors', () => {
 
     const others = cells.filter((c) => c?.rowId !== broken.id);
     expect(others).toHaveLength(
-      demoDashboard.stages.length * (demoDashboard.rows.length - 1),
+      measureBoard.stages.length * (measureBoard.rows.length - 1),
     );
     expect(
       others.filter((c) => c?.derivation.kind === 'ok').length,

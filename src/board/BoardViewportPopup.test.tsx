@@ -16,7 +16,7 @@ import {
 } from '@testing-library/react';
 import { beforeAll, describe, expect, it, vi } from 'vitest';
 
-import { demoDashboard } from '@/demo/board';
+import { measureBoard } from '@/demo/scenarios/measure';
 import { type BoardModel } from '@/engine';
 import { createAppStores } from '@/storage';
 import { memoryStorage } from '@/storage/keyValue';
@@ -47,15 +47,15 @@ vi.mock('./useStableModel', () => ({
 
 let model: BoardModel;
 beforeAll(async () => {
-  model = await fullModel(demoDashboard);
+  model = await fullModel(measureBoard);
 });
 
 function Harness(): React.JSX.Element {
   const view = useBoardView('demo', 19, 6);
   return (
-    <SettingsPopupProvider dashboard={demoDashboard} onChange={vi.fn()}>
+    <SettingsPopupProvider dashboard={measureBoard} onChange={vi.fn()}>
       <BoardViewport
-        dashboard={demoDashboard}
+        dashboard={measureBoard}
         model={model}
         now={0}
         view={view}

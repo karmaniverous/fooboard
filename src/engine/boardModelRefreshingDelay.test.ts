@@ -9,7 +9,7 @@
  */
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { demoDashboard } from '@/demo/board';
+import { measureBoard } from '@/demo/scenarios/measure';
 import type { QueryEnv } from '@/query/client';
 import { githubKey } from '@/query/keys';
 import { demoEnv, OVERDUE_MS, settle } from '@/test/boardModel';
@@ -20,19 +20,19 @@ import { createBoardModel } from './boardModel';
 import { REFRESHING_DELAY_MS } from './refreshing';
 import { type BoardModel, cellKey } from './types';
 
-const row = demoGithubRow(demoDashboard.rows[0]?.id ?? '');
+const row = demoGithubRow(measureBoard.rows[0]?.id ?? '');
 const runs = githubKey(DEMO_TOKEN, { call: 'runs', repo: row.repo, page: 1 });
 
 /** Whether each of the row's cells is marked refreshing. */
 const marks = (model: BoardModel) =>
-  demoDashboard.stages.map(
+  measureBoard.stages.map(
     (s) => model.cells[cellKey(row.id, s.id)]?.refreshing === true,
   );
 
 /** The demo board, read once through `env`; the clock and timeouts are
  * fake from then on. */
 async function readBoard(env: QueryEnv, now = () => Date.now()) {
-  const board = createBoardModel({ dashboard: demoDashboard, env, now });
+  const board = createBoardModel({ dashboard: measureBoard, env, now });
   await settle(env, board);
   vi.useFakeTimers({
     toFake: ['setTimeout', 'clearTimeout', 'Date'],

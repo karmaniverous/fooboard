@@ -1,30 +1,30 @@
 /**
- * A demo board with one Amplify row found by repo, read through the demo's
- * providers with its listings naming each app's repo and its opt-in
- * regions answering as a test chooses, and that environment's cache as
- * the persister keeps it, restored into a fresh one (a reload).
+ * A demo board with one Amplify row found by repo, read through the
+ * simulator's providers with its opt-in regions answering as a test
+ * chooses, and that environment's cache as the persister keeps it,
+ * restored into a fresh one (a reload).
  *
  * @module
  */
 import { dehydrate, hydrate } from '@tanstack/query-core';
 
-import type { Wait } from '@/demo/addedRun';
-import { demoDashboard } from '@/demo/board';
+import { measureBoard } from '@/demo/scenarios/measure';
+import type { Wait } from '@/demo/sim/simulator';
 import type { Dashboard } from '@/domain/config/dashboard';
-import { demoProviders } from '@/engine/demoProviders';
 import type { AmplifyReader } from '@/lib/amplify/reader';
 import { OPT_IN_REGIONS } from '@/lib/amplify/regions';
 import { createQueryEnv, type QueryEnv } from '@/query/client';
 
 import { withoutRetryDelay } from './boardModel';
+import { simProviders, simTransport } from './simDemo';
 
 /** The row found by repo. */
 export const FOUND = 'marketing-site';
 
 /** The demo board with `FOUND` found by repo, the other rows pinned. */
 export const foundByRepoDashboard: Dashboard = {
-  ...demoDashboard,
-  rows: demoDashboard.rows.map((row) =>
+  ...measureBoard,
+  rows: measureBoard.rows.map((row) =>
     row.id === FOUND && row.type === 'amplify'
       ? { ...row, pinnedApps: [] }
       : row,
@@ -34,31 +34,26 @@ export const foundByRepoDashboard: Dashboard = {
 /** How a test's opt-in regions answer: a reader for each. */
 export type OptInReader = (region: string) => AmplifyReader;
 
-/** The demo's providers, its listings naming each app's repo, and each
- * opt-in region's reader from `optIn`; `wait` is the demo's. */
+/** The simulator's providers, with each opt-in region's reader from
+ * `optIn`; `wait` is the simulator's. */
 export const foundByRepoEnv = (optIn: OptInReader, wait?: Wait): QueryEnv =>
   withoutRetryDelay(
     createQueryEnv({
       providers: (hooks) => {
-        const demo = demoProviders(hooks, () => 0, wait);
+        const sim = simProviders(
+          hooks,
+          simTransport(() => 0, wait ? { wait } : {}),
+        );
         return {
-          ...demo,
+          ...sim,
           amplify: (id) => {
-            const readerFor = demo.amplify(id);
+            const readerFor = sim.amplify(id);
             return (
               readerFor &&
-              ((at) => {
-                if (OPT_IN_REGIONS.has(at.region)) return optIn(at.region);
-                const reader = readerFor(at);
-                return {
-                  ...reader,
-                  listApps: async () =>
-                    (await reader.listApps()).map((app) => ({
-                      ...app,
-                      repository: `https://github.com/acme/${app.name ?? ''}`,
-                    })),
-                };
-              })
+              ((at) =>
+                OPT_IN_REGIONS.has(at.region)
+                  ? optIn(at.region)
+                  : readerFor(at))
             );
           },
         };

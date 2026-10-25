@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
-import { demoDashboard } from '@/demo/board';
+import { measureBoard } from '@/demo/scenarios/measure';
+import { MEASURE_REJECTED } from '@/demo/scenarios/measureBoard';
 import { emptyModel } from '@/engine/model';
 import type { BoardModel } from '@/engine/types';
 import { GitHubAuthError } from '@/lib/github/errors';
@@ -19,7 +20,7 @@ const github = (repo?: string, credentialId = 'demo-github'): RequestCall => ({
 });
 
 const rowById = (id: string) => {
-  const row = demoDashboard.rows.find((r) => r.id === id);
+  const row = measureBoard.rows.find((r) => r.id === id);
   if (!row) throw new Error(`no row ${id}`);
   return row;
 };
@@ -28,15 +29,15 @@ describe('rowNeeds', () => {
   it('attributes GitHub reads by repo and token, Amplify reads by app', () => {
     const api = rowById('api-core');
     const site = rowById('marketing-site');
-    expect(rowNeeds(demoDashboard, api, github('acme/api-core'))).toBe(true);
+    expect(rowNeeds(measureBoard, api, github('acme/api-core'))).toBe(true);
     // Another repo, another token, or no repo (the budget read): not needed.
-    expect(rowNeeds(demoDashboard, api, github('acme/orders'))).toBe(false);
-    expect(rowNeeds(demoDashboard, api, github('acme/api-core', 'other'))).toBe(
+    expect(rowNeeds(measureBoard, api, github('acme/orders'))).toBe(false);
+    expect(rowNeeds(measureBoard, api, github('acme/api-core', 'other'))).toBe(
       false,
     );
-    expect(rowNeeds(demoDashboard, api, github())).toBe(false);
+    expect(rowNeeds(measureBoard, api, github())).toBe(false);
     // An Amplify row's git link: its compares are GitHub reads of its repo.
-    expect(rowNeeds(demoDashboard, site, github('acme/marketing-site'))).toBe(
+    expect(rowNeeds(measureBoard, site, github('acme/marketing-site'))).toBe(
       true,
     );
     const app: RequestCall = {
@@ -46,16 +47,16 @@ describe('rowNeeds', () => {
       region: 'us-east-1',
       appId: 'd1demomarketing',
     };
-    expect(rowNeeds(demoDashboard, site, app)).toBe(true);
-    expect(rowNeeds(demoDashboard, site, { ...app, region: 'eu-west-1' })).toBe(
+    expect(rowNeeds(measureBoard, site, app)).toBe(true);
+    expect(rowNeeds(measureBoard, site, { ...app, region: 'eu-west-1' })).toBe(
       false,
     );
-    expect(rowNeeds(demoDashboard, api, app)).toBe(false);
+    expect(rowNeeds(measureBoard, api, app)).toBe(false);
   });
 });
 
 /** The demo board fully read, as the board model publishes it. */
-const fullModel = (): Promise<BoardModel> => readFully(demoDashboard);
+const fullModel = (): Promise<BoardModel> => readFully(measureBoard);
 
 /** `model` with only the cells of `rowIds`. */
 const onlyRows = (model: BoardModel, rowIds: string[]): BoardModel => ({
@@ -67,7 +68,7 @@ const onlyRows = (model: BoardModel, rowIds: string[]): BoardModel => ({
   ),
 });
 
-function setup(pageLoad?: string, dashboard = demoDashboard) {
+function setup(pageLoad?: string, dashboard = measureBoard) {
   let now = 1_000;
   const reports: TimingSummary[] = [];
   const sink: TimingSink & { marks: string[]; measures: string[] } = {
@@ -100,7 +101,12 @@ describe('createTimingSession', () => {
       return Promise.resolve('runs');
     });
     expect(value).toBe('runs');
-    const failure = session.around(github('acme/legacy-billing'), () => {
+    // legacy-billing reads with its own (rejected) token.
+    const legacy = {
+      ...github('acme/legacy-billing'),
+      credentialId: MEASURE_REJECTED,
+    };
+    const failure = session.around(legacy, () => {
       advance(40);
       return Promise.reject(new GitHubAuthError('runs'));
     });
@@ -149,14 +155,14 @@ describe('createTimingSession', () => {
     expect(summary.firstCell).toEqual({ sinceOpen: 300, sinceLoad: 1_300 });
     expect(summary.fullBoard).toEqual({ sinceOpen: 1_000, sinceLoad: 2_000 });
     expect(summary.cells).toBe(
-      demoDashboard.rows.length * demoDashboard.stages.length,
+      measureBoard.rows.length * measureBoard.stages.length,
     );
   });
 
   it('reports a full board with no status cell, without a first cell', async () => {
     const model = await fullModel();
     // Every cell of this board is an error (its token is rejected).
-    const board = { ...demoDashboard, rows: [rowById('legacy-billing')] };
+    const board = { ...measureBoard, rows: [rowById('legacy-billing')] };
     const { session, reports } = setup(undefined, board);
     session.committed(model);
     expect(reports).toHaveLength(1);

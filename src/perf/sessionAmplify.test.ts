@@ -8,7 +8,7 @@
  */
 import { describe, expect, it } from 'vitest';
 
-import { demoDashboard } from '@/demo/board';
+import { measureBoard } from '@/demo/scenarios/measure';
 import type { Dashboard } from '@/domain/config/dashboard';
 import type { Row } from '@/domain/config/row';
 import type { RequestCall } from '@/query/instrument';
@@ -22,7 +22,7 @@ const DASHBOARD_KEY = 'dashboard-aws';
 const COLUMN_KEY = 'column-aws';
 
 const rowById = (id: string) => {
-  const row = demoDashboard.rows.find((r) => r.id === id);
+  const row = measureBoard.rows.find((r) => r.id === id);
   if (!row) throw new Error(`no row ${id}`);
   return row;
 };
@@ -31,7 +31,7 @@ describe('rowNeeds for Amplify reads', () => {
   const site = rowById('marketing-site');
   if (site.type !== 'amplify') throw new Error('marketing-site is Amplify');
   // The demo's frontends inherit their group's AWS key (demo-aws).
-  const frontend = demoDashboard.rowGroups.find((g) =>
+  const frontend = measureBoard.rowGroups.find((g) =>
     g.memberIds.includes(site.id),
   );
   if (!frontend) throw new Error('marketing-site is in a group');
@@ -55,9 +55,9 @@ describe('rowNeeds for Amplify reads', () => {
     row: Row,
     keys: { group?: string; dashboard?: string; column?: string },
   ): Dashboard => ({
-    ...demoDashboard,
-    rows: demoDashboard.rows.map((r) => (r.id === site.id ? row : r)),
-    rowGroups: demoDashboard.rowGroups.map((g) =>
+    ...measureBoard,
+    rows: measureBoard.rows.map((r) => (r.id === site.id ? row : r)),
+    rowGroups: measureBoard.rowGroups.map((g) =>
       g === frontend
         ? {
             ...g,
@@ -65,11 +65,11 @@ describe('rowNeeds for Amplify reads', () => {
           }
         : g,
     ),
-    stages: demoDashboard.stages.map((s, i) =>
+    stages: measureBoard.stages.map((s, i) =>
       i === 0 && keys.column ? { ...s, settings: { awsKey: keys.column } } : s,
     ),
     settings: {
-      ...demoDashboard.settings,
+      ...measureBoard.settings,
       ...(keys.dashboard === undefined ? {} : { awsKey: keys.dashboard }),
     },
   });

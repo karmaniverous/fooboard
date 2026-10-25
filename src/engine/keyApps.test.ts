@@ -10,21 +10,30 @@
 import { QueryClient } from '@tanstack/query-core';
 import { describe, expect, it } from 'vitest';
 
-import { demoDashboard } from '@/demo/board';
+import { measureBoard, measureScenario } from '@/demo/scenarios/measure';
+import { MEASURE_AWS } from '@/demo/scenarios/measureBoard';
 import type { Dashboard } from '@/domain/config/dashboard';
 import { createQueryEnv } from '@/query/client';
 import { AWS, listedApp, seedSearch } from '@/test/amplifyRows';
+import { simProviders, simTransport, withAliases } from '@/test/simDemo';
 
-import { demoProviders } from './demoProviders';
 import { planGroups } from './groups';
 import { keyApps } from './keyApps';
 import type { DeriveEnv } from './rowDerive';
 
 const MARKETING = { region: 'us-east-1', appId: 'd1demomarketing' };
 
+/** The measurement scenario, `aws2` holding its AWS key too. */
+const scenario = withAliases(measureScenario, { aws2: MEASURE_AWS });
+
 function env(): DeriveEnv {
   const query = createQueryEnv({
-    providers: (hooks) => demoProviders(hooks, () => 0),
+    providers: (hooks) =>
+      simProviders(
+        hooks,
+        simTransport(() => 0, {}, scenario),
+        scenario,
+      ),
   });
   return {
     ...query,
@@ -37,8 +46,8 @@ function env(): DeriveEnv {
 /** The demo with both Amplify rows found by repo (no pins), the partner
  * portal building the marketing site's repo too. */
 const byRepo: Dashboard = {
-  ...demoDashboard,
-  rows: demoDashboard.rows.map((r) =>
+  ...measureBoard,
+  rows: measureBoard.rows.map((r) =>
     r.type === 'amplify'
       ? { ...r, repo: 'acme/marketing-site', pinnedApps: [] }
       : r,
@@ -47,7 +56,7 @@ const byRepo: Dashboard = {
 
 describe('keyApps', () => {
   it('has no entry for a key whose search has not finished', () => {
-    expect(keyApps(env(), demoDashboard)).toEqual({});
+    expect(keyApps(env(), measureBoard)).toEqual({});
   });
 
   it("lists a key's pins and the apps its search finds, each once", () => {
@@ -56,7 +65,7 @@ describe('keyApps', () => {
       'us-east-1': [listedApp(MARKETING.appId, 'acme/marketing-site')],
     });
     // Pinned: the demo's three pinned apps.
-    expect(keyApps(e, demoDashboard)[AWS]).toHaveLength(3);
+    expect(keyApps(e, measureBoard)[AWS]).toHaveLength(3);
     // Found by repo: both rows find the one app.
     expect(keyApps(e, byRepo)).toEqual({ [AWS]: [MARKETING] });
   });
@@ -81,16 +90,16 @@ describe('groups of found apps', () => {
     expect(
       amplify[0]?.readers.map((r) => [r.row.id, r.stageIds.length]),
     ).toEqual([
-      ['marketing-site', demoDashboard.stages.length],
-      ['partner-portal', demoDashboard.stages.length],
+      ['marketing-site', measureBoard.stages.length],
+      ['partner-portal', measureBoard.stages.length],
     ]);
   });
 
   it('gives each key its own group, serving only the cells reading with it', () => {
     const e = env();
-    const [first, ...rest] = demoDashboard.stages;
+    const [first, ...rest] = measureBoard.stages;
     const twoKeys: Dashboard = {
-      ...demoDashboard,
+      ...measureBoard,
       stages: [{ ...first, settings: { awsKey: 'aws2' } }, ...rest],
     };
     const marketing = [...planGroups(e, twoKeys).values()].filter(

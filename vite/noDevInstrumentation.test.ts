@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
+import { MEASURE_SCENARIO_MARKER } from '../src/demo/scenarios/marker';
 import { TIMING_PREFIX } from '../src/perf/targets';
 import {
   DEVTOOLS_MARKER,
@@ -64,6 +65,10 @@ describe('noDevInstrumentation', () => {
     }).toThrow(/production bundle: a\.js/);
     expect(() => {
       run(`title: "${DEVTOOLS_MARKER}"`);
+    }).toThrow(/production bundle: a\.js/);
+    // The demo's measurement scenario (spec.md §3.14).
+    expect(() => {
+      run(`appId: "${MEASURE_SCENARIO_MARKER}"`);
     }).toThrow(/production bundle: a\.js/);
   });
 

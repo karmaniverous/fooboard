@@ -8,7 +8,7 @@
  * - `ListBranches` is scoped to the app;
  * - `ListJobs` to the app's branches.
  *
- * (`GetJob` is left out: only the Amplify spike page calls it.)
+ * (`GetJob` is left out: nothing calls it.)
  *
  * *Copy AWS policy* is per key (spec.md §3.12 *IAM*): once the board has
  * read with the key, it narrows branches and jobs to the apps the board

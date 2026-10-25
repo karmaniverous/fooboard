@@ -10,19 +10,19 @@
 import type { Query } from '@tanstack/query-core';
 import { describe, expect, it } from 'vitest';
 
-import { demoDashboard } from '@/demo/board';
-import { MINUTE } from '@/demo/scenarios';
+import { measureBoard } from '@/demo/scenarios/measure';
+import { MINUTE } from '@/demo/scenarios/pipeline';
 import type { RateLimitBudget } from '@/lib/github';
 import { createQueryEnv } from '@/query/client';
 import { BUDGET_BACKOFF, IDLE_INTERVAL_MS } from '@/query/intervals';
 import { QueryKeySchema } from '@/query/keys';
 import { settle, withoutRetryDelay } from '@/test/boardModel';
+import { simProviders, simTransport } from '@/test/simDemo';
 
 import { createBoardModel } from './boardModel';
-import { demoProviders } from './demoProviders';
 import { githubCredentialIds } from './model';
 
-const [TOKEN = ''] = githubCredentialIds(demoDashboard);
+const [TOKEN = ''] = githubCredentialIds(measureBoard);
 const LIMIT = 5_000;
 const budget = (used: number): RateLimitBudget => ({
   limit: LIMIT,
@@ -39,7 +39,10 @@ function setup() {
   const env = withoutRetryDelay(
     createQueryEnv({
       providers: (hooks) => {
-        const providers = demoProviders(hooks, () => clock.now);
+        const providers = simProviders(
+          hooks,
+          simTransport(() => clock.now),
+        );
         report = (id, b) => {
           hooks.onBudget(id, b, providers.fingerprint(id));
         };
@@ -47,7 +50,7 @@ function setup() {
       },
     }),
   );
-  const board = createBoardModel({ dashboard: demoDashboard, env });
+  const board = createBoardModel({ dashboard: measureBoard, env });
   return {
     env,
     board,

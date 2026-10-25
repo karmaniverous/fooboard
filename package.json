@@ -20,6 +20,7 @@
     "@radix-ui/react-tabs": "^1.2.1",
     "@radix-ui/react-toggle-group": "^1.2.1",
     "@radix-ui/react-tooltip": "^1.4.1",
+    "@smithy/fetch-http-handler": "^5.8.0",
     "@tanstack/query-async-storage-persister": "^5.104.5",
     "@tanstack/query-core": "^5.104.5",
     "@tanstack/query-persist-client-core": "^5.104.5",

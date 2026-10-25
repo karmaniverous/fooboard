@@ -2,7 +2,7 @@
  * Build check (spec.md §3.5): the timing instrumentation runs in
  * development builds only, so a production bundle must contain none of
  * it, nor the TanStack Query Devtools (spec.md §3.1: development only,
- * lazily imported). Every timing mark, measure and console summary
+ * lazily imported), nor the demo's measurement scenario (§3.14). Every timing mark, measure and console summary
  * starts with `TIMING_PREFIX`, and the Devtools bundle names itself
  * `DEVTOOLS_MARKER`; this plugin fails a production build whose output
  * contains either.
@@ -11,13 +11,18 @@
  */
 import type { Plugin } from 'vite';
 
+import { MEASURE_SCENARIO_MARKER } from '../src/demo/scenarios/marker.ts';
 import { TIMING_PREFIX } from '../src/perf/targets.ts';
 
 /** A string the TanStack Query Devtools bundle carries (its title). */
 export const DEVTOOLS_MARKER = 'TanStack Query Devtools';
 
 /** What a production bundle must not contain. */
-const DEV_ONLY_MARKERS = [TIMING_PREFIX, DEVTOOLS_MARKER] as const;
+const DEV_ONLY_MARKERS = [
+  TIMING_PREFIX,
+  DEVTOOLS_MARKER,
+  MEASURE_SCENARIO_MARKER,
+] as const;
 
 /** The parts of a bundle output the check reads. */
 interface Output {

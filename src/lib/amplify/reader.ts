@@ -1,7 +1,9 @@
 /**
  * Amplify read port: the read-only calls fooboard makes (spec.md C-6:
- * `ListApps`, `ListBranches`, `ListJobs`, `GetJob`) behind a narrow
- * interface, plus the AWS SDK adapter that implements it. Every call is
+ * `ListApps`, `ListBranches`, `ListJobs`) behind a narrow interface,
+ * plus the AWS SDK adapter that implements it. The SDK client sends each
+ * signed request through the transport's `fetch` (spec.md §3.14), so the
+ * demo's simulator answers it as AWS would. Every call is
  * mapped to a typed error; the SDK makes one attempt (`maxAttempts: 1`), so
  * retries and throttling follow the query layer's policy and limiter
  * (spec.md §3.1). Callers depend on `AmplifyReader`, not on the SDK.
@@ -12,13 +14,14 @@ import {
   AmplifyClient,
   type App,
   type Branch,
-  GetJobCommand,
-  type Job,
   type JobSummary,
   ListAppsCommand,
   ListBranchesCommand,
   ListJobsCommand,
 } from '@aws-sdk/client-amplify';
+import { FetchHttpHandler } from '@smithy/fetch-http-handler';
+
+import { browserTransport } from '@/lib/transport';
 
 import { toAmplifyError } from './errors';
 
@@ -33,11 +36,6 @@ export interface AmplifyReader {
     branchName: string,
     maxResults: number,
   ): Promise<JobSummary[]>;
-  getJob(
-    appId: string,
-    branchName: string,
-    jobId: string,
-  ): Promise<Job | undefined>;
 }
 
 /** The slice of `AmplifyClient` the reader uses (injectable for tests). */
@@ -50,7 +48,10 @@ export interface AmplifyReaderConfig {
   region: string;
   accessKeyId: string;
   secretAccessKey: string;
-  /** Defaults to a real `AmplifyClient`. */
+  /** Sends the SDK's signed requests (the transport's, spec.md §3.14);
+   * the browser's `fetch` unless given. */
+  fetch?: typeof fetch;
+  /** Defaults to a real `AmplifyClient` sending through `fetch`. */
   client?: AmplifySender;
 }
 
@@ -68,10 +69,12 @@ export function createAmplifyReader({
   region,
   accessKeyId,
   secretAccessKey,
+  fetch = browserTransport.fetch,
   client = new AmplifyClient({
     region,
     credentials: { accessKeyId, secretAccessKey },
     maxAttempts: AMPLIFY_MAX_ATTEMPTS,
+    requestHandler: new FetchHttpHandler({ customFetch: fetch }),
   }),
 }: AmplifyReaderConfig): AmplifyReader {
   const call = async <T>(
@@ -134,12 +137,5 @@ export function createAmplifyReader({
         },
         maxResults,
       ),
-    getJob: (appId, branchName, jobId) =>
-      call('GetJob', async () => {
-        const res = await client.send(
-          new GetJobCommand({ appId, branchName, jobId }),
-        );
-        return res.job;
-      }),
   };
 }

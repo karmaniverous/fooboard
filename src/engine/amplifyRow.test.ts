@@ -14,7 +14,8 @@
 import { QueryClient } from '@tanstack/query-core';
 import { describe, expect, it } from 'vitest';
 
-import { DEMO_AMPLIFY_APPS, demoDashboard } from '@/demo/board';
+import { measureBoard } from '@/demo/scenarios/measure';
+import { MEASURE_AMPLIFY_APPS as DEMO_AMPLIFY_APPS } from '@/demo/scenarios/measureBoard';
 import { cellRulesFor } from '@/domain/config/cellRules';
 import { EMPTY_STATES } from '@/domain/derivation';
 import { AmplifyNotFoundError } from '@/lib/amplify/errors';
@@ -72,7 +73,7 @@ describe('deriveAmplifyRow', () => {
     const stageless: AmplifyContext = {
       ...ctx(client),
       rulesFor: (r, stageId) => ({
-        ...cellRulesFor(demoDashboard, r, stageId),
+        ...cellRulesFor(measureBoard, r, stageId),
         stage: undefined,
       }),
     };
@@ -81,7 +82,7 @@ describe('deriveAmplifyRow', () => {
     await seedRow(client, 'marketing-site');
     const out = deriveAmplifyRow(stageless, row);
     expect(Object.keys(out.cells)).toEqual(
-      demoDashboard.stages.map((s) => s.id),
+      measureBoard.stages.map((s) => s.id),
     );
     for (const cell of Object.values(out.cells))
       expect(cell).toMatchObject({

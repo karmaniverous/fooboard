@@ -10,7 +10,7 @@ import { fireEvent, render, screen, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { beforeAll, describe, expect, it } from 'vitest';
 
-import { demoDashboard } from '@/demo/board';
+import { measureBoard } from '@/demo/scenarios/measure';
 import type { CellResult } from '@/domain/derivation/cell';
 import type { BoardModel } from '@/engine';
 import { TEST_LAYOUT } from '@/test/boardLayout';
@@ -25,7 +25,7 @@ let model: BoardModel;
 const CELL = /^Passed, dev/;
 
 beforeAll(async () => {
-  const full = await fullModel(demoDashboard);
+  const full = await fullModel(measureBoard);
   const entry = Object.entries(full.cells).find(([, c]) => {
     const d = c?.derivation;
     return d?.kind === 'ok' && d.status.name === 'Passed' && d.branch === 'dev';
@@ -45,7 +45,7 @@ const renderBoard = () =>
   render(
     <MemoryRouter>
       <BoardGrid
-        dashboard={demoDashboard}
+        dashboard={measureBoard}
         model={model}
         layout={TEST_LAYOUT}
         now={0}

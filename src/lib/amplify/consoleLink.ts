@@ -1,7 +1,7 @@
 /**
  * Pure builder for the AWS Amplify console deployment link (spec.md §6
- * spike 1 / §7 open question 1): `GetJob` and the console both key a
- * deployment by app, branch and job id; the branch segment must be
+ * spike 1 / §7 open question 1): the console keys a deployment by app,
+ * branch and job id, as Amplify's API does; the branch segment must be
  * URL-encoded because branch names such as `preview/bali` contain `/`.
  *
  * @module

@@ -68,16 +68,6 @@ export const JobsResponseSchema = z.object({
   jobs: z.array(JobSchema),
 });
 
-/** One ref returned by matching-refs (spec.md 4.3.5: "no branch" check). */
-const MatchingRefSchema = z.object({
-  ref: z.string(),
-  object: z.object({ sha: z.string() }),
-});
-export type MatchingRef = z.infer<typeof MatchingRefSchema>;
-
-/** `GET /repos/{owner}/{repo}/git/matching-refs/{ref}` response body. */
-export const MatchingRefsSchema = z.array(MatchingRefSchema);
-
 /** One commit as it appears in a compare response. */
 const CompareCommitSchema = z.object({
   sha: z.string(),

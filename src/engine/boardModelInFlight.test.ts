@@ -8,7 +8,12 @@
  */
 import { describe, expect, it } from 'vitest';
 
-import { demoDashboard } from '@/demo/board';
+import { measureBoard } from '@/demo/scenarios/measure';
+import {
+  MEASURE_AWS,
+  MEASURE_GITHUB,
+  MEASURE_REJECTED,
+} from '@/demo/scenarios/measureBoard';
 import type { Dashboard } from '@/domain/config/dashboard';
 import { DEFAULT_REQUESTS_IN_FLIGHT } from '@/domain/config/settings';
 import { demoEnv, settle } from '@/test/boardModel';
@@ -17,9 +22,9 @@ import { createBoardModel } from './boardModel';
 
 /** The demo board at `cap` requests in flight for both platforms. */
 const atCap = (cap: number): Dashboard => ({
-  ...demoDashboard,
+  ...measureBoard,
   settings: {
-    ...demoDashboard.settings,
+    ...measureBoard.settings,
     requestsInFlight: { github: cap, aws: cap },
   },
 });
@@ -56,9 +61,11 @@ describe('requests in flight on the board', () => {
   it('at 1, sends one request at a time per credential and still fills the board', async () => {
     const { peak, requests, model } = await peaks(atCap(1));
     expect(requests).toBeGreaterThan(peak.size);
+    // legacy-billing reads with a token of its own (rejected).
     expect([...peak.keys()].sort()).toEqual([
-      expect.stringMatching(/^amplify:/),
-      expect.stringMatching(/^github:/),
+      `amplify:${MEASURE_AWS}`,
+      `github:${MEASURE_GITHUB}`,
+      `github:${MEASURE_REJECTED}`,
     ]);
     for (const most of peak.values()) expect(most).toBe(1);
     expect(Object.values(model.cells).every((c) => c?.settled)).toBe(true);

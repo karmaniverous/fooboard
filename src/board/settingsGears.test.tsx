@@ -14,7 +14,7 @@ import { fireEvent, screen, within } from '@testing-library/react';
 import { omit } from 'radash';
 import { beforeAll, describe, expect, it } from 'vitest';
 
-import { demoDashboard } from '@/demo/board';
+import { measureBoard } from '@/demo/scenarios/measure';
 import { type BoardModel } from '@/engine';
 import { TEST_LAYOUT } from '@/test/boardLayout';
 import { fullModel } from '@/test/boardModel';
@@ -30,7 +30,7 @@ import {
 
 let model: BoardModel;
 beforeAll(async () => {
-  model = await fullModel(demoDashboard);
+  model = await fullModel(measureBoard);
 });
 
 // `hidden`: while a popup is open the board behind it is hidden from
@@ -46,8 +46,8 @@ const firstCellLink = (): HTMLElement =>
 
 describe('settings gears', () => {
   it('puts a named gear on every header and labelled group label', () => {
-    renderSettingsBoard(demoDashboard, model);
-    const { rows, stages } = demoDashboard;
+    renderSettingsBoard(measureBoard, model);
+    const { rows, stages } = measureBoard;
     for (const r of rows) gear(`Settings for row ${r.displayName}`);
     for (const s of stages) gear(`Settings for stage ${s.name}`);
     gear('Settings for row group Backend');
@@ -59,7 +59,7 @@ describe('settings gears', () => {
   });
 
   it('sizes gears in ems of the board text, so they scale with zoom', () => {
-    renderSettingsBoard(demoDashboard, model);
+    renderSettingsBoard(measureBoard, model);
     // Set around the grid, so the cell gear beside it has them too.
     const grid = screen.getByRole('grid').parentElement ?? document.body;
     const px = (ems: number) => `${String(ems * TEST_LAYOUT.fontPx)}px`;
@@ -77,12 +77,12 @@ describe('settings gears', () => {
     // labelled one's label row or strip is drawn.
     renderSettingsBoard(
       {
-        ...demoDashboard,
-        rowGroups: demoDashboard.rowGroups.map((g) =>
+        ...measureBoard,
+        rowGroups: measureBoard.rowGroups.map((g) =>
           g.id === 'backend' ? omit(g, ['label']) : g,
         ),
         columnGroups: [
-          ...demoDashboard.columnGroups,
+          ...measureBoard.columnGroups,
           {
             id: 'later',
             memberIds: ['dev', 'release', 'prod'],
@@ -107,7 +107,7 @@ describe('settings gears', () => {
   });
 
   it('keeps header gears in the Tab order after their header, and one Tab stop per cell', () => {
-    renderSettingsBoard(demoDashboard, model);
+    renderSettingsBoard(measureBoard, model);
     const header = screen.getByRole('rowheader', { name: /api-core/ });
     const rowGear = gear('Settings for row api-core');
     expect(header.contains(rowGear)).toBe(true);
@@ -133,7 +133,7 @@ describe('settings gears', () => {
   });
 
   it('keeps every header gear in a row of the grid, a row group’s in its label’s header, and the cell gear outside the grid', () => {
-    renderSettingsBoard(demoDashboard, model);
+    renderSettingsBoard(measureBoard, model);
     const cellGearEl = cellGear('Settings for cell api-core, Bali');
     const headerGears = screen
       .getAllByRole('button', { name: /^Settings for / })
@@ -147,12 +147,12 @@ describe('settings gears', () => {
     expect(header).toHaveAccessibleName(/^Backend/);
     expect(header).toHaveAttribute(
       'aria-colspan',
-      String(demoDashboard.stages.length + 1),
+      String(measureBoard.stages.length + 1),
     );
   });
 
   it('lays the cell gear beside the cell link, never inside it', () => {
-    renderSettingsBoard(demoDashboard, model);
+    renderSettingsBoard(measureBoard, model);
     const link = firstCellLink();
     const g = cellGear('Settings for cell api-core, Bali');
     expect(link.contains(g)).toBe(false);
@@ -160,7 +160,7 @@ describe('settings gears', () => {
   });
 
   it('opens a focused status cell’s popup on comma, and an empty cell’s too', async () => {
-    renderSettingsBoard(demoDashboard, model);
+    renderSettingsBoard(measureBoard, model);
     const link = firstCellLink();
     focusElement(link);
     fireEvent.keyDown(link, { key: ',' });
@@ -184,7 +184,7 @@ describe('settings gears', () => {
     ['Alt', { altKey: true }],
     ['Meta', { metaKey: true }],
   ])('leaves %s+comma to the browser', (_, modifier) => {
-    renderSettingsBoard(demoDashboard, model);
+    renderSettingsBoard(measureBoard, model);
     const link = firstCellLink();
     focusElement(link);
     fireEvent.keyDown(link, { key: ',', ...modifier });
@@ -192,7 +192,7 @@ describe('settings gears', () => {
   });
 
   it('opens nothing on other keys, nor on comma at the gear itself', () => {
-    renderSettingsBoard(demoDashboard, model);
+    renderSettingsBoard(measureBoard, model);
     const link = firstCellLink();
     fireEvent.keyDown(link, { key: '.' });
     fireEvent.keyDown(cellGear('Settings for cell api-core, Bali'), {
@@ -202,7 +202,7 @@ describe('settings gears', () => {
   });
 
   it('announces Space and comma on status and empty cells, and names both in the focused tooltip', () => {
-    renderSettingsBoard(demoDashboard, model);
+    renderSettingsBoard(measureBoard, model);
     const link = firstCellLink();
     expect(link).toHaveAttribute('aria-keyshortcuts', 'Space ,');
     const empty = screen.getAllByRole('button', { name: /^no records/ })[0];
@@ -214,7 +214,7 @@ describe('settings gears', () => {
   });
 
   it('opens the popup from a gear click, and nothing from a header, label or cell click', async () => {
-    renderSettingsBoard(demoDashboard, model);
+    renderSettingsBoard(measureBoard, model);
     fireEvent.click(screen.getByRole('rowheader', { name: /api-core/ }));
     fireEvent.click(screen.getByRole('columnheader', { name: /Bali/ }));
     fireEvent.click(screen.getByText('Backend'));
@@ -232,7 +232,7 @@ describe('settings gears', () => {
   });
 
   it('carries the cell’s gear in its detail sheet, opening the cell’s popup over it', async () => {
-    renderSettingsBoard(demoDashboard, model);
+    renderSettingsBoard(measureBoard, model);
     const link = firstCellLink();
     fireEvent.pointerDown(link, { pointerType: 'touch' });
     fireEvent.click(link);

@@ -9,7 +9,7 @@ import { render, screen, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { beforeAll, describe, expect, it } from 'vitest';
 
-import { demoDashboard } from '@/demo/board';
+import { measureBoard } from '@/demo/scenarios/measure';
 import type { BoardModel } from '@/engine';
 import { TEST_LAYOUT } from '@/test/boardLayout';
 import { fullModel } from '@/test/boardModel';
@@ -19,7 +19,7 @@ import { matchesFilter } from './summary';
 
 let model: BoardModel;
 beforeAll(async () => {
-  model = await fullModel(demoDashboard);
+  model = await fullModel(measureBoard);
 });
 
 const FILTER = 'badge:behind';
@@ -29,7 +29,7 @@ describe('BoardGrid filter', () => {
     render(
       <MemoryRouter>
         <BoardGrid
-          dashboard={demoDashboard}
+          dashboard={measureBoard}
           model={model}
           layout={TEST_LAYOUT}
           now={0}

@@ -1,18 +1,22 @@
 /**
- * Board model test helpers: a demo query environment (retries without
- * delay, the demo clock frozen unless given, the added run's jobs waiting
- * on a real timer unless given), and the model once every query it needs
- * has landed, and an age past every poll interval.
+ * Board model test helpers: a demo query environment over the simulator
+ * (retries without delay, the clock frozen at the scenario's opening
+ * unless given, delays resolving at once unless a `wait` is given), the
+ * model once every query it needs has landed, and an age past every poll
+ * interval.
  *
  * @module
  */
-import type { Wait } from '@/demo/addedRun';
+import type { DemoScenario } from '@/demo/sim/scenario';
+import type { Wait } from '@/demo/sim/simulator';
 import type { Dashboard } from '@/domain/config/dashboard';
-import { createBoardModel, demoProviders } from '@/engine';
+import { createBoardModel } from '@/engine';
 import type { BoardModelHandle } from '@/engine/boardModel';
 import type { BoardModel } from '@/engine/types';
 import { createQueryEnv, type QueryEnv } from '@/query/client';
 import { BUDGET_BACKOFF, IDLE_INTERVAL_MS } from '@/query/intervals';
+
+import { simProviders, simTransport } from './simDemo';
 
 /** Longer than any root query's poll interval. */
 export const OVERDUE_MS = IDLE_INTERVAL_MS * BUDGET_BACKOFF + 1;
@@ -28,11 +32,22 @@ export function withoutRetryDelay(env: QueryEnv): QueryEnv {
   return env;
 }
 
-/** A demo query environment; the demo clock stands still by default. */
-export const demoEnv = (clock: () => number = () => 0, wait?: Wait): QueryEnv =>
+/** A demo query environment over `scenario` (the measurement one
+ * unless given); its clock (ms from the opening) stands still by
+ * default. */
+export const demoEnv = (
+  clock: () => number = () => 0,
+  wait?: Wait,
+  scenario?: DemoScenario,
+): QueryEnv =>
   withoutRetryDelay(
     createQueryEnv({
-      providers: (hooks) => demoProviders(hooks, clock, wait),
+      providers: (hooks) =>
+        simProviders(
+          hooks,
+          simTransport(clock, wait ? { wait } : {}, scenario),
+          scenario,
+        ),
     }),
   );
 
