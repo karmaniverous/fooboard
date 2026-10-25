@@ -78,13 +78,14 @@ export const credentialPrefix = (
   credentialId: string,
 ): [string, string] => [provider, credentialId];
 
-/** What a request is for: an editor lookup (repos, a repo's branches,
- * Amplify apps), a row's root read (runs pages, an app's branches and
- * jobs), or a read that depends on one (a run's jobs, a compare). */
+/** What a request is for: an editor lookup (repos, a repo's branches),
+ * a row's root read (runs pages, an app's branches and jobs, and the app
+ * search's `apps` per region, a board query the picker shares, spec.md
+ * §3.12), or a read that depends on one (a run's jobs, a compare). */
 export type RequestRole = 'lookup' | 'root' | 'dependent';
 
 export function roleOf(key: FooboardQueryKey): RequestRole {
-  if (key[0] === 'amplify') return key[2].call === 'apps' ? 'lookup' : 'root';
+  if (key[0] === 'amplify') return 'root';
   switch (key[2].call) {
     case 'repos':
     case 'branches':
