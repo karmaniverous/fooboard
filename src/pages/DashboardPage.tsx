@@ -26,6 +26,7 @@ import {
   draftFor,
   type EditorDraft,
   overrideDraftFor,
+  placeDraft,
   problemDraft,
 } from '@/editors/draft';
 import { ruleSamples } from '@/editors/rules/samples';
@@ -83,6 +84,10 @@ function SavedDashboard({
       refreshKey={version}
       onOpenProblem={(p) => {
         openEditor(problemDraft(p));
+      }}
+      onChange={save}
+      onOpenSettings={(place) => {
+        openEditor(placeDraft(place));
       }}
       actions={(model, problems) => (
         <>

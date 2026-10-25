@@ -37,6 +37,9 @@ export interface Content {
   span?: number;
   lead: string;
   badge?: string;
+  /** Room kept after the lead, in ems (a header's or label's settings
+   * gear), so what appears there never reflows the board. */
+  trail?: number;
   items: readonly Item[];
 }
 
@@ -53,7 +56,10 @@ function widths(content: Content, fontPx: number, measure: Measure) {
   const freeMin = measure('x'.repeat(FREE_TEXT_MIN_CHARS), fontPx);
   return {
     gap,
-    lead: measure(content.lead, fontPx) + badge(content.badge),
+    lead:
+      measure(content.lead, fontPx) +
+      badge(content.badge) +
+      (content.trail ?? 0) * fontPx,
     items: content.items.map(
       (i) =>
         (i.free

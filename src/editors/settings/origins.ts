@@ -48,24 +48,40 @@ function groupName(d: Dashboard, place: SettingsPlace & { groupId: string }) {
   return place.level === 'rowGroup' ? rowName(d, first) : stageName(d, first);
 }
 
-/** The name of the item at `origin`, if it has one. */
-function originName(d: Dashboard, origin: Origin): string | undefined {
-  switch (origin.level) {
+/** The place of `origin` when it is a group with no label (no gear on
+ * the board, so its origin links to the dashboard editor). */
+export function unlabelledGroup(
+  d: Dashboard,
+  origin: Origin,
+): SettingsPlace | undefined {
+  if (origin.level !== 'rowGroup' && origin.level !== 'columnGroup')
+    return undefined;
+  const groups = origin.level === 'rowGroup' ? d.rowGroups : d.columnGroups;
+  const group = groups.find((g) => g.id === origin.groupId);
+  return group && !group.label ? origin : undefined;
+}
+
+/** The name of the item at `place`, e.g. "Backend", "api × prod". */
+export function placeName(d: Dashboard, place: SettingsPlace): string {
+  switch (place.level) {
     case 'dashboard':
       return d.name;
-    case 'builtIn':
-      return undefined;
     case 'rowGroup':
     case 'columnGroup':
-      return groupName(d, origin);
+      return groupName(d, place);
     case 'row':
-      return rowName(d, origin.rowId);
+      return rowName(d, place.rowId);
     case 'column':
-      return stageName(d, origin.stageId);
+      return stageName(d, place.stageId);
     case 'cell':
-      return `${rowName(d, origin.rowId)} × ${stageName(d, origin.stageId)}`;
+      return `${rowName(d, place.rowId)} × ${stageName(d, place.stageId)}`;
   }
 }
+
+/** The name of the item at `origin`, if it has one (the built-in has
+ * none). */
+const originName = (d: Dashboard, origin: Origin): string | undefined =>
+  origin.level === 'builtIn' ? undefined : placeName(d, origin);
 
 /** A place's level and name, e.g. "Row group Backend"; *Built-in*. */
 export const placeLabel = (d: Dashboard, place: Origin): string =>

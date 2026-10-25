@@ -25,6 +25,7 @@ import { gapStyle } from './cellStyles';
 import {
   badgeDescription,
   badgeText,
+  cellKeyshortcuts,
   EMPTY_LABEL,
   EMPTY_SYMBOL,
   firstLine,
@@ -49,6 +50,8 @@ export interface CellProps {
    * status cell, or any activation of an empty cell (which has no link to
    * follow). */
   onOpenSheet?: () => void;
+  /** The board has a settings popup: the cell says `,` opens it. */
+  settingsKey?: boolean;
 }
 
 const EMPTY_CLASS = {
@@ -70,6 +73,7 @@ export function Cell({
   now,
   onInspect,
   onOpenSheet,
+  settingsKey = false,
 }: CellProps): React.JSX.Element {
   const inspect: Inspect = {
     onMouseEnter: (e: React.MouseEvent<HTMLElement>) =>
@@ -94,6 +98,7 @@ export function Cell({
       <button
         type="button"
         aria-label={extra ? `${label}: ${extra}` : label}
+        aria-keyshortcuts={settingsKey ? cellKeyshortcuts(true) : undefined}
         className={cn(
           'flex h-full w-full items-center overflow-hidden rounded-md border text-left text-[0.9em] italic text-muted-foreground focus-visible:outline-2 focus-visible:outline-ring',
           pad,
@@ -211,6 +216,7 @@ export function Cell({
         name={name}
         inspect={inspect}
         onOpenSheet={onOpenSheet}
+        settingsKey={settingsKey}
       />
       <RefreshingDot cell={cell} />
       {/* Text sits above the cover link but lets clicks through; the badge

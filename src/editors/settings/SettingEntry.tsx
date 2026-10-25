@@ -9,6 +9,8 @@
  *
  * @module
  */
+import { use } from 'react';
+
 import { Choice } from '@/components/Choice';
 import { Button } from '@/components/ui/button';
 import { sortCredentials } from '@/credentials/credentialOrder';
@@ -21,6 +23,7 @@ import { inheritedAt } from '@/domain/settings/resolve';
 import { settingKey } from '../editTarget';
 import { RuleEditor } from '../rules/RuleEditor';
 import { setOptions } from '../statuses/statusSetOptions';
+import { OpenPlaceContext } from './openPlace';
 import {
   entryDescription,
   entryName,
@@ -28,6 +31,7 @@ import {
   inheritedWords,
   placeLabel,
   shadowWords,
+  unlabelledGroup,
 } from './origins';
 import {
   type EntryValue,
@@ -64,6 +68,16 @@ export function SettingEntry({
   const inherited = inheritedValue(d, place, entry);
   const fallback = inheritedWords(d, entry, inherited.origin, inherited.value);
   const from = own === undefined ? fromWords(d, inherited.origin) : undefined;
+  const openPlace = use(OpenPlaceContext);
+  // An unlabelled group has no gear: its origin opens the dashboard
+  // editor at its settings, where there is one (spec.md §3.11).
+  const group = unlabelledGroup(d, inherited.origin);
+  const openGroup =
+    openPlace && group
+      ? () => {
+          openPlace(group);
+        }
+      : undefined;
   const shadows =
     own === undefined
       ? undefined
@@ -141,7 +155,19 @@ export function SettingEntry({
             }}
           />
         )}
-        {from && <span className="text-muted-foreground">{from}</span>}
+        {from &&
+          (openGroup ? (
+            <Button
+              variant="link"
+              className="h-auto p-0 text-xs text-sky-600 underline dark:text-sky-400"
+              aria-label={`${from}: open ${placeLabel(d, inherited.origin)} in dashboard settings`}
+              onClick={openGroup}
+            >
+              {from}
+            </Button>
+          ) : (
+            <span className="text-muted-foreground">{from}</span>
+          ))}
       </div>
       {own !== undefined && (
         <div className="flex flex-wrap items-center gap-2">

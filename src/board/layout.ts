@@ -28,6 +28,7 @@ import {
   minWidth,
   packBoard,
 } from './packing';
+import { HEADER_GEAR_EM } from './settingsGearSize';
 
 export type Rung = 0 | 1 | 2 | 3 | 4 | 5;
 export const TOP_RUNG: Rung = 5;
@@ -123,7 +124,8 @@ function frame(input: LayoutInput, fontPx: number) {
   const rowNameWidth = Math.min(
     (input.width < PHONE_WIDTH ? PHONE_ROW_NAME_SHARE : ROW_NAME_SHARE) *
       input.width,
-    longestName + 2 * padX,
+    // A row header keeps room for its settings gear (spec.md §3.11).
+    longestName + 2 * padX + HEADER_GEAR_EM * fontPx,
   );
   const stages = Math.max(1, input.stages);
   const colWidth = Math.max(

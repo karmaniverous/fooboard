@@ -6,7 +6,8 @@
  * line) and in a detail sheet (a touch tap, or Space on a focused cell),
  * which also carries the links, the
  * full SHA with *Copy*, and every line of the message (Decision 21).
- * The sheet lists the settings the cell reads, each with its origin
+ * The sheet lists the settings the cell reads, each with its origin,
+ * and carries the cell's settings gear, the way in on a touch screen
  * (spec.md §3.11). Problems on the cell (a window hint on an empty cell, a status-set
  * problem, spec.md A§4.3.7) are listed under it.
  *
@@ -30,6 +31,7 @@ import { readmeSection } from '@/lib/site';
 
 import {
   badgeDescription,
+  CELL_SETTINGS_KEY,
   cellPlace,
   DETAILS_KEY,
   EMPTY_LABEL,
@@ -45,8 +47,11 @@ export function CellDetail({
   interactive,
   problems = [],
   settings = [],
+  gear,
 }: {
   cell: BoardCell;
+  /** The cell's settings gear (shown in the sheet). */
+  gear?: React.ReactNode;
   /** The settings the cell reads, with origins (shown in the sheet). */
   settings?: readonly CellSettingLine[];
   /** Problems marked on this cell. */
@@ -154,11 +159,13 @@ export function CellDetail({
           Open job
         </ExternalLink>
       )}
+      {interactive && gear && (
+        <div className="mt-1 flex items-center gap-2 font-semibold">
+          Settings {gear}
+        </div>
+      )}
       {interactive && settings.length > 0 && (
-        <dl
-          aria-label="Settings"
-          className="mt-1 grid grid-cols-[auto_1fr] gap-x-3"
-        >
+        <dl aria-label="Settings" className="grid grid-cols-[auto_1fr] gap-x-3">
           {settings.map((s) => (
             <div key={s.name} className="contents">
               <dt className="text-muted-foreground">{s.name}</dt>
@@ -209,11 +216,14 @@ function SubjectList({
 export function CellTooltip({
   rect,
   keyHint = false,
+  settingsHint = false,
   children,
 }: {
   rect: DOMRect;
   /** The cell has focus: say which key opens its detail sheet. */
   keyHint?: boolean;
+  /** ...and which opens its settings popup, where the board has one. */
+  settingsHint?: boolean;
   children: React.ReactNode;
 }): React.JSX.Element {
   const anchor = { current: { getBoundingClientRect: () => rect } };
@@ -234,6 +244,8 @@ export function CellTooltip({
         {keyHint && (
           <p className="mt-2 text-xs text-slate-400">
             Press {DETAILS_KEY.name} for details
+            {settingsHint &&
+              ` or ${CELL_SETTINGS_KEY.name} (comma) for settings`}
           </p>
         )}
       </PopoverContent>

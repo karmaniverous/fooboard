@@ -4,30 +4,37 @@
  * grid fills its container; every cell is the same size, so all cells show
  * the same detail level, chosen from the measured cell width (C-13). Hover
  * or focus shows a tooltip; a touch tap, or Space on a focused cell, opens
- * a detail sheet.
+ * a detail sheet. Every row header, stage header, labelled group label and
+ * cell has a settings gear (spec.md §3.11), sized from the named gear
+ * constants in ems of the board's text, so gears scale with zoom.
  *
  * @module
  */
 import { Fragment, useState } from 'react';
 
-import { WithTooltip } from '@/components/ui/tooltip';
 import type { Dashboard } from '@/domain/config/dashboard';
 import { groupSegments } from '@/domain/groups/segments';
 import { type BoardModel, cellKey } from '@/engine';
 import { cn } from '@/lib/utils';
 
-import { Cell } from './Cell';
 import { CellDetail, CellSheet, CellTooltip } from './CellDetail';
 import { cellNames, cellSettingsAt } from './cellNames';
 import { cellPlace } from './cellView';
 import { columnLines } from './columnFrame';
 import { ColumnGroupLabels } from './ColumnGroupLabels';
-import { BOUNDARY, GROUP_LABEL } from './gridStyles';
-import { capText, type Layout, LINE_HEIGHT } from './layout';
-import { ProblemMark } from './ProblemMark';
+import { GridCell } from './GridCell';
+import { BOUNDARY } from './gridStyles';
+import { type Layout, LINE_HEIGHT } from './layout';
 import { useProblemMarks } from './problemMarksContext';
-import { rowLabel } from './rowLabel';
-import { stageLabel } from './stageLabel';
+import { RowGroupLabel, RowHeader } from './RowHeaders';
+import { SettingsGear } from './SettingsGear';
+import {
+  HEADER_GEAR_GAP,
+  SETTINGS_GEAR_INSET,
+  SETTINGS_GEAR_SIZE,
+} from './settingsGearSize';
+import { useSettingsPopup } from './settingsPopupContext';
+import { StageHeaders } from './StageHeaders';
 import { type CellFilter, matchesFilter } from './summary';
 
 export interface BoardGridProps {
@@ -83,16 +90,22 @@ export function BoardGrid({
     /** The cell has focus, so the details key works: say so. */
     focused: boolean;
   } | null>(null);
-  const [sheet, setSheet] = useState<string | null>(null);
+  const [sheet, setSheet] = useState<{
+    key: string;
+    rowId: string;
+    stageId: string;
+  } | null>(null);
+  const hasSettings = useSettingsPopup() !== null;
   const names = (key: string) => cellNames(dashboard, key);
-  const detail = (key: string, interactive: boolean) => {
+  const detail = (key: string, gear?: React.ReactNode) => {
     const cell = model.cells[key];
     return cell ? (
       <CellDetail
         cell={cell}
-        interactive={interactive}
+        interactive={gear !== undefined}
         problems={marks.cells.get(key)}
-        settings={interactive ? cellSettingsAt(dashboard, key) : []}
+        settings={gear === undefined ? [] : cellSettingsAt(dashboard, key)}
+        gear={hasSettings && gear}
         {...names(key)}
       />
     ) : null;
@@ -121,6 +134,10 @@ export function BoardGrid({
             lineHeight: LINE_HEIGHT,
             '--cell-pad-x': `${String(layout.padX)}px`,
             '--cell-pad-y': `${String(layout.padY)}px`,
+            // The settings gears (spec.md §3.11), in ems of the text.
+            '--gear-size': `${String(SETTINGS_GEAR_SIZE * layout.fontPx)}px`,
+            '--gear-inset': `${String(SETTINGS_GEAR_INSET * layout.fontPx)}px`,
+            '--gear-gap': `${String(HEADER_GEAR_GAP * layout.fontPx)}px`,
             // The label strip and the gap below it (C-14b).
             '--strip-h': colSegments.some((g) => g.group?.label)
               ? `${String(layout.lineRowHeight + layout.gap)}px`
@@ -135,35 +152,14 @@ export function BoardGrid({
           pinLeft={pinLeft}
           labelLeft={layout.rowNameWidth + layout.gap}
         />
-        <div role="row" className="contents">
-          <div
-            role="columnheader"
-            className={cn(pinTop, pinLeft, 'z-30')}
-            style={lineRow}
-          />
-          {stages.map((stage) => {
-            return (
-              <WithTooltip key={stage.id} label={stageLabel(stage)}>
-                <div
-                  role="columnheader"
-                  // Focusable, so the keyboard can show its tooltip.
-                  tabIndex={0}
-                  className={cn(
-                    'flex items-center justify-center truncate px-[var(--cell-pad-x)] text-center font-semibold',
-                    pinTop,
-                    lines.headerLeft.has(stage.id) && BOUNDARY.left,
-                    lines.headerRight.has(stage.id) && BOUNDARY.right,
-                    frameTop.has(stage.id) && BOUNDARY.top,
-                  )}
-                  style={lineRow}
-                >
-                  <span className="truncate">{capText(stage.name)}</span>
-                  <ProblemMark problems={marks.stages.get(stage.id)} />
-                </div>
-              </WithTooltip>
-            );
-          })}
-        </div>
+        <StageHeaders
+          stages={stages}
+          lines={lines}
+          frameTop={frameTop}
+          pinTop={pinTop}
+          pinLeft={pinLeft}
+          style={lineRow}
+        />
         {rowSegments.map((segment, si) => {
           const label = segment.group?.label;
           const segmentRows = rows.slice(
@@ -175,51 +171,33 @@ export function BoardGrid({
           const lineOnRow = si > 0 && !label;
           const body = (
             <>
-              {label && (
-                <div
-                  className={cn(
-                    'col-span-full flex items-end',
-                    GROUP_LABEL,
-                    si > 0 && BOUNDARY.top,
-                  )}
+              {label && segment.group && (
+                <RowGroupLabel
+                  group={segment.group}
+                  label={label}
+                  boundary={si > 0}
                   style={lineRow}
-                  role="presentation"
-                >
-                  {/* The label, not the full-width row, is pinned, so it stays
-                      on screen when the board scrolls right (C-13). */}
-                  <span className="sticky left-0 px-[var(--cell-pad-x)]">
-                    {label}
-                  </span>
-                </div>
+                />
               )}
               {segmentRows.map((row, ri) => {
                 const rowLine =
                   lineOnRow && ri === 0 ? BOUNDARY.top : undefined;
                 return (
                   <div key={row.id} role="row" className="contents">
-                    <WithTooltip label={rowLabel(row)}>
-                      <div
-                        role="rowheader"
-                        tabIndex={0}
-                        className={cn(
-                          'flex items-center px-[var(--cell-pad-x)] font-medium',
-                          pinLeft,
-                          rowLine,
-                        )}
-                        style={cellRow}
-                      >
-                        <span className="truncate">{row.displayName}</span>
-                        <ProblemMark problems={marks.rows.get(row.id)} />
-                      </div>
-                    </WithTooltip>
+                    <RowHeader
+                      row={row}
+                      className={cn(pinLeft, rowLine)}
+                      style={cellRow}
+                    />
                     {stages.map((stage) => {
                       const key = cellKey(row.id, stage.id);
                       return (
-                        <div
+                        <GridCell
                           key={key}
-                          role="gridcell"
+                          rowId={row.id}
+                          stageId={stage.id}
                           className={cn(
-                            'min-w-0 transition-opacity',
+                            'transition-opacity',
                             filter &&
                               !matchesFilter(model.cells[key], filter) &&
                               'opacity-25',
@@ -228,28 +206,25 @@ export function BoardGrid({
                             lines.bodyRight.has(stage.id) && BOUNDARY.right,
                           )}
                           style={cellRow}
-                        >
-                          <Cell
-                            cell={model.cells[key]}
-                            rung={layout.rung}
-                            lineOf={layout.lineOf}
-                            now={now}
-                            onInspect={(el) => {
-                              setTip(
-                                el
-                                  ? {
-                                      key,
-                                      rect: el.getBoundingClientRect(),
-                                      focused: el === document.activeElement,
-                                    }
-                                  : null,
-                              );
-                            }}
-                            onOpenSheet={() => {
-                              setSheet(key);
-                            }}
-                          />
-                        </div>
+                          cell={model.cells[key]}
+                          rung={layout.rung}
+                          lineOf={layout.lineOf}
+                          now={now}
+                          onInspect={(el) => {
+                            setTip(
+                              el
+                                ? {
+                                    key,
+                                    rect: el.getBoundingClientRect(),
+                                    focused: el === document.activeElement,
+                                  }
+                                : null,
+                            );
+                          }}
+                          onOpenSheet={() => {
+                            setSheet({ key, rowId: row.id, stageId: stage.id });
+                          }}
+                        />
                       );
                     })}
                   </div>
@@ -276,18 +251,32 @@ export function BoardGrid({
       </div>
 
       {tip && !sheet && (
-        <CellTooltip rect={tip.rect} keyHint={tip.focused}>
-          {detail(tip.key, false)}
+        <CellTooltip
+          rect={tip.rect}
+          keyHint={tip.focused}
+          settingsHint={hasSettings}
+        >
+          {detail(tip.key)}
         </CellTooltip>
       )}
       {sheet && (
         <CellSheet
-          title={cellPlace(names(sheet))}
+          title={cellPlace(names(sheet.key))}
           onClose={() => {
             setSheet(null);
           }}
         >
-          {detail(sheet, true)}
+          {detail(
+            sheet.key,
+            <SettingsGear
+              place={{
+                level: 'cell',
+                rowId: sheet.rowId,
+                stageId: sheet.stageId,
+              }}
+              spot="sheet"
+            />,
+          )}
         </CellSheet>
       )}
     </>

@@ -57,6 +57,29 @@ export const settingKey = (
 ): string =>
   `${settingsKey(place)}:${field}${source === undefined ? '' : `:${source}`}`;
 
+/** The editor items to open at a place's settings, most specific first:
+ * its settings editor, then the item holding it. */
+export const placeFocusKeys = (place: SettingsPlace): string[] => [
+  settingsKey(place),
+  ...(place.level === 'dashboard' ? [] : [placeKey(place)]),
+];
+
+/** The tab a place's settings are edited on (spec.md §3.11 *Where each
+ * level is edited*). */
+export function placeTab(place: SettingsPlace): EditorTab {
+  switch (place.level) {
+    case 'dashboard':
+      return 'General';
+    case 'column':
+    case 'columnGroup':
+      return 'Stages';
+    case 'rowGroup':
+    case 'row':
+    case 'cell':
+      return 'Rows';
+  }
+}
+
 /** The editor items to open, most specific first. */
 export function focusKeys(t: EditTarget): string[] {
   switch (t.kind) {
@@ -85,8 +108,7 @@ export function focusKeys(t: EditTarget): string[] {
     case 'settings':
       return [
         settingKey(t.place, t.field, t.source),
-        settingsKey(t.place),
-        ...(t.place.level === 'dashboard' ? [] : [placeKey(t.place)]),
+        ...placeFocusKeys(t.place),
       ];
   }
 }
@@ -120,11 +142,7 @@ export function tabFor(t: EditTarget): EditorTab {
     case 'dashboard':
       return t.part === 'stageRules' ? 'Stages' : 'General';
     case 'settings':
-      return t.place.level === 'dashboard'
-        ? 'General'
-        : t.place.level === 'column' || t.place.level === 'columnGroup'
-          ? 'Stages'
-          : 'Rows';
+      return placeTab(t.place);
   }
 }
 

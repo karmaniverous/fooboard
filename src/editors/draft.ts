@@ -22,6 +22,7 @@ import { type Problem, targetOf } from '@/domain/problems/problem';
 import { escapeGlob } from '@/domain/rules/glob';
 import { PATH_IDENTIFIER } from '@/domain/rules/path';
 import type { Check } from '@/domain/rules/schema';
+import type { SettingsPlace } from '@/domain/settings/places';
 import { statusSetFor } from '@/domain/statuses/resolve';
 import type { UnmappedRun } from '@/engine';
 
@@ -29,6 +30,8 @@ import {
   type EditorTab,
   focusKeys,
   NEW_STAGE_KEY,
+  placeFocusKeys,
+  placeTab,
   statusSetItemsKey,
   tabFor,
 } from './editTarget';
@@ -161,3 +164,11 @@ export function problemDraft(problem: Problem): EditorDraft {
   const target = targetOf(problem);
   return { tab: tabFor(target), focus: focusKeys(target) };
 }
+
+/** The editor opened at a place's settings, its item open and scrolled
+ * into view (the settings popup's *Open in dashboard settings*, an
+ * unlabelled group's origin link; spec.md §3.11). */
+export const placeDraft = (place: SettingsPlace): EditorDraft => ({
+  tab: placeTab(place),
+  focus: placeFocusKeys(place),
+});

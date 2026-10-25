@@ -29,6 +29,19 @@ export const statusLook = (
  * buttons, which open the sheet on it natively. */
 export const DETAILS_KEY = { key: ' ', name: 'Space' } as const;
 
+/** The key that opens a focused cell's settings popup (spec.md §3.11), as
+ * Space opens its detail sheet: comma. It isn't Space, Enter or Escape,
+ * has no default action on a link or button and no browser shortcut,
+ * needs no modifier, and echoes VS Code's settings shortcut, Ctrl+,
+ * (Decision 54). */
+export const CELL_SETTINGS_KEY = { key: ',', name: ',' } as const;
+
+/** The keys a focused cell answers to, as `aria-keyshortcuts` spells
+ * them: the details key, and the settings key where the board has a
+ * settings popup. */
+export const cellKeyshortcuts = (settings = false): string =>
+  settings ? `${DETAILS_KEY.name} ${CELL_SETTINGS_KEY.name}` : DETAILS_KEY.name;
+
 /** The glyph for each status icon (A§4.3.6). */
 export const STATUS_GLYPH: Record<StatusIcon, string> = {
   queued: '\u25cb',
