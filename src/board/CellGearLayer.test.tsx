@@ -11,21 +11,26 @@
 import {
   act,
   fireEvent,
+  render,
   screen,
   waitFor,
   within,
 } from '@testing-library/react';
+import { MemoryRouter } from 'react-router-dom';
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { demoDashboard } from '@/demo/board';
 import { type BoardModel, cellKey } from '@/engine';
+import { TEST_LAYOUT } from '@/test/boardLayout';
 import { fullModel } from '@/test/boardModel';
 import { cellGear, shownCellGear } from '@/test/cellGear';
 import { focusElement } from '@/test/focus';
 import { renderSettingsBoard } from '@/test/settingsBoard';
 
+import { BoardGrid } from './BoardGrid';
 import type * as CellModule from './Cell';
 import type { CellProps } from './Cell';
+import { SettingsPopupProvider } from './SettingsPopup';
 
 /** Every render of a cell, counted. */
 const renders = vi.hoisted(() => ({ count: 0 }));
@@ -185,6 +190,36 @@ describe('the cell gear', () => {
     fireEvent.mouseLeave(cell);
     expect(shownCellGear()).toBe(gear);
     expect(gearName()).toBe('Settings for cell api-core, Bali');
+  });
+
+  it('goes when its cell leaves the board, until the pointer picks another', () => {
+    const flat = { ...demoDashboard, rowGroups: [] };
+    const board = (dashboard: typeof flat) => (
+      <MemoryRouter>
+        <SettingsPopupProvider dashboard={dashboard} onChange={vi.fn()}>
+          <BoardGrid
+            dashboard={dashboard}
+            model={model}
+            layout={TEST_LAYOUT}
+            now={0}
+          />
+        </SettingsPopupProvider>
+      </MemoryRouter>
+    );
+    const view = render(board(flat));
+    hover(gridCells()[0]);
+    expect(shownCellGear()).toBeVisible();
+    // api-core's row removed (an edit) while the gear is on its cell.
+    view.rerender(board({ ...flat, rows: flat.rows.slice(1) }));
+    expect(shownCellGear()).not.toBeVisible();
+    hover(gridCells()[0]);
+    expect(shownCellGear()).toBeVisible();
+    expect(gearName()).toBe('Settings for cell web-app, Bali');
+    // Nor does a focused cell that has gone bring it back.
+    tabTo(linkIn(gridCells()[0]));
+    view.rerender(board({ ...flat, rows: flat.rows.slice(2) }));
+    fireEvent.pointerLeave(layerOf());
+    expect(shownCellGear()).toBeNull();
   });
 
   it('ignores a touch, where the detail sheet carries the gear', () => {

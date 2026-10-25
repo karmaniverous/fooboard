@@ -6,6 +6,8 @@
  * @module
  */
 
+import type { BoardPlace } from './settingsGearWords';
+
 /** A grid cell the gear can sit on. */
 export interface GearTarget {
   rowId: string;
@@ -20,6 +22,13 @@ export const gearTargetProps = (
 ): Record<'data-gear-row' | 'data-gear-stage', string> => ({
   'data-gear-row': rowId,
   'data-gear-stage': stageId,
+});
+
+/** The settings place of a grid cell the gear can sit on. */
+export const gearPlace = ({ rowId, stageId }: GearTarget): BoardPlace => ({
+  level: 'cell',
+  rowId,
+  stageId,
 });
 
 /** The marked grid cell a node is in, if any. */

@@ -22,7 +22,7 @@
  */
 import { useId, useLayoutEffect, useRef, useState } from 'react';
 
-import { type GearTarget, gearTargetOf } from './cellGearTarget';
+import { gearPlace, type GearTarget, gearTargetOf } from './cellGearTarget';
 import { CELL_SETTINGS_KEY } from './cellView';
 import { SettingsGear } from './SettingsGear';
 import { useSettingsPopup } from './settingsPopupContext';
@@ -51,12 +51,17 @@ export function CellGearLayer({
   // Its popup open, the gear stays where it is (the popup's anchor).
   const expanded = popup?.request?.gearId === gearId;
 
+  /** A cell still on the board (a row can go while the gear is on it). */
+  const live = (target: GearTarget | null) =>
+    target?.el.isConnected ? target : null;
+
   const pick = () => {
     if (expanded) return;
-    const [first, second] =
+    const [first, second] = (
       lead.current === 'focus'
         ? [focused.current, hovered.current]
-        : [hovered.current, focused.current];
+        : [hovered.current, focused.current]
+    ).map(live);
     // Focus on the gear itself (after its popup closes) keeps it.
     const kept =
       shown && gear.current === document.activeElement ? shown : null;
@@ -68,6 +73,9 @@ export function CellGearLayer({
     const g = gear.current;
     const l = layer.current;
     if (!g || !l || !shown) return;
+    // Its cell gone from the board (a row removed), the gear goes too,
+    // until the pointer or focus picks another.
+    g.style.visibility = shown.el.isConnected ? '' : 'hidden';
     const cell = shown.el.getBoundingClientRect();
     const box = l.getBoundingClientRect();
     const x = String(cell.right - box.left);
@@ -121,11 +129,7 @@ export function CellGearLayer({
         lead.current = 'focus';
         setShown(target);
         popup.open({
-          place: {
-            level: 'cell',
-            rowId: target.rowId,
-            stageId: target.stageId,
-          },
+          place: gearPlace(target),
           gearId,
           returnFocus: e.target,
         });
@@ -136,7 +140,7 @@ export function CellGearLayer({
         <SettingsGear
           ref={gear}
           id={gearId}
-          place={{ level: 'cell', rowId: shown.rowId, stageId: shown.stageId }}
+          place={gearPlace(shown)}
           spot="corner"
         />
       )}

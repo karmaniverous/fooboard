@@ -26,17 +26,12 @@ import { cellPlace } from './cellView';
 import { columnLines } from './columnFrame';
 import { ColumnGroupLabels } from './ColumnGroupLabels';
 import { GridCell } from './GridCell';
-import { BOUNDARY } from './gridStyles';
+import { boardTextStyle, BOUNDARY } from './gridStyles';
 import { HeaderGearsContext } from './headerGears';
-import { type Layout, LINE_HEIGHT } from './layout';
+import { type Layout } from './layout';
 import { useProblemMarks } from './problemMarksContext';
 import { RowGroupLabel, RowHeader } from './RowHeaders';
 import { SettingsGear } from './SettingsGear';
-import {
-  HEADER_GEAR_GAP,
-  SETTINGS_GEAR_INSET,
-  SETTINGS_GEAR_SIZE,
-} from './settingsGearSize';
 import { useSettingsPopup } from './settingsPopupContext';
 import { StageHeaders } from './StageHeaders';
 import { type CellFilter, matchesFilter } from './summary';
@@ -122,18 +117,7 @@ export function BoardGrid({
 
   return (
     <HeaderGearsContext value={layout.headerGears}>
-      <CellGearLayer
-        style={
-          {
-            fontSize: `${String(layout.fontPx)}px`,
-            lineHeight: LINE_HEIGHT,
-            // The settings gears (spec.md §3.11), in ems of the text.
-            '--gear-size': `${String(SETTINGS_GEAR_SIZE * layout.fontPx)}px`,
-            '--gear-inset': `${String(SETTINGS_GEAR_INSET * layout.fontPx)}px`,
-            '--gear-gap': `${String(HEADER_GEAR_GAP * layout.fontPx)}px`,
-          } as React.CSSProperties
-        }
-      >
+      <CellGearLayer style={boardTextStyle(layout)}>
         <div
           role="grid"
           aria-label={dashboard.name}

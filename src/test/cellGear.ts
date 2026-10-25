@@ -10,7 +10,9 @@ import { fireEvent, waitFor } from '@testing-library/react';
 
 /** The board's cell gear, if it is showing (it is out of the Tab order). */
 export const shownCellGear = (): HTMLElement | null =>
-  document.querySelector<HTMLElement>('button[aria-haspopup][tabindex="-1"]');
+  document.querySelector<HTMLElement>(
+    'button[aria-label^="Settings for cell "]',
+  );
 
 /** Point at the board's cells until the cell gear has this name. */
 export function cellGear(name: string): HTMLElement {

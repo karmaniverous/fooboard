@@ -1,9 +1,28 @@
 /**
- * Shared board-grid styles: group label text and the lines drawn at group
- * boundaries and round column groups (spec.md C-14b).
+ * Shared board-grid styles: the board's text and gear sizes, group label
+ * text, and the lines drawn at group boundaries and round column groups
+ * (spec.md C-14b).
  *
  * @module
  */
+import { type Layout, LINE_HEIGHT } from './layout';
+import {
+  HEADER_GEAR_GAP,
+  SETTINGS_GEAR_INSET,
+  SETTINGS_GEAR_SIZE,
+} from './settingsGearSize';
+
+/** The board's text size and its settings gears' sizes (spec.md §3.11),
+ * in ems of the text so they scale with zoom: set around the grid, so the
+ * grid and the cell gear beside it share them. */
+export const boardTextStyle = (layout: Layout): React.CSSProperties =>
+  ({
+    fontSize: `${String(layout.fontPx)}px`,
+    lineHeight: LINE_HEIGHT,
+    '--gear-size': `${String(SETTINGS_GEAR_SIZE * layout.fontPx)}px`,
+    '--gear-inset': `${String(SETTINGS_GEAR_INSET * layout.fontPx)}px`,
+    '--gear-gap': `${String(HEADER_GEAR_GAP * layout.fontPx)}px`,
+  }) as React.CSSProperties;
 
 /** Group label text, over columns and above rows (C-14b). */
 export const GROUP_LABEL =
