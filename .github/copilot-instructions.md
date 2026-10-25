@@ -12,7 +12,7 @@ The presumption is that any issue you find has survived the project's existing q
 
 ### No Lint/Check Suppression
 
-Never suggest disabling linting or type-checking rules. This includes `eslint-disable`, `@ts-ignore`, `@ts-expect-error`, `noqa`, `noinspection`, or any language/framework equivalent. The code must be fixed, not suppressed. If a rule fires, the code is wrong. Lint rules cover tests as fully as app code; the only allowed `eslint-disable` is a single-line one in a test that intrinsically requires code breaking the rule, with a compelling reason in the comment. Flag any disable without one.
+Never suggest disabling linting or type-checking rules. This includes `eslint-disable`, `@ts-ignore`, `@ts-expect-error`, `noqa`, `noinspection`, or any language/framework equivalent. The code must be fixed, not suppressed. If a rule fires, the code is wrong.
 
 For test mocks: suggest properly typed partial objects (`Partial<RealType>`, typed mock interfaces) instead of `any` or type-suppression comments. Tests are production code.
 
