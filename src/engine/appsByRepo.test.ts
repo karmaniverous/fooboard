@@ -152,6 +152,28 @@ describe('apps found by repo', () => {
     });
   });
 
+  it('tells apart apps with the same name in the same region', () => {
+    const client = new QueryClient();
+    seedSearch(client, AWS, {
+      'us-east-1': [
+        listedApp(MARKETING.appId, REPO, 'site'),
+        listedApp('d1sitecopy', REPO, 'site'),
+      ],
+      'eu-west-1': [listedApp(PARTNER_EU.appId, REPO, 'site')],
+    });
+    const several = deriveAmplifyRow(ctx(client), byRepo()).problems.find(
+      (p) => p.actions,
+    );
+    expect(several?.actions?.map((a) => a.label)).toEqual([
+      `Pin site (us-east-1, ${MARKETING.appId})`,
+      'Pin site (us-east-1, d1sitecopy)',
+      'Pin site (eu-west-1)',
+    ]);
+    expect(several?.message).toContain(
+      `site (us-east-1, ${MARKETING.appId}), site (us-east-1, d1sitecopy), site (eu-west-1)`,
+    );
+  });
+
   it('reads a pin for the key rather than what the search finds', () => {
     const client = new QueryClient();
     seedSearch(client, AWS, {

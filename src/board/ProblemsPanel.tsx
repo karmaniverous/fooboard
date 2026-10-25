@@ -72,7 +72,7 @@ function ProblemItem({
         <div className="flex flex-wrap gap-1">
           {p.actions.map((action) => (
             <Button
-              key={action.label}
+              key={`${action.kind}:${action.pin.region}:${action.pin.appId}:${action.pin.credentialId ?? ''}`}
               size="sm"
               variant="outline"
               onClick={() => {

@@ -60,7 +60,15 @@ export function noAppProblem(
   });
 }
 
-const appName = (app: FoundApp): string => `${app.name} (${app.region})`;
+/** How `app` is named among `found`: by name and region, with its app ID
+ * too when another found app shares both. */
+const appName = (app: FoundApp, found: readonly FoundApp[]): string =>
+  found.some(
+    (other) =>
+      other !== app && other.name === app.name && other.region === app.region,
+  )
+    ? `${app.name} (${app.region}, ${app.appId})`
+    : `${app.name} (${app.region})`;
 
 /** The problem of the several apps found building the row's repo under
  * `key`: every one is read; *Pin* chooses one (Q28). */
@@ -72,7 +80,7 @@ export function severalProblem(
 ): Problem {
   return problem(
     { kind: 'row', id: rowId },
-    `${String(found.length)} Amplify apps build ${repo} in the account of the AWS key ${label(key)}: ${found.map(appName).join(', ')}. The row reads them all; pin the one it should read`,
+    `${String(found.length)} Amplify apps build ${repo} in the account of the AWS key ${label(key)}: ${found.map((app) => appName(app, found)).join(', ')}. The row reads them all; pin the one it should read`,
     true,
     {
       target: pinsTarget(rowId),
@@ -80,7 +88,7 @@ export function severalProblem(
         kind: 'pin',
         rowId,
         pin: { credentialId: key, region: app.region, appId: app.appId },
-        label: `Pin ${appName(app)}`,
+        label: `Pin ${appName(app, found)}`,
       })),
     },
   );
