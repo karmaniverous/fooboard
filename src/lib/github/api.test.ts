@@ -2,7 +2,7 @@
  * Tests for `createGitHubApi`: each method's request URL, whether a page
  * says its list goes on (runs: a full page; other lists: `Link: next`), a
  * 304 passed back for the caller's cache, a body that fails its schema,
- * and the spike's matching refs. Uses an injected fake `fetch`.
+ * and the transport's API base. Uses an injected fake `fetch`.
  *
  * @module
  */
@@ -156,12 +156,22 @@ describe('createGitHubApi', () => {
     expect(String(err)).toContain('/actions/runs/7/attempts/1/jobs');
   });
 
-  it('lists matching refs under a prefix', async () => {
-    const refs = [{ ref: 'refs/heads/release/1', object: { sha: 's' } }];
-    const { api, urls } = apiAnswering(() => response(200, refs));
-    expect(await api.matchingRefs(REF, 'release/')).toEqual(refs);
+  it("sends every request to the transport's API base", async () => {
+    const urls: string[] = [];
+    const fetchImpl: FetchLike = (url) => {
+      urls.push(url);
+      return Promise.resolve(response(200, [repo]));
+    };
+    const api = createGitHubApi({
+      token: 't',
+      fetchImpl,
+      apiBase: 'https://sim.test/api',
+    });
+    await api.reposPage(1);
+    await api.branchesPage(REF, 1).catch(() => undefined);
     expect(urls).toEqual([
-      `${BASE}/repos/acme/api-core/git/matching-refs/heads/release/`,
+      'https://sim.test/api/user/repos?per_page=100&page=1',
+      'https://sim.test/api/repos/acme/api-core/branches?per_page=100&page=1',
     ]);
   });
 

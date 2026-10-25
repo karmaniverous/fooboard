@@ -4,7 +4,8 @@
  * and each AWS key one reader per region it reads. Requests in flight are
  * the query layer's limiter's business, not the readers'. Readers are
  * rebuilt when a secret changes; a missing secret yields `undefined`
- * (*needs credential*).
+ * (*needs credential*). Every reader sends through `transport`: the
+ * browser's on a real board, the simulator's in the demo (§3.14).
  *
  * @module
  */
@@ -13,6 +14,7 @@ import type { AmplifyReaderFor } from '@/lib/amplify/rowJobs';
 import { fingerprintOf } from '@/lib/fingerprint';
 import { createGitHubApi, type GitHubApi } from '@/lib/github';
 import { getOrCreate } from '@/lib/memo';
+import { browserTransport, type Transport } from '@/lib/transport';
 import type { ProviderHooks } from '@/query/client';
 import type { QueryProviders } from '@/query/fetchers';
 import type {
@@ -44,11 +46,14 @@ function cachedBySecret<T>(
 export function credentialProviders(
   store: CredentialStore,
   hooks: ProviderHooks,
+  transport: Transport = browserTransport,
 ): QueryProviders {
   const github = cachedBySecret<GitHubApi>(store, (id, secret) =>
     secret.kind === 'github'
       ? createGitHubApi({
           token: secret.token,
+          fetchImpl: transport.fetch,
+          apiBase: transport.githubApiBase,
           // Tagged with the secret it was read with (fooboard#24).
           onBudget: (budget) => {
             hooks.onBudget(id, budget, fingerprintOf(secret));
@@ -66,6 +71,7 @@ export function credentialProviders(
           region,
           accessKeyId: secret.accessKeyId,
           secretAccessKey: secret.secretAccessKey,
+          fetch: transport.fetch,
         }),
       );
   });

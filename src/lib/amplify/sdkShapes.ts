@@ -1,12 +1,12 @@
 /**
- * Complete Amplify SDK shapes from the few fields a caller has (the demo
- * provider, test fixtures). The SDK's required members all accept
+ * Complete Amplify SDK shapes from the few fields a caller has (test
+ * fixtures). The SDK's required members all accept
  * `undefined`, so each builder starts from every one of them unset and
  * applies the given fields: fully typed, no assertion.
  *
  * @module
  */
-import type { App, Branch, Job, JobSummary } from '@aws-sdk/client-amplify';
+import type { App, Branch, JobSummary } from '@aws-sdk/client-amplify';
 
 export const amplifyApp = (fields: Partial<App>): App => ({
   appId: undefined,
@@ -54,11 +54,5 @@ export const amplifyJobSummary = (fields: Partial<JobSummary>): JobSummary => ({
   startTime: undefined,
   status: undefined,
   jobType: undefined,
-  ...fields,
-});
-
-export const amplifyJob = (fields: Partial<Job>): Job => ({
-  summary: undefined,
-  steps: undefined,
   ...fields,
 });

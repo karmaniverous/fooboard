@@ -100,13 +100,13 @@ describe('createAmplifyReader', () => {
       $response: { headers: { 'retry-after': '12' } },
     });
     const { client } = fakeClient({
-      GetJobCommand: [awsError('ThrottlingException'), hinted],
+      ListBranchesCommand: [awsError('ThrottlingException'), hinted],
     });
     const reader = createAmplifyReader({ ...config, client });
-    await expect(reader.getJob('a', 'main', '1')).rejects.toMatchObject({
+    await expect(reader.listBranches('a')).rejects.toMatchObject({
       retryAfterMs: DEFAULT_THROTTLE_MS,
     });
-    await expect(reader.getJob('a', 'main', '1')).rejects.toMatchObject({
+    await expect(reader.listBranches('a')).rejects.toMatchObject({
       retryAfterMs: 12_000,
     });
   });

@@ -1,8 +1,9 @@
 /**
  * Tests for `credentialProviders`: readers exist only for entered secrets
  * of the right kind, are reused until the secret changes (the fingerprint
- * changes with it), an AWS key's readers are reused per region, and a
- * GitHub response's budget is reported under its credential.
+ * changes with it), an AWS key's readers are reused per region, a
+ * GitHub response's budget is reported under its credential, and every
+ * reader sends through the transport it is given (spec.md §3.14).
  *
  * @module
  */
@@ -24,6 +25,44 @@ const setup = () => {
 };
 
 describe('credentialProviders', () => {
+  it('sends every reader through the given transport', async () => {
+    const store = createCredentialStore(memoryStorage());
+    const urls: string[] = [];
+    const fetch: typeof globalThis.fetch = (input, init) => {
+      const request = new Request(input, init);
+      urls.push(request.url);
+      return Promise.resolve(
+        new Response(
+          JSON.stringify(request.url.includes('amplify') ? { apps: [] } : []),
+          {
+            headers: { 'content-type': 'application/json' },
+          },
+        ),
+      );
+    };
+    const providers = credentialProviders(
+      store,
+      { onBudget: vi.fn() },
+      { fetch, githubApiBase: 'https://sim.test/api' },
+    );
+    store.set('gh', { kind: 'github', token: 't' }, false);
+    store.set(
+      'aws',
+      { kind: 'aws', accessKeyId: 'k', secretAccessKey: 's' },
+      false,
+    );
+    await providers.github('gh')?.reposPage(1);
+    await providers
+      .amplify('aws')?.({ credentialId: 'aws', region: 'eu-west-1' })
+      .listApps();
+    expect(urls).toEqual([
+      'https://sim.test/api/user/repos?per_page=100&page=1',
+      expect.stringMatching(
+        /^https:\/\/amplify\.eu-west-1\.amazonaws\.com\/apps/,
+      ),
+    ]);
+  });
+
   it('has no reader for a missing or wrong-kind secret', () => {
     const { store, providers } = setup();
     expect(providers.github('gh')).toBeUndefined();

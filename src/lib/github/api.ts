@@ -7,6 +7,8 @@
  *
  * @module
  */
+import { GITHUB_API_BASE } from '@/lib/transport';
+
 import { GitHubValidationError } from './errors';
 import { type FetchLike, GitHubHttpClient } from './httpClient';
 import { parseLinkHeader } from './pagination';
@@ -18,15 +20,11 @@ import {
   CompareSchema,
   type Job,
   JobsResponseSchema,
-  type MatchingRef,
-  MatchingRefsSchema,
   type Repo,
   ReposResponseSchema,
   type WorkflowRun,
   WorkflowRunsResponseSchema,
 } from './schemas';
-
-const API_BASE = 'https://api.github.com';
 
 /** The most items GitHub's REST API returns per page. */
 export const GITHUB_PER_PAGE = 100;
@@ -95,8 +93,6 @@ export interface GitHubApi {
     etag?: string | null,
   ): Promise<Conditional<Branch[]>>;
   reposPage(page: number, etag?: string | null): Promise<Conditional<Repo[]>>;
-  /** Refs under `heads/<prefix>` (the GitHub spike only). */
-  matchingRefs(repo: RepoRef, prefix: string): Promise<MatchingRef[]>;
   /** The token's expiry, if GitHub reports it (spec.md C-5). */
   getTokenExpiration(): string | undefined;
 }
@@ -105,16 +101,16 @@ export interface GitHubApi {
 export interface GitHubApiConfig {
   token: string;
   fetchImpl?: FetchLike;
+  /** The REST API base (the transport's, spec.md §3.14); GitHub's
+   * public API unless given. */
+  apiBase?: string;
   onBudget?: (budget: RateLimitBudget) => void;
 }
 
-/** Encode a branch name or prefix for a URL path, keeping its `/`
- * separators (GitHub expects `heads/release/`, not `heads/release%2F`). */
+/** Encode a branch name for a URL path, keeping its `/` separators
+ * (GitHub expects `release/24.3`, not `release%2F24.3`). */
 const encodeRef = (ref: string): string =>
   ref.split('/').map(encodeURIComponent).join('/');
-
-const repoUrl = ({ owner, repo }: RepoRef, suffix: string): string =>
-  `${API_BASE}/repos/${owner}/${repo}/${suffix}`;
 
 type Parser<T> = { parse: (data: unknown) => T };
 
@@ -135,9 +131,12 @@ const pageQuery = (page: number): string =>
 export function createGitHubApi({
   token,
   fetchImpl,
+  apiBase = GITHUB_API_BASE,
   onBudget,
 }: GitHubApiConfig): GitHubApi {
   const http = new GitHubHttpClient({ token, fetchImpl, onBudget });
+  const repoUrl = ({ owner, repo }: RepoRef, suffix: string): string =>
+    `${apiBase}/repos/${owner}/${repo}/${suffix}`;
 
   /** One conditional GET; `hasNext` from the page or its `Link`. */
   const get = async <P, T>(
@@ -203,17 +202,12 @@ export function createGitHubApi({
       ),
     reposPage: (page, etag) =>
       get(
-        `${API_BASE}/user/repos?${pageQuery(page)}`,
+        `${apiBase}/user/repos?${pageQuery(page)}`,
         etag,
         ReposResponseSchema,
         asIs<Repo[]>,
         linkNext,
       ),
-    async matchingRefs(ref, prefix) {
-      const url = repoUrl(ref, `git/matching-refs/heads/${encodeRef(prefix)}`);
-      const res = await http.get(url);
-      return res.notModified ? [] : parse(MatchingRefsSchema, url, res.data);
-    },
     getTokenExpiration: () => http.getTokenExpiration(),
   };
 }
