@@ -17,6 +17,7 @@
  */
 import { useEffect, useState } from 'react';
 
+import { demoPreferences } from '@/demo/demoPreferences';
 import { createDemoSession } from '@/demo/demoSession';
 import { InDemoContext } from '@/demo/inDemo';
 import { demoScenarioFor } from '@/demo/scenarioChoice';
@@ -42,11 +43,12 @@ function DemoVisit({
     const session = createDemoSession(scenario, { latencyMs: demoLatency() });
     return {
       env: session.env,
-      // The device's preferences (view settings); the rest in memory.
+      // View settings on the device; the rest, dismissals too, in memory.
       stores: {
         ...stores,
         config: createConfigStore(memoryStorage()),
         credentials: session.credentials,
+        preferences: demoPreferences(stores.preferences),
       },
     };
   });

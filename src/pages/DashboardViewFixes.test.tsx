@@ -10,18 +10,18 @@ import { describe, expect, it } from 'vitest';
 
 import { createAppStores } from '@/storage';
 import { memoryStorage } from '@/storage/keyValue';
+import { DEVICE_PREFERENCES_KEY } from '@/storage/preferencesStore';
 import { StoresContext } from '@/storage/storesContext';
+import { DEMO_RENDER_TIMEOUT_MS } from '@/test/demoRender';
 
 import { DemoPage } from './DemoPage';
 
-/** The demo board (21 × 5 cells) takes seconds to render in jsdom. */
-const DEMO_RENDER_TIMEOUT_MS = 60_000;
 const FIND = { timeout: 30_000 };
 
-function renderDemo() {
+function renderDemo(storage = memoryStorage()) {
   render(
     <MemoryRouter initialEntries={['/demo']}>
-      <StoresContext value={createAppStores(memoryStorage())}>
+      <StoresContext value={createAppStores(storage)}>
         <DemoPage />
       </StoresContext>
     </MemoryRouter>,
@@ -64,6 +64,24 @@ describe('board fixes', () => {
       expect(editor()).toBeNull();
       fireEvent.click(within(panel).getAllByText(fix)[0]);
       expect(editor()).toBeVisible();
+    },
+    DEMO_RENDER_TIMEOUT_MS,
+  );
+  it(
+    'keeps a dismissal in the demo for the visit, off the device',
+    async () => {
+      const storage = memoryStorage();
+      renderDemo(storage);
+      const label = await screen.findByText(/^Problems \(\d+\)$/, {}, FIND);
+      const before = label.textContent;
+      fireEvent.click(label.closest('button') ?? label);
+      const panel = await screen.findByRole('dialog', {}, FIND);
+      fireEvent.click(within(panel).getAllByText('Dismiss')[0]);
+      // One fewer problem shown, and nothing dismissed on the device.
+      expect(label.textContent).not.toBe(before);
+      expect(storage.getItem(DEVICE_PREFERENCES_KEY) ?? '').not.toMatch(
+        /"dismissedProblems":\["/,
+      );
     },
     DEMO_RENDER_TIMEOUT_MS,
   );
