@@ -29,25 +29,16 @@ import {
   SheetTrigger,
 } from '@/components/ui/sheet';
 
+import { firstTabbable } from './tabbable';
+
 /** The header's tab row: undefined outside a panel, null until mounted. */
 const TabRow = createContext<HTMLElement | null | undefined>(undefined);
-
-/** What Tab skips even with a tab index: disabled, hidden. */
-const UNREACHABLE = ':disabled, input[type="hidden"], [hidden], [hidden] *';
 
 /** The selected tab under `root`, if any. Focus goes to it, not to its
  * tab list: a browser doesn't pass a list's programmatic focus on. */
 const selectedTab = (root: HTMLElement | null): HTMLElement | undefined =>
   root?.querySelector<HTMLElement>('[role="tab"][aria-selected="true"]') ??
   undefined;
-
-/** The first element under `root` that Tab reaches, if any. */
-function firstTabbable(root: HTMLElement | null): HTMLElement | undefined {
-  if (!root) return undefined;
-  return [...root.querySelectorAll<HTMLElement>('*')].find(
-    (el) => el.tabIndex >= 0 && !el.matches(UNREACHABLE),
-  );
-}
 
 /** The library's `SheetContent`, laid out as a header (title, close,
  * tabs) over a body that alone scrolls. */

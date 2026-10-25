@@ -5,9 +5,12 @@
  * @module
  */
 import * as PopoverPrimitive from '@radix-ui/react-popover';
+import { X } from 'lucide-react';
 import * as React from 'react';
 
 import { cn } from '@/lib/utils';
+
+import { CLOSE_BUTTON_CLASS } from './buttonVariants';
 
 const Popover = PopoverPrimitive.Root;
 const PopoverAnchor = PopoverPrimitive.Anchor;
@@ -33,4 +36,20 @@ const PopoverContent = React.forwardRef<
 ));
 PopoverContent.displayName = PopoverPrimitive.Content.displayName;
 
-export { Popover, PopoverAnchor, PopoverContent, PopoverTrigger };
+/** The popover's close button: the modals' X, named *Close*. */
+function PopoverClose({
+  className,
+}: {
+  className?: string;
+}): React.JSX.Element {
+  return (
+    <PopoverPrimitive.Close
+      aria-label="Close"
+      className={cn(CLOSE_BUTTON_CLASS, className)}
+    >
+      <X aria-hidden className="size-4" />
+    </PopoverPrimitive.Close>
+  );
+}
+
+export { Popover, PopoverAnchor, PopoverClose, PopoverContent, PopoverTrigger };

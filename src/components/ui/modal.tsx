@@ -12,16 +12,15 @@ import * as React from 'react';
 
 import { cn } from '@/lib/utils';
 
+import { CLOSE_BUTTON_CLASS } from './buttonVariants';
+
 /** The modal's close button: an X named *Close*, its hover a tint of
  * the text colour so it shows on any background. */
 function ModalClose({ className }: { className?: string }): React.JSX.Element {
   return (
     <DialogPrimitive.Close
       aria-label="Close"
-      className={cn(
-        'rounded-md p-1 hover:bg-current/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
-        className,
-      )}
+      className={cn(CLOSE_BUTTON_CLASS, className)}
     >
       <X aria-hidden className="size-4" />
     </DialogPrimitive.Close>
