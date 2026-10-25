@@ -116,6 +116,14 @@ const statusIn = (err: Error, field: string, key: string): number => {
   return typeof status === 'number' ? status : 0;
 };
 
+/** The HTTP status of the answer `err` came from (its raw `$response`
+ * or its `$metadata`), or 0 when it carries none. */
+const answerStatus = (err: Error): number =>
+  Math.max(
+    statusIn(err, '$response', 'statusCode'),
+    statusIn(err, '$metadata', 'httpStatusCode'),
+  );
+
 /** The least HTTP status a server error has. */
 const SERVER_ERROR_STATUS = 500;
 
@@ -125,8 +133,17 @@ const SERVER_ERROR_STATUS = 500;
 export const isServerFault = (err: unknown): boolean =>
   err instanceof Error &&
   (Reflect.get(err, '$fault') === 'server' ||
-    statusIn(err, '$response', 'statusCode') >= SERVER_ERROR_STATUS ||
-    statusIn(err, '$metadata', 'httpStatusCode') >= SERVER_ERROR_STATUS);
+    answerStatus(err) >= SERVER_ERROR_STATUS);
+
+/** The HTTP statuses of a rejected request. */
+const REJECTED_STATUSES: ReadonlySet<number> = new Set([401, 403]);
+
+/** Did AWS reject the request (401 or 403), whatever error the SDK made
+ * of it? In a browser, an opt-in region the account hasn't enabled
+ * answers 403 without an error type the SDK can read, so the SDK throws
+ * `Unknown` (the real board's check of 2026-10-25). */
+export const isRejectedAnswer = (err: unknown): boolean =>
+  err instanceof Error && REJECTED_STATUSES.has(answerStatus(err));
 
 /** Map an AWS SDK error to a typed Amplify error; other values pass through. */
 export function toAmplifyError(err: unknown, operation: string): unknown {

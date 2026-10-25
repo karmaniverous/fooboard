@@ -15,6 +15,7 @@ import {
   AmplifyAuthError,
   AmplifyNotFoundError,
   isNetworkFailure,
+  isRejectedAnswer,
   isServerFault,
 } from './errors';
 
@@ -45,10 +46,11 @@ export const AMPLIFY_REGIONS = [
 
 /** The regions an account must opt in to. One it hasn't enabled rejects
  * the key as unrecognised (`UnrecognizedClientException`, the region
- * check of 2026-10-24, Decision 56), which elsewhere means a bad key;
- * whether the browser can read that answer, or sees a network failure
- * instead, is unverified (Decision 48), so both are skipped there, as is
- * a server error (`me-south-1` timed out with a 504, Q32). */
+ * check of 2026-10-24, Decision 56), which elsewhere means a bad key; a
+ * browser reads that answer as a 403 without its error type (the SDK's
+ * `Unknown`, the real board's check of 2026-10-25), or may see a
+ * network failure instead (Decision 48), so all of these are skipped
+ * there, as is a server error (`me-south-1` timed out with a 504, Q32). */
 export const OPT_IN_REGIONS: ReadonlySet<string> = new Set([
   'ap-east-1',
   'eu-south-1',
@@ -57,8 +59,8 @@ export const OPT_IN_REGIONS: ReadonlySet<string> = new Set([
 
 /** Why a region's apps aren't listed:
  * - `unavailable`: Amplify isn't there for the account (`NotFoundException`
- *   in any region; in an opt-in region, an auth error or no readable
- *   answer: the account hasn't enabled it);
+ *   in any region; in an opt-in region, an auth error, a 401 or 403 of
+ *   any type, or no readable answer: the account hasn't enabled it);
  * - `denied`: `AccessDeniedException`, in any region: an AWS
  *   organisation's policy blocks the region (the policy grants
  *   `ListApps` on `*`, so it isn't a missing permission);
@@ -96,7 +98,11 @@ export function regionSkip(
   if (err instanceof AmplifyNotFoundError) return 'unavailable';
   if (err instanceof AmplifyAuthError && err.accessDenied) return 'denied';
   if (!OPT_IN_REGIONS.has(region)) return undefined;
-  if (err instanceof AmplifyAuthError || isNetworkFailure(err))
+  if (
+    err instanceof AmplifyAuthError ||
+    isRejectedAnswer(err) ||
+    isNetworkFailure(err)
+  )
     return 'unavailable';
   return isServerFault(err) ? 'unreachable' : undefined;
 }
