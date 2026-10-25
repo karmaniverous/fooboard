@@ -22,6 +22,7 @@ fooboard shows the deployment state of every repo × stage at a glance. Paste a 
 ## Contents
 
 - [Try the demo](#try-the-demo)
+  - [Demo account](#demo-account)
 - [Your own dashboard](#your-own-dashboard)
 - [Reading the board](#reading-the-board)
 - [Editing a dashboard](#editing-a-dashboard)
@@ -37,7 +38,18 @@ fooboard shows the deployment state of every repo × stage at a glance. Paste a 
 
 ## Try the demo
 
-_Try the demo_ (on the home page, or the play button in the header) opens a sample board for a fictional company, `acme`, with no account or token. It is shaped like a real pipeline: a _Preview_ group of three preview environments, then _dev_, _release_ and _prod_; a _Backend_ group of GitHub service repos and a _Frontend_ group of Amplify apps. Its runs move along as you watch, and it shows every status, badge, empty state and unmapped run described below. About two and a half minutes in, a new run starts on _web-app_ / _prod_, and its jobs take a few seconds to load, so that cell shows the **refreshing** dot meanwhile.
+_Try the demo_ (on the home page, or the play button in the header) opens a board for a fictional company, `acme`, with no account or token. It is fooboard itself, the same board, panels and editors, reading a GitHub and an AWS that are simulated in your browser: nothing leaves it. The board is shaped like a real pipeline: a _Preview_ group (Alpha, Beta), then _Dev_, _Staging_ and _Prod_; a _Frontend_ group of Amplify apps, a _Services_ group of GitHub repos and an _infra_ row on its own. Commits land on dev every few minutes and are promoted to the previews, staging and prod, so new runs keep arriving and **behind** badges come and go. Within the first ten minutes it shows every status, badge, empty state and unmapped run described below; two minutes in, a new run starts on _accounts_ / _Prod_ whose jobs take a few seconds to load, so that cell shows the **refreshing** dot meanwhile. Every visit plays the same story from the moment you open it.
+
+You can change anything: the gears' popups, _Edit_ (the dashboard editor) and _Credentials_ all work. What you change lasts until you reload or leave the demo; nothing is saved, except zoom and density, which are saved on your device as for any board.
+
+### Demo account
+
+The simulated account behind the demo holds more than the board shows, so the editors' pickers have something to pick:
+
+- **GitHub** (the _Acme GitHub_ token): the board's repos plus `acme/design-system`, `acme/data-pipeline` and `acme/sandbox`, and branches such as `feature/new-checkout` and `hotfix/checkout-timeout`.
+- **AWS**: two keys, _Acme dev AWS_ (the previews, dev and staging, in us-east-1 and us-west-2, plus a `sandbox` app the board doesn't show) and _Acme prod AWS_ (the _Prod_ column's own key). _Acme marketing AWS_ is listed but has no key entered, so the one cell that uses it, _docs_ / _Prod_, shows **Needs credential**.
+
+Its tokens and keys are demo values the simulator alone accepts; they mean nothing to GitHub or AWS. Entering your own token in the demo reads nothing real: the demo never sends a request.
 
 > 📷 _Screenshot to come: the home page._
 
@@ -127,7 +139,7 @@ You can change a place's settings without leaving the board. Every row header, s
 
 A gear opens its **settings popup**: next to the gear, or as a sheet from the bottom of the screen on a phone. Its title names the place ("Row settings: api-core", "Cell settings: api-core × prod"), and it holds the same [settings editor](#settings) as _Edit dashboard_, for that place only: every field, its origin, _Set here_, _Reset to inherited_ and _nothing here reads it yet_. A change is saved at once (or refused with _Not saved_), and the board updates under it. _Open in dashboard settings_ opens the editor at that place. An unlabelled group has no gear; where a row's or stage's popup names one as an origin, that origin opens the editor at the group's settings. One popup is open at a time: a header's or label's gear switches to its own popup in one click, while a click at a cell first only closes the open popup (it keeps the pointer while open, as it keeps keyboard focus), so a cell's gear takes a second click. Focus moves into the popup and Tab stays there; Escape closes the innermost open control, then the popup, and returns you to the gear (or the cell where you pressed `,`).
 
-In the [demo](#try-the-demo), popup edits change only the board you're looking at: nothing is saved, and they're gone when you reload or leave. The demo has no dashboard editor yet, so its popups have no _Open in dashboard settings_.
+In the [demo](#try-the-demo), popup edits change only the board you're looking at: nothing is saved, and they're gone when you reload or leave. _Open in dashboard settings_ opens the demo's dashboard editor, which works the same way.
 
 ## Rules
 
@@ -317,6 +329,8 @@ Everything stays in this browser:
 - **Several tabs**: each reads with its own requests in flight; one tab at a time writes the kept answers, and the others read them when they open. The last configuration saved wins.
 - **Reset** (the menu's last item, and on the home page when saved dashboards can't be read) removes all of fooboard's data from this browser, and nothing else: dashboards, settings, tokens and keys (remembered or for the tab), and the kept answers, in every open fooboard tab, which then reload. Every tab stops writing first; the kept answers are cleared, then the rest, and only then do the other tabs reload, so none comes back. If the browser refuses either, Reset says so and stays open, and no other tab reloads (until they do, they stop writing the kept answers). Clearing this site's data in your browser's settings removes what is stored too, but not the tokens and keys held in open tabs' memory until those tabs close.
 
+- **The demo** reads a simulated GitHub and AWS in the page itself and sends no request to either. Its tokens and keys, and everything you change in it, live in the tab's memory until you reload or leave; only zoom and density are saved.
+
 See [PRIVACY.md](./PRIVACY.md).
 
 ## Releasing and deployment
@@ -347,7 +361,7 @@ This path needs no direct push to `prod`, so `prod` never holds a commit that di
 
 ## Contributing
 
-Development setup, commands and standards are in [CONTRIBUTING.md](./CONTRIBUTING.md). In the dev server, the TanStack Query Devtools show every query, boards are timed and a summary is printed to the browser console; `/demo?latency=300` simulates network latency on the demo; production builds contain none of it. See [Timing (development builds)](./CONTRIBUTING.md#timing-development-builds).
+Development setup, commands and standards are in [CONTRIBUTING.md](./CONTRIBUTING.md). In the dev server, the TanStack Query Devtools show every query, boards are timed and a summary is printed to the browser console; `/demo?latency=300` delays every simulated answer by 300 ms and `/demo?scenario=measure` plays the 19 × 6 measurement scenario; production builds contain none of it. See [Timing (development builds)](./CONTRIBUTING.md#timing-development-builds).
 
 ## License
 
