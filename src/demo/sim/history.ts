@@ -108,8 +108,13 @@ function events(
       seed,
       `${repo.fullName}:promote:${p.from}>${p.to}`,
     );
-    for (let t = start + random() * p.everyMs; t <= until; t += p.everyMs)
-      list.push({ at: Math.round(t), kind: 'promote', from: p.from, to: p.to });
+    // Whole milliseconds, so no promotion lands past `until` by rounding.
+    for (
+      let t = start + Math.round(random() * p.everyMs);
+      t <= until;
+      t += p.everyMs
+    )
+      list.push({ at: t, kind: 'promote', from: p.from, to: p.to });
   }
   for (const e of scenario.pinned) {
     if (e.kind === 'commit' && e.repo === repo.fullName && e.at <= until)

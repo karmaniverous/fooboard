@@ -2,7 +2,8 @@
  * The simulator's transport (spec.md §3.14, Decision 53): a `fetch` that
  * answers GitHub's API host (the transport's base) and Amplify's regional
  * endpoints from the scenario's world at the clock's time, and fails
- * every other URL as a network error, so no request leaves the browser in
+ * every other request (another host, plain HTTP, an unknown region, any
+ * method but GET) as a network error, so no request leaves the browser in
  * the demo. Simulated time is the clock's time since the simulator was
  * made (the demo's opening). The optional latency (development's
  * `?latency=`) and a pinned run's slow jobs delay a response; a request
