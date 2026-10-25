@@ -2,7 +2,7 @@
  * The credentials a row's cells read (spec.md §3.11–3.12): each cell's
  * GitHub token and AWS key resolve on their own, so one row may read with
  * several. A row with no column yet reads what it would absent column
- * settings. Pure.
+ * settings. A credential is named by its label in messages. Pure.
  *
  * @module
  */
@@ -13,6 +13,13 @@ import type { Row } from '@/domain/config/row';
 
 import { rowReads } from './reads';
 import { resolveSetting, rowSetting } from './resolve';
+
+/** A credential's name: its label, or its id if the dashboard has no
+ * such credential. */
+export const credentialName = (
+  d: Pick<Dashboard, 'credentials'>,
+  id: string,
+): string => d.credentials.find((c) => c.id === id)?.label ?? id;
 
 /** Each column's resolved credential for `row` (`undefined`: none), by
  * stage id, in board order. */

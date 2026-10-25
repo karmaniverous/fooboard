@@ -2,12 +2,14 @@
  * What a rule problem is (spec.md A§4.3.7 *Rule problems*): where it is
  * marked (its level), what it says, whether it can be dismissed, whether
  * it is a problem or only a note (what the consistency check can't
- * decide, rules for a source no row uses), and the item the editor opens
- * on to fix it. Pure.
+ * decide, rules for a source no row uses), the item the editor opens
+ * on to fix it, and any one-click actions it offers (*Pin* and *Unpin*,
+ * spec.md §3.12). Pure.
  *
  * @module
  */
 import type { Provider } from '@/domain/config/providers';
+import type { PinChange } from '@/domain/settings/pins';
 import type { SettingsPlace } from '@/domain/settings/places';
 import type { SettingField } from '@/domain/settings/schema';
 
@@ -29,7 +31,8 @@ export type EditTarget =
   | {
       kind: 'row';
       id: string;
-      part?: 'record';
+      /** `pinnedApps`: an Amplify row's pinned apps (spec.md §3.12). */
+      part?: 'record' | 'pinnedApps';
       stageId?: string;
     }
   | {
@@ -50,6 +53,13 @@ export type EditTarget =
       source?: Provider;
     };
 
+/** A one-click change a problem offers: pin an app to an Amplify row, or
+ * unpin one (spec.md §3.12). */
+export interface ProblemAction extends PinChange {
+  /** The button's text. */
+  label: string;
+}
+
 export interface Problem {
   /** Stable while the problem is the same (for dismissals). */
   id: string;
@@ -60,6 +70,7 @@ export interface Problem {
   severity: 'problem' | 'note';
   /** Where it is fixed; by default, from its level. */
   target?: EditTarget;
+  actions?: ProblemAction[];
 }
 
 const levelKey = (l: ProblemLevel): string =>
@@ -74,7 +85,11 @@ export const problem = (
   level: ProblemLevel,
   message: string,
   dismissable = false,
-  extra: { severity?: Problem['severity']; target?: EditTarget } = {},
+  extra: {
+    severity?: Problem['severity'];
+    target?: EditTarget;
+    actions?: ProblemAction[];
+  } = {},
 ): Problem => ({
   id: `${levelKey(level)}|${message}`,
   level,
@@ -82,6 +97,7 @@ export const problem = (
   dismissable,
   severity: extra.severity ?? 'problem',
   ...(extra.target ? { target: extra.target } : {}),
+  ...(extra.actions ? { actions: extra.actions } : {}),
 });
 
 /** A note at `level`: dismissable, not marked on the board. */
@@ -89,7 +105,9 @@ export const note = (
   level: ProblemLevel,
   message: string,
   target?: EditTarget,
-): Problem => problem(level, message, true, { severity: 'note', target });
+  actions?: ProblemAction[],
+): Problem =>
+  problem(level, message, true, { severity: 'note', target, actions });
 
 /** The level a problem with the settings at `place` is marked at. */
 export function levelOfPlace(place: SettingsPlace): ProblemLevel {
