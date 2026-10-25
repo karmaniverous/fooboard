@@ -1,7 +1,8 @@
 /**
  * One of a dashboard's credentials in the panel (spec.md C-1a, C-5): its
- * label and kind, whether its secret is entered, its expiry warning, and
- * entering, forgetting, defaulting and removing it.
+ * label and kind, whether its secret is entered, its expiry warning,
+ * entering, forgetting, defaulting and removing it, and for an AWS key
+ * its own *Copy AWS policy* (spec.md §3.12).
  *
  * @module
  */
@@ -14,6 +15,7 @@ import type { CredentialRef } from '@/domain/config/credentials';
 import type { Dashboard } from '@/domain/config/dashboard';
 import { useStores } from '@/storage/storesContext';
 
+import { CopyAwsPolicy } from './CopyAwsPolicy';
 import { removeWithSecret } from './credentialOps';
 import { FIELD_OF, setDefaultCredential } from './dashboardCredentials';
 import { expiryWarning } from './expiry';
@@ -25,12 +27,15 @@ export function CredentialItem({
   credential,
   onChange,
   tokenExpiry,
+  keyApps,
   run,
 }: {
   dashboard: Dashboard;
   credential: CredentialRef;
   onChange: (dashboard: Dashboard) => void;
   tokenExpiry?: (id: string) => string | undefined;
+  /** The apps the board reads with this AWS key, once searched. */
+  keyApps?: readonly { region: string; appId: string }[];
   run: (action: () => void) => boolean;
 }): React.JSX.Element {
   const { credentials } = useStores();
@@ -105,9 +110,9 @@ export function CredentialItem({
           </ConfirmButton>
         </div>
       </div>
+      {kind === 'aws' && <CopyAwsPolicy name={label} apps={keyApps} />}
       {!entered && (
         <SecretFields
-          dashboard={dashboard}
           kind={kind}
           submitLabel="Save"
           onSubmit={(secret, remember) =>

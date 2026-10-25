@@ -27,11 +27,13 @@ function setup({
   others = [],
   expiry,
   seed,
+  keyApps,
 }: {
   initial?: Dashboard;
   others?: Dashboard[];
   expiry?: string;
   seed?: (stores: AppStores) => void;
+  keyApps?: Record<string, { region: string; appId: string }[]>;
 } = {}) {
   const stores = createAppStores(memoryStorage());
   seed?.(stores);
@@ -43,6 +45,7 @@ function setup({
         dashboard={dashboard}
         otherDashboards={others}
         tokenExpiry={() => expiry}
+        keyApps={(id) => keyApps?.[id]}
         onChange={(next) => {
           latest.current = DashboardSchema.parse(next);
           setDashboard(next);
@@ -186,7 +189,7 @@ describe('CredentialsPanel failures and form hygiene', () => {
     ).toHaveAttribute('href', expect.stringMatching(/#aws-key$/));
   });
 
-  it("copies the AWS policy for the dashboard's Amplify apps", async () => {
+  it('copies the AWS policy per key: account-wide for a new key, narrowed for one the board read with', async () => {
     const writeText = vi.fn<(text: string) => Promise<void>>(() =>
       Promise.resolve(),
     );
@@ -194,33 +197,42 @@ describe('CredentialsPanel failures and form hygiene', () => {
       value: { writeText },
       configurable: true,
     });
+    const click = async (button: HTMLElement) => {
+      await act(async () => {
+        fireEvent.click(button);
+        await Promise.resolve();
+        await Promise.resolve();
+      });
+    };
     setup({
       initial: DashboardSchema.parse({
         id: 'd',
         name: 'D',
-        rows: [
-          {
-            type: 'amplify',
-            id: 'web',
-            displayName: 'web',
-            repo: 'acme/web',
-            pinnedApps: [{ region: 'eu-west-1', appId: 'd2' }],
-          },
-        ],
+        credentials: [{ id: 'prod', kind: 'aws', label: 'prod' }],
       }),
+      keyApps: { prod: [{ region: 'eu-west-1', appId: 'd2' }] },
     });
-    choose(screen.getByRole('combobox', { name: 'Kind' }), 'AWS key');
-    await act(async () => {
-      fireEvent.click(screen.getByRole('button', { name: 'Copy AWS policy' }));
-      await Promise.resolve();
-      await Promise.resolve();
-    });
+    const [onKey] = screen.getAllByRole('button', { name: 'Copy AWS policy' });
+    await click(onKey);
     expect(writeText.mock.calls[0]?.[0]).toContain(
       '"arn:aws:amplify:eu-west-1:*:apps/d2"',
     );
-    expect(screen.getByRole('status')).toHaveTextContent(
-      "read-only access to this dashboard's 1 Amplify app",
+    expect(screen.getByText(/This policy covers the 1 app/)).toHaveTextContent(
+      'the board reads with prod.',
     );
+
+    choose(screen.getByRole('combobox', { name: 'Kind' }), 'AWS key');
+    fireEvent.change(screen.getByLabelText('Name'), {
+      target: { value: 'staging' },
+    });
+    await click(
+      screen.getAllByRole('button', { name: 'Copy AWS policy' }).at(-1) ??
+        onKey,
+    );
+    expect(writeText.mock.calls[1]?.[0]).toContain('apps/*');
+    expect(
+      screen.getByText(/Nothing has been read with staging yet/),
+    ).toBeInTheDocument();
     Reflect.deleteProperty(navigator, 'clipboard');
   });
 });

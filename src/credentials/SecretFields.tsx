@@ -1,7 +1,8 @@
 /**
  * The secret fields for one credential kind (spec.md C-5, C-6, C-7): the
- * token or key, how to create it (a README link), *Copy AWS policy* for
- * AWS, the worst case stated plainly, and *Remember on this device*.
+ * token or key, how to create it (a README link), *Copy AWS policy* for a
+ * new AWS key (account-wide, since nothing has been read with it yet),
+ * the worst case stated plainly, and *Remember on this device*.
  *
  * @module
  */
@@ -14,7 +15,6 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import type { CredentialKind } from '@/domain/config/credentials';
-import type { Dashboard } from '@/domain/config/dashboard';
 import { readmeSection } from '@/lib/site';
 import type { CredentialSecret } from '@/storage/credentialStore';
 
@@ -35,13 +35,14 @@ const HOW_TO: Record<CredentialKind, string> = {
 
 /** Secret fields for one kind; returns the secret once complete. */
 export function SecretFields({
-  dashboard,
   kind,
   onSubmit,
   submitLabel,
+  newKeyName,
 }: {
-  dashboard: Dashboard;
   kind: CredentialKind;
+  /** A new AWS key's name: offers its *Copy AWS policy*. */
+  newKeyName?: string;
   /** Returns whether it was stored; the fields clear only then. */
   onSubmit: (secret: CredentialSecret, remember: boolean) => boolean;
   submitLabel: string;
@@ -122,7 +123,9 @@ export function SecretFields({
       <ExternalLink href={readmeSection(kind)} className="self-start text-xs">
         {HOW_TO[kind]}
       </ExternalLink>
-      {kind === 'aws' && <CopyAwsPolicy dashboard={dashboard} />}
+      {kind === 'aws' && newKeyName !== undefined && (
+        <CopyAwsPolicy name={newKeyName} />
+      )}
       <p className="text-xs text-muted-foreground">
         {WORST_CASE[kind]}{' '}
         <ExternalLink href={readmeSection('leaks')}>
