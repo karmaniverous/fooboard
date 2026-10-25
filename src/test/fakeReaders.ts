@@ -31,7 +31,6 @@ export const fakeGitHubApi = (methods: Partial<GitHubApi> = {}): GitHubApi => ({
   compare: notFaked('compare'),
   branchesPage: notFaked('branchesPage'),
   reposPage: notFaked('reposPage'),
-  matchingRefs: notFaked('matchingRefs'),
   getTokenExpiration: () => undefined,
   ...methods,
 });
@@ -42,7 +41,6 @@ export const fakeAmplifyReader = (
   listApps: notFaked('listApps'),
   listBranches: notFaked('listBranches'),
   listJobs: notFaked('listJobs'),
-  getJob: notFaked('getJob'),
   ...methods,
 });
 

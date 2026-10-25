@@ -10,7 +10,7 @@ import { fireEvent, screen, within } from '@testing-library/react';
 import { omit } from 'radash';
 import { beforeAll, describe, expect, it } from 'vitest';
 
-import { demoDashboard } from '@/demo/board';
+import { measureBoard } from '@/demo/scenarios/measure';
 import type { Dashboard } from '@/domain/config/dashboard';
 import { type BoardModel } from '@/engine';
 import { fullModel } from '@/test/boardModel';
@@ -18,10 +18,10 @@ import { renderSettingsBoard } from '@/test/settingsBoard';
 
 let model: BoardModel;
 beforeAll(async () => {
-  model = await fullModel(demoDashboard);
+  model = await fullModel(measureBoard);
 });
 
-const board = demoDashboard;
+const board = measureBoard;
 const gear = (name: string) =>
   screen.getByRole('button', { name, hidden: true });
 
@@ -34,7 +34,7 @@ const unlabelled: Dashboard = {
       ? {
           ...omit(g, ['label']),
           // The dashboard's token again: the group's rows show its origin.
-          settings: { githubToken: demoDashboard.settings.githubToken },
+          settings: { githubToken: measureBoard.settings.githubToken },
         }
       : g,
   ),

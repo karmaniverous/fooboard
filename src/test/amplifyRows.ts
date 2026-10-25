@@ -9,8 +9,8 @@
 import type { App } from '@aws-sdk/client-amplify';
 import type { QueryClient } from '@tanstack/query-core';
 
-import { createDemoAmplifyReaderFor } from '@/demo/amplify';
-import { DEMO_AMPLIFY_APPS, demoDashboard } from '@/demo/board';
+import { measureBoard } from '@/demo/scenarios/measure';
+import { MEASURE_AMPLIFY_APPS as DEMO_AMPLIFY_APPS } from '@/demo/scenarios/measureBoard';
 import { cellRulesFor } from '@/domain/config/cellRules';
 import type { Dashboard } from '@/domain/config/dashboard';
 import type { AmplifyRow } from '@/domain/config/row';
@@ -24,15 +24,16 @@ import { amplifyApp } from '@/lib/amplify/sdkShapes';
 import { amplifyKey } from '@/query/keys';
 
 import { fetched } from './fakeReaders';
+import { simAmplifyReaderFor } from './simDemo';
 
 /** The demo AWS key. */
 export const AWS = 'demo-aws';
-const readerFor = createDemoAmplifyReaderFor(() => 0);
-export const amplifySource = sourceRuleFor(demoDashboard, 'amplify');
+const readerFor = simAmplifyReaderFor();
+export const amplifySource = sourceRuleFor(measureBoard, 'amplify');
 
 /** A demo Amplify row by id. */
 export const rowOf = (id: string): AmplifyRow => {
-  const row = demoDashboard.rows.find((r) => r.id === id);
+  const row = measureBoard.rows.find((r) => r.id === id);
   if (row?.type !== 'amplify') throw new Error(`${id} is not an Amplify row`);
   return row;
 };
@@ -41,7 +42,7 @@ export const rowOf = (id: string): AmplifyRow => {
 export const amplifyCtx = (
   client: QueryClient,
   hasReader = true,
-  dashboard: Dashboard = demoDashboard,
+  dashboard: Dashboard = measureBoard,
 ): AmplifyContext => ({
   client,
   stages: dashboard.stages,

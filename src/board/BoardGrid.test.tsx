@@ -17,7 +17,7 @@ import { omit } from 'radash';
 import { MemoryRouter } from 'react-router-dom';
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 
-import { demoDashboard } from '@/demo/board';
+import { measureBoard } from '@/demo/scenarios/measure';
 import { branchRules } from '@/domain/config/placement';
 import { type BoardModel, emptyModel } from '@/engine';
 import { TEST_LAYOUT } from '@/test/boardLayout';
@@ -32,11 +32,11 @@ const testLayout = TEST_LAYOUT;
 let model: BoardModel;
 
 beforeAll(async () => {
-  model = await fullModel(demoDashboard);
+  model = await fullModel(measureBoard);
 });
 
 // The detail sheet links to the credential guide, so render inside a router.
-const renderBoard = (layout: Layout = testLayout, dashboard = demoDashboard) =>
+const renderBoard = (layout: Layout = testLayout, dashboard = measureBoard) =>
   render(
     <MemoryRouter>
       <BoardGrid dashboard={dashboard} model={model} layout={layout} now={0} />
@@ -57,11 +57,11 @@ describe('BoardGrid', () => {
   });
 
   it("names a row's repo in its header's tooltip, and only the name without one", async () => {
-    const amplify = demoDashboard.rows.find((r) => r.type === 'amplify');
+    const amplify = measureBoard.rows.find((r) => r.type === 'amplify');
     if (!amplify) throw new Error('the demo has no Amplify row');
     renderBoard(testLayout, {
-      ...demoDashboard,
-      rows: demoDashboard.rows.map((r) =>
+      ...measureBoard,
+      rows: measureBoard.rows.map((r) =>
         r.id === amplify.id ? omit(amplify, ['repo']) : r,
       ),
     });
@@ -237,7 +237,7 @@ describe('BoardGrid', () => {
   });
 
   it('renders a 40 x 8 board (spec.md step 10 size check)', () => {
-    const template = demoDashboard.rows[0];
+    const template = measureBoard.rows[0];
     const stages = Array.from({ length: 8 }, (_, i) => ({
       id: `s${String(i)}`,
       name: `Stage ${String(i)}`,
@@ -245,7 +245,7 @@ describe('BoardGrid', () => {
       settings: {},
     }));
     const big = {
-      ...demoDashboard,
+      ...measureBoard,
       stages,
       rowGroups: [],
       columnGroups: [],

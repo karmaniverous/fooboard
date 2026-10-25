@@ -9,7 +9,6 @@
  */
 import { describe, expect, it } from 'vitest';
 
-import { ADDED_RUN_JOBS_DELAY_MS } from '@/demo/addedRun';
 import { NEVER_UPDATED } from '@/query/cache';
 import { IDLE_INTERVAL_MS, pollEvery, SETTLED } from '@/query/intervals';
 
@@ -19,6 +18,9 @@ import {
   type RefreshClock,
   REFRESHING_DELAY_MS,
 } from './refreshing';
+
+/** How long a slow run's jobs take to answer. */
+const SLOW_JOBS_MS = 5000;
 
 const LANDED = 1_000_000;
 const HASH = '["runs"]';
@@ -69,7 +71,7 @@ describe('isRefreshing', () => {
     [
       'fresh data fetching as long as the demo’s added-run jobs',
       read(true),
-      fetchedFor(ADDED_RUN_JOBS_DELAY_MS),
+      fetchedFor(SLOW_JOBS_MS),
       true,
     ],
     [

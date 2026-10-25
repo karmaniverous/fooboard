@@ -9,9 +9,9 @@
  * @module
  */
 import type { BoardModel } from '@/engine/types';
-import { type Around, passThrough } from '@/query/instrument';
+import { passThrough } from '@/query/instrument';
 
-import { demoLatencyMs, latencyAround } from './demoLatency';
+import { demoLatencyMs } from './demoLatency';
 import { type StartTiming, useDevBoardTiming } from './useDevBoardTiming';
 
 /** A development build outside tests. Module-local on purpose: the
@@ -34,7 +34,8 @@ export const useBoardTiming: (model: BoardModel) => StartTiming = ENABLED
   : useNoBoardTiming;
 
 /** The demo's simulated latency the URL asks for (`?latency=300`), in
- * development builds only; `undefined` for none. */
-export const demoLatency: () => Around | undefined = ENABLED
-  ? () => latencyAround(demoLatencyMs(window.location.search))
-  : () => undefined;
+ * development builds only (0: none); the simulator delays each response
+ * by it (§3.14). */
+export const demoLatency: () => number = ENABLED
+  ? () => demoLatencyMs(window.location.search)
+  : () => 0;

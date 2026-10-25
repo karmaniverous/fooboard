@@ -9,7 +9,7 @@
 import { QueryClient } from '@tanstack/query-core';
 import { describe, expect, it } from 'vitest';
 
-import { demoDashboard } from '@/demo/board';
+import { measureBoard } from '@/demo/scenarios/measure';
 import type { AmplifyRow } from '@/domain/config/row';
 import { EMPTY_STATES } from '@/domain/derivation';
 import { amplifyCtx as ctx, AWS, rowOf, seedRow } from '@/test/amplifyRows';
@@ -19,7 +19,7 @@ import { type AmplifyContext, deriveAmplifyRow } from './amplifyRow';
 
 describe('deriveAmplifyRow per key', () => {
   describe('each cell reading with its own key', () => {
-    const [first, ...rest] = demoDashboard.stages;
+    const [first, ...rest] = measureBoard.stages;
     const names = rest.map((s) => s.name).join(', ');
     const split =
       (other: string | undefined) => (_row: AmplifyRow, stageId: string) =>

@@ -12,7 +12,7 @@
 import { act, fireEvent, screen, within } from '@testing-library/react';
 import { beforeAll, describe, expect, it, onTestFinished } from 'vitest';
 
-import { demoDashboard } from '@/demo/board';
+import { measureBoard } from '@/demo/scenarios/measure';
 import type { Dashboard } from '@/domain/config/dashboard';
 import { type BoardModel } from '@/engine';
 import { fullModel } from '@/test/boardModel';
@@ -24,7 +24,7 @@ import { renderSettingsBoard } from '@/test/settingsBoard';
 
 let model: BoardModel;
 beforeAll(async () => {
-  model = await fullModel(demoDashboard);
+  model = await fullModel(measureBoard);
 });
 
 /** A second GitHub credential to choose. */
@@ -34,8 +34,8 @@ const OTHER = {
   label: 'Other GitHub',
 };
 const board: Dashboard = {
-  ...demoDashboard,
-  credentials: [...demoDashboard.credentials, OTHER],
+  ...measureBoard,
+  credentials: [...measureBoard.credentials, OTHER],
 };
 
 const gear = (name: string) =>

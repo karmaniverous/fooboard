@@ -10,7 +10,7 @@ import { act, render, screen } from '@testing-library/react';
 import { Suspense } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { demoDashboard } from '@/demo/board';
+import { measureBoard } from '@/demo/scenarios/measure';
 import { appQueryEnv } from '@/engine/appEnv';
 import { githubKey } from '@/query/keys';
 import { DEMO_TOKEN, seedDemoRepo } from '@/test/githubCache';
@@ -18,7 +18,7 @@ import { storedKeys } from '@/test/persisted';
 import { dashboardPageAt } from '@/test/renderDashboardPage';
 import { browser, openTab } from '@/test/tabs';
 
-const REPO = demoDashboard.rows.flatMap((r) =>
+const REPO = measureBoard.rows.flatMap((r) =>
   r.type === 'github' ? [r.repo] : [],
 )[0];
 
@@ -64,7 +64,7 @@ async function readBefore() {
   if (!REPO) throw new Error('the demo has no GitHub row');
   const shared = browser();
   const before = openTab(shared);
-  before.config.saveDashboard(demoDashboard);
+  before.config.saveDashboard(measureBoard);
   before.credentials.set(
     DEMO_TOKEN,
     { kind: 'github', token: 'ghp_kept' },
@@ -119,7 +119,7 @@ async function reload(shared: ReturnType<typeof browser>) {
   await act(async () => {
     render(
       <Suspense fallback={<p>Loading…</p>}>
-        {dashboardPageAt(after, demoDashboard.id)}
+        {dashboardPageAt(after, measureBoard.id)}
       </Suspense>,
     );
     await new Promise((resolve) => setTimeout(resolve, 20));

@@ -10,34 +10,42 @@
  */
 import { describe, expect, it } from 'vitest';
 
-import { demoDashboard } from '@/demo/board';
+import { measureBoard, measureScenario } from '@/demo/scenarios/measure';
+import { MEASURE_GITHUB } from '@/demo/scenarios/measureBoard';
 import type { Dashboard } from '@/domain/config/dashboard';
 import { EMPTY_STATES } from '@/domain/derivation';
 import { problem } from '@/domain/problems/problem';
 import { createQueryEnv } from '@/query/client';
 import { fullModel, withoutRetryDelay } from '@/test/boardModel';
+import { simProviders, simTransport, withAliases } from '@/test/simDemo';
 
 import { mergeDerivations, segments } from './cellSegments';
-import { demoProviders } from './demoProviders';
 import { githubCredentialIds } from './model';
 import { cellKey } from './types';
 
-const [first, ...rest] = demoDashboard.stages;
-const api = demoDashboard.rows.find((r) => r.type === 'github');
+const [first, ...rest] = measureBoard.stages;
+const api = measureBoard.rows.find((r) => r.type === 'github');
 if (!api) throw new Error('the demo has a GitHub row');
 
 /** The demo with the first column reading GitHub with `token`. */
 const withColumnToken = (token: string): Dashboard => ({
-  ...demoDashboard,
+  ...measureBoard,
   stages: [{ ...first, settings: { githubToken: token } }, ...rest],
 });
+
+/** The measurement scenario, `other` holding its GitHub token too. */
+const scenario = withAliases(measureScenario, { other: MEASURE_GITHUB });
 
 /** A demo env with no secret for `locked`, recording the tokens read. */
 function env(read: Set<string>) {
   return withoutRetryDelay(
     createQueryEnv({
       providers: (hooks) => {
-        const demo = demoProviders(hooks, () => 0);
+        const demo = simProviders(
+          hooks,
+          simTransport(() => 0, {}, scenario),
+          scenario,
+        );
         return {
           ...demo,
           github: (id) => {
@@ -66,7 +74,7 @@ describe('per-cell GitHub tokens', () => {
 
   it("keeps a battery for every column's token", () => {
     expect(githubCredentialIds(withColumnToken('other'))).toEqual(
-      expect.arrayContaining(['other', demoDashboard.settings.githubToken]),
+      expect.arrayContaining(['other', measureBoard.settings.githubToken]),
     );
   });
 
@@ -74,7 +82,7 @@ describe('per-cell GitHub tokens', () => {
     const read = new Set<string>();
     await fullModel(withColumnToken('other'), env(read));
     expect(read.has('other')).toBe(true);
-    expect(read.has(String(demoDashboard.settings.githubToken))).toBe(true);
+    expect(read.has(String(measureBoard.settings.githubToken))).toBe(true);
   });
 });
 
@@ -88,7 +96,7 @@ describe('unmapped runs per token', () => {
     );
 
   it("judges a token's runs against only the cells reading with it", async () => {
-    const plain = await unmappedOf(demoDashboard);
+    const plain = await unmappedOf(measureBoard);
     // The first column can't read: the runs only it places are unmapped.
     const locked = await unmappedOf(withColumnToken('locked'));
     expect([...plain].every((id) => locked.has(id))).toBe(true);
@@ -97,7 +105,7 @@ describe('unmapped runs per token', () => {
 
   it("lists no run another token's cells place", async () => {
     expect(await unmappedOf(withColumnToken('other'))).toEqual(
-      await unmappedOf(demoDashboard),
+      await unmappedOf(measureBoard),
     );
   });
 });

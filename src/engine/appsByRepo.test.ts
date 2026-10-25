@@ -12,7 +12,7 @@
 import { QueryClient } from '@tanstack/query-core';
 import { describe, expect, it } from 'vitest';
 
-import { demoDashboard } from '@/demo/board';
+import { measureBoard } from '@/demo/scenarios/measure';
 import type { Dashboard } from '@/domain/config/dashboard';
 import type { AmplifyRow } from '@/domain/config/row';
 import { EMPTY_STATES } from '@/domain/derivation';
@@ -32,8 +32,8 @@ import { deriveAmplifyRow } from './amplifyRow';
 const MARKETING = { region: 'us-east-1', appId: 'd1demomarketing' };
 const PARTNER_EU = { region: 'eu-west-1', appId: 'd1demopartnereu' };
 const REPO = 'acme/marketing-site';
-const stageIds = demoDashboard.stages.map((s) => s.id);
-const stageNames = demoDashboard.stages.map((s) => s.name).join(', ');
+const stageIds = measureBoard.stages.map((s) => s.id);
+const stageNames = measureBoard.stages.map((s) => s.name).join(', ');
 
 /** The demo marketing row, found by repo: no pins. */
 const byRepo = (over: Partial<AmplifyRow> = {}): AmplifyRow => ({
@@ -224,12 +224,12 @@ describe('apps found by repo', () => {
   it("puts every cell on its key's account and app, reading each app once (the VC case)", () => {
     // A dashboard key and two column keys, one per AWS account; two rows
     // found by repo, no pins.
-    const [a, b, c, ...rest] = demoDashboard.stages;
+    const [a, b, c, ...rest] = measureBoard.stages;
     const dashboard: Dashboard = {
-      ...demoDashboard,
-      settings: { ...demoDashboard.settings, awsKey: AWS },
+      ...measureBoard,
+      settings: { ...measureBoard.settings, awsKey: AWS },
       credentials: [
-        ...demoDashboard.credentials,
+        ...measureBoard.credentials,
         { id: 'k2', kind: 'aws', label: 'k2' },
         { id: 'k3', kind: 'aws', label: 'k3' },
       ],

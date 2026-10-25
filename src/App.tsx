@@ -1,6 +1,6 @@
 /**
- * App shell: router wiring for the empty-state home page and the removable
- * Amplify and GitHub browser spikes.
+ * App shell: router wiring for the home page, the demo and saved
+ * dashboards.
  *
  * @module
  */
@@ -15,19 +15,13 @@ import { ThemeProvider } from '@/components/ThemeProvider';
 import { useViewportWidthVar } from '@/lib/useViewportWidthVar';
 import { Home } from '@/pages/Home';
 
-// Board and spike pages load on first visit, so the home page doesn't wait
+// Board pages load on first visit, so the home page doesn't wait
 // for the board, editors and readers.
 const DashboardPage = lazy(async () => ({
   default: (await import('@/pages/DashboardPage')).DashboardPage,
 }));
 const DemoPage = lazy(async () => ({
   default: (await import('@/pages/DemoPage')).DemoPage,
-}));
-const AmplifySpikePage = lazy(async () => ({
-  default: (await import('@/pages/spike/AmplifySpikePage')).AmplifySpikePage,
-}));
-const GithubSpikePage = lazy(async () => ({
-  default: (await import('@/pages/spike/GithubSpikePage')).GithubSpikePage,
 }));
 
 /** Pages other than boards are as wide as the window, so their text wraps
@@ -65,22 +59,6 @@ export default function App(): React.JSX.Element {
                 />
                 <Route path="/demo" element={<DemoPage />} />
                 <Route path="/d/:id" element={<DashboardPage />} />
-                <Route
-                  path="/spike/amplify"
-                  element={
-                    <Page>
-                      <AmplifySpikePage />
-                    </Page>
-                  }
-                />
-                <Route
-                  path="/spike/github"
-                  element={
-                    <Page>
-                      <GithubSpikePage />
-                    </Page>
-                  }
-                />
               </Routes>
             </Suspense>
           </main>

@@ -9,7 +9,7 @@
 import { act, renderHook, waitFor } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
-import { demoDashboard } from '@/demo/board';
+import { measureBoard } from '@/demo/scenarios/measure';
 import type { Dashboard } from '@/domain/config/dashboard';
 import type { Around } from '@/query/instrument';
 import { demoEnv, FILL_TIMEOUT_MS } from '@/test/boardModel';
@@ -40,13 +40,13 @@ describe('useBoardModel', () => {
         dashboard: Dashboard;
         refreshKey: number;
       }) => useBoardModel(dashboard, env, { around, refreshKey }),
-      { initialProps: { dashboard: demoDashboard, refreshKey: 0 } },
+      { initialProps: { dashboard: measureBoard, refreshKey: 0 } },
     );
     await waitFor(
       () => {
         // Every cell present (an Amplify row's search can land later).
         expect(Object.keys(result.current.model.cells)).toHaveLength(
-          demoDashboard.rows.length * demoDashboard.stages.length,
+          measureBoard.rows.length * measureBoard.stages.length,
         );
       },
       { timeout: FILL_TIMEOUT_MS },
@@ -54,7 +54,7 @@ describe('useBoardModel', () => {
     expect(wrapped).toBeGreaterThan(0);
     const filled = Object.keys(result.current.model.cells).length;
 
-    const renamed = { ...demoDashboard, name: 'Renamed' };
+    const renamed = { ...measureBoard, name: 'Renamed' };
     rerender({ dashboard: renamed, refreshKey: 0 });
     expect(Object.keys(result.current.model.cells).length).toBe(filled);
 

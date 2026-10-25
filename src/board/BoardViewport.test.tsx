@@ -7,7 +7,7 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import { beforeAll, describe, expect, it } from 'vitest';
 
-import { demoDashboard } from '@/demo/board';
+import { measureBoard } from '@/demo/scenarios/measure';
 import { type BoardModel, emptyModel } from '@/engine';
 import { createAppStores } from '@/storage';
 import { memoryStorage } from '@/storage/keyValue';
@@ -19,7 +19,7 @@ import { useBoardView } from './useBoardView';
 
 let demoModel: BoardModel = emptyModel();
 beforeAll(async () => {
-  demoModel = await fullModel(demoDashboard);
+  demoModel = await fullModel(measureBoard);
 });
 
 function Harness({
@@ -29,12 +29,7 @@ function Harness({
 }): React.JSX.Element {
   const view = useBoardView('demo', 19, 6);
   return (
-    <BoardViewport
-      dashboard={demoDashboard}
-      model={model}
-      now={0}
-      view={view}
-    />
+    <BoardViewport dashboard={measureBoard} model={model} now={0} view={view} />
   );
 }
 

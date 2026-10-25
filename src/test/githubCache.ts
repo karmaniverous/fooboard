@@ -1,5 +1,5 @@
 /**
- * GitHub cache fixtures for board model tests: the demo's REST payloads
+ * GitHub cache fixtures for board model tests: the simulator's REST payloads
  * seeded into a QueryClient (or a failure recorded for a key), and a
  * GitHub row context for the demo board, so derivation is tested against
  * the cache without fetching.
@@ -8,8 +8,7 @@
  */
 import type { QueryClient } from '@tanstack/query-core';
 
-import { demoDashboard } from '@/demo/board';
-import { createDemoGitHubApi } from '@/demo/github';
+import { measureBoard } from '@/demo/scenarios/measure';
 import { cellRulesFor } from '@/domain/config/cellRules';
 import type { GithubRow } from '@/domain/config/row';
 import { sourceRuleFor } from '@/domain/model/sources';
@@ -18,13 +17,14 @@ import { attemptOf, type Job, repoRef, type WorkflowRun } from '@/lib/github';
 import { githubKey, type GithubRequest } from '@/query/keys';
 
 import { fetched } from './fakeReaders';
+import { simGitHubApi } from './simDemo';
 
 /** The demo board's GitHub token. */
 export const DEMO_TOKEN = 'demo-github';
 
 /** A demo GitHub row by id. */
 export function demoGithubRow(id: string): GithubRow {
-  const row = demoDashboard.rows.find((r) => r.id === id);
+  const row = measureBoard.rows.find((r) => r.id === id);
   if (row?.type !== 'github') throw new Error(`${id} is not a GitHub row`);
   return row;
 }
@@ -38,16 +38,16 @@ export const demoContext = (
   client,
   credentialId: DEMO_TOKEN,
   repo,
-  source: sourceRuleFor(demoDashboard, 'github'),
-  stages: demoDashboard.stages,
-  rulesFor: (row, stageId) => cellRulesFor(demoDashboard, row, stageId),
+  source: sourceRuleFor(measureBoard, 'github'),
+  stages: measureBoard.stages,
+  rulesFor: (row, stageId) => cellRulesFor(measureBoard, row, stageId),
   overBudget: false,
   now: 0,
   fetchStartedAt: () => undefined,
   ...overrides,
 });
 
-const api = createDemoGitHubApi(() => 0);
+const api = simGitHubApi();
 
 /** The demo's runs of `repo` (`owner/name`). */
 export async function demoRuns(repo: string): Promise<WorkflowRun[]> {

@@ -10,7 +10,7 @@
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { demoDashboard } from '@/demo/board';
+import { measureBoard } from '@/demo/scenarios/measure';
 import { PERSIST_THROTTLE_MS } from '@/persist/persistence';
 import { dashboardsOf } from '@/storage/configStore';
 import { runsKey, seedRuns, storedCredentials } from '@/test/persisted';
@@ -92,7 +92,7 @@ describe('the persisted cache across tabs', () => {
     const { shared, first, second, reloads, written } = await twoTabs();
     first.stores.credentials.set('gh', github('one'), true);
     first.stores.credentials.set('session', github('s'), false);
-    first.stores.config.saveDashboard(demoDashboard);
+    first.stores.config.saveDashboard(measureBoard);
     shared.device.setItem('other-app', 'kept');
     seedRuns(first.env, 'gh');
     await written();
@@ -168,7 +168,7 @@ describe('the persisted cache across tabs', () => {
     });
     await appQueryEnv(resetting).restored;
     other.credentials.set('gh', github('one'), true);
-    other.config.saveDashboard(demoDashboard);
+    other.config.saveDashboard(measureBoard);
     seedRuns(otherEnv, 'gh');
     await vi.advanceTimersByTimeAsync(PERSIST_THROTTLE_MS);
 
