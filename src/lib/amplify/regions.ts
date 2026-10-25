@@ -5,7 +5,9 @@
  * release, one `ListApps` per region, and the skip rules: a region where
  * Amplify isn't available to the account, or that the account can't see,
  * is skipped rather than failing the listing, since it can hold none of
- * the account's apps that fooboard could read.
+ * the account's apps that fooboard could read; an opt-in region that
+ * doesn't answer within `OPT_IN_REGION_TIMEOUT_MS` is cancelled and
+ * skipped as unreachable (Q33).
  *
  * @module
  */
@@ -52,12 +54,19 @@ export const AMPLIFY_REGIONS = [
  * network failure instead (Decision 48), so all of these are skipped
  * there, as is a server error (`me-south-1` timed out with a 504 for the
  * CLI, Q32; a browser gets no answer from it, and its request fails as a
- * network failure after about 30 s). */
+ * network failure only after about 30 s, hence the time limit below). */
 export const OPT_IN_REGIONS: ReadonlySet<string> = new Set([
   'ap-east-1',
   'eu-south-1',
   'me-south-1',
 ]);
+
+/** How long an opt-in region's `ListApps` may take before its request is
+ * cancelled and the region skipped as `unreachable` (the owner's choice,
+ * Q33): every region that answered on the real board did so well within
+ * it. A standard region has no limit: a slow one still has to answer,
+ * since a partial list there could hide an app. */
+export const OPT_IN_REGION_TIMEOUT_MS = 5000;
 
 /** Why a region's apps aren't listed:
  * - `unavailable`: Amplify isn't there for the account (`NotFoundException`
@@ -66,7 +75,8 @@ export const OPT_IN_REGIONS: ReadonlySet<string> = new Set([
  * - `denied`: `AccessDeniedException`, in any region: an AWS
  *   organisation's policy blocks the region (the policy grants
  *   `ListApps` on `*`, so it isn't a missing permission);
- * - `unreachable`: a server error (5xx) in an opt-in region. */
+ * - `unreachable`: in an opt-in region, a server error (5xx) or no
+ *   answer within `OPT_IN_REGION_TIMEOUT_MS`. */
 export type RegionSkip = 'unavailable' | 'denied' | 'unreachable';
 
 /** The skips the board names in a note, since apps there can't be seen
@@ -109,14 +119,42 @@ export function regionSkip(
   return isServerFault(err) ? 'unreachable' : undefined;
 }
 
-/** `region`'s listing from `listIn`: its apps, or the skip its error
- * means; any other error throws. */
+/** Lists one region's apps; `signal` aborts the request. */
+export type ListIn = (region: string, signal?: AbortSignal) => Promise<App[]>;
+
+/** `listIn`'s apps for `region`; in an opt-in region, `undefined` once
+ * `OPT_IN_REGION_TIMEOUT_MS` passes without an answer, the request
+ * aborted through the signal it was given. */
+async function answerWithinLimit(
+  region: string,
+  listIn: ListIn,
+): Promise<App[] | undefined> {
+  if (!OPT_IN_REGIONS.has(region)) return listIn(region);
+  const cancel = new AbortController();
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const limit = new Promise<undefined>((resolve) => {
+    timer = setTimeout(() => {
+      resolve(undefined);
+      cancel.abort();
+    }, OPT_IN_REGION_TIMEOUT_MS);
+  });
+  try {
+    return await Promise.race([listIn(region, cancel.signal), limit]);
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+/** `region`'s listing from `listIn`: its apps, or the skip its error (or,
+ * in an opt-in region, its silence past the time limit) means; any other
+ * error throws. */
 export async function listRegion(
   region: string,
-  listIn: (region: string) => Promise<App[]>,
+  listIn: ListIn,
 ): Promise<RegionListing> {
   try {
-    return { apps: await listIn(region) };
+    const apps = await answerWithinLimit(region, listIn);
+    return apps ? { apps } : { apps: [], skipped: 'unreachable' };
   } catch (err) {
     const skipped = regionSkip(region, err);
     if (skipped) return { apps: [], skipped };

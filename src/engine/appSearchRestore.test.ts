@@ -8,78 +8,25 @@
  *
  * @module
  */
-import { dehydrate, hydrate } from '@tanstack/query-core';
 import { describe, expect, it } from 'vitest';
 
-import { demoDashboard } from '@/demo/board';
-import type { Dashboard } from '@/domain/config/dashboard';
-import { OPT_IN_REGIONS } from '@/lib/amplify/regions';
-import { createQueryEnv, type QueryEnv } from '@/query/client';
+import type { QueryEnv } from '@/query/client';
 import { cannedReader, OPT_IN_REJECTION } from '@/test/amplifySdk';
-import { settle, withoutRetryDelay } from '@/test/boardModel';
+import { settle } from '@/test/boardModel';
+import {
+  FOUND,
+  foundByRepoDashboard as dashboard,
+  foundByRepoEnv,
+  reloadInto,
+} from '@/test/foundByRepo';
 
 import { createBoardModel } from './boardModel';
-import { demoProviders } from './demoProviders';
 import { cellKey } from './types';
 
-const FOUND = 'marketing-site';
-
-/** The demo board with one Amplify row found by repo, the others pinned. */
-const dashboard: Dashboard = {
-  ...demoDashboard,
-  rows: demoDashboard.rows.map((row) =>
-    row.id === FOUND && row.type === 'amplify'
-      ? { ...row, pinnedApps: [] }
-      : row,
-  ),
-};
-
-/** The demo's providers, its listings naming each app's repo, and its
- * opt-in regions answering as the real account's do in a browser. */
+/** The demo board found by repo, its opt-in regions answering as the
+ * real account's do in a browser. */
 const realisticEnv = (): QueryEnv =>
-  withoutRetryDelay(
-    createQueryEnv({
-      providers: (hooks) => {
-        const demo = demoProviders(hooks, () => 0);
-        return {
-          ...demo,
-          amplify: (id) => {
-            const readerFor = demo.amplify(id);
-            return (
-              readerFor &&
-              ((at) => {
-                const reader = readerFor(at);
-                if (OPT_IN_REGIONS.has(at.region))
-                  return cannedReader(at.region, OPT_IN_REJECTION);
-                return {
-                  ...reader,
-                  listApps: async () =>
-                    (await reader.listApps()).map((app) => ({
-                      ...app,
-                      repository: `https://github.com/acme/${app.name ?? ''}`,
-                    })),
-                };
-              })
-            );
-          },
-        };
-      },
-    }),
-  );
-
-/** `env`'s cache as the persister keeps it (successful queries only),
- * restored into a fresh environment. */
-function reloaded(env: QueryEnv): QueryEnv {
-  const next = realisticEnv();
-  hydrate(
-    next.client,
-    dehydrate(env.client, {
-      shouldDehydrateQuery: (query) => query.state.status === 'success',
-    }),
-  );
-  return next;
-}
-
+  foundByRepoEnv((region) => cannedReader(region, OPT_IN_REJECTION));
 describe('reloading a board with a row found by repo', () => {
   it('derives the found row in the first pass, as the pinned rows', async () => {
     const before = realisticEnv();
@@ -87,7 +34,7 @@ describe('reloading a board with a row found by repo', () => {
     const full = await settle(before, read);
     read.destroy();
 
-    const after = reloaded(before);
+    const after = reloadInto(before, realisticEnv());
     const restored = createBoardModel({ dashboard, env: after });
     const first = restored.getModel();
     // (The demo's failing GitHub repos weren't kept, so they read again.)

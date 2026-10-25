@@ -143,7 +143,11 @@ async function fetchAmplify(
       );
     case 'apps':
       // A region the skip rules skip is an answer, not a failure (§3.12).
-      return plain(await listRegion(request.region, () => reader.listApps()));
+      return plain(
+        await listRegion(request.region, (_, signal) =>
+          reader.listApps(signal),
+        ),
+      );
   }
 }
 
