@@ -16,6 +16,7 @@ import { createAppStores } from '@/storage';
 import { memoryStorage } from '@/storage/keyValue';
 import { StoresContext } from '@/storage/storesContext';
 import { choose } from '@/test/choose';
+import { DEMO_RENDER_TIMEOUT_MS } from '@/test/demoRender';
 
 import { DemoPage } from './DemoPage';
 
@@ -32,10 +33,6 @@ const listening = (): boolean[] => [
  * which the demo does save per device. */
 const stored = (store: ReturnType<typeof memoryStorage>) =>
   store.keys().filter((k) => !k.includes('view'));
-
-/** The demo board (21 × 5 cells) takes seconds to render in jsdom, more
- * on a busy runner: a visit gets longer than the default test timeout. */
-const DEMO_RENDER_TIMEOUT_MS = 60_000;
 
 describe('DemoPage', () => {
   it(

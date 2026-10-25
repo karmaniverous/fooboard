@@ -13,6 +13,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { createAppStores } from '@/storage';
 import { memoryStorage } from '@/storage/keyValue';
 import { StoresContext } from '@/storage/storesContext';
+import { DEMO_RENDER_TIMEOUT_MS } from '@/test/demoRender';
 
 import { DemoPage } from './DemoPage';
 
@@ -40,10 +41,6 @@ async function openEditor(tab: string) {
     button: 0,
   });
 }
-
-/** The demo board (21 × 5 cells) takes seconds to render in jsdom, more
- * on a busy runner: a visit gets longer than the default test timeout. */
-const DEMO_RENDER_TIMEOUT_MS = 60_000;
 
 describe('the demo dashboard editor', () => {
   it(
