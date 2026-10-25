@@ -9,6 +9,9 @@ import { AmplifyClient } from '@aws-sdk/client-amplify';
 
 import { type AmplifyReader, createAmplifyReader } from '@/lib/amplify/reader';
 
+/** Credentials the canned client signs with (never sent anywhere). */
+const TEST_KEY = { accessKeyId: 'AKIATEST', secretAccessKey: 'test' };
+
 /** An HTTP answer, its body JSON. */
 export interface CannedAnswer {
   statusCode: number;
@@ -32,7 +35,7 @@ export function cannedReader(
 ): AmplifyReader {
   const client = new AmplifyClient({
     region,
-    credentials: { accessKeyId: 'AKIATEST', secretAccessKey: 'test' },
+    credentials: TEST_KEY,
     maxAttempts: 1,
     requestHandler: {
       handle: () =>
@@ -50,10 +53,5 @@ export function cannedReader(
         }),
     },
   });
-  return createAmplifyReader({
-    region,
-    accessKeyId: 'AKIATEST',
-    secretAccessKey: 'test',
-    client,
-  });
+  return createAmplifyReader({ region, ...TEST_KEY, client });
 }

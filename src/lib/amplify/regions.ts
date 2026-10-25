@@ -50,7 +50,9 @@ export const AMPLIFY_REGIONS = [
  * browser reads that answer as a 403 without its error type (the SDK's
  * `Unknown`, the real board's check of 2026-10-25), or may see a
  * network failure instead (Decision 48), so all of these are skipped
- * there, as is a server error (`me-south-1` timed out with a 504, Q32). */
+ * there, as is a server error (`me-south-1` timed out with a 504 for the
+ * CLI, Q32; a browser gets no answer from it, and its request fails as a
+ * network failure after about 30 s). */
 export const OPT_IN_REGIONS: ReadonlySet<string> = new Set([
   'ap-east-1',
   'eu-south-1',
