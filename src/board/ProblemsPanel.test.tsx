@@ -84,6 +84,67 @@ describe('ProblemsPanel', () => {
     ).toBeInTheDocument();
   });
 
+  it("offers a problem's actions, each saved with one click (§3.12)", () => {
+    const onChange = vi.fn();
+    const amplify = DashboardSchema.parse({
+      id: 'd',
+      name: 'd',
+      credentials: [{ id: 'aws', kind: 'aws', label: 'aws' }],
+      rows: [
+        { type: 'amplify', id: 'web', repo: 'acme/web', displayName: 'Web' },
+      ],
+    });
+    const pin = { region: 'us-east-1', appId: 'd1', credentialId: 'aws' };
+    const several = problem(
+      { kind: 'row', id: 'web' },
+      '2 Amplify apps build acme/web',
+      true,
+      {
+        actions: [
+          { kind: 'pin', rowId: 'web', pin, label: 'Pin site (us-east-1)' },
+          {
+            kind: 'pin',
+            rowId: 'web',
+            pin: { ...pin, appId: 'd2' },
+            label: 'Pin site-eu (eu-west-1)',
+          },
+        ],
+      },
+    );
+    const { rerender } = render(
+      <ProblemsPanel
+        dashboard={amplify}
+        problems={[several]}
+        onFix={vi.fn()}
+        onDismiss={vi.fn()}
+        onChange={onChange}
+      />,
+    );
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Pin site-eu (eu-west-1)' }),
+    );
+    expect(onChange).toHaveBeenCalledWith(
+      expect.objectContaining({
+        rows: [
+          expect.objectContaining({
+            id: 'web',
+            pinnedApps: [{ ...pin, appId: 'd2' }],
+          }),
+        ],
+      }),
+    );
+    // Without a handler, no action is offered.
+    rerender(
+      <ProblemsPanel
+        dashboard={amplify}
+        problems={[several]}
+        onFix={vi.fn()}
+        onDismiss={vi.fn()}
+      />,
+    );
+    expect(screen.queryByRole('button', { name: /^Pin / })).toBeNull();
+  });
+
   it('says so when there are none', () => {
     render(
       <ProblemsPanel

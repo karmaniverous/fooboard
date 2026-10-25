@@ -35,7 +35,10 @@ export function PinnedApps({
   };
   const lastNeeded = row.repo === undefined && row.pinnedApps.length === 1;
   return (
-    <div className="flex flex-col gap-1">
+    <div
+      className="flex flex-col gap-1"
+      data-edit-target={`row:${row.id}:pinnedApps`}
+    >
       <span className="font-semibold">Pinned apps</span>
       {row.pinnedApps.map((pin, i) => (
         <div

@@ -45,6 +45,7 @@ export const EMPTY_LABEL: Record<EmptyCellState, string> = {
   'no-records': 'no records',
   'needs-credential': 'needs credential',
   error: 'error',
+  'no-app': 'no app',
 };
 
 /** Empty states at rung 0 (icons only): a short symbol; the label is in
@@ -53,6 +54,7 @@ export const EMPTY_SYMBOL: Record<EmptyCellState, string> = {
   'no-records': '○',
   'needs-credential': '?',
   error: '!',
+  'no-app': '\u2205',
 };
 
 /** Badge text: a count when behind, `behind/ahead` when diverged. */
