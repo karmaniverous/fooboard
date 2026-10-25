@@ -61,11 +61,14 @@ export const OPT_IN_REGIONS: ReadonlySet<string> = new Set([
   'me-south-1',
 ]);
 
-/** How long an opt-in region's `ListApps` may take before its request is
- * cancelled and the region skipped as `unreachable` (the owner's choice,
- * Q33): every region that answered on the real board did so well within
- * it. A standard region has no limit: a slow one still has to answer,
- * since a partial list there could hide an app. */
+/** How long an opt-in region's listing (every `ListApps` page) may take
+ * before its request is cancelled and the region skipped as
+ * `unreachable` (the owner's choice, Q33): every region that answered on
+ * the real board did so well within it. The clock starts once the
+ * limiter has granted the request its slot (the query function lists
+ * inside `limiter.run`), so time spent queued never counts. A standard
+ * region has no limit: a slow one still has to answer, since a partial
+ * list there could hide an app. */
 export const OPT_IN_REGION_TIMEOUT_MS = 5000;
 
 /** Why a region's apps aren't listed:

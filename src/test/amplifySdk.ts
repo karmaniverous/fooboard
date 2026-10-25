@@ -30,7 +30,7 @@ export const OPT_IN_REJECTION: CannedAnswer = {
 /** The SDK's HTTP handler, as a test supplies it. */
 type Handle = (
   request: unknown,
-  options?: { abortSignal?: Pick<AbortSignal, 'aborted' | 'onabort'> },
+  options?: { abortSignal?: Pick<AbortSignal, 'onabort'> },
 ) => Promise<{ response: CannedResponse }>;
 
 /** What a handler answers with. */

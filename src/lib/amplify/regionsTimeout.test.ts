@@ -25,6 +25,7 @@ import {
 } from '@/test/amplifySdk';
 
 import {
+  type ListIn,
   listRegion,
   OPT_IN_REGION_TIMEOUT_MS,
   OPT_IN_REGIONS,
@@ -41,7 +42,7 @@ const answerAfter = (ms: number) => () =>
   });
 
 /** `region`'s listing, and whether it has settled yet. */
-function listing(region: string, listIn: Parameters<typeof listRegion>[1]) {
+function listing(region: string, listIn: ListIn) {
   const state = { settled: false };
   const listed = listRegion(region, listIn).finally(() => {
     state.settled = true;
