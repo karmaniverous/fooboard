@@ -16,6 +16,7 @@ const model: BoardModel = {
   unmapped: [],
   problems: [],
   amplifyBranches: [],
+  amplifyKeyApps: {},
   budgets: {
     gh: { limit: 5000, remaining: 300, reset: 0, used: 4700, status: 'low' },
     off: undefined,

@@ -55,6 +55,7 @@ const EMPTY_CLASS = {
   'no-records': 'border-dashed border-border',
   'needs-credential': 'border-border bg-hatched',
   error: 'border-border bg-hatched',
+  'no-app': 'border-dashed border-border',
 } as const;
 
 /** Free text: cut off with an ellipsis at the column width. */

@@ -71,8 +71,9 @@ describe('query keys', () => {
     expect(
       roleOf(githubKey('gh', { call: 'branches', repo: REPO, page: 1 })),
     ).toBe('lookup');
+    // The app search's queries are board queries (spec.md §3.12).
     expect(roleOf(amplifyKey('aws', { call: 'apps', region: 'eu' }))).toBe(
-      'lookup',
+      'root',
     );
   });
 
@@ -81,7 +82,8 @@ describe('query keys', () => {
     const apps = amplifyKey('aws', { call: 'apps', region: 'eu' });
     expect(priorityOf(runs, false)).toBe('high');
     expect(priorityOf(runs, true)).toBe('normal');
-    expect(priorityOf(apps, true)).toBe('high');
+    expect(priorityOf(apps, false)).toBe('high');
+    expect(priorityOf(apps, true)).toBe('normal');
     expect(priorityOf(jobs(1), false)).toBe('normal');
   });
 

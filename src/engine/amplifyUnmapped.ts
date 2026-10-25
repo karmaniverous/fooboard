@@ -1,8 +1,9 @@
 /**
- * Unmapped Amplify jobs (spec.md A§4.3.7, C-15): a job kept by *keep*
- * that lands in no cell of any row reading its app, with each such row's
- * reason. Amplify records have no items, so every reason can be judged.
- * Pure.
+ * Unmapped Amplify jobs (spec.md A§4.3.7, C-15, §3.12): a job kept by
+ * *keep* that lands in no cell reading its app, with the reason of each
+ * row reading it: a job is unmapped for a row when no cell of the row
+ * that reads that app places it. Amplify records have no items, so every
+ * reason can be judged. Pure.
  *
  * @module
  */
@@ -12,7 +13,6 @@ import { rowReasons } from '@/domain/derivation';
 import type { CellRules } from '@/domain/model/cell';
 import { isJsonObject, textOf } from '@/domain/model/json';
 import type { RecordDoc } from '@/domain/model/translate';
-import { appKey, type ResolvedAmplifySource } from '@/lib/amplify/rowJobs';
 
 import type { UnmappedRun } from './types';
 
@@ -32,45 +32,39 @@ function rawJob(record: RecordDoc): {
   };
 }
 
+/** The rows reading app `key` (`appKey`), each with the columns that
+ * read it, and the app's kept `records`: those no reader places. */
 export function amplifyUnmapped(
-  input: {
-    rows: readonly AmplifyRow[];
-    stages: readonly { id: string }[];
-    rulesFor: (row: AmplifyRow, stageId: string) => CellRules;
-  },
-  reading: ReadonlyMap<string, readonly ResolvedAmplifySource[]>,
-  apps: ReadonlyMap<string, { records: readonly RecordDoc[] }>,
+  readers: readonly { row: AmplifyRow; stageIds: readonly string[] }[],
+  rulesFor: (row: AmplifyRow, stageId: string) => CellRules,
+  key: string,
+  records: readonly RecordDoc[],
 ): UnmappedRun[] {
-  const cellsOf = (row: AmplifyRow) =>
-    input.stages.map((s) => input.rulesFor(row, s.id));
-  const out: UnmappedRun[] = [];
-  for (const [key, { records }] of apps) {
-    const readers = input.rows.filter((r) =>
-      (reading.get(r.id) ?? []).some((s) => appKey(s) === key),
-    );
-    const rows = readers.map((r) => ({ rowId: r.id, cells: cellsOf(r) }));
-    for (const record of records) {
-      const reasons = rowReasons(record, rows, true);
-      if (!reasons) continue;
-      const [first] = reasons;
-      const job = rawJob(record);
-      // Shown: the branch as translated. Identity: the branch Amplify
-      // read (job ids count per branch, and a source rule may translate
-      // two branches to one value).
-      const branch = textOf(record.branch) ?? job.branch ?? null;
-      const readBranch = job.branch ?? branch ?? '';
-      out.push({
-        provider: 'amplify',
-        id: `amplify:${key}:${readBranch}#${job.jobId ?? ''}`,
-        where: job.appId ?? PROVIDER_LABELS.amplify,
-        title: `Amplify job ${job.jobId ?? '?'}`,
-        branch,
-        htmlUrl: textOf(record.link) ?? '',
-        record,
-        reason: first.reason,
-        rows: reasons,
-      });
-    }
-  }
-  return out;
+  const rows = readers.map(({ row, stageIds }) => ({
+    rowId: row.id,
+    cells: stageIds.map((s) => rulesFor(row, s)),
+  }));
+  return records.flatMap((record) => {
+    const reasons = rowReasons(record, rows, true);
+    if (!reasons) return [];
+    const [first] = reasons;
+    const job = rawJob(record);
+    // Shown: the branch as translated. Identity: the branch Amplify
+    // read (job ids count per branch, and a source rule may translate
+    // two branches to one value).
+    const branch = textOf(record.branch) ?? job.branch ?? null;
+    const readBranch = job.branch ?? branch ?? '';
+    const run: UnmappedRun = {
+      provider: 'amplify',
+      id: `amplify:${key}:${readBranch}#${job.jobId ?? ''}`,
+      where: job.appId ?? PROVIDER_LABELS.amplify,
+      title: `Amplify job ${job.jobId ?? '?'}`,
+      branch,
+      htmlUrl: textOf(record.link) ?? '',
+      record,
+      reason: first.reason,
+      rows: reasons,
+    };
+    return [run];
+  });
 }

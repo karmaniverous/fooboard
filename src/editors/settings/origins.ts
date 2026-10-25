@@ -15,6 +15,7 @@ import { PROVIDER_LABELS } from '@/domain/config/providers';
 import type { Row } from '@/domain/config/row';
 import { sourcesWithItems } from '@/domain/model/sources';
 import { describeRule } from '@/domain/rules/describe';
+import { credentialName } from '@/domain/settings/credentials';
 import type { SettingsPlace } from '@/domain/settings/places';
 import { settableEntries, type SettingEntry } from '@/domain/settings/reads';
 import { type Origin, resolveSetting } from '@/domain/settings/resolve';
@@ -109,7 +110,7 @@ function valueWords(d: Dashboard, entry: SettingEntry, value: Value): string {
   if (typeof value !== 'string') return describeRule(value, 'every item');
   if (entry.field === 'statusSets')
     return findStatusSet(value, d.customStatusSets)?.name ?? value;
-  return d.credentials.find((c) => c.id === value)?.label ?? value;
+  return credentialName(d, value);
 }
 
 /** What an inherited value reads as: "<Level> default (<value>)", or the

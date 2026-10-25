@@ -15,20 +15,10 @@ import {
   duplicateDashboard,
   removeRow,
   removeStage,
-  repoFromUrl,
   rowFromApp,
   rowFromRepo,
   uniqueId,
 } from './edit';
-
-describe('repoFromUrl', () => {
-  it('reads owner/name from a GitHub URL only', () => {
-    expect(repoFromUrl('https://github.com/acme/web.git')).toBe('acme/web');
-    expect(repoFromUrl('https://github.com/acme/web/')).toBe('acme/web');
-    expect(repoFromUrl('https://gitlab.com/acme/web')).toBeUndefined();
-    expect(repoFromUrl(undefined)).toBeUndefined();
-  });
-});
 
 describe('removing rows and stages', () => {
   const d = DashboardSchema.parse({
@@ -92,16 +82,32 @@ describe('uniqueId and rowFromRepo', () => {
       githubToken: 'tok',
     });
     const app = { appId: 'a1', name: 'site', region: 'us-east-1' };
-    expect(rowFromApp(app, d, 'k1', undefined).pinnedApps).toEqual([
-      { region: 'us-east-1', appId: 'a1', credentialId: 'k1' },
-    ]);
-    expect(rowFromApp(app, d, undefined, 'acme/site')).toMatchObject({
+    expect(
+      rowFromApp(app, d, { credentialId: 'k1', pinned: true }).pinnedApps,
+    ).toEqual([{ region: 'us-east-1', appId: 'a1', credentialId: 'k1' }]);
+    expect(
+      rowFromApp(app, d, { repo: 'acme/site', pinned: true }),
+    ).toMatchObject({
       repo: 'acme/site',
       pinnedApps: [{ region: 'us-east-1', appId: 'a1' }],
+      settings: {},
     });
-    expect(rowFromApp(app, d, undefined, undefined).pinnedApps).toEqual([
+    expect(rowFromApp(app, d, { pinned: false }).pinnedApps).toEqual([
       { region: 'us-east-1', appId: 'a1' },
     ]);
+    // The only app building its repo: found by repo, not pinned.
+    expect(
+      rowFromApp(app, d, {
+        credentialId: 'k1',
+        repo: 'acme/site',
+        pinned: false,
+        awsKey: 'k1',
+      }),
+    ).toMatchObject({
+      repo: 'acme/site',
+      pinnedApps: [],
+      settings: { awsKey: 'k1' },
+    });
   });
 });
 

@@ -33,12 +33,18 @@ export function CredentialsPanel({
   otherDashboards,
   onChange,
   tokenExpiry,
+  keyApps,
 }: {
   dashboard: Dashboard;
   otherDashboards: readonly Dashboard[];
   onChange: (dashboard: Dashboard) => void;
   /** A GitHub token's reported expiry, once the board has used it. */
   tokenExpiry?: (id: string) => string | undefined;
+  /** The Amplify apps the board reads with an AWS key, once its app
+   * search has finished (*Copy AWS policy*). */
+  keyApps?: (
+    id: string,
+  ) => readonly { region: string; appId: string }[] | undefined;
 }): React.JSX.Element {
   useCredentialVersion();
   const { credentials } = useStores();
@@ -73,6 +79,7 @@ export function CredentialsPanel({
               credential={c}
               onChange={onChange}
               tokenExpiry={tokenExpiry}
+              keyApps={keyApps?.(c.id)}
               run={run}
             />
           ))}
@@ -104,8 +111,8 @@ export function CredentialsPanel({
         </div>
         <SecretFields
           key={kind}
-          dashboard={dashboard}
           kind={kind}
+          newKeyName={label.trim() || 'this key'}
           submitLabel="Add"
           onSubmit={(secret, remember) =>
             run(() => {

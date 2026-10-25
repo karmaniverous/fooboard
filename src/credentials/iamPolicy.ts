@@ -10,10 +10,13 @@
  *
  * (`GetJob` is left out: only the Amplify spike page calls it.)
  *
- * The key is usually created before the dashboard has any Amplify rows, so
- * with no apps *Copy AWS policy* copies an account-wide policy: branches
- * and jobs of every Amplify app (`apps/*`, which also matches each app's
- * branches). With apps, it narrows branches and jobs to them.
+ * *Copy AWS policy* is per key (spec.md §3.12 *IAM*): once the board has
+ * read with the key, it narrows branches and jobs to the apps the board
+ * reads with it (its pins and the apps its search finds; with none, only
+ * `ListApps`). The key is usually created before the board has read with
+ * it, so until then it copies an account-wide policy: branches and jobs
+ * of every Amplify app (`apps/*`, which also matches each app's
+ * branches).
  *
  * fooboard does not know the apps' account, so the account part of each
  * ARN is `*`: that grants nothing extra, because an IAM user's policy only
@@ -27,8 +30,6 @@
  */
 import { unique } from 'radash';
 import { z } from 'zod';
-
-import type { Dashboard } from '@/domain/config/dashboard';
 
 /** The Amplify actions the board calls. */
 const AMPLIFY_ACTION = {
@@ -93,8 +94,9 @@ const allow = (
 });
 
 /** The policy over app ARNs (`arn:aws:amplify:<region>:<account>:apps/<id>`);
- * with none, branches and jobs of every app in the account. */
-function policyOver(appArns: readonly string[]): IamPolicy {
+ * with none, branches and jobs of every app in the account, or, when
+ * `narrowed`, none at all. */
+function policyOver(appArns: readonly string[], narrowed = false): IamPolicy {
   const arns = unique(appArns);
   const listApps = allow(
     POLICY_SID.listApps,
@@ -103,35 +105,46 @@ function policyOver(appArns: readonly string[]): IamPolicy {
   );
   return {
     Version: POLICY_VERSION,
-    Statement: arns.length
-      ? [
-          listApps,
-          allow(POLICY_SID.readBranches, [AMPLIFY_ACTION.listBranches], arns),
-          allow(
-            POLICY_SID.readJobs,
-            [AMPLIFY_ACTION.listJobs],
-            arns.map((arn) => arn + BRANCHES_SUFFIX),
-          ),
-        ]
-      : [
-          listApps,
-          allow(
-            POLICY_SID.readAllApps,
-            [AMPLIFY_ACTION.listBranches, AMPLIFY_ACTION.listJobs],
-            ANY_APP_ARN,
-          ),
-        ],
+    Statement:
+      narrowed && arns.length === 0
+        ? [listApps]
+        : arns.length
+          ? [
+              listApps,
+              allow(
+                POLICY_SID.readBranches,
+                [AMPLIFY_ACTION.listBranches],
+                arns,
+              ),
+              allow(
+                POLICY_SID.readJobs,
+                [AMPLIFY_ACTION.listJobs],
+                arns.map((arn) => arn + BRANCHES_SUFFIX),
+              ),
+            ]
+          : [
+              listApps,
+              allow(
+                POLICY_SID.readAllApps,
+                [AMPLIFY_ACTION.listBranches, AMPLIFY_ACTION.listJobs],
+                ANY_APP_ARN,
+              ),
+            ],
   };
 }
 
 /** The policy for `apps` (each validated; an invalid one throws); with
- * none, the account-wide policy. */
-export const amplifyPolicy = (apps: readonly PolicyApp[]): IamPolicy =>
+ * none, the account-wide policy, or, when `narrowed`, `ListApps` only. */
+export const amplifyPolicy = (
+  apps: readonly PolicyApp[],
+  narrowed = false,
+): IamPolicy =>
   policyOver(
     apps.map((a) => {
       const { region, appId } = PolicyAppSchema.parse(a);
       return `arn:aws:amplify:${region}:*:apps/${appId}`;
     }),
+    narrowed,
   );
 
 /** The README's account-wide policy: what the button copies before the
@@ -141,22 +154,17 @@ export const accountPolicy = (): IamPolicy => policyOver([]);
 /** The README's template: the narrowed policy with placeholders to replace. */
 export const policyTemplate = (): IamPolicy => policyOver([TEMPLATE_APP_ARN]);
 
-/** Every Amplify app a dashboard reads (each once), across its rows'
- * pinned apps, and how many pins were skipped for an invalid region or
- * app id. */
-export function dashboardApps(dashboard: Dashboard): {
-  apps: PolicyApp[];
-  skipped: number;
-} {
-  const sources = dashboard.rows.flatMap((r) =>
-    r.type === 'amplify' ? r.pinnedApps : [],
-  );
-  const valid = sources.flatMap((s) => {
+/** The valid apps of `apps`, each once, and how many were left out for
+ * an invalid region or app id. */
+export function policyApps(
+  apps: readonly { region: string; appId: string }[],
+): { apps: PolicyApp[]; skipped: number } {
+  const valid = apps.flatMap((s) => {
     const app = PolicyAppSchema.safeParse(s);
     return app.success ? [app.data] : [];
   });
   return {
     apps: unique(valid, (a) => `${a.region}/${a.appId}`),
-    skipped: sources.length - valid.length,
+    skipped: apps.length - valid.length,
   };
 }

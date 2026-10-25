@@ -9,10 +9,11 @@
  *
  * @module
  */
+import type { App } from '@aws-sdk/client-amplify';
 import { QueryClient } from '@tanstack/query-core';
 import { describe, expect, it, vi } from 'vitest';
 
-import { AmplifyThrottledError } from '@/lib/amplify/errors';
+import { AmplifyAuthError, AmplifyThrottledError } from '@/lib/amplify/errors';
 import { createGitHubApi, type GitHubApi } from '@/lib/github';
 import { RateLimitedError } from '@/lib/github/errors';
 import {
@@ -41,7 +42,13 @@ function setup(
   {
     around = passThrough,
     fingerprint = () => 'secret',
-  }: { around?: Around; fingerprint?: () => string } = {},
+    listApps = () =>
+      Promise.reject(new AmplifyThrottledError('slow down', 'ListApps', 7_000)),
+  }: {
+    around?: Around;
+    fingerprint?: () => string;
+    listApps?: () => Promise<App[]>;
+  } = {},
 ) {
   const limiters = createLimiters({ now: () => NOW });
   const readWith = createReadWith();
@@ -52,13 +59,7 @@ function setup(
         queryFn: createQueryFn({
           providers: {
             github: () => api,
-            amplify: () => () =>
-              fakeAmplifyReader({
-                listApps: () =>
-                  Promise.reject(
-                    new AmplifyThrottledError('slow down', 'ListApps', 7_000),
-                  ),
-              }),
+            amplify: () => () => fakeAmplifyReader({ listApps }),
             fingerprint,
           },
           limiters,
@@ -167,6 +168,26 @@ describe('createQueryFn', () => {
       NOW + 7_000,
     );
     expect(limiters.for('github', 'aws').stats().pausedUntil).toBe(0);
+  });
+
+  it('answers a region the app search skips, rather than failing (§3.12)', async () => {
+    const apps = (region: string, listApps: () => Promise<App[]>) =>
+      setup(undefined, { listApps }).client.query({
+        queryKey: amplifyKey('aws', { call: 'apps', region }),
+      });
+    await expect(
+      apps('eu-west-1', () =>
+        Promise.reject(new AmplifyAuthError('denied', 'ListApps', true)),
+      ),
+    ).resolves.toMatchObject({ data: { apps: [], skipped: 'denied' } });
+    await expect(
+      apps('me-south-1', () =>
+        Promise.reject(new TypeError('Failed to fetch')),
+      ),
+    ).resolves.toMatchObject({ data: { apps: [], skipped: 'unavailable' } });
+    await expect(
+      apps('us-east-1', () => Promise.reject(new TypeError('Failed to fetch'))),
+    ).rejects.toThrow(TypeError);
   });
 
   it('fails a request for a credential without a secret', async () => {

@@ -2,18 +2,19 @@
  * Editor lookups (spec.md §3.1): the repo picker, branch finder and app
  * picker read through the same queries, cache and limiter as the board,
  * a page at a time until GitHub's `Link` says the list ends, and the app
- * picker one `apps` query per Amplify Hosting region. A lookup
- * stays fresh for `EDITOR_STALE_MS`, so reopening an editor reads nothing.
+ * picker one `apps` query per Amplify Hosting region, the same queries
+ * as the board's app search (spec.md §3.12). A lookup stays fresh for
+ * `EDITOR_STALE_MS`, so reopening an editor reads nothing.
  *
  * @module
  */
-import type { App } from '@aws-sdk/client-amplify';
 import type { QueryClient } from '@tanstack/query-core';
 
 import {
   AMPLIFY_REGIONS,
   listAppsAcrossRegions,
   type RegionApp,
+  type RegionListing,
 } from '@/lib/amplify/regions';
 import type { Branch, Fetched, Repo } from '@/lib/github';
 
@@ -53,13 +54,14 @@ export const fetchBranches = (
     githubKey(credentialId, { call: 'branches', repo, page }),
   );
 
-/** The Amplify apps an AWS key can see in `region`. */
+/** The Amplify apps an AWS key can see in `region`, or why the region
+ * is skipped: the app search's query (spec.md §3.12). */
 export async function fetchApps(
   client: QueryClient,
   credentialId: string,
   region: string,
-): Promise<App[]> {
-  const fetched = await client.query<Fetched<App[]>>({
+): Promise<RegionListing> {
+  const fetched = await client.query<Fetched<RegionListing>>({
     queryKey: amplifyKey(credentialId, { call: 'apps', region }),
     staleTime: EDITOR_STALE_MS,
   });

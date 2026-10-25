@@ -1,15 +1,17 @@
 /**
  * Problems (spec.md A§4.3.7): every problem the board has, where it is,
  * with *Fix* to open the editor at the item, *Customise* for a problem in
- * a built-in rule, and *Dismiss* for the ones that are only hints. Notes
- * (what the consistency check can't decide, rules for a source no row
- * uses) follow, dismissable.
+ * a built-in rule, its one-click actions (*Pin*, *Unpin*, spec.md §3.12),
+ * and *Dismiss* for the ones that are only hints. Notes (what the
+ * consistency check can't decide, rules for a source no row uses) follow,
+ * dismissable.
  *
  * @module
  */
 import { Button } from '@/components/ui/button';
 import type { Dashboard } from '@/domain/config/dashboard';
 import type { Problem } from '@/domain/problems/problem';
+import { changePins } from '@/domain/settings/pins';
 
 import { levelLabel } from './levelLabel';
 
@@ -19,12 +21,14 @@ function ProblemItem({
   onFix,
   onCustomise,
   onDismiss,
+  onChange,
 }: {
   dashboard: Dashboard;
   problem: Problem;
   onFix: (problem: Problem) => void;
   onCustomise: ((problem: Problem) => void) | undefined;
   onDismiss: (id: string) => void;
+  onChange: ((dashboard: Dashboard) => void) | undefined;
 }): React.JSX.Element {
   return (
     <li className="flex flex-col gap-1 rounded-md border p-2">
@@ -64,6 +68,22 @@ function ProblemItem({
         )}
       </div>
       <span className="text-xs">{p.message}</span>
+      {onChange && p.actions && (
+        <div className="flex flex-wrap gap-1">
+          {p.actions.map((action) => (
+            <Button
+              key={`${action.kind}:${action.pin.region}:${action.pin.appId}:${action.pin.credentialId ?? ''}`}
+              size="sm"
+              variant="outline"
+              onClick={() => {
+                onChange(changePins(dashboard, action));
+              }}
+            >
+              {action.label}
+            </Button>
+          ))}
+        </div>
+      )}
     </li>
   );
 }
@@ -75,6 +95,7 @@ export function ProblemsPanel({
   onDismiss,
   onCustomise,
   canCustomise = () => false,
+  onChange,
 }: {
   dashboard: Dashboard;
   problems: readonly Problem[];
@@ -83,6 +104,9 @@ export function ProblemsPanel({
   /** Customise the built-in rule a problem is in. */
   onCustomise?: (problem: Problem) => void;
   canCustomise?: (problem: Problem) => boolean;
+  /** Save the dashboard a problem's one-click action (*Pin*, *Unpin*)
+   * changed. */
+  onChange?: (dashboard: Dashboard) => void;
 }): React.JSX.Element {
   if (problems.length === 0)
     return <p className="text-sm text-muted-foreground">No problems.</p>;
@@ -94,6 +118,7 @@ export function ProblemsPanel({
       onFix={onFix}
       onCustomise={canCustomise(p) ? onCustomise : undefined}
       onDismiss={onDismiss}
+      onChange={onChange}
     />
   );
   const notes = problems.filter((p) => p.severity === 'note');

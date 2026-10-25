@@ -97,6 +97,9 @@ export interface BoardModel {
   /** Entries of the Amplify branch lists read, for the branch rule's
    * field picker and preview. */
   amplifyBranches: JSONValue[];
+  /** The Amplify apps the board reads with each AWS key whose app search
+   * has finished, by credential id (*Copy AWS policy*, spec.md §3.12). */
+  amplifyKeyApps: Record<string, { region: string; appId: string }[]>;
   /** Latest known GitHub budget per credential id; `undefined` until the
    * token's first response (Decision 6). */
   budgets: Record<string, RateLimitBudget | undefined>;

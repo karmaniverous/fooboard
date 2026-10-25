@@ -13,6 +13,7 @@
 import type { QueryClient, QueryFunction } from '@tanstack/query-core';
 
 import { AmplifyThrottledError } from '@/lib/amplify/errors';
+import { listRegion } from '@/lib/amplify/regions';
 import type { AmplifyReaderFor } from '@/lib/amplify/rowJobs';
 import {
   type Conditional,
@@ -141,7 +142,12 @@ async function fetchAmplify(
         await reader.listJobs(request.appId, request.branch, request.max),
       );
     case 'apps':
-      return plain(await reader.listApps());
+      // A region the skip rules skip is an answer, not a failure (§3.12).
+      return plain(
+        await listRegion(request.region, (_, signal) =>
+          reader.listApps(signal),
+        ),
+      );
   }
 }
 

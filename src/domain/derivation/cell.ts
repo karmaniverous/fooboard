@@ -2,7 +2,8 @@
  * A cell's derivation (spec.md A§4.3.7): the record placement put there,
  * its status, and what the board shows of it (the reserved keys `branch`,
  * `commit`, `message`, `time`, `link`, when present), or why the cell is
- * empty: needs a credential, an error, or no records. Pure.
+ * empty: needs a credential, an error, no records, or (an Amplify cell)
+ * no app to read (spec.md §3.12). Pure.
  *
  * @module
  */
@@ -26,6 +27,9 @@ export const EMPTY_STATES = {
   noRecords: 'no-records',
   needsCredential: 'needs-credential',
   error: 'error',
+  /** An Amplify cell with no app to read: none builds the row's repo in
+   * its key's account, and none is pinned (spec.md §3.12). */
+  noApp: 'no-app',
 } as const;
 export type EmptyCellState = (typeof EMPTY_STATES)[keyof typeof EMPTY_STATES];
 

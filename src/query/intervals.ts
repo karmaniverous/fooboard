@@ -18,6 +18,9 @@ export const IDLE_INTERVAL_MS = 60_000;
 export const BUDGET_BACKOFF = 4;
 /** How long an editor lookup (repos, branches, apps) stays fresh. */
 export const EDITOR_STALE_MS = 5 * 60_000;
+/** How often the board's app search lists each region again (spec.md
+ * §3.12): hourly, and on focus once stale. */
+export const APP_SEARCH_INTERVAL_MS = 60 * 60_000;
 
 /** How often a query polls, and when its data goes stale. */
 export interface Freshness {
@@ -37,6 +40,12 @@ export function pollEvery(base: number, overBudget: boolean): Freshness {
   const interval = base * (overBudget ? BUDGET_BACKOFF : 1);
   return { refetchInterval: interval, staleTime: interval };
 }
+
+/** The app search's cadence (spec.md §3.12). */
+export const APP_SEARCH_FRESHNESS: Freshness = pollEvery(
+  APP_SEARCH_INTERVAL_MS,
+  false,
+);
 
 /** A root query's cadence: fast while a fed cell is in progress. */
 export const rootFreshness = (

@@ -19,6 +19,7 @@ import type { QueryEnv } from '@/query/client';
 
 import { createFetchStarts } from './fetchStarts';
 import { computeGroup, type GroupEntry, planGroups } from './groups';
+import { keyApps } from './keyApps';
 import { emptyModel, githubCredentialIds } from './model';
 import { createObserverSet, mergeNeeds } from './observers';
 import {
@@ -98,13 +99,16 @@ export function createBoardModel({
       if (at !== undefined) refreshedAt[rowId] = at;
     }
     const all = [...groups.values()];
+    // A run one token's cells place isn't unmapped because another
+    // token's cells don't (spec.md §3.11).
+    const mapped = new Set(all.flatMap((g) => g.mapped));
     model = {
       cells,
       refreshedAt,
       unmapped: unique(
         all.flatMap((g) => g.unmapped),
         (u) => u.id,
-      ),
+      ).filter((u) => !mapped.has(u.id)),
       problems: unique(
         [
           ...[...rows.values()].flatMap((r) => r.derivation.problems),
@@ -113,6 +117,7 @@ export function createBoardModel({
         (p) => p.id,
       ),
       amplifyBranches: all.flatMap((g) => g.branches),
+      amplifyKeyApps: keyApps(derive, dashboard),
       budgets: Object.fromEntries(
         githubCredentialIds(dashboard).map((id) => [id, env.budgets.get(id)]),
       ),

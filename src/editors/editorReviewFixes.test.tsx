@@ -62,6 +62,13 @@ describe('editor review fixes', () => {
       target: { value: 'a9' },
     });
     fireEvent.click(screen.getByRole('button', { name: 'Pin' }));
+    fireEvent.change(screen.getByLabelText('Region for a new site pin'), {
+      target: { value: 'eu-west-1' },
+    });
+    fireEvent.change(screen.getByLabelText('App ID for a new site pin'), {
+      target: { value: 'a8' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Pin' }));
     const pins = () => {
       const row = latest.current.rows.at(-1);
       return row?.type === 'amplify' ? row.pinnedApps.length : 0;
@@ -69,7 +76,7 @@ describe('editor review fixes', () => {
     expect(pins()).toBe(2);
     fireEvent.click(screen.getAllByRole('button', { name: 'Unpin' })[0]);
     expect(pins()).toBe(2);
-    fireEvent.click(screen.getByRole('button', { name: 'Unpin a1' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Unpin a9' }));
     expect(pins()).toBe(1);
     // A row without a repo keeps its last pin.
     const row = latest.current.rows.at(-1);

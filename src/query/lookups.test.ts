@@ -81,7 +81,7 @@ describe('editor lookups', () => {
       amplify: () => fakeAmplifyReader({ listApps }),
     });
     expect(
-      (await fetchApps(client, 'aws', 'eu-west-1')).map((a) => a.appId),
+      (await fetchApps(client, 'aws', 'eu-west-1')).apps.map((a) => a.appId),
     ).toEqual(['a1']);
     await fetchApps(client, 'aws', 'eu-west-1');
     expect(listApps).toHaveBeenCalledOnce();
@@ -112,7 +112,7 @@ describe('editor lookups', () => {
       client.getQueryData(
         amplifyKey('aws', { call: 'apps', region: 'eu-west-1' }),
       ),
-    ).toMatchObject({ data: [{ appId: 'eu-west-1-app' }] });
+    ).toMatchObject({ data: { apps: [{ appId: 'eu-west-1-app' }] } });
 
     await fetchAppsAcrossRegions(client, 'aws');
     expect(asked).toHaveLength(AMPLIFY_REGIONS.length);

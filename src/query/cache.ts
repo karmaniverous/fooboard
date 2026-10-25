@@ -8,12 +8,12 @@
  * @module
  */
 import type {
-  App,
   Branch as AmplifyBranch,
   JobSummary,
 } from '@aws-sdk/client-amplify';
 import type { QueryClient } from '@tanstack/query-core';
 
+import type { RegionListing } from '@/lib/amplify/regions';
 import type {
   Branch,
   CompareApiResult,
@@ -43,7 +43,7 @@ export interface GithubData {
 export interface AmplifyData {
   branches: Fetched<AmplifyBranch[]>;
   jobs: Fetched<JobSummary[]>;
-  apps: Fetched<App[]>;
+  apps: Fetched<RegionListing>;
 }
 
 /** `Snapshot.updatedAt` for a query whose data never landed. */

@@ -14,14 +14,16 @@ import type { Dashboard } from '@/domain/config/dashboard';
 import type { AmplifyRow, GithubRow, Row } from '@/domain/config/row';
 import type { Stage } from '@/domain/config/stage';
 import { sourceRuleFor } from '@/domain/model/sources';
-import { cellCredentials } from '@/domain/settings/credentials';
+import { cellCredentials, credentialName } from '@/domain/settings/credentials';
 import { resolveSetting } from '@/domain/settings/resolve';
 import { appKey } from '@/lib/amplify/rowJobs';
 import { isOverPollingShare } from '@/lib/github';
 import type { BudgetStore } from '@/query/budgets';
 import type { QueryProviders } from '@/query/fetchers';
 
-import { type AmplifyContext, deriveAmplifyRow, rowApps } from './amplifyRow';
+import { rowApps } from './amplifyAccess';
+import { type AmplifyContext, deriveAmplifyRow } from './amplifyRow';
+import { type AppSearch, appSearch } from './appSearch';
 import { emptyViews } from './cells';
 import { mergeDerivations, segments } from './cellSegments';
 import { deriveGithubRow, type GithubContext } from './githubRow';
@@ -86,6 +88,8 @@ export function amplifyContext(
   env: DeriveEnv,
   dashboard: Dashboard,
 ): AmplifyContext {
+  // One read of each key's search per context.
+  const searches = new Map<string, AppSearch>();
   return {
     client: env.client,
     stages: dashboard.stages,
@@ -94,6 +98,12 @@ export function amplifyContext(
     keyFor: (row, stageId) =>
       resolveSetting(dashboard, row, stageId, 'awsKey').value,
     hasReader: (id) => env.providers.amplify(id) !== undefined,
+    search: (id) => {
+      const found = searches.get(id) ?? appSearch(env.client, id);
+      searches.set(id, found);
+      return found;
+    },
+    keyLabel: (id) => credentialName(dashboard, id),
     source: sourceRuleFor(dashboard, 'amplify'),
     now: env.now(),
     fetchStartedAt: env.fetchStartedAt,

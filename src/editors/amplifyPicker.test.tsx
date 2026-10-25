@@ -1,9 +1,11 @@
 /**
- * Tests for the Amplify app picker (spec.md C-21, Decision 21): it lists
- * an AWS key's apps in every region, each marked with its region; an app
- * with a GitHub repo adds at once, and one without asks for the repo,
- * typed in or left empty; listed apps hide when the key changes; no apps
- * anywhere says so; a rejected key is reported.
+ * Tests for the Amplify app picker (spec.md C-21, §3.12, Decision 21): it
+ * lists an AWS key's apps in every region, each marked with its region;
+ * an app with a GitHub repo adds at once, found by repo when it is the
+ * only app building it under the key and pinned otherwise, and one
+ * without asks for the repo, typed in or left empty (pinned); a key
+ * chosen in the picker becomes the row's; listed apps hide when the key
+ * changes; no apps anywhere says so; a rejected key is reported.
  *
  * @module
  */
@@ -41,11 +43,36 @@ describe('the Amplify app picker', () => {
       }),
     ).toBeInTheDocument();
     fireEvent.click(site);
+    // The only app building acme/site: found by repo, under the inherited
+    // key.
     expect(latest.current.rows.at(-1)).toMatchObject({
       type: 'amplify',
       id: 'site',
       repo: 'acme/site',
       displayName: 'site',
+      pinnedApps: [],
+      settings: {},
+    });
+  });
+
+  it('pins an app that is not the only one building its repo', async () => {
+    const twin = amplifyApp({
+      appId: 'b1',
+      name: 'site-eu',
+      repository: 'https://github.com/ACME/site.git',
+    });
+    const latest = setup({}, (region) =>
+      Promise.resolve(
+        region === 'us-east-1' ? [site] : region === 'eu-west-1' ? [twin] : [],
+      ),
+    );
+    tab('Rows');
+    list();
+    fireEvent.click(
+      await screen.findByRole('button', { name: /^site us-east-1/ }),
+    );
+    expect(latest.current.rows.at(-1)).toMatchObject({
+      repo: 'acme/site',
       pinnedApps: [{ credentialId: 'aws', region: 'us-east-1', appId: 'a1' }],
     });
   });
@@ -150,8 +177,11 @@ describe('the Amplify app picker', () => {
 
     choose(key, 'other');
     fireEvent.click(screen.getByRole('button', { name: /^site us-east-1/ }));
+    // A key chosen in the picker becomes the row's own.
     expect(latest.current.rows.at(-1)).toMatchObject({
-      pinnedApps: [{ credentialId: 'aws2', region: 'us-east-1', appId: 'a1' }],
+      repo: 'acme/site',
+      pinnedApps: [],
+      settings: { awsKey: 'aws2' },
     });
   });
 

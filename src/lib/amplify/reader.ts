@@ -24,7 +24,8 @@ import { toAmplifyError } from './errors';
 
 /** Read-only access to one AWS account's Amplify apps in one region. */
 export interface AmplifyReader {
-  listApps(): Promise<App[]>;
+  /** `signal` aborts the request. */
+  listApps(signal?: AbortSignal): Promise<App[]>;
   listBranches(appId: string): Promise<Branch[]>;
   /** Newest jobs first, up to `maxResults`, following pages as needed. */
   listJobs(
@@ -102,10 +103,11 @@ export function createAmplifyReader({
   }
 
   return {
-    listApps: () =>
+    listApps: (signal) =>
       paged('ListApps', async (nextToken) => {
         const res = await client.send(
           new ListAppsCommand({ maxResults: PAGE_SIZE, nextToken }),
+          { abortSignal: signal },
         );
         return { items: res.apps, next: res.nextToken };
       }),

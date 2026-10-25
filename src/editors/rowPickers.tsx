@@ -1,7 +1,11 @@
 /**
- * The row editor's Amplify app picker (spec.md C-21, §3.1, Decision 21):
- * an AWS key's apps in every Amplify Hosting region, one `ListApps` query
- * per region, each app shown with its region. The GitHub repo picker is
+ * The row editor's Amplify app picker (spec.md C-21, §3.1, §3.12,
+ * Decision 21): an AWS key's apps in every Amplify Hosting region, one
+ * `ListApps` query per region (the board's app search), each app shown
+ * with its region. A picked app with a repo makes a row found by repo
+ * when it is the only app building that repo under the key; otherwise
+ * the app is pinned under the key. A key chosen here rather than
+ * inherited becomes the row's `awsKey`. The GitHub repo picker is
  * in `RepoPicker`; the listed apps and adding one are in `AmplifyAppList`;
  * an Amplify row's pinned apps are edited in `PinnedApps`.
  *
@@ -12,6 +16,7 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import type { Dashboard } from '@/domain/config/dashboard';
 import type { AmplifyRow } from '@/domain/config/row';
+import { repoFromUrl, sameRepo } from '@/domain/matching';
 import type { RegionApp } from '@/lib/amplify/regions';
 import { fetchAppsAcrossRegions } from '@/query/lookups';
 import { useQueryEnv } from '@/query/queryEnvContext';
@@ -19,7 +24,7 @@ import { useQueryEnv } from '@/query/queryEnvContext';
 import { AmplifyAppList, type ListedApp } from './AmplifyAppList';
 import { CredentialSelect } from './CredentialSelect';
 import { dashboardDefault } from './dashboardDefault';
-import { repoFromUrl, rowFromApp } from './edit';
+import { rowFromApp } from './edit';
 import { LoadStatus } from './LoadStatus';
 import { useLoadFor } from './useLoad';
 
@@ -53,9 +58,9 @@ export function AmplifyPicker({
   const resolved = credentialId ?? unset.id;
   // An app is pinned under the key it was listed with (spec.md §3.12).
   const [apps, load] = useLoadFor<
-    { credentialId: string | undefined },
+    { credentialId: string | undefined; chosen: boolean },
     ListedApp[]
-  >({ credentialId: resolved });
+  >({ credentialId: resolved, chosen: credentialId !== undefined });
   const env = useQueryEnv();
   const key =
     resolved && env.providers.amplify(resolved) ? resolved : undefined;
@@ -96,8 +101,17 @@ export function AmplifyPicker({
         <AmplifyAppList
           apps={apps.value.value}
           onPick={(app, repo) => {
+            const { context, value: listed } = apps.value;
+            const builders = repo
+              ? listed.filter((a) => a.repo && sameRepo(a.repo, repo))
+              : [];
             onAdd(
-              rowFromApp(app, dashboard, apps.value.context.credentialId, repo),
+              rowFromApp(app, dashboard, {
+                credentialId: context.credentialId,
+                repo,
+                pinned: builders.length !== 1,
+                awsKey: context.chosen ? context.credentialId : undefined,
+              }),
             );
           }}
         />

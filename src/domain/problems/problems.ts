@@ -15,7 +15,7 @@ import { ownOverride } from '@/domain/config/ownOverride';
 import { PROVIDER_LABELS, PROVIDERS } from '@/domain/config/providers';
 import type { Row } from '@/domain/config/row';
 import { sourceRuleFor } from '@/domain/model/sources';
-import { cellCredentials } from '@/domain/settings/credentials';
+import { cellCredentials, credentialName } from '@/domain/settings/credentials';
 import { unusedPins } from '@/domain/settings/pins';
 
 import { siteProblems, unusedSourceNotes } from './consistency';
@@ -69,14 +69,12 @@ function noBadges(d: Dashboard, row: Row): string | undefined {
 /** A note on each pinned app whose key no cell of its row reads with
  * (spec.md §3.12): it serves no cell until a column uses that key. */
 function pinNotes(d: Dashboard): Problem[] {
-  const nameOf = (id: string) =>
-    d.credentials.find((c) => c.id === id)?.label ?? id;
   return d.rows.flatMap((row) =>
     row.type === 'amplify'
       ? unusedPins(d, row).map((pin) =>
           note(
             { kind: 'row', id: row.id },
-            `Amplify app ${pin.appId} (${pin.region}) is pinned under the AWS key ${nameOf(pin.credentialId)}, which no column of this row reads with: set that AWS key on the columns that use it`,
+            `Amplify app ${pin.appId} (${pin.region}) is pinned under the AWS key ${credentialName(d, pin.credentialId)}, which no column of this row reads with: set that AWS key on the columns that use it`,
             {
               kind: 'settings',
               place: { level: 'row', rowId: row.id },

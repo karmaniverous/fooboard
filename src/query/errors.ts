@@ -12,6 +12,7 @@ import {
   AmplifyAuthError,
   AmplifyNotFoundError,
   AmplifyThrottledError,
+  isServerFault,
 } from '@/lib/amplify/errors';
 import {
   GitHubAuthError,
@@ -39,17 +40,13 @@ export const isAuthFailure = (err: unknown): boolean =>
 export const isNotFound = (err: unknown): boolean =>
   err instanceof GitHubNotFoundError || err instanceof AmplifyNotFoundError;
 
-/** An AWS SDK error the server is to blame for (`$fault: 'server'`). */
-const isAwsServerFault = (err: unknown): boolean =>
-  err instanceof Error && Reflect.get(err, '$fault') === 'server';
-
 /** Worth trying again: the network failed, or the server did. */
 export function isTransient(err: unknown): boolean {
   if (err instanceof GitHubNetworkError) return true;
   if (err instanceof GitHubHttpError)
     return err.status >= HTTP_STATUS.serverError;
   // `fetch` rejects with a TypeError when the network fails.
-  return err instanceof TypeError || isAwsServerFault(err);
+  return err instanceof TypeError || isServerFault(err);
 }
 
 /** TanStack's `retry`: up to `MAX_RETRIES`, transient failures only. */

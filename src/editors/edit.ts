@@ -46,14 +46,27 @@ export function rowFromRepo(
   };
 }
 
-/** An Amplify row for a picked app: named after the app, the app pinned
- * under the AWS key it was listed with (spec.md §3.12), and building from
- * `repo` when it has one (spec.md C-21, Decision 21). */
+/** How a picked app becomes a row (spec.md §3.12 *Adding a row*). */
+export interface PickedApp {
+  /** The AWS key the app was listed with. */
+  credentialId?: string;
+  /** The GitHub repo it builds from, if any. */
+  repo?: string;
+  /** Pin the app: it has no repo, or isn't the only app building it
+   * under the key; otherwise the search finds it from the repo. */
+  pinned: boolean;
+  /** A key chosen in the picker rather than inherited: the row's own. */
+  awsKey?: string;
+}
+
+/** An Amplify row for a picked app: named after the app, building from
+ * its repo when it has one (spec.md C-21, Decision 21), the app pinned
+ * under the key it was listed with when `pinned`, and the chosen key as
+ * the row's `awsKey`. */
 export function rowFromApp(
   app: { appId: string; name: string; region: string },
   dashboard: Pick<Dashboard, 'rows'>,
-  credentialId: string | undefined,
-  repo: string | undefined,
+  { credentialId, repo, pinned, awsKey }: PickedApp,
 ): AmplifyRow {
   return {
     type: 'amplify',
@@ -63,15 +76,18 @@ export function rowFromApp(
     ),
     ...(repo ? { repo } : {}),
     displayName: app.name,
-    pinnedApps: [
-      {
-        region: app.region,
-        appId: app.appId,
-        ...(credentialId ? { credentialId } : {}),
-      },
-    ],
+    pinnedApps:
+      pinned || !repo
+        ? [
+            {
+              region: app.region,
+              appId: app.appId,
+              ...(credentialId ? { credentialId } : {}),
+            },
+          ]
+        : [],
     stageRules: {},
-    settings: {},
+    settings: awsKey ? { awsKey } : {},
     cellSettings: {},
   };
 }
@@ -96,15 +112,6 @@ export function duplicateDashboard(
       id: ids.get(c.id) ?? c.id,
     })),
   };
-}
-
-/** `owner/name` from an Amplify app's repository URL, if it is GitHub. */
-export function repoFromUrl(url: string | undefined): string | undefined {
-  const match =
-    /^https:\/\/github\.com\/([^/\s]+)\/([^/\s]+?)(?:\.git)?\/?$/.exec(
-      url ?? '',
-    );
-  return match ? `${match[1]}/${match[2]}` : undefined;
 }
 
 /** Remove a row; its group loses it (and disappears if empty). */

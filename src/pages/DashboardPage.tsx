@@ -109,6 +109,7 @@ function SavedDashboard({
                 }}
                 canCustomise={(p) => offersCustomise(dashboard, p)}
                 onDismiss={problems.dismiss}
+                onChange={save}
               />
             </SidePanel>
           )}
@@ -172,6 +173,7 @@ function SavedDashboard({
               tokenExpiry={(id) =>
                 env.providers.github(id)?.getTokenExpiration()
               }
+              keyApps={(id) => model.amplifyKeyApps[id]}
             />
           </SidePanel>
         </>
