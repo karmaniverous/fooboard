@@ -2,7 +2,9 @@
  * Tests for per-cell GitHub tokens (spec.md §3.11: every consumer asks
  * per cell): a GitHub row's columns read under the token each resolves
  * to, a column whose token has no secret shows *Needs credential* while
- * the row's other columns read, and the row's parts merge back into one.
+ * the row's other columns read, the row's parts merge back into one, and
+ * each token's runs are judged unmapped against only the cells reading
+ * with that token, a run one token's cells place listed by no other.
  *
  * @module
  */
@@ -73,6 +75,30 @@ describe('per-cell GitHub tokens', () => {
     await fullModel(withColumnToken('other'), env(read));
     expect(read.has('other')).toBe(true);
     expect(read.has(String(demoDashboard.settings.githubToken))).toBe(true);
+  });
+});
+
+describe('unmapped runs per token', () => {
+  /** The ids of the demo's unmapped runs of `api`'s repo. */
+  const unmappedOf = async (dashboard: Dashboard) =>
+    new Set(
+      (await fullModel(dashboard, env(new Set()))).unmapped
+        .map((u) => u.id)
+        .filter((id) => id.startsWith(`github:${api.repo}#`)),
+    );
+
+  it("judges a token's runs against only the cells reading with it", async () => {
+    const plain = await unmappedOf(demoDashboard);
+    // The first column can't read: the runs only it places are unmapped.
+    const locked = await unmappedOf(withColumnToken('locked'));
+    expect([...plain].every((id) => locked.has(id))).toBe(true);
+    expect(locked.size).toBeGreaterThan(plain.size);
+  });
+
+  it("lists no run another token's cells place", async () => {
+    expect(await unmappedOf(withColumnToken('other'))).toEqual(
+      await unmappedOf(demoDashboard),
+    );
   });
 });
 
