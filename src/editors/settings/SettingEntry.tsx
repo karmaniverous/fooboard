@@ -159,7 +159,7 @@ export function SettingEntry({
           (openGroup ? (
             <Button
               variant="link"
-              className="h-auto p-0 text-xs text-sky-600 underline dark:text-sky-400"
+              className="h-auto p-0 text-xs underline"
               aria-label={`${from}: open ${placeLabel(d, inherited.origin)} in dashboard settings`}
               onClick={openGroup}
             >

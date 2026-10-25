@@ -55,6 +55,10 @@ describe('SettingsPopup origin links', () => {
     const link = within(dialog).getByRole('button', {
       name: `from ${backendFirst}: open Row group ${backendFirst} in dashboard settings`,
     });
+    // In the link colour of the library's link variant, which passes
+    // contrast, as *Open in dashboard settings* is.
+    expect(link).toHaveClass('text-primary');
+    expect(link.className).not.toMatch(/text-(sky|blue)-/);
     fireEvent.click(link);
     expect(onOpenSettings).toHaveBeenCalledWith({
       level: 'rowGroup',
