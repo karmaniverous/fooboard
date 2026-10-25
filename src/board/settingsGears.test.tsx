@@ -1,9 +1,10 @@
 /**
  * Tests for the board's settings gears (spec.md §3.11 *Settings on the
- * board*, §3.10): a gear on every row header, stage header, labelled group
- * label and cell, each named for its place; none on an unlabelled group;
- * header gears in the Tab order after their header, a cell's gear out of
- * it (one Tab stop per cell); `,` on a focused cell opening its popup;
+ * board*, §3.10): a gear on every row header, stage header and labelled
+ * group label, each named for its place; none on an unlabelled group;
+ * header gears in the Tab order after their header, one Tab stop per cell
+ * (the board's one cell gear is tested in `CellGearLayer.test.tsx`);
+ * `,` on a focused cell opening its popup;
  * the cell announcing Space and `,`; and clicks on a cell, header or label
  * doing what they did before.
  *
@@ -17,6 +18,7 @@ import { demoDashboard } from '@/demo/board';
 import { type BoardModel } from '@/engine';
 import { TEST_LAYOUT } from '@/test/boardLayout';
 import { fullModel } from '@/test/boardModel';
+import { cellGear } from '@/test/cellGear';
 import { focusElement } from '@/test/focus';
 import { renderSettingsBoard } from '@/test/settingsBoard';
 
@@ -43,7 +45,7 @@ const firstCellLink = (): HTMLElement =>
   within(screen.getAllByRole('gridcell')[0]).getAllByRole('link')[0];
 
 describe('settings gears', () => {
-  it('puts a named gear on every header, labelled group label and cell', () => {
+  it('puts a named gear on every header and labelled group label', () => {
     renderSettingsBoard(demoDashboard, model);
     const { rows, stages } = demoDashboard;
     for (const r of rows) gear(`Settings for row ${r.displayName}`);
@@ -51,21 +53,15 @@ describe('settings gears', () => {
     gear('Settings for row group Backend');
     gear('Settings for row group Frontend');
     gear('Settings for column group Preview');
-    const cells = screen.getAllByRole('gridcell');
-    expect(cells).toHaveLength(rows.length * stages.length);
-    for (const cell of cells) {
-      const g = within(cell).getByRole('button', {
-        name: /^Settings for cell /,
-      });
-      expect(g).toHaveAttribute('aria-haspopup', 'dialog');
-      expect(g).toHaveAttribute('aria-expanded', 'false');
-    }
-    expect(gear('Settings for cell api-core, Bali')).toBeInTheDocument();
+    const g = gear('Settings for row api-core');
+    expect(g).toHaveAttribute('aria-haspopup', 'dialog');
+    expect(g).toHaveAttribute('aria-expanded', 'false');
   });
 
   it('sizes gears in ems of the board text, so they scale with zoom', () => {
     renderSettingsBoard(demoDashboard, model);
-    const grid = screen.getByRole('grid');
+    // Set around the grid, so the cell gear beside it has them too.
+    const grid = screen.getByRole('grid').parentElement ?? document.body;
     const px = (ems: number) => `${String(ems * TEST_LAYOUT.fontPx)}px`;
     expect(grid.style.getPropertyValue('--gear-size')).toBe(
       px(SETTINGS_GEAR_SIZE),
@@ -110,7 +106,7 @@ describe('settings gears', () => {
     gear('Settings for stage Bali');
   });
 
-  it('keeps header gears in the Tab order after their header, and cell gears out of it', () => {
+  it('keeps header gears in the Tab order after their header, and one Tab stop per cell', () => {
     renderSettingsBoard(demoDashboard, model);
     const header = screen.getByRole('rowheader', { name: /api-core/ });
     const rowGear = gear('Settings for row api-core');
@@ -122,7 +118,7 @@ describe('settings gears', () => {
     // (A cell still loading has neither.)
     const loaded = screen
       .getAllByRole('gridcell')
-      .filter((cell) => cell.querySelector('[aria-haspopup]'));
+      .filter((cell) => cell.querySelector('a[href], button'));
     expect(loaded.length).toBeGreaterThan(100);
     for (const cell of loaded) {
       const tabbable = [
@@ -133,34 +129,18 @@ describe('settings gears', () => {
         el.parentElement?.closest('.pointer-events-none'),
       );
       expect(tabbable.length - badges.length).toBe(1);
-      expect(
-        within(cell).getByRole('button', { name: /^Settings for cell / })
-          .tabIndex,
-      ).toBe(-1);
     }
   });
 
-  it('draws a corner gear’s icon only while it can be seen', async () => {
+  it('keeps every header gear in a row of the grid, a row group’s in its label’s header, and the cell gear outside the grid', () => {
     renderSettingsBoard(demoDashboard, model);
-    const cell = screen.getAllByRole('gridcell')[0];
-    const g = gear('Settings for cell api-core, Bali');
-    expect(g.querySelector('svg')).toBeNull();
-    fireEvent.mouseEnter(cell);
-    expect(g.querySelector('svg')).not.toBeNull();
-    fireEvent.mouseLeave(cell);
-    expect(g.querySelector('svg')).toBeNull();
-    focusElement(firstCellLink());
-    expect(g.querySelector('svg')).not.toBeNull();
-    // Open, its icon stays while focus is in the popup.
-    fireEvent.keyDown(firstCellLink(), { key: ',' });
-    await screen.findByRole('dialog');
-    expect(g.querySelector('svg')).not.toBeNull();
-  });
-
-  it('keeps every gear in a row of the grid, a row group’s in its label’s header', () => {
-    renderSettingsBoard(demoDashboard, model);
-    for (const g of screen.getAllByRole('button', { name: /^Settings for / }))
-      expect(g.closest('[role=row]')).not.toBeNull();
+    const cellGearEl = cellGear('Settings for cell api-core, Bali');
+    const headerGears = screen
+      .getAllByRole('button', { name: /^Settings for / })
+      .filter((g) => g !== cellGearEl);
+    expect(headerGears.length).toBeGreaterThan(20);
+    for (const g of headerGears) expect(g.closest('[role=row]')).not.toBeNull();
+    expect(cellGearEl.closest('[role=grid]')).toBeNull();
     const header = gear('Settings for row group Backend').closest(
       '[role=rowheader]',
     );
@@ -174,9 +154,9 @@ describe('settings gears', () => {
   it('lays the cell gear beside the cell link, never inside it', () => {
     renderSettingsBoard(demoDashboard, model);
     const link = firstCellLink();
-    const g = gear('Settings for cell api-core, Bali');
+    const g = cellGear('Settings for cell api-core, Bali');
     expect(link.contains(g)).toBe(false);
-    expect(g.closest('a')).toBeNull();
+    expect(g.closest('a, [role=gridcell]')).toBeNull();
   });
 
   it('opens a focused status cell’s popup on comma, and an empty cell’s too', async () => {
@@ -215,7 +195,9 @@ describe('settings gears', () => {
     renderSettingsBoard(demoDashboard, model);
     const link = firstCellLink();
     fireEvent.keyDown(link, { key: '.' });
-    fireEvent.keyDown(gear('Settings for cell api-core, Bali'), { key: ',' });
+    fireEvent.keyDown(cellGear('Settings for cell api-core, Bali'), {
+      key: ',',
+    });
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
   });
 

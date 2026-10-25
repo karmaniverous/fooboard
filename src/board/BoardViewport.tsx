@@ -16,6 +16,7 @@
  */
 import { useEffect, useMemo, useRef, useState } from 'react';
 
+import { useMediaQuery } from '@/components/useMediaQuery';
 import type { Dashboard } from '@/domain/config/dashboard';
 import type { BoardModel } from '@/engine';
 import { cn } from '@/lib/utils';
@@ -24,7 +25,10 @@ import { BoardGrid } from './BoardGrid';
 import { BoardToolbar } from './BoardToolbar';
 import { type LayoutInput } from './layout';
 import { boardContents } from './layoutContents';
-import { useSettingsPopup } from './settingsPopupContext';
+import {
+  SETTINGS_NARROW_QUERY,
+  useSettingsPopup,
+} from './settingsPopupContext';
 import type { CellFilter } from './summary';
 import { createTextMeasure } from './textMeasure';
 import { useAreaSize } from './useAreaSize';
@@ -63,6 +67,8 @@ export function BoardViewport({
   const scroller = useRef<HTMLDivElement>(null);
   const area = useAreaSize(scroller);
   const [measure] = useState(createTextMeasure);
+  // No header gears on a narrow screen (spec.md §3.11).
+  const headerGears = !useMediaQuery(SETTINGS_NARROW_QUERY);
 
   const lastActivity = useRef(0);
   const touch = () => {
@@ -93,11 +99,20 @@ export function BoardViewport({
         dashboard.rowGroups.filter((g) => g.label).length +
         (dashboard.columnGroups.some((g) => g.label) ? 1 : 0),
       rowNames: dashboard.rows.map((r) => r.displayName),
-      contents: boardContents(dashboard, sizingModel),
+      contents: boardContents(dashboard, sizingModel, headerGears),
       measure,
       density,
+      headerGears,
     }),
-    [area.width, area.height, dashboard, sizingModel, measure, density],
+    [
+      area.width,
+      area.height,
+      dashboard,
+      sizingModel,
+      measure,
+      density,
+      headerGears,
+    ],
   );
   const range = useMemo(() => zoomRange(input), [input]);
   const layout = useMemo(

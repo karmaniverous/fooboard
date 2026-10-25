@@ -10,6 +10,7 @@ import { fireEvent, screen, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
 import { branchRules } from '@/domain/config/placement';
+import { findCellGear } from '@/test/cellGear';
 import { choose } from '@/test/choose';
 import { renderDashboardPage } from '@/test/renderDashboardPage';
 
@@ -53,6 +54,12 @@ describe('DashboardPage settings popup', () => {
     ).toEqual({ github: expect.any(String) as unknown });
   });
 
+  /** A header's gear, or the cell gear brought to its cell. */
+  const findGear = (name: string) =>
+    name.startsWith('Settings for cell')
+      ? findCellGear(name)
+      : screen.findByRole('button', { name, hidden: true });
+
   it.each([
     ['Settings for row api', 'Rows', 'GitHub token for Row api'],
     ['Settings for stage Dev', 'Stages', 'GitHub token for Column Dev'],
@@ -61,9 +68,7 @@ describe('DashboardPage settings popup', () => {
     'opens the dashboard editor at the place from %s',
     async (gearName, tab, field) => {
       await renderDashboardPage(dashboard);
-      fireEvent.click(
-        await screen.findByRole('button', { name: gearName, hidden: true }),
-      );
+      fireEvent.click(await findGear(gearName));
       const dialog = await screen.findByRole('dialog');
       fireEvent.click(
         within(dialog).getByRole('button', {

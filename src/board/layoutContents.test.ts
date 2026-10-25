@@ -23,7 +23,7 @@ beforeAll(async () => {
 
 describe('boardContents', () => {
   it('includes headers and group labels, and grows with the rung', () => {
-    const contents = boardContents(demoDashboard, model);
+    const contents = boardContents(demoDashboard, model, true);
     const leads = contents(1).map((c) => c.lead);
     for (const stage of demoDashboard.stages)
       expect(leads).toContain(stage.name);
@@ -46,7 +46,7 @@ describe('boardContents', () => {
   });
 
   it('keeps room for the gear of every stage header and labelled group label, at every rung', () => {
-    const contents = boardContents(demoDashboard, model);
+    const contents = boardContents(demoDashboard, model, true);
     for (const rung of [0, 3] as const) {
       const all = contents(rung);
       // Cells keep none: their gear is laid over a corner.
@@ -63,5 +63,11 @@ describe('boardContents', () => {
         .filter((c) => c.trail)
         .map((c) => c.lead),
     ).toEqual(expect.arrayContaining(demoDashboard.stages.map((s) => s.name)));
+  });
+
+  it('keeps no room for header gears on a narrow screen, where there are none', () => {
+    const contents = boardContents(demoDashboard, model, false);
+    for (const rung of [0, 3] as const)
+      expect(contents(rung).filter((c) => c.trail)).toEqual([]);
   });
 });

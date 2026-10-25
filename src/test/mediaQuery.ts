@@ -47,6 +47,15 @@ export function fakeMediaQueries(
   };
 }
 
+/** A `matching` for `fakeMediaQueries`: a viewport this many px wide,
+ * as far as `(width < Npx)` queries go (others don't match). */
+export const viewportWidth =
+  (px: number) =>
+  (query: string): boolean => {
+    const below = /^\(width < (\d+)px\)$/.exec(query)?.[1];
+    return below !== undefined && px < Number(below);
+  };
+
 /** Run `fn` in a browser without `matchMedia`, then put it back. */
 export function withoutMatchMedia(fn: () => void): void {
   const original = Object.getOwnPropertyDescriptor(window, 'matchMedia');

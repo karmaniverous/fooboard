@@ -15,7 +15,11 @@ import type { BoardPlace } from './settingsGearWords';
 
 /** Under this viewport width the popup is a bottom sheet (the width under
  * which the board caps row names at 18%, C-13). */
-export const SETTINGS_POPUP_NARROW_PX = 640;
+const SETTINGS_POPUP_NARROW_PX = 640;
+
+/** The media query for a viewport under `SETTINGS_POPUP_NARROW_PX`: the
+ * popup is a bottom sheet and headers carry no gears (spec.md §3.11). */
+export const SETTINGS_NARROW_QUERY = `(width < ${String(SETTINGS_POPUP_NARROW_PX)}px)`;
 
 /** One opening of the popup. */
 export interface PopupRequest {

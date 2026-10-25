@@ -58,6 +58,7 @@ const input = (over: Partial<LayoutInput> = {}): LayoutInput => ({
   contents: (rung) => [cell(rung)],
   measure,
   density: 'default',
+  headerGears: true,
   ...over,
 });
 
@@ -184,11 +185,13 @@ describe('fitLayout', () => {
     expect(l.rowNameWidth).toBeCloseTo(0.3 * 800);
   });
 
-  it('keeps room in the row-name column for the header gear', () => {
+  it('keeps room in the row-name column for the header gear, and none without (a narrow screen)', () => {
     const l = fitLayout(input(), 13);
-    expect(l.rowNameWidth).toBeCloseTo(
-      measure('api-core', 13) + 2 * l.padX + HEADER_GEAR_EM * 13,
-    );
+    const narrow = fitLayout(input({ headerGears: false }), 13);
+    const name = measure('api-core', 13);
+    expect(l.rowNameWidth).toBeCloseTo(name + 2 * l.padX + HEADER_GEAR_EM * 13);
+    expect(narrow.rowNameWidth).toBeCloseTo(name + 2 * narrow.padX);
+    expect([l.headerGears, narrow.headerGears]).toEqual([true, false]);
   });
 
   it('keeps room after a header lead for its gear', () => {

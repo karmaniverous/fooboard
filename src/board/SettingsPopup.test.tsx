@@ -16,6 +16,7 @@ import { demoDashboard } from '@/demo/board';
 import type { Dashboard } from '@/domain/config/dashboard';
 import { type BoardModel } from '@/engine';
 import { fullModel } from '@/test/boardModel';
+import { cellGear } from '@/test/cellGear';
 import { choose } from '@/test/choose';
 import { focusElement } from '@/test/focus';
 import { fakeMediaQueries } from '@/test/mediaQuery';
@@ -84,7 +85,7 @@ describe('SettingsPopup', () => {
 
   it('edits a cell at that cell, showing its resolved values', async () => {
     const { onChange } = renderSettingsBoard(board, model);
-    fireEvent.click(gear('Settings for cell api-core, Bali'));
+    fireEvent.click(cellGear('Settings for cell api-core, Bali'));
     const dialog = await screen.findByRole('dialog');
     expect(dialog).toHaveAccessibleName('Cell settings: api-core × Bali');
     choose(

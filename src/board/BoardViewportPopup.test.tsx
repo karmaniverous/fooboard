@@ -1,12 +1,19 @@
 /**
  * Tests for the board's viewport with its settings popup (spec.md §3.11):
  * an open popup counts as interaction, so polled changes wait to reach
- * the layout while it is open; and keys pressed in the popup never reach
- * the board's zoom keys (the popup is rendered beside the viewport).
+ * the layout while it is open; keys pressed in the popup never reach
+ * the board's zoom keys (the popup is rendered beside the viewport); and
+ * on a narrow screen headers carry no gears and keep no room for them.
  *
  * @module
  */
-import { fireEvent, render, screen, within } from '@testing-library/react';
+import {
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  within,
+} from '@testing-library/react';
 import { beforeAll, describe, expect, it, vi } from 'vitest';
 
 import { demoDashboard } from '@/demo/board';
@@ -15,8 +22,11 @@ import { createAppStores } from '@/storage';
 import { memoryStorage } from '@/storage/keyValue';
 import { StoresContext } from '@/storage/storesContext';
 import { fullModel } from '@/test/boardModel';
+import { fakeMediaQueries, viewportWidth } from '@/test/mediaQuery';
 
 import { BoardViewport } from './BoardViewport';
+import { BASE_FONT_PX } from './layout';
+import { HEADER_GEAR_EM } from './settingsGearSize';
 import { SettingsPopupProvider } from './SettingsPopup';
 import { useBoardView } from './useBoardView';
 
@@ -120,8 +130,11 @@ describe('BoardViewport with the settings popup', () => {
 
   it('keeps keys pressed in the popup from zooming the board', async () => {
     setup();
-    const grid = screen.getByRole('grid');
-    const size = grid.style.fontSize;
+    // The text size is set around the grid (the cell gear shares it).
+    const textSize = () =>
+      screen.getByRole('grid', { hidden: true }).parentElement?.style.fontSize;
+    const size = textSize();
+    expect(size).toMatch(/px$/);
     fireEvent.click(
       screen.getByRole('button', { name: 'Settings for row api-core' }),
     );
@@ -130,8 +143,36 @@ describe('BoardViewport with the settings popup', () => {
       name: 'GitHub token for Row api-core',
     });
     for (const key of ['+', '-', '0', '=']) fireEvent.keyDown(field, { key });
-    expect(screen.getByRole('grid', { hidden: true }).style.fontSize).toBe(
-      size,
-    );
+    expect(textSize()).toBe(size);
+  });
+
+  it('has no header gears under 640 px, giving their room to row names', () => {
+    const rowNameColumn = () =>
+      parseFloat(screen.getByRole('grid').style.gridTemplateColumns);
+    let media = fakeMediaQueries(viewportWidth(640));
+    try {
+      setup();
+      const wide = rowNameColumn();
+      expect(
+        screen.getByRole('button', { name: 'Settings for row api-core' }),
+      ).toBeInTheDocument();
+      cleanup();
+      media.restore();
+      media = fakeMediaQueries(viewportWidth(639));
+      setup();
+      expect(
+        screen.queryAllByRole('button', { name: /^Settings for / }),
+      ).toEqual([]);
+      expect(wide - rowNameColumn()).toBeCloseTo(HEADER_GEAR_EM * BASE_FONT_PX);
+      // The cell gear still follows a mouse.
+      fireEvent.pointerOver(screen.getAllByRole('gridcell')[0]);
+      expect(
+        screen.getByRole('button', {
+          name: 'Settings for cell api-core, Bali',
+        }),
+      ).toBeInTheDocument();
+    } finally {
+      media.restore();
+    }
   });
 });

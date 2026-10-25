@@ -45,7 +45,7 @@ import { useValidatedChange } from '@/editors/useValidatedChange';
 import { popupTitle } from './settingsGearWords';
 import {
   type PopupRequest,
-  SETTINGS_POPUP_NARROW_PX,
+  SETTINGS_NARROW_QUERY,
   SettingsPopupContext,
 } from './settingsPopupContext';
 
@@ -58,8 +58,6 @@ export interface SettingsPopupActions {
   onOpenSettings?: (place: SettingsPlace) => void;
 }
 
-const NARROW_QUERY = `(width < ${String(SETTINGS_POPUP_NARROW_PX)}px)`;
-
 function SettingsPopup({
   dashboard,
   request,
@@ -71,7 +69,7 @@ function SettingsPopup({
   request: PopupRequest;
   onClose: () => void;
 }): React.JSX.Element {
-  const narrow = useMediaQuery(NARROW_QUERY);
+  const narrow = useMediaQuery(SETTINGS_NARROW_QUERY);
   const { update, error } = useValidatedChange(onChange);
   const titleId = useId();
   const body = useRef<HTMLDivElement>(null);

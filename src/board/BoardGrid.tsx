@@ -4,9 +4,11 @@
  * grid fills its container; every cell is the same size, so all cells show
  * the same detail level, chosen from the measured cell width (C-13). Hover
  * or focus shows a tooltip; a touch tap, or Space on a focused cell, opens
- * a detail sheet. Every row header, stage header, labelled group label and
- * cell has a settings gear (spec.md §3.11), sized from the named gear
- * constants in ems of the board's text, so gears scale with zoom.
+ * a detail sheet. Every row header, stage header and labelled group label
+ * has a settings gear (spec.md §3.11), except on a narrow screen
+ * (`Layout.headerGears`), and one gear follows the cell under the pointer
+ * or keyboard focus (`CellGearLayer`). Gears are sized from the named gear
+ * constants in ems of the board's text, so they scale with zoom.
  *
  * @module
  */
@@ -18,12 +20,14 @@ import { type BoardModel, cellKey } from '@/engine';
 import { cn } from '@/lib/utils';
 
 import { CellDetail, CellSheet, CellTooltip } from './CellDetail';
+import { CellGearLayer } from './CellGearLayer';
 import { cellNames, cellSettingsAt } from './cellNames';
 import { cellPlace } from './cellView';
 import { columnLines } from './columnFrame';
 import { ColumnGroupLabels } from './ColumnGroupLabels';
 import { GridCell } from './GridCell';
 import { BOUNDARY } from './gridStyles';
+import { HeaderGearsContext } from './headerGears';
 import { type Layout, LINE_HEIGHT } from './layout';
 import { useProblemMarks } from './problemMarksContext';
 import { RowGroupLabel, RowHeader } from './RowHeaders';
@@ -117,139 +121,150 @@ export function BoardGrid({
   const cellRow = { height: layout.rowHeight };
 
   return (
-    <>
-      <div
-        role="grid"
-        aria-label={dashboard.name}
-        data-rung={layout.rung}
-        data-format={layout.format}
-        aria-rowcount={rows.length + 1}
-        aria-colcount={stages.length + 1}
-        className="grid w-max"
+    <HeaderGearsContext value={layout.headerGears}>
+      <CellGearLayer
         style={
           {
-            gridTemplateColumns: columns,
-            gap: layout.gap,
             fontSize: `${String(layout.fontPx)}px`,
             lineHeight: LINE_HEIGHT,
-            '--cell-pad-x': `${String(layout.padX)}px`,
-            '--cell-pad-y': `${String(layout.padY)}px`,
             // The settings gears (spec.md §3.11), in ems of the text.
             '--gear-size': `${String(SETTINGS_GEAR_SIZE * layout.fontPx)}px`,
             '--gear-inset': `${String(SETTINGS_GEAR_INSET * layout.fontPx)}px`,
             '--gear-gap': `${String(HEADER_GEAR_GAP * layout.fontPx)}px`,
-            // The label strip and the gap below it (C-14b).
-            '--strip-h': colSegments.some((g) => g.group?.label)
-              ? `${String(layout.lineRowHeight + layout.gap)}px`
-              : '0px',
           } as React.CSSProperties
         }
       >
-        <ColumnGroupLabels
-          segments={colSegments}
-          rowHeight={layout.lineRowHeight}
-          gap={layout.gap}
-          pinLeft={pinLeft}
-          labelLeft={layout.rowNameWidth + layout.gap}
-        />
-        <StageHeaders
-          stages={stages}
-          lines={lines}
-          frameTop={frameTop}
-          pinTop={pinTop}
-          pinLeft={pinLeft}
-          style={lineRow}
-        />
-        {rowSegments.map((segment, si) => {
-          const label = segment.group?.label;
-          const segmentRows = rows.slice(
-            segment.start,
-            segment.start + segment.span,
-          );
-          // The boundary line sits on the label row when there is one,
-          // else on the segment's first row (C-14b).
-          const lineOnRow = si > 0 && !label;
-          const body = (
-            <>
-              {label && segment.group && (
-                <RowGroupLabel
-                  group={segment.group}
-                  label={label}
-                  columns={stages.length + 1}
-                  boundary={si > 0}
-                  style={lineRow}
-                />
-              )}
-              {segmentRows.map((row, ri) => {
-                const rowLine =
-                  lineOnRow && ri === 0 ? BOUNDARY.top : undefined;
-                return (
-                  <div key={row.id} role="row" className="contents">
-                    <RowHeader
-                      row={row}
-                      className={cn(pinLeft, rowLine)}
-                      style={cellRow}
-                    />
-                    {stages.map((stage) => {
-                      const key = cellKey(row.id, stage.id);
-                      return (
-                        <GridCell
-                          key={key}
-                          rowId={row.id}
-                          stageId={stage.id}
-                          className={cn(
-                            'transition-opacity',
-                            filter &&
-                              !matchesFilter(model.cells[key], filter) &&
-                              'opacity-25',
-                            rowLine,
-                            lines.bodyLeft.has(stage.id) && BOUNDARY.left,
-                            lines.bodyRight.has(stage.id) && BOUNDARY.right,
-                          )}
-                          style={cellRow}
-                          cell={model.cells[key]}
-                          rung={layout.rung}
-                          lineOf={layout.lineOf}
-                          now={now}
-                          onInspect={(el) => {
-                            setTip(
-                              el
-                                ? {
-                                    key,
-                                    rect: el.getBoundingClientRect(),
-                                    focused: el === document.activeElement,
-                                  }
-                                : null,
-                            );
-                          }}
-                          onOpenSheet={() => {
-                            setSheet({ key, rowId: row.id, stageId: stage.id });
-                          }}
-                        />
-                      );
-                    })}
-                  </div>
-                );
-              })}
-            </>
-          );
-          // A row group is a labelled rowgroup in the grid (C-14b).
-          return segment.group ? (
-            <div
-              key={segment.group.id}
-              role="rowgroup"
-              aria-label={label}
-              className="contents"
-            >
-              {body}
-            </div>
-          ) : (
-            <Fragment key={`ungrouped-${String(segment.start)}`}>
-              {body}
-            </Fragment>
-          );
-        })}
-      </div>
+        <div
+          role="grid"
+          aria-label={dashboard.name}
+          data-rung={layout.rung}
+          data-format={layout.format}
+          aria-rowcount={rows.length + 1}
+          aria-colcount={stages.length + 1}
+          className="grid w-max"
+          style={
+            {
+              gridTemplateColumns: columns,
+              gap: layout.gap,
+              '--cell-pad-x': `${String(layout.padX)}px`,
+              '--cell-pad-y': `${String(layout.padY)}px`,
+              // The label strip and the gap below it (C-14b).
+              '--strip-h': colSegments.some((g) => g.group?.label)
+                ? `${String(layout.lineRowHeight + layout.gap)}px`
+                : '0px',
+            } as React.CSSProperties
+          }
+        >
+          <ColumnGroupLabels
+            segments={colSegments}
+            rowHeight={layout.lineRowHeight}
+            gap={layout.gap}
+            pinLeft={pinLeft}
+            labelLeft={layout.rowNameWidth + layout.gap}
+          />
+          <StageHeaders
+            stages={stages}
+            lines={lines}
+            frameTop={frameTop}
+            pinTop={pinTop}
+            pinLeft={pinLeft}
+            style={lineRow}
+          />
+          {rowSegments.map((segment, si) => {
+            const label = segment.group?.label;
+            const segmentRows = rows.slice(
+              segment.start,
+              segment.start + segment.span,
+            );
+            // The boundary line sits on the label row when there is one,
+            // else on the segment's first row (C-14b).
+            const lineOnRow = si > 0 && !label;
+            const body = (
+              <>
+                {label && segment.group && (
+                  <RowGroupLabel
+                    group={segment.group}
+                    label={label}
+                    columns={stages.length + 1}
+                    boundary={si > 0}
+                    style={lineRow}
+                  />
+                )}
+                {segmentRows.map((row, ri) => {
+                  const rowLine =
+                    lineOnRow && ri === 0 ? BOUNDARY.top : undefined;
+                  return (
+                    <div key={row.id} role="row" className="contents">
+                      <RowHeader
+                        row={row}
+                        className={cn(pinLeft, rowLine)}
+                        style={cellRow}
+                      />
+                      {stages.map((stage) => {
+                        const key = cellKey(row.id, stage.id);
+                        return (
+                          <GridCell
+                            key={key}
+                            rowId={row.id}
+                            stageId={stage.id}
+                            className={cn(
+                              'transition-opacity',
+                              filter &&
+                                !matchesFilter(model.cells[key], filter) &&
+                                'opacity-25',
+                              rowLine,
+                              lines.bodyLeft.has(stage.id) && BOUNDARY.left,
+                              lines.bodyRight.has(stage.id) && BOUNDARY.right,
+                            )}
+                            style={cellRow}
+                            cell={model.cells[key]}
+                            rung={layout.rung}
+                            lineOf={layout.lineOf}
+                            now={now}
+                            onInspect={(el) => {
+                              setTip(
+                                el
+                                  ? {
+                                      key,
+                                      rect: el.getBoundingClientRect(),
+                                      focused: el === document.activeElement,
+                                    }
+                                  : null,
+                              );
+                            }}
+                            onOpenSheet={() => {
+                              setSheet({
+                                key,
+                                rowId: row.id,
+                                stageId: stage.id,
+                              });
+                            }}
+                          />
+                        );
+                      })}
+                    </div>
+                  );
+                })}
+              </>
+            );
+            // A row group is a labelled rowgroup in the grid (C-14b).
+            return segment.group ? (
+              <div
+                key={segment.group.id}
+                role="rowgroup"
+                aria-label={label}
+                className="contents"
+              >
+                {body}
+              </div>
+            ) : (
+              <Fragment key={`ungrouped-${String(segment.start)}`}>
+                {body}
+              </Fragment>
+            );
+          })}
+        </div>
+      </CellGearLayer>
 
       {tip && !sheet && (
         <CellTooltip
@@ -280,6 +295,6 @@ export function BoardGrid({
           )}
         </CellSheet>
       )}
-    </>
+    </HeaderGearsContext>
   );
 }

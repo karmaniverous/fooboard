@@ -25,9 +25,9 @@ import {
   firstLine,
   SHORT_SHA_LENGTH,
 } from './cellView';
+import { headerGearEm } from './headerGears';
 import { capText, type Rung, RUNG_SHOWS } from './layout';
 import { type Content, type Item } from './packing';
-import { HEADER_GEAR_EM } from './settingsGearSize';
 
 /** Longest forms of the fixed fields. */
 const LONGEST = { time: '59m', commit: '0'.repeat(SHORT_SHA_LENGTH) } as const;
@@ -50,7 +50,10 @@ const shortHeader = (name: string) =>
 export function boardContents(
   dashboard: Pick<Dashboard, 'stages' | 'columnGroups' | 'customStatusSets'>,
   model: Pick<BoardModel, 'cells'>,
+  /** Headers carry settings gears (spec.md §3.11): keep room for them. */
+  headerGears: boolean,
 ): (rung: Rung) => Content[] {
+  const trail = headerGearEm(headerGears);
   const status = longestStatus(dashboard.customStatusSets);
   const badges = Object.values(model.cells).flatMap((c) =>
     c?.badge ? [badgeText(c.badge)] : [],
@@ -68,13 +71,13 @@ export function boardContents(
   const headers = (rung: Rung): Content[] => [
     ...dashboard.stages.map((s) => ({
       lead: rung === 0 ? shortHeader(s.name) : capText(s.name),
-      trail: HEADER_GEAR_EM,
+      trail,
       items: [],
     })),
     ...groups.map((g) => ({
       span: g.span,
       lead: capText(g.label),
-      trail: HEADER_GEAR_EM,
+      trail,
       items: [],
     })),
   ];
