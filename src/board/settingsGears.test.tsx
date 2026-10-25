@@ -157,6 +157,20 @@ describe('settings gears', () => {
     expect(g.querySelector('svg')).not.toBeNull();
   });
 
+  it('keeps every gear in a row of the grid, a row group’s in its label’s header', () => {
+    renderSettingsBoard(demoDashboard, model);
+    for (const g of screen.getAllByRole('button', { name: /^Settings for / }))
+      expect(g.closest('[role=row]')).not.toBeNull();
+    const header = gear('Settings for row group Backend').closest(
+      '[role=rowheader]',
+    );
+    expect(header).toHaveAccessibleName(/^Backend/);
+    expect(header).toHaveAttribute(
+      'aria-colspan',
+      String(demoDashboard.stages.length + 1),
+    );
+  });
+
   it('lays the cell gear beside the cell link, never inside it', () => {
     renderSettingsBoard(demoDashboard, model);
     const link = firstCellLink();

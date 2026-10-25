@@ -17,38 +17,46 @@ import { useProblemMarks } from './problemMarksContext';
 import { rowLabel } from './rowLabel';
 import { SettingsGear } from './SettingsGear';
 
-/** A labelled row group's label, across the grid above its rows. */
+/** A labelled row group's label, across the grid above its rows: a row
+ * of its own whose one header spans every column, so the label and its
+ * gear sit in the grid's rows like everything else in it. */
 export function RowGroupLabel({
   group,
   label,
+  columns,
   boundary,
   style,
 }: {
   group: RowGroup;
   label: string;
+  /** The grid's columns (the row names' and the stages'), all spanned. */
+  columns: number;
   /** Draw the boundary line above it (not the first segment). */
   boundary: boolean;
   style: React.CSSProperties;
 }): React.JSX.Element {
   return (
-    <div
-      className={cn(
-        'col-span-full flex items-end',
-        GROUP_LABEL,
-        boundary && BOUNDARY.top,
-      )}
-      style={style}
-      role="presentation"
-    >
-      {/* The label, not the full-width row, is pinned, so it stays on
-          screen when the board scrolls right (C-13). */}
-      <span className="sticky left-0 flex items-center px-[var(--cell-pad-x)]">
-        {label}
-        <SettingsGear
-          place={{ level: 'rowGroup', groupId: group.id }}
-          spot="header"
-        />
-      </span>
+    <div role="row" className="contents">
+      <div
+        role="rowheader"
+        aria-colspan={columns}
+        className={cn(
+          'col-span-full flex items-end',
+          GROUP_LABEL,
+          boundary && BOUNDARY.top,
+        )}
+        style={style}
+      >
+        {/* The label, not the full-width row, is pinned, so it stays on
+            screen when the board scrolls right (C-13). */}
+        <span className="sticky left-0 flex items-center px-[var(--cell-pad-x)]">
+          {label}
+          <SettingsGear
+            place={{ level: 'rowGroup', groupId: group.id }}
+            spot="header"
+          />
+        </span>
+      </div>
     </div>
   );
 }

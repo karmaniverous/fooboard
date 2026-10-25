@@ -175,6 +175,7 @@ export function BoardGrid({
                 <RowGroupLabel
                   group={segment.group}
                   label={label}
+                  columns={stages.length + 1}
                   boundary={si > 0}
                   style={lineRow}
                 />
