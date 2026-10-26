@@ -114,7 +114,7 @@ describe('summarise', () => {
     ]);
   });
 
-  it('meets the demo full-board target at the simulated demo\'s measured 10.3 s', () => {
+  it("meets the demo full-board target at the simulated demo's measured 10.3 s", () => {
     // Decision 61: 11 s on the measurement scenario, where N3b measured
     // about 10.3 s (the interim 8 s of Decision 45 no longer applies).
     const summary = summarise({
