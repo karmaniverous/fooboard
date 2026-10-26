@@ -5,8 +5,10 @@
  * the layout's phone width) none is smaller than the board's readable
  * size at 100% (`BASE_FONT_PX`, 13 px), so their ems never drop below
  * that floor there (spec.md row N5a, Decision 63). The layout measures
- * what is drawn from the same constants, so a larger badge or label
- * never overflows its room. Pure.
+ * badges and group labels as drawn, from the same constants, so a larger
+ * badge or label never overflows its room; empty cells and SHAs it
+ * measures at the board's size, never smaller than they are drawn (their
+ * ems never exceed 1). Pure.
  *
  * @module
  */

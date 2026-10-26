@@ -28,7 +28,7 @@ import {
   BASE_FONT_PX,
   TEXT_EM,
 } from './boardText';
-import { EMPTY_SYMBOL } from './cellView';
+import { badgeText, EMPTY_SYMBOL } from './cellView';
 import { fitLayout, type LayoutInput } from './layout';
 
 const labels = [...acmeBoard.rowGroups, ...acmeBoard.columnGroups].flatMap(
@@ -41,6 +41,9 @@ const symbols: string[] = Object.values(EMPTY_SYMBOL);
  * picked out, so a test never passes on a board without them. */
 function boardText(model: BoardModel, area: LayoutInput) {
   const layout = fitLayout(area, BASE_FONT_PX);
+  const badges = Object.values(model.cells).flatMap((c) =>
+    c?.badge ? [badgeText(c.badge)] : [],
+  );
   renderSettingsBoard(acmeBoard, model, { layout });
   const all = textSizes(screen.getByRole('grid'));
   const sizes = (pick: (t: (typeof all)[number]) => boolean) =>
@@ -48,7 +51,7 @@ function boardText(model: BoardModel, area: LayoutInput) {
   return {
     rung: layout.rung,
     all,
-    badge: sizes((t) => t.el.tagName === 'A'),
+    badge: sizes((t) => badges.includes(t.text)),
     label: sizes((t) => labels.includes(t.text)),
     empty: sizes((t) => symbols.includes(t.text)),
   };

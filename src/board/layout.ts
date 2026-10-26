@@ -123,7 +123,9 @@ export interface Layout {
   /** Headers carry settings gears (`LayoutInput.headerGears`). */
   headerGears: boolean;
   /** The smaller texts' sizes, in ems of `fontPx` (`boardText`): never
-   * under 13 px at 100% on a phone. */
+   * under 13 px at 100% on a phone. The phone is the grid area's width,
+   * as for the row-name cap, not the viewport the header gears follow:
+   * the floor only makes text larger, with room kept for it. */
   textEm: TextEms;
 }
 
