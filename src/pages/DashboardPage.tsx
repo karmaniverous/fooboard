@@ -46,7 +46,6 @@ export function DashboardPage(): React.JSX.Element {
         key={dashboard.id}
         initial={dashboard}
         others={dashboards.filter((d) => d.id !== dashboard.id)}
-        env={env}
         onSave={(next) => {
           stores.config.saveDashboard(next);
         }}

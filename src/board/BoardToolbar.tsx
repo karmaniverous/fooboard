@@ -109,12 +109,17 @@ export function BoardToolbar({
   return (
     <div ref={toolbar} className={cn('relative text-xs', PINNED_X)}>
       {lead && (
+        // The measuring copy is clipped: its natural width must never
+        // widen the page (C-13: no horizontal scroll on a phone).
         <div
           aria-hidden
           inert
-          className="invisible absolute left-0 top-0 w-max"
+          data-testid="toolbar-measure"
+          className="invisible absolute inset-0 overflow-hidden"
         >
-          <div data-measure="lead">{lead({ words: true })}</div>
+          <div data-measure="lead" className="w-max">
+            {lead({ words: true })}
+          </div>
         </div>
       )}
       <div

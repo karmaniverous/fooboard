@@ -2,8 +2,7 @@
  * Tests for the credentials panel: adding a token keeps the secret in the
  * store (tab-only unless remembered) and only its id and label in the
  * dashboard; forgetting asks for the secret again; removal is confirmed;
- * copying from another dashboard makes an independent credential; and an
- * approaching expiry is flagged.
+ * and copying from another dashboard makes an independent credential.
  *
  * @module
  */
@@ -74,12 +73,6 @@ describe('CredentialsPanel', () => {
       kind: 'github',
       token: 't',
     });
-  });
-
-  it('flags a token close to expiry', () => {
-    setup({ expiry: new Date(Date.now() + 3 * 864e5).toISOString() });
-    addToken('acme', 'github_pat_1');
-    expect(screen.getByText(/Expires in 3 days/)).toBeInTheDocument();
   });
 });
 

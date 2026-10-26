@@ -93,8 +93,6 @@ export interface GitHubApi {
     etag?: string | null,
   ): Promise<Conditional<Branch[]>>;
   reposPage(page: number, etag?: string | null): Promise<Conditional<Repo[]>>;
-  /** The token's expiry, if GitHub reports it (spec.md C-5). */
-  getTokenExpiration(): string | undefined;
 }
 
 /** Credentials and options for a `GitHubApi`. */
@@ -208,6 +206,5 @@ export function createGitHubApi({
         asIs<Repo[]>,
         linkNext,
       ),
-    getTokenExpiration: () => http.getTokenExpiration(),
   };
 }
