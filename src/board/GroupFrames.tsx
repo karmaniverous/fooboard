@@ -13,7 +13,10 @@
  *
  * Both are decoration: hidden from assistive technology (spec.md §3.10)
  * and from the pointer, in the theme's frame colour (`--frame`, at least
- * 3:1 on the background in light and dark). Where a row line crosses the
+ * 3:1 on the background in light and dark), and drawn as borders on solid
+ * backgrounds, which Windows high-contrast mode (forced colours) keeps:
+ * it drops background images and shadows and paints background colours
+ * as its canvas. Where a row line crosses the
  * pinned row-name column, a cover pinned with it (`PinnedCover`) hides
  * the frames passing under the column when the board scrolls right, and
  * carries its own piece of the line, so the line stays whole.
@@ -63,7 +66,7 @@ export function ColumnFrames({
 }
 
 /** A row boundary's line across what holds it (which is positioned),
- * `top` px from its top. */
+ * `top` px from its top: a top border, so forced colours keep it. */
 export function RowLine({
   top,
   className,
@@ -77,20 +80,24 @@ export function RowLine({
   return (
     <div
       aria-hidden
-      className={cn('pointer-events-none absolute bg-frame', className)}
-      style={{ height: FRAME_LINE_PX, top }}
+      className={cn(
+        'pointer-events-none absolute border-solid border-frame',
+        className,
+      )}
+      style={{ top, borderTopWidth: FRAME_LINE_PX }}
       {...rest}
     />
   );
 }
 
 /** Pinned with the row-name column, over the frames (spec.md §3.7), on a
- * row with no row header: the row-name column's width of background,
- * down through the gap below as the row headers' is (`PIN_LEFT`), so a
- * frame never shows through the pinned column; a longer label overflows
- * it without hiding the frames beside the column. Where a row line
- * crosses, it carries its own piece of the line, so the line stays whole.
- * A flex item (`self-start`), so it is as tall as its row plus the gap. */
+ * row with no row header: exactly the row-name column wide, a solid
+ * background down through the gap below as the row headers' is
+ * (`PIN_LEFT`), so a frame never shows through the pinned column; a
+ * longer label overflows it without hiding the frames beside the column.
+ * Where a row line crosses, it carries its own piece of the line, so the
+ * line stays whole. A flex item (`self-start`), so it is as tall as its
+ * row plus the gap. */
 export function PinnedCover({
   lineTop,
   className,
@@ -104,20 +111,16 @@ export function PinnedCover({
   return (
     <span
       className={cn(
-        'sticky left-0 flex min-w-[var(--row-name-w)] items-end self-start',
+        'sticky left-0 flex w-[var(--row-name-w)] shrink-0 items-end self-start bg-background',
         PIN_ABOVE_FRAMES,
         className,
       )}
       style={{
         height: 'calc(100% + var(--grid-gap))',
         paddingBottom: 'var(--grid-gap)',
-        background:
-          'linear-gradient(var(--background), var(--background)) left / var(--row-name-w) 100% no-repeat',
       }}
     >
-      {lineTop !== undefined && (
-        <RowLine top={lineTop} className="left-0 w-[var(--row-name-w)]" />
-      )}
+      {lineTop !== undefined && <RowLine top={lineTop} className="inset-x-0" />}
       {children}
     </span>
   );

@@ -129,7 +129,7 @@ describe('row group boundaries', () => {
     const lines = rowLines(grid);
     expect(lines).toHaveLength(2);
     for (const l of lines)
-      expect(l).toHaveClass('absolute', 'inset-x-0', 'bg-frame');
+      expect(l).toHaveClass('absolute', 'inset-x-0', 'border-frame');
     // In the gutter row, which spans every column, centred.
     const gutterRow = lines[0].parentElement;
     expect(gutterRow?.style.gridColumn).toBe('1 / -1');
@@ -157,9 +157,11 @@ describe('row group boundaries', () => {
         c.classList.contains('sticky'),
       );
       if (!(cover instanceof HTMLElement)) throw new Error('no cover');
-      const piece = cover.querySelector<HTMLElement>('.bg-frame');
+      const piece = cover.querySelector<HTMLElement>('.border-frame');
       expect(piece?.style.top).toBe(l.style.top);
-      expect(piece).toHaveClass('w-[var(--row-name-w)]');
+      // Across the cover, which is exactly the row-name column wide.
+      expect(piece).toHaveClass('inset-x-0');
+      expect(cover).toHaveClass('w-[var(--row-name-w)]');
     }
   });
 

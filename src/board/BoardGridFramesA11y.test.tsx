@@ -11,6 +11,7 @@
 import { cleanup, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
+import { FRAME_LINE_PX } from '@/board/groupGutters';
 import {
   board,
   frames,
@@ -87,7 +88,7 @@ describe('accessibility and stacking', () => {
     );
     expect(inLabel).toHaveLength(1);
     const header = inLabel[0].closest('[role=rowheader]');
-    for (const l of header?.querySelectorAll('.bg-frame') ?? [])
+    for (const l of header?.querySelectorAll('.border-frame') ?? [])
       expect(l).toHaveAttribute('aria-hidden', 'true');
     // Nothing decorative is announced as a row or cell.
     expect(
@@ -116,10 +117,44 @@ describe('accessibility and stacking', () => {
       if (!cover) throw new Error('no cover');
       expect(Number(z(cover))).toBeGreaterThan(frame);
     }
-    expect(row.className).toContain(
-      'shadow-[0_var(--grid-gap)_0_var(--background)]',
+    expect(row).toHaveClass(
+      'after:top-full',
+      'after:h-[var(--grid-gap)]',
+      'after:bg-background',
     );
     expect(grid.style.getPropertyValue('--grid-gap')).toBe('3px');
     expect(grid.style.getPropertyValue('--row-name-w')).toBe('120px');
+  });
+
+  it('draws in what forced colours keep: lines as borders, covers on solid backgrounds', () => {
+    // Windows high-contrast mode paints background colours as its canvas
+    // and drops background images and shadows; borders take its text colour.
+    const grid = render(labelledBoard);
+    const decor = [
+      ...grid.querySelectorAll<HTMLElement>('[data-frame], .border-frame'),
+    ];
+    expect(decor.length).toBeGreaterThan(4);
+    for (const d of decor) {
+      expect(d.className).not.toMatch(/\bbg-|shadow/);
+      expect(d.style.background + d.style.backgroundImage).toBe('');
+    }
+    for (const l of rowLines(grid))
+      expect(l.style.borderTopWidth).toBe(`${String(FRAME_LINE_PX)}px`);
+    // The covers on the label rows and the gutter rows.
+    const covers = [
+      ...grid.querySelectorAll<HTMLElement>(
+        '[role=rowheader] > span.sticky, [aria-hidden=true] > span.sticky',
+      ),
+    ];
+    expect(covers.length).toBeGreaterThanOrEqual(3);
+    for (const c of covers) {
+      expect(c).toHaveClass('bg-background', 'w-[var(--row-name-w)]');
+      expect(c.style.background + c.style.backgroundImage).toBe('');
+    }
+    const rowNames = within(grid)
+      .getAllByRole('rowheader')
+      .filter((r) => r.tabIndex === 0);
+    expect(rowNames.length).toBeGreaterThan(0);
+    for (const r of rowNames) expect(r.className).not.toMatch(/shadow/);
   });
 });
