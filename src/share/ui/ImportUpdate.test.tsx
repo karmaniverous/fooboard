@@ -24,7 +24,7 @@ import { payloadOf, renderImport, where } from '@/test/renderImport';
 import { shareBoard } from '@/test/shareBoard';
 
 import { makeShare } from '../exportShare';
-import { REPLACE_MINE_NOTE } from './shareWords';
+import { REPLACE_MINE_NOTE, TAB_ONLY_NOTE } from './shareWords';
 
 const gh = { kind: 'github', token: 'ghp_sender' } as const;
 const dialog = () => screen.getByRole('dialog', { name: 'Import dashboards' });
@@ -94,6 +94,14 @@ describe('updating a board by importing it again', () => {
         }),
       ).toHaveTextContent('Replace mine');
       expect(within(dialog()).getByText(REPLACE_MINE_NOTE)).toBeVisible();
+      expect(
+        within(dialog()).getByRole('combobox', {
+          name: 'Northwind v2: already here',
+        }),
+      ).toHaveAccessibleDescription(REPLACE_MINE_NOTE);
+      expect(within(dialog()).queryByText(TAB_ONLY_NOTE) !== null).toBe(
+        withCredentials,
+      );
       await importNow();
       expect(where()).toBe(`/d/${first.id}`);
 
@@ -120,13 +128,14 @@ describe('updating a board by importing it again', () => {
     const here = createAppStores(memoryStorage());
     here.config.saveDashboard(board);
     renderImport(await shareFrom(sender(board), false), here);
-    expect(within(dialog()).getByText(REPLACE_MINE_NOTE)).toBeVisible();
-    choose(
+    const already = () =>
       within(dialog()).getByRole('combobox', {
         name: `${board.name}: already here`,
-      }),
-      'Keep as a copy',
-    );
+      });
+    expect(within(dialog()).getByText(REPLACE_MINE_NOTE)).toBeVisible();
+    expect(already()).toHaveAccessibleDescription(REPLACE_MINE_NOTE);
+    choose(already(), 'Keep as a copy');
     expect(within(dialog()).queryByText(REPLACE_MINE_NOTE)).toBeNull();
+    expect(already()).not.toHaveAttribute('aria-describedby');
   });
 });

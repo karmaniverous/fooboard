@@ -9,6 +9,8 @@
  *
  * @module
  */
+import { useId } from 'react';
+
 import { CheckField } from '@/components/CheckField';
 import { Choice } from '@/components/Choice';
 import { SecretInput } from '@/components/SecretInput';
@@ -16,7 +18,7 @@ import type { Dashboard } from '@/domain/config/dashboard';
 
 import type { ImportMode, SameIdChoice } from '../importPlan';
 import { DashboardChecklist } from './DashboardChecklist';
-import { REPLACE_MINE_NOTE } from './shareWords';
+import { REPLACE_MINE_NOTE, TAB_ONLY_NOTE } from './shareWords';
 import type { ImportForm as Form } from './useImportForm';
 
 const MODES = [
@@ -36,6 +38,7 @@ export function ImportForm({
   form: Form;
   dashboards: readonly Dashboard[];
 }): React.JSX.Element {
+  const replaceHint = useId();
   const replacing = dashboards.some(
     (d) =>
       form.selected.has(d.id) &&
@@ -60,6 +63,7 @@ export function ImportForm({
                 onValueChange={(choice) => {
                   form.setSameId(d.id, choice);
                 }}
+                describedBy={replacing ? replaceHint : undefined}
                 className="h-8 text-xs"
               />
             </span>
@@ -67,7 +71,9 @@ export function ImportForm({
         }
       />
       {replacing && (
-        <p className="text-xs text-muted-foreground">{REPLACE_MINE_NOTE}</p>
+        <p id={replaceHint} className="text-xs text-muted-foreground">
+          {REPLACE_MINE_NOTE}
+        </p>
       )}
       <Choice
         label="How to import"
@@ -111,7 +117,7 @@ export function ImportForm({
             {form.withCredentials
               ? form.remember
                 ? 'The credentials are kept in this browser until you forget them.'
-                : 'The credentials are kept for this tab only, until it closes.'
+                : TAB_ONLY_NOTE
               : 'Without credentials, rows show Needs credential until you add them.'}
           </p>
         </div>

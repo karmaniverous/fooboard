@@ -43,6 +43,10 @@ export const refusalHint = (origin: ShareOrigin): string =>
 export const REPLACE_MINE_NOTE =
   'Replace mine updates the dashboard already here to this version, overwriting any changes you made to it on this device. Its credentials stay. Keep as a copy leaves yours as it is.';
 
+/** Under the credentials when *Remember on this device* is unticked. */
+export const TAB_ONLY_NOTE =
+  'The credentials are kept for this tab only, until it closes. Any this browser already remembers, unchanged, stay remembered.';
+
 /** What a share holds, above the import dialog's choices. */
 export function shareSummary(share: Share, origin: ShareOrigin): string {
   const n = share.dashboards.length;
