@@ -4,13 +4,17 @@
  *
  * @module
  */
+import { textEms } from '@/board/boardText';
 import type { Layout } from '@/board/layout';
+
+/** The test layout's text size, at 100%. */
+const FONT_PX = 13;
 
 export const TEST_LAYOUT: Layout = {
   rung: 1,
   format: 'line',
   lineOf: {},
-  fontPx: 13,
+  fontPx: FONT_PX,
   rowNameWidth: 120,
   colWidth: 100,
   rowHeight: 26,
@@ -24,4 +28,6 @@ export const TEST_LAYOUT: Layout = {
   boardWidth: 800,
   gutter: 9,
   headerGears: true,
+  phone: false,
+  textEm: textEms(FONT_PX),
 };

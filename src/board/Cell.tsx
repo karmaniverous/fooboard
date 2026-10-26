@@ -34,6 +34,7 @@ import {
   STATUS_GLYPH,
   statusLook,
 } from './cellView';
+import { BADGE_STYLE, textSize } from './gridStyles';
 import { type Rung, RUNG_SHOWS } from './layout';
 import { type LineMap } from './packing';
 import { RefreshingDot } from './RefreshingDot';
@@ -100,10 +101,11 @@ export function Cell({
         aria-label={extra ? `${label}: ${extra}` : label}
         aria-keyshortcuts={settingsKey ? cellKeyshortcuts(true) : undefined}
         className={cn(
-          'flex h-full w-full items-center overflow-hidden rounded-md border text-left text-[0.9em] italic text-muted-foreground focus-visible:outline-2 focus-visible:outline-ring',
+          'flex h-full w-full items-center overflow-hidden rounded-md border text-left italic text-muted-foreground focus-visible:outline-2 focus-visible:outline-ring',
           pad,
           EMPTY_CLASS[derivation.state],
         )}
+        style={textSize('empty')}
         onClick={onOpenSheet}
         {...inspect}
       >
@@ -135,12 +137,14 @@ export function Cell({
       aria-label={badgeDescription(badge)}
       className={cn(
         // Coloured fill and solid border in the badge colour; nothing drawn
-        // outside the border (C-13).
-        'pointer-events-auto flex-none rounded-full border-[1.5px] px-[0.45em] text-[0.8em] font-bold leading-[1.45] no-underline',
+        // outside the border (C-13). Semibold, the weight the layout
+        // measures; size, padding and border from `BADGE_STYLE`.
+        'pointer-events-auto flex-none rounded-full font-semibold leading-[1.45] no-underline',
         badge.kind === 'behind'
           ? 'border-badge-behind bg-badge-behind text-badge-behind-text'
           : 'border-badge-diverged bg-badge-diverged text-badge-diverged-text',
       )}
+      style={BADGE_STYLE}
     >
       {badgeText(badge)}
     </ExternalLink>
@@ -167,7 +171,11 @@ export function Cell({
         key: 'commit',
         node: (
           <span className="flex items-center" style={gapStyle}>
-            <span aria-hidden className="font-mono text-[0.95em] opacity-90">
+            <span
+              aria-hidden
+              className="font-mono opacity-90"
+              style={textSize('sha')}
+            >
               {shortSha(commit)}
             </span>
             {badgeLink}

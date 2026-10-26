@@ -151,3 +151,21 @@ export function boardGroups(dashboard: {
  * the label's text, which sits at the bottom of the row (spec.md §3.7). */
 export const rowLineInLabel = (padY: number, gap: number): number =>
   (2 * padY - gap - FRAME_LINE_PX) / 2;
+
+/** The widest a row-group label may run on a phone, in px from where its
+ * text starts (past the row-name column's padding): up to the gutter
+ * after the row-name column, a line's width short of a frame's line
+ * centred in it, so a label cut there ends before that line and before
+ * every frame further right (Decision 65). A label that fits stays
+ * whole. */
+export const rowGroupLabelRoom = (l: {
+  rowNameWidth: number;
+  padX: number;
+  gap: number;
+  gutter: number;
+}): number =>
+  l.rowNameWidth -
+  l.padX +
+  l.gap +
+  (l.gutter - FRAME_LINE_PX) / 2 -
+  FRAME_LINE_PX;

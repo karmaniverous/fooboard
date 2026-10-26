@@ -11,7 +11,7 @@ import type { RowGroup } from '@/domain/config/groups';
 import type { Row } from '@/domain/config/row';
 import { cn } from '@/lib/utils';
 
-import { GROUP_LABEL, PIN_LEFT } from './gridStyles';
+import { GROUP_LABEL, GROUP_LABEL_STYLE, PIN_LEFT } from './gridStyles';
 import { PinnedCover, RowLine } from './GroupFrames';
 import { ProblemMark } from './ProblemMark';
 import { useProblemMarks } from './problemMarksContext';
@@ -23,12 +23,17 @@ import { SettingsGear } from './SettingsGear';
  * gear sit in the grid's rows like everything else in it. Below another
  * segment, the row is the boundary's gutter, and the boundary's line runs
  * across it above the label, so the label and its gear sit inside the
- * group (spec.md §3.7). */
+ * group (spec.md §3.7). On a phone a label that would run past the
+ * first column frame's line is cut with "…" before it
+ * (`rowGroupLabelRoom`), keeping its full name in its title and the row
+ * header's accessible name (Decision 65); elsewhere a long label
+ * overflows the row-name column (§3.7). */
 export function RowGroupLabel({
   group,
   label,
   columns,
   lineTop,
+  cutAt,
   style,
 }: {
   group: RowGroup;
@@ -38,15 +43,19 @@ export function RowGroupLabel({
   /** Where the boundary line runs, from the row's top (px): none for the
    * board's first segment. */
   lineTop?: number;
+  /** On a phone, the widest the label may run, in px
+   * (`rowGroupLabelRoom`): past it, it is cut with "…". */
+  cutAt?: number;
   style: React.CSSProperties;
 }): React.JSX.Element {
+  const cut = cutAt !== undefined;
   return (
     <div role="row" className="contents">
       <div
         role="rowheader"
         aria-colspan={columns}
         className={cn('relative col-span-full flex items-end', GROUP_LABEL)}
-        style={style}
+        style={{ ...GROUP_LABEL_STYLE, ...style }}
       >
         {lineTop !== undefined && (
           <RowLine top={lineTop} data-boundary="row" className="inset-x-0" />
@@ -56,8 +65,18 @@ export function RowGroupLabel({
             cover that hides the column frames passing under the row
             names; the label sits at the bottom, below the line. */}
         <PinnedCover lineTop={lineTop} className="px-[var(--cell-pad-x)]">
-          <span className="flex items-center">
-            {label}
+          {/* Cut, it may run out of the cover up to `cutAt`, so it
+              shrinks only past that. */}
+          <span
+            className={cn('flex items-center', cut && 'shrink-0')}
+            style={cut ? { maxWidth: cutAt } : undefined}
+          >
+            <span
+              className={cn(cut && 'truncate')}
+              title={cut ? label : undefined}
+            >
+              {label}
+            </span>
             <SettingsGear
               place={{ level: 'rowGroup', groupId: group.id }}
               spot="header"

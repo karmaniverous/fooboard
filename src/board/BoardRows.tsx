@@ -17,7 +17,7 @@ import { type BoardModel, cellKey } from '@/engine';
 
 import { GridCell } from './GridCell';
 import { RowGutter } from './GroupFrames';
-import { rowLineInLabel } from './groupGutters';
+import { rowGroupLabelRoom, rowLineInLabel } from './groupGutters';
 import type { Layout } from './layout';
 import { RowGroupLabel, RowHeader } from './RowHeaders';
 import { type CellFilter, matchesFilter } from './summary';
@@ -61,6 +61,7 @@ export function BoardRows({
                 label={label}
                 columns={stages.length + 1}
                 lineTop={si > 0 ? lineTop : undefined}
+                cutAt={layout.phone ? rowGroupLabelRoom(layout) : undefined}
                 style={lineRow}
               />
             )}

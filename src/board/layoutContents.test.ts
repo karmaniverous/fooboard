@@ -65,6 +65,11 @@ describe('boardContents', () => {
     ).toEqual(expect.arrayContaining(measureBoard.stages.map((s) => s.name)));
   });
 
+  it('marks labelled group labels, and nothing else, to be measured as labels', () => {
+    const all = boardContents(measureBoard, model, true)(0);
+    expect(all.filter((c) => c.label).map((c) => c.lead)).toEqual(['Preview']);
+  });
+
   it('keeps no room for header gears on a narrow screen, where there are none', () => {
     const contents = boardContents(measureBoard, model, false);
     for (const rung of [0, 3] as const)

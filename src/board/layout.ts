@@ -20,6 +20,7 @@
  */
 import type { Density } from '@/domain/config/devicePreferences';
 
+import { type TextEms, textEms } from './boardText';
 import { gutterPx } from './groupGutters';
 import { headerGearEm } from './headerGears';
 import {
@@ -51,8 +52,6 @@ const RUNGS_DOWN: readonly Rung[] = [5, 4, 3, 2, 1, 0];
  * a fit. */
 const PX_SLACK = 0.5;
 
-/** Readable text at 100% zoom (C-13). */
-export const BASE_FONT_PX = 13;
 /** Line height, in ems. */
 export const LINE_HEIGHT = 1.35;
 /** Free text (names, branches, messages) is cut off at this length. */
@@ -60,7 +59,8 @@ const FREE_TEXT_CAP = 40;
 /** The row-name column takes at most this share of the grid area. */
 const ROW_NAME_SHARE = 0.3;
 /** On phones (grid area narrower than this) the row-name column takes at
- * most a smaller share; names are cut off, full name in the title. */
+ * most a smaller share; names are cut off, full name in the title; and a
+ * row-group label is cut before the first frame line (Decision 65). */
 const PHONE_WIDTH = 640;
 const PHONE_ROW_NAME_SHARE = 0.18;
 
@@ -122,6 +122,15 @@ export interface Layout {
   gutter: number;
   /** Headers carry settings gears (`LayoutInput.headerGears`). */
   headerGears: boolean;
+  /** The grid area is a phone's (under `PHONE_WIDTH`): row names take
+   * a smaller share, and a row-group label that would run past the first
+   * frame line is cut before it (Decision 65). The grid area's width, not
+   * the viewport the header gears follow (Decision 60): the cut only
+   * keeps a label clear of the frames. */
+  phone: boolean;
+  /** The smaller texts' sizes, in ems of `fontPx` (`boardText`): never
+   * under 13 px at 100% (Decision 66). */
+  textEm: TextEms;
 }
 
 /** Geometry shared by every layout at one text size. */
@@ -133,9 +142,9 @@ function frame(input: LayoutInput, fontPx: number) {
     0,
     ...input.rowNames.map((n) => input.measure(capText(n), fontPx)),
   );
+  const phone = input.width < PHONE_WIDTH;
   const rowNameWidth = Math.min(
-    (input.width < PHONE_WIDTH ? PHONE_ROW_NAME_SHARE : ROW_NAME_SHARE) *
-      input.width,
+    (phone ? PHONE_ROW_NAME_SHARE : ROW_NAME_SHARE) * input.width,
     // A row header keeps room for its settings gear (spec.md §3.11).
     longestName + 2 * padX + headerGearEm(input.headerGears) * fontPx,
   );
@@ -154,6 +163,8 @@ function frame(input: LayoutInput, fontPx: number) {
   );
   const lineRowHeight = LINE_HEIGHT * fontPx + 2 * padY;
   return {
+    phone,
+    textEm: textEms(fontPx),
     gap: d.gap,
     padX,
     padY,
@@ -175,15 +186,18 @@ export function layoutAtRung(
   const f = frame(input, fontPx);
   const contents = input.contents(rung);
   const inner = f.colWidth - 2 * f.padX;
-  let packed = packBoard(contents, inner, fontPx, input.measure);
+  let packed = packBoard(contents, inner, fontPx, input.measure, f.textEm);
   const overflowX = packed === null;
   let colWidth = f.colWidth;
   if (!packed) {
     const need = Math.ceil(
-      Math.max(0, ...contents.map((c) => minWidth(c, fontPx, input.measure))),
+      Math.max(
+        0,
+        ...contents.map((c) => minWidth(c, fontPx, input.measure, f.textEm)),
+      ),
     );
     colWidth = need + Math.ceil(2 * f.padX);
-    packed = packBoard(contents, need, fontPx, input.measure) ?? {
+    packed = packBoard(contents, need, fontPx, input.measure, f.textEm) ?? {
       format: 'packed',
       lines: 1,
       lineOf: {},
@@ -216,6 +230,8 @@ export function layoutAtRung(
     boardWidth,
     gutter: f.gutter,
     headerGears: input.headerGears,
+    phone: f.phone,
+    textEm: f.textEm,
   };
 }
 

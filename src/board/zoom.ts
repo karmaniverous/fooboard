@@ -8,8 +8,8 @@
  * @module
  */
 
+import { BASE_FONT_PX } from './boardText';
 import {
-  BASE_FONT_PX,
   fitLayout,
   type Layout,
   layoutAtRung,

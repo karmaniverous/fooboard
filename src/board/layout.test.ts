@@ -11,7 +11,8 @@ import { describe, expect, it } from 'vitest';
 
 import { cell, input, measure } from '@/test/layoutInput';
 
-import { BASE_FONT_PX, capText, fitLayout, type Rung } from './layout';
+import { BASE_FONT_PX, TEXT_EM } from './boardText';
+import { capText, fitLayout, type Rung } from './layout';
 import { type Content, minWidth, packContent } from './packing';
 import { HEADER_GEAR_EM } from './settingsGearSize';
 import { layoutAtZoom, snapZoom, stepZoom, zoomLabel, zoomRange } from './zoom';
@@ -19,17 +20,17 @@ import { layoutAtZoom, snapZoom, stepZoom, zoomLabel, zoomRange } from './zoom';
 describe('packContent', () => {
   it('puts everything on one line when it fits, else packs lines after the lead', () => {
     const c = cell(3); // lead 66, items 18 + 42 + 36 at 10 px, gaps 4.5
-    const one = packContent(c, 500, 10, measure);
+    const one = packContent(c, 500, 10, measure, TEXT_EM);
     expect(one).toMatchObject({ oneLine: true, lines: 1 });
-    const two = packContent(c, 110, 10, measure);
+    const two = packContent(c, 110, 10, measure, TEXT_EM);
     expect(two).toMatchObject({
       oneLine: false,
       lines: 2,
       lineOf: { time: 1, commit: 1, extra: 1 },
     });
-    const three = packContent(c, 70, 10, measure);
+    const three = packContent(c, 70, 10, measure, TEXT_EM);
     expect(three?.lineOf).toEqual({ time: 1, commit: 1, extra: 2 });
-    expect(packContent(c, 40, 10, measure)).toBeNull();
+    expect(packContent(c, 40, 10, measure, TEXT_EM)).toBeNull();
   });
 
   it('cuts free text off rather than wrapping or widening for it', () => {
@@ -40,13 +41,13 @@ describe('packContent', () => {
       ],
     };
     // 8 characters at 6 px each
-    expect(minWidth(long, 10, measure)).toBe(Math.max(66, 48));
-    expect(packContent(long, 66, 10, measure)?.lines).toBe(2);
+    expect(minWidth(long, 10, measure, TEXT_EM)).toBe(Math.max(66, 48));
+    expect(packContent(long, 66, 10, measure, TEXT_EM)?.lines).toBe(2);
   });
 
   it('shares a spanning label across its columns', () => {
     const label: Content = { lead: 'x'.repeat(20), items: [], span: 3 };
-    expect(minWidth(label, 10, measure)).toBe(40);
+    expect(minWidth(label, 10, measure, TEXT_EM)).toBe(40);
   });
 });
 
@@ -151,9 +152,9 @@ describe('fitLayout', () => {
   it('keeps room after a header lead for its gear', () => {
     const header: Content = { lead: 'Release', items: [], trail: 1 };
     // 7 characters at 6 px, and 1 em of 10 px.
-    expect(minWidth(header, 10, measure)).toBe(42 + 10);
-    expect(packContent(header, 51, 10, measure)).toBeNull();
-    expect(packContent(header, 52, 10, measure)?.lines).toBe(1);
+    expect(minWidth(header, 10, measure, TEXT_EM)).toBe(42 + 10);
+    expect(packContent(header, 51, 10, measure, TEXT_EM)).toBeNull();
+    expect(packContent(header, 52, 10, measure, TEXT_EM)?.lines).toBe(1);
   });
 });
 
@@ -214,6 +215,16 @@ describe('zoom', () => {
     const names = ['a-very-long-repository-name'];
     const phone = fitLayout(input({ width: 390, rowNames: names }), 13);
     expect(phone.rowNameWidth).toBeLessThanOrEqual(0.18 * 390);
+  });
+
+  it('calls a grid area under 640 px a phone (Decision 65)', () => {
+    const at = (width: number) => fitLayout(input({ width }), 13).phone;
+    expect([at(390), at(639), at(640), at(1888)]).toEqual([
+      true,
+      true,
+      false,
+      false,
+    ]);
   });
 
   it('magnifies past the top rung, up to 300% text', () => {
