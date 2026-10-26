@@ -2,19 +2,17 @@
  * Tests for the dashboard editor: renaming, adding a row from the repo
  * picker (display name without the owner), keyboard reordering, confirmed
  * removal, adding a stage from discovered branches with a match preview,
- * source choices that exclude cycles, and creating a dashboard from home.
+ * source choices that exclude cycles, and a field saved on changing tab.
  *
  * @module
  */
 import { fireEvent, screen, within } from '@testing-library/react';
 import { useState } from 'react';
-import { MemoryRouter, Route, Routes } from 'react-router-dom';
+import { MemoryRouter } from 'react-router-dom';
 import { describe, expect, it } from 'vitest';
 
-import { AppNavProvider } from '@/components/AppNavProvider';
 import { type Dashboard, DashboardSchema } from '@/domain/config/dashboard';
 import { branchRules } from '@/domain/config/placement';
-import { Home } from '@/pages/Home';
 import { createAppStores } from '@/storage';
 import { memoryStorage } from '@/storage/keyValue';
 import { StoresContext } from '@/storage/storesContext';
@@ -172,33 +170,7 @@ describe('DashboardEditor', () => {
   });
 });
 
-describe('Create a dashboard', () => {
-  it('saves a dashboard from a preset and opens it', () => {
-    const stores = createAppStores(memoryStorage());
-    render(
-      <StoresContext value={stores}>
-        <MemoryRouter>
-          <AppNavProvider>
-            <Routes>
-              <Route path="/" element={<Home />} />
-              <Route path="/d/:id" element={<p>opened</p>} />
-            </Routes>
-          </AppNavProvider>
-        </MemoryRouter>
-      </StoresContext>,
-    );
-    fireEvent.change(screen.getByLabelText('Dashboard name'), {
-      target: { value: 'Acme' },
-    });
-    fireEvent.click(screen.getByRole('button', { name: 'Create a dashboard' }));
-    expect(screen.getByText('opened')).toBeInTheDocument();
-    const loaded = stores.config.load();
-    expect(
-      loaded.kind === 'ok' &&
-        loaded.root.dashboards[0]?.stages.map((s) => s.name),
-    ).toEqual(['dev', 'staging', 'prod']);
-  });
-
+describe('DashboardEditor tabs', () => {
   it('saves a field being edited when another tab is chosen', () => {
     const latest = setup();
     const input = screen.getByLabelText('Dashboard name');

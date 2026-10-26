@@ -11,7 +11,7 @@
  */
 import { useState } from 'react';
 
-import { BoardScreen } from '@/board/BoardScreen';
+import { BOARD_TITLE_ID, BoardScreen } from '@/board/BoardScreen';
 import { ProblemsPanel } from '@/board/ProblemsPanel';
 import { UnmappedPanel } from '@/board/UnmappedPanel';
 import { SidePanel } from '@/components/SidePanel';
@@ -31,10 +31,15 @@ import {
 } from '@/editors/draft';
 import { ruleSamples } from '@/editors/rules/samples';
 import { unknownCells } from '@/editors/statuses/unknownRuns';
+import { FirstRunNote } from '@/firstRun/FirstRunNote';
+
+/** How many of `shown` are problems rather than notes. */
+const problemCount = (shown: readonly Problem[]): number =>
+  shown.filter((p) => p.severity === 'problem').length;
 
 /** The Problems button: problems counted, or the notes when only notes. */
 function problemsLabel(shown: readonly Problem[]): string {
-  const problems = shown.filter((p) => p.severity === 'problem').length;
+  const problems = problemCount(shown);
   return problems > 0 || shown.length === 0
     ? `Problems (${String(problems)})`
     : `Notes (${String(shown.length)})`;
@@ -43,15 +48,27 @@ function problemsLabel(shown: readonly Problem[]): string {
 export function DashboardView({
   initial,
   others,
+  firstRun = false,
+  onFirstRunDone,
   onSave,
 }: {
   initial: Dashboard;
   /** The browser's other dashboards (the credentials panel copies). */
   others: readonly Dashboard[];
+  /** Opened at the end of the first run: the board is its last step. */
+  firstRun?: boolean;
+  /** The first run's note closed (the page forgets it was opened so). */
+  onFirstRunDone?: () => void;
   /** Keep an edited dashboard (saved, or in memory for the demo). */
   onSave: (dashboard: Dashboard) => void;
 }): React.JSX.Element {
   const [dashboard, setDashboard] = useState(initial);
+  const [intro, setIntro] = useState(firstRun);
+  const closeIntro = () => {
+    setIntro(false);
+    onFirstRunDone?.();
+    document.getElementById(BOARD_TITLE_ID)?.focus();
+  };
   // A changed secret (new `version`) has dropped what the old one read;
   // the board re-derives (`refreshKey`).
   const version = useCredentialVersion();
@@ -86,6 +103,17 @@ export function DashboardView({
       onOpenSettings={(place) => {
         openEditor(placeDraft(place));
       }}
+      intro={
+        intro
+          ? (model, problems) => (
+              <FirstRunNote
+                unmapped={model.unmapped.length}
+                problems={problemCount(problems.shown)}
+                onDone={closeIntro}
+              />
+            )
+          : undefined
+      }
       actions={(model, problems) => (
         <>
           {problems.shown.length > 0 && (

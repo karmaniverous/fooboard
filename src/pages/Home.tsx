@@ -1,8 +1,10 @@
 /**
  * Home page: the saved dashboards (or a note that they can't be read,
- * with *Reset* to start again, spec.md §3.9), creating or importing a
- * dashboard (spec.md §3.8), and the demo. The first-run flow (N7) comes
- * later. A share link's import dialog opens over this page.
+ * with *Reset* to start again, spec.md §3.9), and the three ways in
+ * (§3.9 *First run*): *Create a dashboard* (the guided steps,
+ * `FirstRunPage`), *Import from link or file* (the import dialog, §3.8)
+ * and *Try the demo* (§3.14). A share link's import dialog opens over this
+ * page.
  *
  * @module
  */
@@ -11,7 +13,7 @@ import { Link } from 'react-router-dom';
 import { useNavDialogs } from '@/components/navItems';
 import { Button } from '@/components/ui/button';
 import { buttonVariants } from '@/components/ui/buttonVariants';
-import { CreateDashboard } from '@/editors/CreateDashboard';
+import { FIRST_RUN_PATH } from '@/firstRun/paths';
 import { site } from '@/lib/site';
 import { dashboardsOf } from '@/storage/configStore';
 import { useStores } from '@/storage/storesContext';
@@ -65,20 +67,24 @@ export function Home(): React.JSX.Element {
       <p className="text-sm text-muted-foreground">
         fooboard shows the deployment state of every repo &times; stage at a
         glance, filled in from GitHub Actions runs and Amplify jobs &mdash; no
-        workflow changes required. Create a dashboard or import one to get
-        started.
+        workflow changes required. Create a dashboard, import one from a link or
+        file, or try the demo to get started.
       </p>
-      {loaded.kind === 'ok' && (
-        <>
-          <CreateDashboard />
-          <Button variant="outline" onClick={openImport}>
-            Import from a file…
-          </Button>
-        </>
-      )}
-      <Link to="/demo" className={buttonVariants({ variant: 'outline' })}>
-        Try the demo
-      </Link>
+      <div className="flex flex-wrap justify-center gap-2">
+        {loaded.kind === 'ok' && (
+          <>
+            <Link to={FIRST_RUN_PATH} className={buttonVariants()}>
+              Create a dashboard
+            </Link>
+            <Button variant="outline" onClick={openImport}>
+              Import from link or file…
+            </Button>
+          </>
+        )}
+        <Link to="/demo" className={buttonVariants({ variant: 'outline' })}>
+          Try the demo
+        </Link>
+      </div>
     </div>
   );
 }
