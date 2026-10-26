@@ -92,7 +92,7 @@ describe('summarise', () => {
       demoLatencyMs: DEMO_TARGET_LATENCY_MS,
       pageLoad: 'navigate',
       firstCell: { sinceOpen: 1_200, sinceLoad: 1_900 },
-      fullBoard: { sinceOpen: 9_000, sinceLoad: 9_700 },
+      fullBoard: { sinceOpen: 12_000, sinceLoad: 12_700 },
     });
     // Every target is listed, judged or not (here the reload and real
     // board ones aren't).
@@ -108,10 +108,31 @@ describe('summarise', () => {
       }),
       expect.objectContaining({
         maxMs: DEMO_FULL_BOARD_MAX_MS,
-        actualMs: 9_000,
+        actualMs: 12_000,
         met: false,
       }),
     ]);
+  });
+
+  it('meets the demo full-board target at the simulated demo\'s measured 10.3 s', () => {
+    // Decision 61: 11 s on the measurement scenario, where N3b measured
+    // about 10.3 s (the interim 8 s of Decision 45 no longer applies).
+    const summary = summarise({
+      ...base,
+      kind: 'demo',
+      demoLatencyMs: DEMO_TARGET_LATENCY_MS,
+      pageLoad: 'navigate',
+      firstCell: { sinceOpen: 780 },
+      fullBoard: { sinceOpen: 10_300 },
+    });
+    expect(DEMO_FULL_BOARD_MAX_MS).toBe(11_000);
+    expect(measured(summary)).toContainEqual(
+      expect.objectContaining({
+        maxMs: DEMO_FULL_BOARD_MAX_MS,
+        actualMs: 10_300,
+        met: true,
+      }),
+    );
   });
 
   it('judges no demo target at another latency, and says why', () => {

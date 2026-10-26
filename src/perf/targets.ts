@@ -30,10 +30,10 @@ export const DEMO_TARGET_LATENCY_MS = 300;
 const DEMO_TARGET_IN_FLIGHT = 10;
 /** Demo: the first cell within this long of opening (ms). */
 export const DEMO_FIRST_CELL_MAX_MS = 1_500;
-/** Demo: the full board within this long of opening (ms). Interim
- * (Decision 45 item 1, replacing Decision 30's 5 s): revisited in N8,
- * after N3's persisted cache. */
-export const DEMO_FULL_BOARD_MAX_MS = 8_000;
+/** Demo: the full board within this long of opening (ms), on the
+ * development-only measurement scenario (Decision 61, replacing Decision
+ * 45's interim 8 s: the simulator charges its latency per HTTP request). */
+export const DEMO_FULL_BOARD_MAX_MS = 11_000;
 /** Reload: the cached board within this long of the page loading (ms). */
 export const RELOAD_FULL_BOARD_MAX_MS = 500;
 /** The 16-repo validation board on a cold cache: full board (ms).
