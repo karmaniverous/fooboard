@@ -19,18 +19,13 @@ import type {
   CredentialSecret,
   CredentialStore,
 } from '@/storage/credentialStore';
+import { LEFTOVER_SECRETS_HINT } from '@/storage/leftoverSecrets';
 
 import {
   addCredential,
   newCredentialId,
   removeCredential,
 } from './dashboardCredentials';
-
-/** How to remove secrets a failed cleanup left in this browser: *Reset*
- * (spec.md §3.9), which clears them from storage and from every open
- * tab's memory. Ends every cleanup-failure message. */
-const LEFTOVER_SECRETS_HINT =
-  "Use Reset, in the menu, to clear them; it removes all of fooboard's data from this browser, dashboards included.";
 
 /** Forget `ids`, collecting (not throwing) failures. */
 function forgetAll(store: CredentialStore, ids: readonly string[]): unknown[] {

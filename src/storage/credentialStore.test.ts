@@ -3,10 +3,15 @@
  * §3.1, §3.4, Decision 27): a replaced secret, *Forget* and unticking
  * *Remember* say the credential's data must go; a first secret, the same
  * secret again and ticking *Remember* say it may stay.
+ * A secret a tab keeps for itself is that tab's, whatever the device
+ * holds; and a device that refuses to remove a secret leaves subscribers
+ * told and the error saying how to clear it (fooboard#21).
  *
  * @module
  */
 import { describe, expect, it, vi } from 'vitest';
+
+import { CLEAR_EVERYTHING_STEPS, refusingDevice } from '@/test/refusingDevice';
 
 import { createCredentialStore } from './credentialStore';
 import { memoryStorage } from './keyValue';
@@ -34,5 +39,53 @@ describe('credential changes', () => {
       ['gh', true],
       ['gh', true],
     ]);
+  });
+});
+
+describe('a secret this tab keeps for itself', () => {
+  it('is not remembered here while another tab remembers one, and unticking Remember here drops that one', () => {
+    const device = memoryStorage();
+    const here = createCredentialStore(device);
+    const there = createCredentialStore(device);
+    here.set('gh', github('mine'), false);
+    there.set('gh', github('mine'), true);
+    expect(here.isRemembered('gh')).toBe(false);
+    expect(here.rememberedFingerprint('gh')).toBeUndefined();
+    expect(there.rememberedFingerprint('gh')).toBe(here.fingerprint('gh'));
+    const heard = vi.fn();
+    here.subscribe(heard);
+    here.set('gh', github('mine'), false);
+    expect(heard.mock.calls).toEqual([['gh', true]]);
+    expect(there.get('gh')).toBeUndefined();
+  });
+
+  it('is copied for this tab only', () => {
+    const device = memoryStorage();
+    const here = createCredentialStore(device);
+    here.set('gh', github('mine'), false);
+    createCredentialStore(device).set('gh', github('mine'), true);
+    here.copy('gh', 'copy');
+    expect(here.isRemembered('copy')).toBe(false);
+    expect(device.getItem('fooboard:credential:copy')).toBeNull();
+  });
+});
+
+describe('a device that refuses to remove a secret (fooboard#21)', () => {
+  it('keeps a secret for this tab only all the same: told, not remembered, never kept at rest, and how to clear what was left', () => {
+    const { device, refuse } = refusingDevice();
+    const store = createCredentialStore(device);
+    store.set('gh', github('a'), true);
+    const heard = vi.fn();
+    store.subscribe(heard);
+    refuse();
+    expect(() => {
+      store.set('gh', github('a'), false);
+    }).toThrow(CLEAR_EVERYTHING_STEPS);
+    expect(heard.mock.calls).toEqual([['gh', true]]);
+    expect(store.get('gh')).toEqual(github('a'));
+    expect(store.isRemembered('gh')).toBe(false);
+    expect(store.rememberedFingerprint('gh')).toBeUndefined();
+    // The leftover is still there: the error is what tells the user.
+    expect(device.getItem('fooboard:credential:gh')).not.toBeNull();
   });
 });
