@@ -1,7 +1,7 @@
 /**
  * Tests for `GitHubHttpClient`: a conditional GET with the caller's ETag
  * (a 304 reports not-modified; the caller keeps the data), the budget
- * reported from every response's headers, token expiry, redirects, and
+ * reported from every response's headers, redirects, and
  * the typed errors (401, 403, rate limits, 404, 5xx, network, bad JSON).
  * Uses an injected fake `fetch`; no real network.
  *
@@ -85,24 +85,6 @@ describe('GitHubHttpClient', () => {
     });
     await client.get(URL);
     expect(onBudget).not.toHaveBeenCalled();
-  });
-
-  it('tracks the token expiry header', async () => {
-    const client = new GitHubHttpClient({
-      token: 't',
-      fetchImpl: once(
-        response(
-          200,
-          {},
-          {
-            'github-authentication-token-expiration': '2026-12-01 00:00:00 UTC',
-          },
-        ),
-      ),
-    });
-    expect(client.getTokenExpiration()).toBeUndefined();
-    await client.get(URL);
-    expect(client.getTokenExpiration()).toBe('2026-12-01 00:00:00 UTC');
   });
 
   it('returns the Link header and whether fetch followed a redirect', async () => {

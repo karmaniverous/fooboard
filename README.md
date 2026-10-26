@@ -180,7 +180,7 @@ fooboard reads GitHub and AWS with credentials **you** create, kept only in this
 
 > 📷 _Screenshot to come: the Credentials panel._
 
-**The Credentials panel** (_Credentials_ on a dashboard) lists the dashboard's credentials by name. Each shows as a header with its kind, whether its secret is _remembered_ on this device, kept for _this tab only_ or _not entered_, whether it is the dashboard's _default_, and a token's expiry warning. A click on the header (or Enter or Space) opens it; one is open at a time, all start closed, and one you add opens, scrolls into view and takes the focus. An open credential lets you enter its secret, tick or untick _Remember on this device_, _Forget_ it, _Make dashboard default_, _Remove_ it and, for an AWS key, _Copy AWS policy_. Unticking _Remember_ keeps the secret for this tab only: its stored copy is removed from this browser, and what was read with it is dropped from memory and the [kept answers](#your-data) in every open fooboard tab. If the browser won't let fooboard remove a stored copy, the panel says so, shows the secret as kept for this tab only, and tells you to use **Reset** to clear what was left. Below the list, _Add a credential_ adds a GitHub token or AWS key, and _Copy from another dashboard_ makes an independent copy of one of yours.
+**The Credentials panel** (_Credentials_ on a dashboard) lists the dashboard's credentials by name. Each shows as a header with its kind, whether its secret is _remembered_ on this device, kept for _this tab only_ or _not entered_, and whether it is the dashboard's _default_. A click on the header (or Enter or Space) opens it; one is open at a time, all start closed, and one you add opens, scrolls into view and takes the focus. An open credential lets you enter its secret, tick or untick _Remember on this device_, _Forget_ it, _Make dashboard default_, _Remove_ it and, for an AWS key, _Copy AWS policy_. Unticking _Remember_ keeps the secret for this tab only: its stored copy is removed from this browser, and what was read with it is dropped from memory and the [kept answers](#your-data) in every open fooboard tab. If the browser won't let fooboard remove a stored copy, the panel says so, shows the secret as kept for this tab only, and tells you to use **Reset** to clear what was left. Below the list, _Add a credential_ adds a GitHub token or AWS key, and _Copy from another dashboard_ makes an independent copy of one of yours.
 
 ### GitHub token
 
@@ -198,7 +198,7 @@ Use a **fine-grained personal access token**:
    | Contents   | Read-only |
    | Actions    | Read-only |
 
-5. Set a short **expiration** (30 to 90 days). fooboard warns as it approaches.
+5. Set a short **expiration** (30 to 90 days).
 6. Generate the token and paste it into _Credentials_ → _Add a credential_. Tick _Remember on this device_ to keep it after the browser closes.
 
 ### Classic tokens

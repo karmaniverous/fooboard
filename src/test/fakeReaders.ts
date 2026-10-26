@@ -31,7 +31,6 @@ export const fakeGitHubApi = (methods: Partial<GitHubApi> = {}): GitHubApi => ({
   compare: notFaked('compare'),
   branchesPage: notFaked('branchesPage'),
   reposPage: notFaked('reposPage'),
-  getTokenExpiration: () => undefined,
   ...methods,
 });
 

@@ -20,14 +20,12 @@ const blank = DashboardSchema.parse({ id: 'd', name: 'D' });
 export function setupPanel({
   initial = blank,
   others = [],
-  expiry,
   seed,
   keyApps,
   device = memoryStorage(),
 }: {
   initial?: Dashboard;
   others?: Dashboard[];
-  expiry?: string;
   seed?: (stores: AppStores) => void;
   keyApps?: Record<string, { region: string; appId: string }[]>;
   /** The device store, e.g. one that refuses removals. */
@@ -42,7 +40,6 @@ export function setupPanel({
       <CredentialsPanel
         dashboard={dashboard}
         otherDashboards={others}
-        tokenExpiry={() => expiry}
         keyApps={(id) => keyApps?.[id]}
         onChange={(next) => {
           latest.current = DashboardSchema.parse(next);

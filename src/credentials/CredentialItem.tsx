@@ -2,7 +2,7 @@
  * One of a dashboard's credentials in the panel (spec.md §2.3, Decision
  * 32): a collapsing item (`CollapsibleItem`) whose header shows its name,
  * kind, whether its secret is remembered, kept for this tab only or not
- * entered, whether it is the dashboard's default, and its expiry warning;
+ * entered, and whether it is the dashboard's default;
  * and whose body holds its secret (entering it, *Remember on this device*,
  * *Forget*), *Make dashboard default*, *Remove* and, for an AWS key, its
  * own *Copy AWS policy* (§3.12). Which item is open is the panel's.
@@ -13,7 +13,7 @@
  *
  * @module
  */
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef } from 'react';
 
 import {
   CollapsibleItem,
@@ -29,7 +29,6 @@ import { useStores } from '@/storage/storesContext';
 import { CopyAwsPolicy } from './CopyAwsPolicy';
 import { removeWithSecret } from './credentialOps';
 import { FIELD_OF, setDefaultCredential } from './dashboardCredentials';
-import { expiryWarning } from './expiry';
 import { KIND_LABEL } from './kindLabel';
 import { RememberCheckbox } from './RememberCheckbox';
 import { SecretFields } from './SecretFields';
@@ -38,7 +37,6 @@ export function CredentialItem({
   dashboard,
   credential,
   onChange,
-  tokenExpiry,
   keyApps,
   run,
   focus = false,
@@ -47,7 +45,6 @@ export function CredentialItem({
   dashboard: Dashboard;
   credential: CredentialRef;
   onChange: (dashboard: Dashboard) => void;
-  tokenExpiry?: (id: string) => string | undefined;
   /** The apps the board reads with this AWS key, once searched. */
   keyApps?: readonly { region: string; appId: string }[];
   run: (action: () => void) => boolean;
@@ -55,8 +52,6 @@ export function CredentialItem({
   focus?: boolean;
 }): React.JSX.Element {
   const { credentials } = useStores();
-  // Expiry is counted in days; the time the panel opened is precise enough.
-  const [openedAt] = useState(() => Date.now());
   const trigger = useRef<HTMLButtonElement>(null);
   useEffect(() => {
     if (focus) trigger.current?.focus();
@@ -66,8 +61,6 @@ export function CredentialItem({
   const entered = secret !== undefined;
   const remembered = entered && credentials.isRemembered(id);
   const isDefault = dashboard.settings[FIELD_OF[kind]] === id;
-  const warning =
-    kind === 'github' ? expiryWarning(tokenExpiry?.(id), openedAt) : undefined;
   /** Run a change to the secret; if it entered or removed the secret,
    * the control used is gone, so focus moves to the header. */
   const runOnSecret = (action: () => void): boolean => {
@@ -88,21 +81,11 @@ export function CredentialItem({
       triggerRef={trigger}
       name={label}
       label={`${label}, ${KIND_LABEL[kind]}`}
-      summary={
-        <>
-          {[KIND_LABEL[kind], state, ...(isDefault ? ['default'] : [])].join(
-            ' · ',
-          )}
-          {warning && (
-            <>
-              {' '}
-              <span className="rounded bg-badge-behind px-1.5 text-badge-behind-text">
-                {warning}
-              </span>
-            </>
-          )}
-        </>
-      }
+      summary={[
+        KIND_LABEL[kind],
+        state,
+        ...(isDefault ? ['default'] : []),
+      ].join(' · ')}
     >
       <div className="flex flex-col gap-2 pl-5">
         {entered ? (

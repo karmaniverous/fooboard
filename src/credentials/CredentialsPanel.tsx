@@ -38,14 +38,11 @@ export function CredentialsPanel({
   dashboard,
   otherDashboards,
   onChange,
-  tokenExpiry,
   keyApps,
 }: {
   dashboard: Dashboard;
   otherDashboards: readonly Dashboard[];
   onChange: (dashboard: Dashboard) => void;
-  /** A GitHub token's reported expiry, once the board has used it. */
-  tokenExpiry?: (id: string) => string | undefined;
   /** The Amplify apps the board reads with an AWS key, once its app
    * search has finished (*Copy AWS policy*). */
   keyApps?: (
@@ -93,7 +90,6 @@ export function CredentialsPanel({
                 dashboard={dashboard}
                 credential={c}
                 onChange={onChange}
-                tokenExpiry={tokenExpiry}
                 keyApps={keyApps?.(c.id)}
                 run={run}
               />

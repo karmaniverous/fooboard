@@ -2,8 +2,8 @@
  * The GitHub HTTP core (spec.md §3.1, Decision 5): one conditional GET
  * that sends `If-None-Match` with the ETag the caller kept (the query
  * layer stores it with the cached data), reports the token's budget from
- * every response's rate-limit headers, tracks the token's expiry and maps
- * failures to typed errors. It holds no queue and no cache: requests in
+ * every response's rate-limit headers and maps failures to typed
+ * errors. It holds no queue and no cache: requests in
  * flight are the query layer's limiter's business (§3.2).
  *
  * @module
@@ -35,8 +35,6 @@ export type FetchLike = (
 
 /** GitHub's message for a secondary rate limit. */
 const SECONDARY_LIMIT = /secondary rate limit/i;
-
-const TOKEN_EXPIRATION_HEADER = 'github-authentication-token-expiration';
 
 /** A response with a body: the parsed JSON, its ETag and `Link` header,
  * and whether `fetch` followed a redirect to reach it (a renamed repo,
@@ -70,17 +68,11 @@ export class GitHubHttpClient {
   private readonly token: string;
   private readonly fetchImpl: FetchLike;
   private readonly onBudget: (budget: RateLimitBudget) => void;
-  private tokenExpiration: string | undefined;
 
   constructor({ token, fetchImpl, onBudget }: GitHubHttpClientConfig) {
     this.token = token;
     this.fetchImpl = fetchImpl ?? ((url, init) => fetch(url, init));
     this.onBudget = onBudget ?? (() => undefined);
-  }
-
-  /** The token's expiry (`github-authentication-token-expiration`), if sent. */
-  getTokenExpiration(): string | undefined {
-    return this.tokenExpiration;
   }
 
   /** GET `path`, conditional on `etag` when given. */
@@ -104,8 +96,6 @@ export class GitHubHttpClient {
 
     const budget = parseRateLimitHeaders(res.headers);
     if (budget) this.onBudget(budget);
-    const expiration = res.headers.get(TOKEN_EXPIRATION_HEADER);
-    if (expiration) this.tokenExpiration = expiration;
 
     if (res.status === HTTP_STATUS.notModified && etag)
       return { notModified: true };

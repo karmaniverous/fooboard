@@ -59,7 +59,6 @@ function DemoVisit({
           <DashboardView
             initial={scenario.dashboard}
             others={[]}
-            env={visit.env}
             onSave={keepInMemory}
           />
         </QueryProvider>

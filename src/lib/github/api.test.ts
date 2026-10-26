@@ -174,15 +174,4 @@ describe('createGitHubApi', () => {
       'https://sim.test/api/repos/acme/api-core/branches?per_page=100&page=1',
     ]);
   });
-
-  it('reports the token expiry once a response carried it', async () => {
-    const { api } = apiAnswering(() =>
-      response(200, [repo], {
-        'github-authentication-token-expiration': '2027-01-01',
-      }),
-    );
-    expect(api.getTokenExpiration()).toBeUndefined();
-    await api.reposPage(1);
-    expect(api.getTokenExpiration()).toBe('2027-01-01');
-  });
 });

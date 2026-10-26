@@ -1,7 +1,8 @@
 /**
  * A dashboard's board with its panels (spec.md §2.4): the live board read
- * through `env`, its Problems and Unmapped panels, the dashboard editor
- * and the credentials panel, every edit handed to `onSave`. A saved
+ * through the query env its page provides, its Problems and Unmapped
+ * panels, the dashboard editor and the credentials panel, every edit
+ * handed to `onSave`. A saved
  * dashboard saves it to this browser; the demo keeps it in memory for the
  * tab (§3.14). A changed secret removes what was read with the old one
  * and re-derives the board, so entering a token fills it at once.
@@ -30,7 +31,6 @@ import {
 } from '@/editors/draft';
 import { ruleSamples } from '@/editors/rules/samples';
 import { unknownCells } from '@/editors/statuses/unknownRuns';
-import type { QueryEnv } from '@/query/client';
 
 /** The Problems button: problems counted, or the notes when only notes. */
 function problemsLabel(shown: readonly Problem[]): string {
@@ -43,13 +43,11 @@ function problemsLabel(shown: readonly Problem[]): string {
 export function DashboardView({
   initial,
   others,
-  env,
   onSave,
 }: {
   initial: Dashboard;
   /** The browser's other dashboards (the credentials panel copies). */
   others: readonly Dashboard[];
-  env: QueryEnv;
   /** Keep an edited dashboard (saved, or in memory for the demo). */
   onSave: (dashboard: Dashboard) => void;
 }): React.JSX.Element {
@@ -174,9 +172,6 @@ export function DashboardView({
               dashboard={dashboard}
               otherDashboards={others}
               onChange={save}
-              tokenExpiry={(id) =>
-                env.providers.github(id)?.getTokenExpiration()
-              }
               keyApps={(id) => model.amplifyKeyApps[id]}
             />
           </SidePanel>
