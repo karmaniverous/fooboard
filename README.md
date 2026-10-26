@@ -23,7 +23,7 @@ fooboard shows the deployment state of every repo × stage at a glance. Paste a 
 
 - [Try the demo](#try-the-demo)
   - [Demo account](#demo-account)
-- [Your own dashboard](#your-own-dashboard)
+- [Getting started](#getting-started)
 - [Reading the board](#reading-the-board)
 - [Editing a dashboard](#editing-a-dashboard)
 - [Settings](#settings)
@@ -54,13 +54,18 @@ Its tokens and keys are demo values the simulator alone accepts; they mean nothi
 
 > 📷 _Screenshot to come: the home page._
 
-## Your own dashboard
+## Getting started
 
-1. On the home page, choose _Create a dashboard_: give it a name and pick starting stages: _Environment branches_ (dev, staging, prod), _Gitflow_, _Release train_, or _Blank_.
-2. Add a GitHub token under _Credentials_ (see [Credentials](#credentials)).
-3. In the editor, add rows from a searchable list of your repos (and, with an AWS key, your Amplify apps), and adjust the stages.
+The home page offers three ways in: _Create a dashboard_, _Import from link or file…_ (a board someone shared: choose its file, or paste its link; see [Sharing, export and import](#sharing-export-and-import)) and _Try the demo_.
 
-A dashboard lives at `/d/<id>` in this browser.
+_Create a dashboard_ walks you through four steps. Each step's heading takes the keyboard focus as it opens, so a screen reader announces it.
+
+1. **Add a GitHub token.** Name the dashboard (it is _My dashboard_ if you don't) and paste a read-only token; _How to create a read-only token_ opens the guide ([GitHub token](#github-token)). The token is kept for this tab unless you tick _Remember on this device_. It becomes the dashboard's own GitHub token (its _GitHub token_ setting, [Settings](#settings)), which every row reads with unless you set another.
+2. **Pick your repos.** The repos the token can see are listed (search to narrow them); each one you tick becomes a row.
+3. **Set up your stages.** fooboard reads the branches in those repos and suggests the branch preset that fits them best: _Environment branches_ (dev, staging, prod ← `main`), _Gitflow_ (dev ← `develop`, test ← `release/**`, prod ← `main`) or _Release train_ (dev, release ← `release/**`, prod ← `main`, with preview stages). The best fit is the preset whose stages match a branch in the most repos; with the release train, repos with preview branches count too. Each `preview/<name>` branch names a preview stage (`preview/bali` gives _bali_, sourced from dev), all ticked; `preview/release` names none, since _release_ is already a stage. Choose another preset, untick previews, or choose _Blank_ to add stages yourself; each stage shows how many of your repos have a branch it matches. _Back to repos_ returns to step 2.
+4. **Your board.** The board opens and fills in as GitHub answers. A note above it says how many runs landed in no cell (_Unmapped_ lists them, with a fix for each; [Unmapped runs](#unmapped-runs)) and how many rule problems are marked ! (_Problems_). _Done_ closes the note.
+
+New dashboards use the built-in source rules and status sets. Add Amplify rows, rename or re-pattern stages and tweak rules afterwards with _Edit_ ([Editing a dashboard](#editing-a-dashboard)). A dashboard lives at `/d/<id>` in this browser.
 
 ## Reading the board
 
@@ -308,7 +313,7 @@ AWS can't limit listing apps to particular apps, so the key can see the **names*
 
 ## Sharing, export and import
 
-_Share / Export_ in the header (or the menu) shares your saved dashboards; _Import_ (in the header, and _Import from a file…_ on the home page) brings them in.
+_Share / Export_ in the header (or the menu) shares your saved dashboards; _Import_ (in the header, and _Import from link or file…_ on the home page) brings them in: choose a file, or paste a link into _Or a fooboard link_ (opening the link in your browser does the same).
 
 - **Choose dashboards**: one, some or all (every one is ticked at first; _Select all_ toggles them). Each carries its groups, overrides, rules, custom status sets, settings at every level and pinned apps. Zoom, density, theme, the kept answers and anything held for a tab are never shared.
 - **Copy board link**: everything goes into the part of the link after `#b=`, compressed. Browsers never send that part to a server (nor in a `Referer` header), and fooboard removes it from the address bar and history the moment the link opens, so a reload can't import it twice. A link longer than 32,000 characters isn't offered (chat apps cut long messages): download a file instead. The demo board's link is about 4,000 characters.
