@@ -25,5 +25,6 @@ export const TEST_LAYOUT: Layout = {
   boardWidth: 800,
   gutter: 9,
   headerGears: true,
+  phone: false,
   textEm: { ...TEXT_EM },
 };

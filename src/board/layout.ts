@@ -122,10 +122,15 @@ export interface Layout {
   gutter: number;
   /** Headers carry settings gears (`LayoutInput.headerGears`). */
   headerGears: boolean;
+  /** The grid area is a phone's (under `PHONE_WIDTH`): row names take
+   * a smaller share, no smaller text is under 13 px at 100% (`textEm`),
+   * and a row-group label is cut at the row-name column (Decision 65).
+   * The grid area's width, not the viewport the header gears follow
+   * (Decision 60): the floor only makes text larger, with room kept for
+   * it, and the cut only keeps a label clear of the frames. */
+  phone: boolean;
   /** The smaller texts' sizes, in ems of `fontPx` (`boardText`): never
-   * under 13 px at 100% on a phone. The phone is the grid area's width,
-   * as for the row-name cap, not the viewport the header gears follow:
-   * the floor only makes text larger, with room kept for it. */
+   * under 13 px at 100% on a phone. */
   textEm: TextEms;
 }
 
@@ -138,9 +143,9 @@ function frame(input: LayoutInput, fontPx: number) {
     0,
     ...input.rowNames.map((n) => input.measure(capText(n), fontPx)),
   );
+  const phone = input.width < PHONE_WIDTH;
   const rowNameWidth = Math.min(
-    (input.width < PHONE_WIDTH ? PHONE_ROW_NAME_SHARE : ROW_NAME_SHARE) *
-      input.width,
+    (phone ? PHONE_ROW_NAME_SHARE : ROW_NAME_SHARE) * input.width,
     // A row header keeps room for its settings gear (spec.md §3.11).
     longestName + 2 * padX + headerGearEm(input.headerGears) * fontPx,
   );
@@ -159,7 +164,8 @@ function frame(input: LayoutInput, fontPx: number) {
   );
   const lineRowHeight = LINE_HEIGHT * fontPx + 2 * padY;
   return {
-    textEm: textEms(fontPx, input.width < PHONE_WIDTH),
+    phone,
+    textEm: textEms(fontPx, phone),
     gap: d.gap,
     padX,
     padY,
@@ -225,6 +231,7 @@ export function layoutAtRung(
     boardWidth,
     gutter: f.gutter,
     headerGears: input.headerGears,
+    phone: f.phone,
     textEm: f.textEm,
   };
 }
