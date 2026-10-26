@@ -1,8 +1,8 @@
 /**
  * Home page: the saved dashboards (or a note that they can't be read,
- * with *Reset* to start again, spec.md §3.9), creating a dashboard, and
- * the demo. Importing a dashboard (spec.md N6)
- * and the first-run flow (N7) come later, so the page offers neither.
+ * with *Reset* to start again, spec.md §3.9), creating or importing a
+ * dashboard (spec.md §3.8), and the demo. The first-run flow (N7) comes
+ * later. A share link's import dialog opens over this page.
  *
  * @module
  */
@@ -19,7 +19,7 @@ import { useStores } from '@/storage/storesContext';
 export function Home(): React.JSX.Element {
   const loaded = useStores().config.load();
   const dashboards = dashboardsOf(loaded);
-  const { openReset } = useNavDialogs();
+  const { openReset, openImport } = useNavDialogs();
   return (
     <div className="mx-auto flex w-full min-w-0 max-w-xl flex-col items-center gap-4 px-6 py-24 text-center">
       <img
@@ -65,9 +65,17 @@ export function Home(): React.JSX.Element {
       <p className="text-sm text-muted-foreground">
         fooboard shows the deployment state of every repo &times; stage at a
         glance, filled in from GitHub Actions runs and Amplify jobs &mdash; no
-        workflow changes required. Create a dashboard to get started.
+        workflow changes required. Create a dashboard or import one to get
+        started.
       </p>
-      {loaded.kind === 'ok' && <CreateDashboard />}
+      {loaded.kind === 'ok' && (
+        <>
+          <CreateDashboard />
+          <Button variant="outline" onClick={openImport}>
+            Import from a file…
+          </Button>
+        </>
+      )}
       <Link to="/demo" className={buttonVariants({ variant: 'outline' })}>
         Try the demo
       </Link>

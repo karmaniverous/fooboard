@@ -53,11 +53,7 @@ export function NavMenuEntry({ item }: { item: NavItem }): React.JSX.Element {
       );
     case 'action':
       return (
-        <DropdownMenuItem
-          className="gap-2"
-          disabled={item.disabled}
-          onSelect={item.onSelect}
-        >
+        <DropdownMenuItem className="gap-2" onSelect={item.onSelect}>
           {body}
         </DropdownMenuItem>
       );

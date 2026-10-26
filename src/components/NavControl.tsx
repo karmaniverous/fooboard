@@ -32,7 +32,6 @@ export function NavControl({
       ? 'size-8 shrink-0 p-0 hover:bg-foreground/10'
       : 'h-auto px-0 text-xs font-normal text-muted-foreground hover:text-foreground hover:underline',
   );
-  const disabled = item.kind === 'action' && item.disabled;
   let control: React.JSX.Element;
   switch (item.kind) {
     case 'link':
@@ -54,13 +53,11 @@ export function NavControl({
         <Button
           type="button"
           variant="ghost"
-          className={cn(look, disabled && 'cursor-not-allowed opacity-50')}
-          // Still focusable and hoverable, so its tooltip says why.
-          aria-disabled={disabled || undefined}
+          className={look}
           onClick={() => {
             if (item.kind === 'choice')
               item.onChange(nextOption(item.options, item.value));
-            else if (!item.disabled) item.onSelect?.();
+            else item.onSelect();
           }}
           {...named}
         >

@@ -1,0 +1,54 @@
+/**
+ * What the share and import dialogs say (spec.md §3.8), in one place so
+ * the dialogs and their tests agree.
+ *
+ * @module
+ */
+import { NEWER_VERSION_MESSAGE } from '@/domain/config/migrate';
+
+import type { Share, ShareRefusal } from '../envelope';
+import { SHARE_LINK_MAX_CHARS, X_LINK_MAX_CHARS } from '../link';
+
+/** Where a share came from. */
+export type ShareOrigin = 'link' | 'file';
+
+const count = (n: number) => n.toLocaleString('en-US');
+
+/** The status line for a link too long to offer. */
+export const tooLongForLink = (length: number): string =>
+  `This link would be ${count(length)} characters, more than the ${count(SHARE_LINK_MAX_CHARS)} a link can hold. Download a file instead.`;
+
+/** The note under *Post this board on X*. */
+export const postNote = (length: number): string =>
+  length <= X_LINK_MAX_CHARS
+    ? 'A post on X carries the link without credentials, but the link reveals repo and branch names.'
+    : `Too long to post on X: the link is ${count(length)} characters, and X links up to ${count(X_LINK_MAX_CHARS)}.`;
+
+/** The import dialog's error state for a refused share. */
+export const refusalMessage = (
+  reason: ShareRefusal,
+  origin: ShareOrigin,
+): string =>
+  reason === 'newer'
+    ? `This ${origin} was ${NEWER_VERSION_MESSAGE}.`
+    : `This ${origin} isn't a fooboard board, or it's damaged.`;
+
+/** What a share holds, above the import dialog's choices. */
+export function shareSummary(share: Share, origin: ShareOrigin): string {
+  const n = share.dashboards.length;
+  const dashboards = n === 1 ? '1 dashboard' : `${String(n)} dashboards`;
+  const credentials = {
+    none: '',
+    plain: ' and credentials',
+    encrypted: ' and credentials encrypted with a passphrase',
+  }[share.credentials.kind];
+  return `This ${origin} holds ${dashboards}${credentials}.`;
+}
+
+/** Said when the passphrase doesn't open the credentials. */
+export const WRONG_PASSPHRASE =
+  "That passphrase doesn't open these credentials";
+
+/** Said when the credentials open but can't be read. */
+export const DAMAGED_CREDENTIALS =
+  'These credentials are damaged. Untick them to import the dashboards alone.';

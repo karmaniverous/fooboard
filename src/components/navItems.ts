@@ -61,12 +61,7 @@ export type NavItem = {
 } & (
   | { kind: 'link'; href: string }
   | { kind: 'route'; to: string }
-  | {
-      kind: 'action';
-      onSelect?: () => void;
-      /** Shown but not usable yet (Import until PR E). */
-      disabled?: boolean;
-    }
+  | { kind: 'action'; onSelect: () => void }
   | {
       kind: 'choice';
       /** The choice's name (the menu's radio group). */
@@ -97,6 +92,8 @@ const THEME_ICON = { system: Monitor, light: Sun, dark: Moon } as const;
 /** The app's dialogs, opened from the navigation (`AppNavProvider`). */
 export interface NavDialogs {
   openShare: () => void;
+  /** The import dialog, for a file (spec.md §3.8). */
+  openImport: () => void;
   /** The *Reset* confirmation (spec.md §3.9). */
   openReset: () => void;
 }
@@ -163,9 +160,9 @@ export function useNavItems(): NavItem[] {
     {
       id: 'import',
       kind: 'action',
-      label: 'Import (coming soon)',
+      label: 'Import',
       Icon: Import,
-      disabled: true,
+      onSelect: nav.openImport,
     },
     {
       id: 'github',
