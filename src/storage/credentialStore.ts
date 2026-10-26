@@ -99,15 +99,13 @@ export function createCredentialStore(device: KeyValueStore): CredentialStore {
   /** The device's copy, unless this tab keeps a secret for itself. */
   const remembered = (id: string) =>
     read(session, id) === undefined ? read(device, id) : undefined;
-  /** Remove the device's copy; a refusal says how to clear it. */
-  const removeFromDevice = (id: string, what: string): void => {
+  /** Remove the device's copy; a refusal says what happened (`refused`)
+   * and how to clear what was left. */
+  const removeFromDevice = (id: string, refused: string): void => {
     try {
       device.removeItem(keyFor(id));
     } catch (err) {
-      throw new Error(
-        `This browser would not remove ${what} from this device. ${LEFTOVER_SECRETS_HINT}`,
-        { cause: err },
-      );
+      throw new Error(`${refused} ${LEFTOVER_SECRETS_HINT}`, { cause: err });
     }
   };
 
@@ -120,20 +118,28 @@ export function createCredentialStore(device: KeyValueStore): CredentialStore {
       const value = JSON.stringify(CredentialSecretSchema.parse(secret));
       const before = store.get(id);
       const replaced = before !== undefined && JSON.stringify(before) !== value;
+      const onDevice = read(device, id);
       // Any device copy, this tab's or another's, goes with its data.
-      const unremembered = !remember && read(device, id) !== undefined;
+      const unremembered = !remember && onDevice !== undefined;
       // Exactly one home. Write the new home first, so a failed write (e.g.
       // storage quota) leaves the existing copy in place.
       if (remember) {
+        // Writing over another secret on the device (another tab's)
+        // replaces it too.
+        const overwritten =
+          onDevice !== undefined && JSON.stringify(onDevice) !== value;
         device.setItem(keyFor(id), value);
         session.removeItem(keyFor(id));
-        changed(id, replaced);
+        changed(id, replaced || overwritten);
         return;
       }
       session.setItem(keyFor(id), value);
       // Subscribers hear it even if the device refuses (fooboard#21).
       try {
-        removeFromDevice(id, "the secret's stored copy");
+        removeFromDevice(
+          id,
+          "This browser would not remove the secret's copy from this device, though this tab now keeps the secret for itself only.",
+        );
       } finally {
         changed(id, replaced || unremembered);
       }
@@ -143,7 +149,10 @@ export function createCredentialStore(device: KeyValueStore): CredentialStore {
       // refuses: a failed device removal must not keep a tab-only secret.
       session.removeItem(keyFor(id));
       try {
-        removeFromDevice(id, 'the secret');
+        removeFromDevice(
+          id,
+          'This browser would not remove the secret from this device.',
+        );
       } finally {
         changed(id, true);
       }

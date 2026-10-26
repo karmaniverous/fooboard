@@ -59,6 +59,19 @@ describe('a secret this tab keeps for itself', () => {
     expect(there.get('gh')).toBeUndefined();
   });
 
+  it("remembered over another tab's different secret, drops what was read with that one", () => {
+    const device = memoryStorage();
+    const here = createCredentialStore(device);
+    const there = createCredentialStore(device);
+    here.set('gh', github('mine'), false);
+    there.set('gh', github('theirs'), true);
+    const heard = vi.fn();
+    here.subscribe(heard);
+    here.set('gh', github('mine'), true);
+    expect(heard.mock.calls).toEqual([['gh', true]]);
+    expect(there.get('gh')).toEqual(github('mine'));
+  });
+
   it('is copied for this tab only', () => {
     const device = memoryStorage();
     const here = createCredentialStore(device);
@@ -78,10 +91,15 @@ describe('a device that refuses to remove a secret (fooboard#21)', () => {
     const heard = vi.fn();
     store.subscribe(heard);
     refuse();
-    expect(() => {
+    const keepForThisTab = () => {
       store.set('gh', github('a'), false);
-    }).toThrow(CLEAR_EVERYTHING_STEPS);
+    };
+    expect(keepForThisTab).toThrow(CLEAR_EVERYTHING_STEPS);
     expect(heard.mock.calls).toEqual([['gh', true]]);
+    // It says what did happen, too.
+    expect(keepForThisTab).toThrow(
+      /this tab now keeps the secret for itself only/,
+    );
     expect(store.get('gh')).toEqual(github('a'));
     expect(store.isRemembered('gh')).toBe(false);
     expect(store.rememberedFingerprint('gh')).toBeUndefined();
