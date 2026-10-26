@@ -1,13 +1,13 @@
 /**
- * Run an async load on demand (a button, not on every render) and track
- * its result, error and progress. A newer load supersedes an older one.
+ * Run an async load on demand (a button, or a page opening; not on every
+ * render) and track its result, error and progress. A newer load supersedes an older one.
  * `useLoadFor` ties a result to what it was loaded with (a credential, a
  * region), hiding it once that changes.
  *
  * @module
  */
 import { isEqual } from 'radash';
-import { useRef, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 
 import { describeError } from '@/lib/errors';
 
@@ -20,7 +20,8 @@ export type LoadState<T> =
 export function useLoad<T>(): [LoadState<T>, (load: () => Promise<T>) => void] {
   const [state, setState] = useState<LoadState<T>>({ kind: 'idle' });
   const latest = useRef(0);
-  const run = (load: () => Promise<T>) => {
+  // Stable, so an effect can start a load as a page opens.
+  const run = useCallback((load: () => Promise<T>) => {
     const ticket = ++latest.current;
     setState({ kind: 'loading' });
     load().then(
@@ -33,7 +34,7 @@ export function useLoad<T>(): [LoadState<T>, (load: () => Promise<T>) => void] {
         }
       },
     );
-  };
+  }, []);
   return [state, run];
 }
 

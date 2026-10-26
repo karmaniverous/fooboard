@@ -44,6 +44,13 @@ export const fetchRepos = (
 ): Promise<Repo[]> =>
   allPages(client, (page) => githubKey(credentialId, { call: 'repos', page }));
 
+/** The full names of the repos a token can see, sorted. */
+export const fetchRepoNames = async (
+  client: QueryClient,
+  credentialId: string,
+): Promise<string[]> =>
+  (await fetchRepos(client, credentialId)).map((r) => r.full_name).sort();
+
 /** A repo's branches. */
 export const fetchBranches = (
   client: QueryClient,
