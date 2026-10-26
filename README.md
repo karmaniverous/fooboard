@@ -30,6 +30,7 @@ fooboard shows the deployment state of every repo × stage at a glance. Paste a 
 - [Rules](#rules)
 - [Unmapped runs](#unmapped-runs)
 - [Credentials](#credentials)
+- [Sharing, export and import](#sharing-export-and-import)
 - [Header, menu and footer](#header-menu-and-footer)
 - [Your data](#your-data)
 - [Releasing and deployment](#releasing-and-deployment)
@@ -305,6 +306,21 @@ AWS can't limit listing apps to particular apps, so the key can see the **names*
 - **AWS**: IAM console → Users → the fooboard user → Security credentials: deactivate or delete the access key; delete the user if it exists only for fooboard.
 - **In fooboard**, _Forget_ removes a credential from this browser. It does not revoke it at GitHub or AWS: do that too.
 
+## Sharing, export and import
+
+_Share / Export_ in the header (or the menu) shares your saved dashboards; _Import_ (in the header, and _Import from a file…_ on the home page) brings them in.
+
+- **Choose dashboards**: one, some or all (every one is ticked at first; _Select all_ toggles them). Each carries its groups, overrides, rules, custom status sets, settings at every level and pinned apps. Zoom, density, theme, the kept answers and anything held for a tab are never shared.
+- **Copy board link**: everything goes into the part of the link after `#b=`, compressed. Browsers never send that part to a server (nor in a `Referer` header), and fooboard removes it from the address bar and history the moment the link opens, so a reload can't import it twice. A link longer than 32,000 characters isn't offered (chat apps cut long messages): download a file instead. The demo board's link is about 4,000 characters.
+- **Download file**: the same thing as a `.json` file (`fooboard-<name>.json`).
+- **Post this board on X**: a post with the board's link, never its credentials. The link shows anyone who opens it your repo and branch names. X links URLs only up to 4,096 characters, so a longer board can't be posted; copy its link instead.
+- **Credentials** are left out unless you tick _Include credentials_. Anyone holding a link or file with credentials in it can use them, so give it only to people who should have them, and scope tokens and keys narrowly ([Credentials](#credentials)). Included credentials are **encrypted with a passphrase** unless you untick it: AES-GCM with a key derived from the passphrase by PBKDF2-SHA256 (600,000 iterations, random salt and IV). Send the passphrase separately, never beside the link or file. Only the credentials the chosen dashboards use, and whose secrets are on this device, are included.
+- **Opening a link or file** shows the _Import dashboards_ dialog: its dashboards, all ticked. Nothing is saved until you press _Import_; _Cancel_ discards it. _Add to my dashboards_ adds them, and for a dashboard you already have (the same one, shared back to you) you choose _Replace mine_ (it keeps its credentials, and imported secrets replace this device's) or _Keep as a copy_ (a separate dashboard with its own credentials). _Replace the whole setup_ makes the imported dashboards your only ones, after you confirm, and forgets the tokens and keys nothing uses any more.
+- **Imported credentials** are kept for the current tab only unless you tick _Remember on this device_, as when you enter one. Untick _Import its credentials_ to import the dashboards alone (their rows show _Needs credential_ until you add the secrets). For encrypted credentials the dialog asks for the passphrase there, after you choose the dashboards; a wrong one says "That passphrase doesn't open these credentials", and you can still import without them.
+- **Older and newer**: a link or file from an older fooboard opens and is upgraded; one from a newer fooboard is refused ("reload to update"), and anything else that isn't a fooboard share, or is damaged, says so ("This link isn't a fooboard board, or it's damaged").
+
+The format is public and versioned: `{ "format": "fooboard-share", "formatVersion": 1, "schemaVersion": 6, "dashboards": [ … ], "credentials": null }`, where `credentials` holds the secrets by credential id, plain or encrypted, beside the dashboards and never inside them.
+
 ## Header, menu and footer
 
 The header stays at the top of the window. Its buttons, each with a tooltip:
@@ -313,8 +329,8 @@ The header stays at the top of the window. Its buttons, each with a tooltip:
 - **README**: this page.
 - **Try the demo**.
 - **Theme**: _System_ (follows your device's light or dark setting), _Light_ or _Dark_. The button cycles through them and the menu offers all three; the choice is saved on this device.
-- **Share / Export**: for now, shares the demo (your device's share menu where there is one, _Copy link_, _Post on X_). Sharing and exporting boards come later.
-- **Import**: coming soon.
+- **Share / Export**: shares and exports your dashboards ([Sharing, export and import](#sharing-export-and-import)), and the demo (your device's share menu where there is one, _Copy link_, _Post on X_).
+- **Import**: imports dashboards from a fooboard file.
 - **GitHub**: this repo.
 - **Report an issue**: [GitHub Issues](https://github.com/karmaniverous/fooboard/issues).
 
@@ -330,6 +346,8 @@ Everything stays in this browser:
 - **Answers from GitHub and AWS** (runs, jobs, branches, behind counts, and the app search's lists of each AWS key's Amplify apps, with their names and repository URLs) are kept in this browser's IndexedDB, **unencrypted**, for up to 24 hours, so a reload shows the last known board at once. A new version of fooboard starts the cache afresh. Only answers read with the token or key remembered on this device are kept, each marked with a fingerprint of that secret (a one-way hash, never the secret itself): the answers read with a token or key kept for the current tab only are never kept, even when another tab remembers a different one for the same credential, and a reload just after you replace a secret shows none of the old answers. Unticking _Remember_, _Forget_, replacing a secret, removing a credential and deleting a dashboard remove what was read with it, in every open fooboard tab. The editors' lookups (repos, branches) aren't kept; the app picker reads the app search's lists, so those are. If the browser refuses IndexedDB (a full disk, or a privacy setting), or refuses the lock that lets one tab write it, fooboard says so in the banner and keeps answers for the tab only.
 - **Several tabs**: each reads with its own requests in flight; one tab at a time writes the kept answers, and the others read them when they open. The last configuration saved wins.
 - **Reset** (the menu's last item, and on the home page when saved dashboards can't be read) removes all of fooboard's data from this browser, and nothing else: dashboards, settings, tokens and keys (remembered or for the tab), and the kept answers, in every open fooboard tab, which then reload. Every tab stops writing first; the kept answers are cleared, then the rest, and only then do the other tabs reload, so none comes back. If the browser refuses either, Reset says so and stays open, and no other tab reloads (until they do, they stop writing the kept answers). Clearing this site's data in your browser's settings removes what is stored too, but not the tokens and keys held in open tabs' memory until those tabs close.
+
+- **Shared links and files** carry what you chose ([Sharing, export and import](#sharing-export-and-import)): the dashboards, and credentials only if you included them. Imported credentials are kept for the tab only unless you tick _Remember on this device_.
 
 - **The demo** reads a simulated GitHub and AWS in the page itself and sends no request to either. Its tokens and keys, and everything you change in it, live in the tab's memory until you reload or leave; only zoom and density are saved.
 
