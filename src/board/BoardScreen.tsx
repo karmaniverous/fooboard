@@ -83,7 +83,12 @@ export function BoardScreen({
             <ProblemMark problems={marks.dashboard} />
           </h1>
         </ProblemMarksContext>
-        <div className="flex items-center gap-3">
+        {/* The controls wrap (C-13): the header sits outside the zoomed
+            board, so zooming out can't bring a control back on screen. */}
+        <div
+          data-testid="board-actions"
+          className="flex flex-wrap items-center justify-end gap-x-3 gap-y-1"
+        >
           <StatusLegend dashboard={dashboard} />
           <BudgetMeter
             model={model}
