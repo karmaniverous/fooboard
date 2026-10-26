@@ -11,8 +11,9 @@
 import { pick } from 'radash';
 import { describe, expect, it } from 'vitest';
 
+import { BASE_FONT_PX } from '@/board/boardText';
 import { boardGroups } from '@/board/groupGutters';
-import { BASE_FONT_PX, fitLayout, type LayoutInput } from '@/board/layout';
+import { fitLayout, type LayoutInput } from '@/board/layout';
 import { boardContents } from '@/board/layoutContents';
 import { DEMO_VIEWPORT } from '@/demo/constants';
 import { createBoardModel } from '@/engine';

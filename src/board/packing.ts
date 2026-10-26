@@ -4,10 +4,12 @@
  * is one line per cell. Otherwise the items fill the following lines left
  * to right, starting a new line only when the next will not fit, and one
  * arrangement (the most demanding content's breaks) applies to every cell.
- * Free text needs only a few characters and is cut off. Pure.
+ * Free text needs only a few characters and is cut off. Badges and group
+ * labels are measured as drawn, at their own sizes (`boardText`). Pure.
  *
  * @module
  */
+import { badgeWidth, labelWidth, type TextEms } from './boardText';
 
 /** The items a cell can show after its lead, in display order. */
 export type ItemKey = 'time' | 'commit' | 'branch' | 'message' | 'extra';
@@ -17,8 +19,6 @@ export type CellFormat = 'line' | 'packed';
 
 /** Space between items on a line, in ems. */
 export const ITEM_GAP_EM = 0.45;
-/** Extra width for the badge around its text (padding and outline), in ems. */
-const BADGE_EXTRA_EM = 1.1;
 /** Free text needs room for at least this many characters. */
 const FREE_TEXT_MIN_CHARS = 8;
 export interface Item {
@@ -36,6 +36,8 @@ export interface Content {
   /** Columns the box spans (group labels); its width is shared by them. */
   span?: number;
   lead: string;
+  /** The lead is a group label, drawn in capitals at the label size. */
+  label?: boolean;
   badge?: string;
   /** Room kept after the lead, in ems (a header's or label's settings
    * gear), so what appears there never reflows the board. */
@@ -48,16 +50,24 @@ export type Measure = (text: string, fontPx: number) => number;
 /** Which line each item sits on; line 0 is the lead's. */
 export type LineMap = Partial<Record<ItemKey, number>>;
 
-/** Widths of a content's lead and items at a text size. */
-function widths(content: Content, fontPx: number, measure: Measure) {
+/** Widths of a content's lead and items at a text size, the smaller
+ * texts at `ems`. */
+function widths(
+  content: Content,
+  fontPx: number,
+  measure: Measure,
+  ems: TextEms,
+) {
   const gap = ITEM_GAP_EM * fontPx;
   const badge = (text?: string) =>
-    text ? gap + measure(text, fontPx) + BADGE_EXTRA_EM * fontPx : 0;
+    text ? gap + badgeWidth(text, fontPx, ems, measure) : 0;
   const freeMin = measure('x'.repeat(FREE_TEXT_MIN_CHARS), fontPx);
   return {
     gap,
     lead:
-      measure(content.lead, fontPx) +
+      (content.label
+        ? labelWidth(content.lead, fontPx, ems, measure)
+        : measure(content.lead, fontPx)) +
       badge(content.badge) +
       (content.trail ?? 0) * fontPx,
     items: content.items.map(
@@ -74,8 +84,9 @@ export function minWidth(
   content: Content,
   fontPx: number,
   measure: Measure,
+  ems: TextEms,
 ): number {
-  const w = widths(content, fontPx, measure);
+  const w = widths(content, fontPx, measure, ems);
   return Math.max(w.lead, ...w.items) / Math.max(1, content.span ?? 1);
 }
 
@@ -87,10 +98,11 @@ export function packContent(
   width: number,
   fontPx: number,
   measure: Measure,
+  ems: TextEms,
 ): { oneLine: boolean; lines: number; lineOf: LineMap } | null {
   const span = Math.max(1, content.span ?? 1);
   const room = width * span;
-  const w = widths(content, fontPx, measure);
+  const w = widths(content, fontPx, measure, ems);
   if (w.lead > room + 0.01) return null;
   const all = w.lead + w.items.reduce((sum, x) => sum + w.gap + x, 0);
   if (all <= room + 0.01) {
@@ -136,10 +148,11 @@ export function packBoard(
   width: number,
   fontPx: number,
   measure: Measure,
+  ems: TextEms,
 ): { format: CellFormat; lines: number; lineOf: LineMap } | null {
   const packs = [];
   for (const c of contents) {
-    const p = packContent(c, width, fontPx, measure);
+    const p = packContent(c, width, fontPx, measure, ems);
     if (!p) return null;
     packs.push({ c, p });
   }
@@ -156,7 +169,7 @@ export function packBoard(
   const lineOf: LineMap = {};
   for (const { c } of ordered) {
     const room = width * Math.max(1, c.span ?? 1);
-    const own = greedy(c, widths(c, fontPx, measure), room);
+    const own = greedy(c, widths(c, fontPx, measure, ems), room);
     for (const { key } of c.items) {
       const line = own[key];
       if (line !== undefined) lineOf[key] ??= line;

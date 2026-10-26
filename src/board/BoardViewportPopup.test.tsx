@@ -24,8 +24,8 @@ import { StoresContext } from '@/storage/storesContext';
 import { fullModel } from '@/test/boardModel';
 import { fakeMediaQueries, viewportWidth } from '@/test/mediaQuery';
 
+import { BASE_FONT_PX } from './boardText';
 import { BoardViewport } from './BoardViewport';
-import { BASE_FONT_PX } from './layout';
 import { HEADER_GEAR_EM } from './settingsGearSize';
 import { SettingsPopupProvider } from './SettingsPopup';
 import { useBoardView } from './useBoardView';

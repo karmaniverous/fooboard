@@ -11,7 +11,7 @@ import type { RowGroup } from '@/domain/config/groups';
 import type { Row } from '@/domain/config/row';
 import { cn } from '@/lib/utils';
 
-import { GROUP_LABEL, PIN_LEFT } from './gridStyles';
+import { GROUP_LABEL, GROUP_LABEL_STYLE, PIN_LEFT } from './gridStyles';
 import { PinnedCover, RowLine } from './GroupFrames';
 import { ProblemMark } from './ProblemMark';
 import { useProblemMarks } from './problemMarksContext';
@@ -46,7 +46,7 @@ export function RowGroupLabel({
         role="rowheader"
         aria-colspan={columns}
         className={cn('relative col-span-full flex items-end', GROUP_LABEL)}
-        style={style}
+        style={{ ...GROUP_LABEL_STYLE, ...style }}
       >
         {lineTop !== undefined && (
           <RowLine top={lineTop} data-boundary="row" className="inset-x-0" />

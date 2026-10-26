@@ -77,6 +77,7 @@ export function boardContents(
     ...groups.map((g) => ({
       span: g.span,
       lead: capText(g.label),
+      label: true,
       trail,
       items: [],
     })),

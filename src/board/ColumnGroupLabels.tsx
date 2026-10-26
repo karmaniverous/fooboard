@@ -11,7 +11,12 @@ import type { ColumnGroup } from '@/domain/config/groups';
 import type { GroupSegment } from '@/domain/groups/segments';
 import { cn } from '@/lib/utils';
 
-import { GROUP_LABEL, PIN_LEFT, PIN_TOP_STRIP } from './gridStyles';
+import {
+  GROUP_LABEL,
+  GROUP_LABEL_STYLE,
+  PIN_LEFT,
+  PIN_TOP_STRIP,
+} from './gridStyles';
 import { SettingsGear } from './SettingsGear';
 
 export function ColumnGroupLabels({
@@ -51,6 +56,7 @@ export function ColumnGroupLabels({
           aria-colspan={g.group?.label ? g.span : undefined}
           className={cn('flex items-end', PIN_TOP_STRIP, GROUP_LABEL)}
           style={{
+            ...GROUP_LABEL_STYLE,
             ...span,
             gridColumn: `${String(columns[g.start])} / span ${String(g.span)}`,
           }}
