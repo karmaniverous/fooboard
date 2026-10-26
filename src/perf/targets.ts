@@ -1,7 +1,7 @@
 /**
- * Development aid (spec.md §3.5, Decisions 30, 45, 61 and 64): the names of the
- * timing marks and measures, and the performance targets the console
- * summary reports against. Every name starts with
+ * Development aid (spec.md §3.5, Decisions 30, 45, 61 and 64): the
+ * names of the timing marks and measures, and the performance targets
+ * the console summary reports against. Every name starts with
  * {@link TIMING_PREFIX}, which the production build checks for
  * (`vite/noDevInstrumentation.ts`): a production bundle must contain none
  * of this.

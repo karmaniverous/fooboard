@@ -2,10 +2,10 @@
  * A dashboard's board with its panels (spec.md §2.4): the live board read
  * through the query env its page provides, its Problems and Unmapped
  * panels, the dashboard editor and the credentials panel, every edit
- * handed to `onSave`. A saved
- * dashboard saves it to this browser; the demo keeps it in memory for the
- * tab (§3.14). A changed secret removes what was read with the old one
- * and re-derives the board, so entering a token fills it at once.
+ * handed to `onSave`. A saved dashboard saves it to this browser; the
+ * demo keeps it in memory for the tab (§3.14). A changed secret removes
+ * what was read with the old one and re-derives the board, so entering a
+ * token fills it at once.
  *
  * @module
  */

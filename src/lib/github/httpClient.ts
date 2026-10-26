@@ -3,8 +3,8 @@
  * that sends `If-None-Match` with the ETag the caller kept (the query
  * layer stores it with the cached data), reports the token's budget from
  * every response's rate-limit headers and maps failures to typed
- * errors. It holds no queue and no cache: requests in
- * flight are the query layer's limiter's business (§3.2).
+ * errors. It holds no queue and no cache: requests in flight are the
+ * query layer's limiter's business (§3.2).
  *
  * @module
  */
