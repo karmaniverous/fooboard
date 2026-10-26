@@ -1,8 +1,10 @@
 /**
  * Tests for the persisted cache across open tabs (spec.md §3.4, §3.9,
- * Decisions 28 and 38): only one tab writes it; *Forget* or a replaced
- * secret in one tab removes the credential's queries in every tab, so
- * nothing of it stays in IndexedDB while another tab is open; Reset in one
+ * Decisions 28 and 38): only one tab writes it; *Forget*, a replaced
+ * secret or unticking *Remember* in one tab removes the credential's
+ * queries in every tab, so nothing of it stays in IndexedDB while another
+ * tab is open, even when the device won't remove the secret (fooboard#21);
+ * Reset in one
  * tab clears every fooboard key, session secrets and the cache, and makes
  * every tab clear and reload, with no write landing afterwards.
  *
@@ -14,15 +16,15 @@ import { measureBoard } from '@/demo/scenarios/measure';
 import { PERSIST_THROTTLE_MS } from '@/persist/persistence';
 import { dashboardsOf } from '@/storage/configStore';
 import { runsKey, seedRuns, storedCredentials } from '@/test/persisted';
-import { browser, openTab } from '@/test/tabs';
+import { CLEAR_EVERYTHING_STEPS, refusingDevice } from '@/test/refusingDevice';
+import { type Browser, browser, openTab } from '@/test/tabs';
 
 import { type AppQueryEnv, appQueryEnv } from './appEnv';
 
 const github = (token: string) => ({ kind: 'github' as const, token });
 
 /** Two tabs of one browser; the first holds the persisting lock. */
-async function twoTabs() {
-  const shared = browser();
+async function twoTabs(shared: Browser = browser()) {
   const reloads = { first: 0, second: 0 };
   const open = (name: keyof typeof reloads) => {
     const stores = openTab(shared, () => {
@@ -71,6 +73,12 @@ describe('the persisted cache across tabs', () => {
         s.credentials.set('gh', github('two'), true);
       },
     ],
+    [
+      'unticking Remember',
+      (s: ReturnType<typeof openTab>) => {
+        s.credentials.set('gh', github('one'), false);
+      },
+    ],
   ])('%s in the other tab leaves no data in IndexedDB', async (_, change) => {
     const { shared, first, second, written } = await twoTabs();
     first.stores.credentials.set('gh', github('one'), true);
@@ -86,6 +94,31 @@ describe('the persisted cache across tabs', () => {
     expect(second.env.client.getQueryData(runsKey('gh'))).toBeUndefined();
     await written();
     expect(storedCredentials(shared.idb.entries)).toEqual(['other']);
+  });
+
+  it('keeps nothing of a secret kept for one tab only, though the device refuses to remove its copy (fooboard#21)', async () => {
+    const { device, refuse } = refusingDevice();
+    const { shared, first, second, written } = await twoTabs({
+      ...browser(),
+      device,
+    });
+    first.stores.credentials.set('gh', github('one'), true);
+    seedRuns(first.env, 'gh');
+    seedRuns(second.env, 'gh');
+    await written();
+    expect(storedCredentials(shared.idb.entries)).toEqual(['gh']);
+
+    refuse();
+    expect(() => {
+      first.stores.credentials.set('gh', github('one'), false);
+    }).toThrow(CLEAR_EVERYTHING_STEPS);
+    // Every tab drops what it read with the secret.
+    expect(second.env.client.getQueryData(runsKey('gh'))).toBeUndefined();
+    // The writing tab reads again with the secret it now keeps for itself,
+    // the same as the copy the device kept: it isn't written.
+    seedRuns(first.env, 'gh');
+    await written();
+    expect(storedCredentials(shared.idb.entries)).toEqual([]);
   });
 
   it('Reset in the other tab clears everything, and every tab reloads', async () => {

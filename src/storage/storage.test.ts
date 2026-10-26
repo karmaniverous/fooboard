@@ -10,7 +10,7 @@ import { describe, expect, it } from 'vitest';
 
 import { measureBoard } from '@/demo/scenarios/measure';
 import { CURRENT_SCHEMA_VERSION } from '@/domain/config/root';
-import { refusingDevice } from '@/test/refusingDevice';
+import { CLEAR_EVERYTHING_STEPS, refusingDevice } from '@/test/refusingDevice';
 
 import { createConfigStore } from './configStore';
 import { createCredentialStore } from './credentialStore';
@@ -142,7 +142,7 @@ describe('credential store', () => {
     expect(store.get('gh')).toBeUndefined();
   });
 
-  it('forgets a tab-only secret even when the device refuses the removal', () => {
+  it('forgets a tab-only secret even when the device refuses the removal, saying how to clear what was left', () => {
     const { device, refuse } = refusingDevice();
     const store = createCredentialStore(device);
     store.set('gh', token, false);
@@ -151,7 +151,7 @@ describe('credential store', () => {
     refuse();
     expect(() => {
       store.forget('gh');
-    }).toThrow('storage refused the removal');
+    }).toThrow(CLEAR_EVERYTHING_STEPS);
     expect(store.get('gh')).toBeUndefined();
     expect(seen).toEqual(['gh']);
   });

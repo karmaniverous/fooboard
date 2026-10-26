@@ -86,6 +86,7 @@ export function CollapsibleItem({
   label,
   scrollIntoView = false,
   className,
+  triggerRef,
 }: ItemOpenState & {
   /** The item's name, in the header. */
   name: string;
@@ -102,6 +103,9 @@ export function CollapsibleItem({
   /** An accessible name for the item as a region. */
   label?: string;
   className?: string;
+  /** The header's trigger, for an owner that moves focus to it (e.g.
+   * when the control just used goes). */
+  triggerRef?: React.Ref<HTMLButtonElement>;
 }): React.JSX.Element {
   const ref = useRef<HTMLElement>(null);
   useEffect(() => {
@@ -120,7 +124,10 @@ export function CollapsibleItem({
       >
         <div className="flex items-center gap-1">
           {lead}
-          <CollapsibleTrigger className="flex min-w-0 flex-1 items-center gap-1 rounded-sm text-left hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring [&[data-state=open]>svg]:rotate-90">
+          <CollapsibleTrigger
+            ref={triggerRef}
+            className="flex min-w-0 flex-1 items-center gap-1 rounded-sm text-left hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring [&[data-state=open]>svg]:rotate-90"
+          >
             <Heading name={name} summary={summary} />
           </CollapsibleTrigger>
           {actions !== undefined && (
