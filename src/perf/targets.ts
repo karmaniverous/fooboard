@@ -1,5 +1,5 @@
 /**
- * Development aid (spec.md §3.5, Decisions 30 and 45): the names of the
+ * Development aid (spec.md §3.5, Decisions 30, 45, 61 and 64): the names of the
  * timing marks and measures, and the performance targets the console
  * summary reports against. Every name starts with
  * {@link TIMING_PREFIX}, which the production build checks for
@@ -37,9 +37,9 @@ export const DEMO_FULL_BOARD_MAX_MS = 11_000;
 /** Reload: the cached board within this long of the page loading (ms). */
 export const RELOAD_FULL_BOARD_MAX_MS = 500;
 /** The 16-repo validation board on a cold cache: full board (ms).
- * Interim (Decision 45 item 1, replacing Decision 30's 15 s): N8
- * measured it after N3's persisted cache; it stays interim until the
- * owner decides whether to keep it (a change to a target takes a decision). */
+ * Final (Decision 64 item 1, confirming Decision 45 item 1's interim
+ * 30 s, which replaced Decision 30's 15 s), after N8 measured it with
+ * N3's persisted cache. A change to a target takes a new decision. */
 export const REAL_COLD_FULL_BOARD_MAX_MS = 30_000;
 /** At one request in flight per credential, full board may be at most
  * this fraction slower than the N1 baseline. */
@@ -52,7 +52,7 @@ export type BoardKind = 'demo' | 'real';
 /** Measured from the board opening, or from the page (re)loading. */
 export type Origin = 'open' | 'reload';
 
-/** One Decision 30 target (as Decisions 45 and 61 amend it). */
+/** One Decision 30 target (as Decisions 45, 61 and 64 amend it). */
 export interface PerformanceTarget {
   label: string;
   board: BoardKind | 'any';
@@ -61,7 +61,7 @@ export interface PerformanceTarget {
   maxMs: number;
 }
 
-/** Decision 30's targets (Decision 45's interim real-board one and
+/** Decision 30's targets (Decision 64's final real-board one and
  * Decision 61's demo one for the full board), as the
  * summary reports them. The relative
  * one-in-flight target ({@link ONE_IN_FLIGHT_MAX_SLOWDOWN}) has no fixed
