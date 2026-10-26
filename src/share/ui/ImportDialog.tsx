@@ -33,7 +33,12 @@ import type { ImportPlan } from '../importPlan';
 import type { LinkPayload } from '../link';
 import { DIALOG_SCROLLS } from './dialogClass';
 import { ImportForm } from './ImportForm';
-import { refusalMessage, type ShareOrigin, shareSummary } from './shareWords';
+import {
+  refusalHint,
+  refusalMessage,
+  type ShareOrigin,
+  shareSummary,
+} from './shareWords';
 import { useImportForm } from './useImportForm';
 
 const readLink = (link: LinkPayload): ShareRead =>
@@ -201,7 +206,7 @@ export function ImportDialog({
             </p>
             {read.reason !== 'newer' && (
               <p className="text-sm text-muted-foreground">
-                Ask whoever sent it for a new {origin}, or for a file.
+                {refusalHint(origin)}
               </p>
             )}
           </>

@@ -21,6 +21,7 @@ import {
   SHARE_FORMAT,
   SHARE_FORMAT_VERSION,
 } from './envelope';
+import { planImport } from './importPlan';
 import { encryptSecrets } from './secrets';
 
 const board = shareBoard();
@@ -130,6 +131,26 @@ describe('the share envelope', () => {
       ok: true,
       share: { credentials: { kind: 'plain', secrets } },
     });
+  });
+
+  it('reads a "__proto__" secret key without polluting, and stores nothing for it', () => {
+    const gh = { kind: 'github', token: 'shared' };
+    const text = JSON.stringify({ ...envelope(), credentials: null }).replace(
+      '"credentials":null',
+      `"credentials":{"encrypted":false,"secrets":{"__proto__":${JSON.stringify(gh)},"gh-org":${JSON.stringify(gh)}}}`,
+    );
+    const result = readShare(text);
+    if (!result.ok || result.share.credentials.kind !== 'plain')
+      throw new Error('expected plain credentials');
+    expect(Object.getPrototypeOf({})).toBe(Object.prototype);
+    expect(Reflect.get({}, 'token')).toBeUndefined();
+    const plan = planImport([], {
+      dashboards: result.share.dashboards,
+      mode: 'add',
+      sameId: {},
+      secrets: result.share.credentials.secrets,
+    });
+    expect(plan.secrets).toEqual([{ id: 'gh-org', secret: gh }]);
   });
 
   it('carries encrypted secrets, refusing an unknown cipher', async () => {

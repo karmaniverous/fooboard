@@ -35,12 +35,16 @@ export function AppNavProvider({
   link?: LinkPayload | null;
 }): React.JSX.Element {
   const [link, setLink] = useState(initialLink);
+  // Each link that arrives gets a fresh import dialog, so no choice made
+  // for one share carries over to the next.
+  const [arrivals, setArrivals] = useState(0);
   const [opened, setOpened] = useState<Opened>(link ? 'import' : null);
   const opener = useRef<HTMLElement | null>(null);
   useShareLinkArrivals(
     useCallback((taken: LinkPayload) => {
       opener.current = null;
       setLink(taken);
+      setArrivals((n) => n + 1);
       setOpened('import');
     }, []),
   );
@@ -80,7 +84,7 @@ export function AppNavProvider({
     <NavContext value={value}>
       {children}
       <ShareDialog {...dialog('share')} />
-      <ImportDialog {...dialog('import')} link={link} />
+      <ImportDialog key={arrivals} {...dialog('import')} link={link} />
       <ResetDialog {...dialog('reset')} />
     </NavContext>
   );

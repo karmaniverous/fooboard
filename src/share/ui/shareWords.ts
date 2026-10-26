@@ -33,6 +33,12 @@ export const refusalMessage = (
     ? `This ${origin} was ${NEWER_VERSION_MESSAGE}.`
     : `This ${origin} isn't a fooboard board, or it's damaged.`;
 
+/** The hint under a refused (damaged or foreign) share. */
+export const refusalHint = (origin: ShareOrigin): string =>
+  origin === 'link'
+    ? 'Ask whoever sent it for a new link, or for a file.'
+    : 'Ask whoever sent it for a new file.';
+
 /** What a share holds, above the import dialog's choices. */
 export function shareSummary(share: Share, origin: ShareOrigin): string {
   const n = share.dashboards.length;

@@ -17,7 +17,13 @@ import {
 import { afterEach, describe, expect, it } from 'vitest';
 
 import v4Board from '@/domain/config/fixtures/v4-board.json';
-import { fragmentOf, renderImport, savedIds, where } from '@/test/renderImport';
+import {
+  fragmentOf,
+  payloadOf,
+  renderImport,
+  savedIds,
+  where,
+} from '@/test/renderImport';
 import { shareBoard } from '@/test/shareBoard';
 
 import { buildEnvelope } from '../envelope';
@@ -72,6 +78,9 @@ describe('importing from a file', () => {
     expect(await within(dialog()).findByRole('alert')).toHaveTextContent(
       "This file isn't a fooboard board, or it's damaged.",
     );
+    expect(
+      within(dialog()).getByText('Ask whoever sent it for a new file.'),
+    ).toBeVisible();
     await chooseFile(JSON.stringify(buildEnvelope([shareBoard()], null)));
     await waitFor(() => {
       expect(within(dialog()).queryByRole('alert')).toBeNull();
@@ -98,6 +107,29 @@ describe('a share link pasted into an open tab', () => {
     expect(
       within(dialog()).getByRole('checkbox', { name: shareBoard().name }),
     ).toBeChecked();
+  });
+
+  it("gives a second link a fresh form, not the first one's choices", async () => {
+    renderImport(payloadOf(buildEnvelope([shareBoard()], null)));
+    fireEvent.click(
+      within(dialog()).getByRole('checkbox', { name: shareBoard().name }),
+    );
+    expect(
+      within(dialog()).getByRole('button', { name: 'Import' }),
+    ).toBeDisabled();
+    await act(async () => {
+      window.location.hash = fragmentOf(buildEnvelope([shareBoard()], null));
+      await Promise.resolve();
+    });
+    await waitFor(() => {
+      expect(
+        within(dialog()).getByRole('checkbox', { name: shareBoard().name }),
+      ).toBeChecked();
+    });
+    expect(window.location.hash).toBe('');
+    expect(
+      within(dialog()).getByRole('button', { name: 'Import' }),
+    ).toBeEnabled();
   });
 
   it('ignores any other fragment', async () => {
