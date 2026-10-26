@@ -1,5 +1,5 @@
 /**
- * Tests for the home page: it offers only what is built (no import yet);
+ * Tests for the home page: it invites creating or importing a dashboard;
  * unreadable configuration offers no *Create* (it couldn't be saved), and
  * a refused write when creating is reported with the name kept for retry.
  *
@@ -19,22 +19,31 @@ const renderHome = (store: KeyValueStore) => {
 };
 
 describe('Home', () => {
-  it('invites creating a dashboard, and not importing one', () => {
+  it('invites creating a dashboard or importing one from a file', () => {
     renderHome(memoryStorage());
     expect(
-      screen.getByText(/Create a dashboard to get started\./),
+      screen.getByText(/Create a dashboard or import one to get started\./),
     ).toBeVisible();
-    expect(screen.queryByText(/import/i)).toBeNull();
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Import from a file…' }),
+    );
+    expect(
+      screen.getByRole('dialog', { name: 'Import dashboards' }),
+    ).toBeInTheDocument();
+    expect(screen.getByLabelText('A fooboard file')).toBeInTheDocument();
   });
 });
 
 describe('Home storage failures', () => {
-  it('offers no Create, but Reset, when the saved configuration is unreadable', () => {
+  it('offers no Create or Import, but Reset, when the saved configuration is unreadable', () => {
     const store = memoryStorage();
     store.setItem('fooboard:config', '{not json');
     renderHome(store);
     expect(
       screen.queryByRole('button', { name: 'Create a dashboard' }),
+    ).toBeNull();
+    expect(
+      screen.queryByRole('button', { name: 'Import from a file…' }),
     ).toBeNull();
     fireEvent.click(screen.getByRole('button', { name: 'Reset…' }));
     expect(

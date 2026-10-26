@@ -34,9 +34,12 @@ export function Choice<T extends string>({
   onValueChange,
   className,
   disabled,
+  describedBy,
 }: {
   /** The accessible name. */
   label: string;
+  /** The id of the text that describes the choice (its hint). */
+  describedBy?: string;
   value: T;
   options: readonly ChoiceOption<T>[];
   onValueChange: (value: T) => void;
@@ -55,6 +58,7 @@ export function Choice<T extends string>({
     >
       <SelectTrigger
         aria-label={label}
+        aria-describedby={describedBy}
         className={cn('h-9 w-fit max-w-full shrink-0 text-sm', className)}
       >
         {/* Every label stacked in one cell: the widest sets the width. */}

@@ -21,7 +21,8 @@ import { ConfigRootSchema, CURRENT_SCHEMA_VERSION } from './root';
 
 /** The refusal for a configuration from a newer data model (spec.md
  * A§4.3.7): never guessed at. */
-const NEWER_VERSION_MESSAGE = 'made with a newer fooboard; reload to update';
+export const NEWER_VERSION_MESSAGE =
+  'made with a newer fooboard; reload to update';
 
 type Migration = (input: Record<string, unknown>) => Record<string, unknown>;
 

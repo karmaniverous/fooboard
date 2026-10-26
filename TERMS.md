@@ -14,7 +14,7 @@ fooboard is provided **as is**, without warranty of any kind, as the licence say
 
 ## No service guarantee
 
-fooboard is a free tool, not a service. The hosted app may change, pause or stop at any time, without notice. Your data lives in your browser, so keep anything you need elsewhere too (export arrives in a later version).
+fooboard is a free tool, not a service. The hosted app may change, pause or stop at any time, without notice. Your data lives in your browser, so keep anything you need elsewhere too (_Share / Export_ saves your dashboards to a file).
 
 ## Your credentials and accounts
 

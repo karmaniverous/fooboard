@@ -1,6 +1,6 @@
 /**
  * App shell: router wiring for the home page, the demo and saved
- * dashboards.
+ * dashboards, and the share link the page was opened with.
  *
  * @module
  */
@@ -14,6 +14,7 @@ import { StorageBanner } from '@/components/StorageBanner';
 import { ThemeProvider } from '@/components/ThemeProvider';
 import { useViewportWidthVar } from '@/lib/useViewportWidthVar';
 import { Home } from '@/pages/Home';
+import type { LinkPayload } from '@/share/link';
 
 // Board pages load on first visit, so the home page doesn't wait
 // for the board, editors and readers.
@@ -30,13 +31,18 @@ function Page({ children }: { children: React.ReactNode }): React.JSX.Element {
   return <div className="w-[var(--vw,100vw)]">{children}</div>;
 }
 
-export default function App(): React.JSX.Element {
+export default function App({
+  link = null,
+}: {
+  /** The share link the page was opened with (spec.md §3.8). */
+  link?: LinkPayload | null;
+}): React.JSX.Element {
   useViewportWidthVar();
   // The shell grows to the board's width, so the window scrolls sideways
   // while header, warning and footer stay pinned (C-13).
   return (
     <ThemeProvider>
-      <AppNavProvider>
+      <AppNavProvider link={link}>
         <div className="flex min-h-screen w-max min-w-full flex-col">
           <Header />
           <StorageBanner />

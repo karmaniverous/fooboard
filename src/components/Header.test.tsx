@@ -3,7 +3,8 @@
  * folding into the menu as it narrows (before the separator, Privacy and
  * Terms always after it), the theme chosen from the button (cycling) or
  * the menu (three-way) and saved on the device, the saved theme applied on
- * load, the header's height published for the board, and Import inert.
+ * load, the header's height published for the board, and Share / Export
+ * and Import opening their dialogs.
  *
  * @module
  */
@@ -55,7 +56,7 @@ describe('Header', () => {
       'Try the demo',
       'Theme: System',
       'Share / Export',
-      'Import (coming soon)',
+      'Import',
       'GitHub',
       'Report an issue',
       'Menu',
@@ -86,7 +87,7 @@ describe('Header', () => {
       'Theme: Light',
       'Theme: Dark',
       'Share / Export',
-      'Import (coming soon)',
+      'Import',
       'GitHub',
       'Report an issue',
       'Privacy',
@@ -137,18 +138,13 @@ describe('Header', () => {
     ).toBe('49px');
   });
 
-  it('opens Share / Export, and leaves Import inert until it ships', () => {
+  it.each([
+    ['Share / Export', 'Share fooboard'],
+    ['Import', 'Import dashboards'],
+  ])('opens %s in its dialog', (button, dialog) => {
     renderShell(<Header />);
-    const importButton = screen.getByRole('button', {
-      name: 'Import (coming soon)',
-    });
-    expect(importButton).toHaveAttribute('aria-disabled', 'true');
-    fireEvent.click(importButton);
-    expect(screen.queryByRole('dialog')).toBeNull();
-    fireEvent.click(screen.getByRole('button', { name: 'Share / Export' }));
-    expect(
-      screen.getByRole('dialog', { name: 'Share fooboard' }),
-    ).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: button }));
+    expect(screen.getByRole('dialog', { name: dialog })).toBeInTheDocument();
   });
 
   it.each(['Light', 'Dark', 'System'] as const)(

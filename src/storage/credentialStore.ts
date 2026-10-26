@@ -44,7 +44,8 @@ const AwsSecretSchema = z.object({
   accessKeyId: z.string().min(1),
   secretAccessKey: z.string().min(1),
 });
-const CredentialSecretSchema = z.discriminatedUnion('kind', [
+/** A credential's secret, as stored here and carried in a share. */
+export const CredentialSecretSchema = z.discriminatedUnion('kind', [
   GithubSecretSchema,
   AwsSecretSchema,
 ]);
