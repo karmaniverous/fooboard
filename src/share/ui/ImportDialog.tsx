@@ -1,6 +1,6 @@
 /**
- * The import dialog (spec.md §3.8), for a share link just opened or a
- * file the user chooses: a share that can't be read shows the error state
+ * The import dialog (spec.md §3.8), for a share link just opened, or a
+ * file the user chooses or a link pasted in (`ShareInputs`): a share that can't be read shows the error state
  * ("This link isn't a fooboard board, or it's damaged", or that a newer
  * fooboard made it); one that can lists its dashboards and the choices
  * (`ImportForm`). *Replace the whole setup* asks for confirmation in an
@@ -28,11 +28,13 @@ import { dashboardsOf } from '@/storage/configStore';
 import { useStores } from '@/storage/storesContext';
 
 import { applyImport } from '../applyImport';
-import { readShare, type Share, type ShareRead } from '../envelope';
+import type { Share, ShareRead } from '../envelope';
 import type { ImportPlan } from '../importPlan';
 import type { LinkPayload } from '../link';
+import { readLink } from '../readLink';
 import { DIALOG_SCROLLS } from './dialogClass';
 import { ImportForm } from './ImportForm';
+import { ShareInputs } from './ShareInputs';
 import {
   refusalHint,
   refusalMessage,
@@ -40,11 +42,6 @@ import {
   shareSummary,
 } from './shareWords';
 import { useImportForm } from './useImportForm';
-
-const readLink = (link: LinkPayload): ShareRead =>
-  link.kind === 'text'
-    ? readShare(link.text)
-    : { ok: false, reason: 'damaged' };
 
 function ImportChoices({
   share,
@@ -153,13 +150,18 @@ export function ImportDialog({
   link: LinkPayload | null;
 }): React.JSX.Element {
   const navigate = useNavigate();
-  // Each file read gets its own form (`n`), whatever it holds.
-  const [file, setFile] = useState<{ read: ShareRead; n: number } | null>(null);
+  // Each file or pasted link read gets its own form (`n`), whatever it
+  // holds.
+  const [chosen, setChosen] = useState<{
+    read: ShareRead | null;
+    origin: ShareOrigin;
+    n: number;
+  } | null>(null);
   const fromLink = useMemo(() => (link ? readLink(link) : null), [link]);
-  const read = fromLink ?? file?.read;
-  const origin: ShareOrigin = fromLink ? 'link' : 'file';
+  const read = fromLink ?? chosen?.read;
+  const origin: ShareOrigin = fromLink ? 'link' : (chosen?.origin ?? 'file');
   const close = () => {
-    setFile(null);
+    setChosen(null);
     onOpenChange(false);
   };
   return (
@@ -175,29 +177,15 @@ export function ImportDialog({
       >
         <DialogTitle>Import dashboards</DialogTitle>
         {!fromLink && (
-          <label className="flex flex-col gap-1 text-sm">
-            A fooboard file
-            <input
-              type="file"
-              accept="application/json,.json"
-              className="text-sm file:mr-2 file:rounded-md file:border file:border-border file:bg-muted file:px-2 file:py-1"
-              onChange={(e) => {
-                const chosen = e.target.files?.[0];
-                if (!chosen) return;
-                const show = (next: ShareRead) => {
-                  setFile((f) => ({ read: next, n: (f?.n ?? 0) + 1 }));
-                };
-                chosen.text().then(
-                  (text) => {
-                    show(readShare(text));
-                  },
-                  () => {
-                    show({ ok: false, reason: 'damaged' });
-                  },
-                );
-              }}
-            />
-          </label>
+          <ShareInputs
+            onRead={(next, from) => {
+              setChosen((c) => ({
+                read: next,
+                origin: from,
+                n: (c?.n ?? 0) + 1,
+              }));
+            }}
+          />
         )}
         {read && !read.ok && (
           <>
@@ -218,7 +206,7 @@ export function ImportDialog({
         )}
         {read?.ok && (
           <ImportChoices
-            key={file?.n ?? 0}
+            key={chosen?.n ?? 0}
             share={read.share}
             onCancel={close}
             onDone={(plan) => {
