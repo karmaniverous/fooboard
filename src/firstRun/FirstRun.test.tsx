@@ -13,6 +13,7 @@ import { fireEvent, screen, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { branchOf } from '@/domain/rules/branch';
+import { dashboardsOf } from '@/storage/configStore';
 import { choose } from '@/test/choose';
 import {
   FIRST_RUN_TOKEN,
@@ -56,6 +57,9 @@ async function pickRepos(repos = ['acme/api', 'acme/web']) {
 describe('first run: token', () => {
   it('moves focus to the heading and links the guide to creating a token', async () => {
     await renderFirstRun('/new');
+    expect(
+      screen.getByText('Dashboard name', { selector: 'label' }),
+    ).toBeVisible();
     expect(screen.getByText('Step 1 of 4')).toBeVisible();
     expect(
       screen.getByRole('heading', { name: 'Add a GitHub token' }),
@@ -82,6 +86,16 @@ describe('first run: token', () => {
     expect(saved.customStatusSets).toEqual([]);
     expect(saved.settings.statusSets).toBeUndefined();
     expect(saved.settings.itemRules).toBeUndefined();
+  });
+
+  it('labels the name visibly, and Back from the repos leaves the saved dashboard', async () => {
+    const stores = await addToken();
+    fireEvent.click(screen.getByRole('button', { name: 'History back' }));
+    // Home, listing the one dashboard: not step 1 again.
+    expect(
+      await screen.findByRole('heading', { name: 'Your dashboards' }),
+    ).toBeVisible();
+    expect(dashboardsOf(stores.config.load())).toHaveLength(1);
   });
 
   it('names a dashboard left unnamed', async () => {
@@ -129,9 +143,14 @@ describe('first run: stages', () => {
         'Suggested from the branches in your 2 repos: Release train.',
       ),
     ).toBeVisible();
-    expect(
-      screen.getByRole('combobox', { name: 'Starting stages' }),
-    ).toHaveTextContent(
+    const preset = screen.getByRole('combobox', { name: 'Starting stages' });
+    // Named by its visible label.
+    expect(screen.getByText('Starting stages')).toBeVisible();
+    expect(preset).toHaveAttribute(
+      'aria-labelledby',
+      screen.getByText('Starting stages').id,
+    );
+    expect(preset).toHaveTextContent(
       'Release train: dev, previews, release/**, main (suggested)',
     );
     // bali is in both repos, texas in one: the commoner first.
@@ -145,11 +164,11 @@ describe('first run: stages', () => {
     const stages = within(screen.getByRole('list', { name: 'Stages' }));
     expect(stages.getAllByRole('listitem').map((li) => li.textContent)).toEqual(
       [
-        'devdevin 2 of 2 repos',
-        'balipreview/baliin 2 of 2 repos',
-        'texaspreview/texasin 1 of 2 repos',
-        'releaserelease/**no branch matches yet',
-        'prodmainin 2 of 2 repos',
+        'dev, branch dev, in 2 of 2 repos',
+        'bali, branch preview/bali, in 2 of 2 repos',
+        'texas, branch preview/texas, in 1 of 2 repos',
+        'release, branch release/**, no branch matches yet',
+        'prod, branch main, in 2 of 2 repos',
       ],
     );
   });

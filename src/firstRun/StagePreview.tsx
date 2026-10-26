@@ -24,8 +24,11 @@ export function StagePreview({
         const repos = patternPreview(pattern, byRepo).repos.length;
         return (
           <li key={stage.id} className="flex flex-wrap gap-x-2">
+            {/* The separators are for screen readers: the gaps are CSS. */}
             <span className="font-medium">{stage.name}</span>
+            <span className="sr-only">, branch </span>
             <code className="text-muted-foreground">{pattern}</code>
+            <span className="sr-only">, </span>
             <span className="text-muted-foreground">
               {repos === 0
                 ? 'no branch matches yet'

@@ -4,7 +4,9 @@
  * (`SecretFields`, C-3a). Adding it saves the new dashboard with the
  * token as its first credential, which becomes the dashboard's
  * `githubToken` (§3.11, `addCredential`), and goes on to the repos.
- * New dashboards use the built-in source rules and status sets.
+ * New dashboards use the built-in source rules and status sets. Step 1
+ * gives way to step 2 in the history, so Back can't create a second
+ * dashboard.
  *
  * @module
  */
@@ -37,14 +39,16 @@ export function TokenStep(): React.JSX.Element {
         fooboard reads your repos&apos; Actions runs with a read-only GitHub
         token. It stays in this browser and is sent only to GitHub.
       </p>
-      <Input
-        aria-label="Dashboard name"
-        placeholder={`Dashboard name (${DEFAULT_DASHBOARD_NAME})`}
-        value={name}
-        onChange={(e) => {
-          setName(e.target.value);
-        }}
-      />
+      <label className="flex flex-col gap-1 text-sm font-medium">
+        Dashboard name
+        <Input
+          placeholder={DEFAULT_DASHBOARD_NAME}
+          value={name}
+          onChange={(e) => {
+            setName(e.target.value);
+          }}
+        />
+      </label>
       <ActionError error={error} />
       <SecretFields
         kind="github"
@@ -64,7 +68,9 @@ export function TokenStep(): React.JSX.Element {
               secret,
               remember,
             );
-            navigate(firstRunPath(dashboard.id, 'repos'));
+            // Replacing step 1: Back from the repos leaves the saved
+            // dashboard rather than offering to create another.
+            navigate(firstRunPath(dashboard.id, 'repos'), { replace: true });
           })
         }
       />

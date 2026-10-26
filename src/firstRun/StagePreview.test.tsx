@@ -29,7 +29,10 @@ describe('StagePreview', () => {
       />,
     );
     expect(screen.getAllByRole('listitem').map((li) => li.textContent)).toEqual(
-      ['devdevin 1 of 2 repos', 'siteno branch matches yet'],
+      [
+        'dev, branch dev, in 1 of 2 repos',
+        'site, branch , no branch matches yet',
+      ],
     );
   });
 

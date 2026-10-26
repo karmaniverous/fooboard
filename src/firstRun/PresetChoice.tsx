@@ -6,6 +6,8 @@
  *
  * @module
  */
+import { useId } from 'react';
+
 import { CheckField } from '@/components/CheckField';
 import { Choice } from '@/components/Choice';
 import type { BranchPresetId } from '@/domain/config/presets';
@@ -32,13 +34,18 @@ export function PresetChoice({
   previews: readonly string[];
   onPreviews: (previews: readonly string[]) => void;
 }): React.JSX.Element {
+  const labelId = useId();
   return (
     <>
       <p role="status" className="text-sm">
         {suggestionText(suggestion.presetId, repoCount)}
       </p>
+      <span id={labelId} className="text-sm font-medium">
+        Starting stages
+      </span>
       <Choice
         label="Starting stages"
+        labelledBy={labelId}
         value={preset}
         options={PRESET_IDS.map((id) => ({
           value: id,
