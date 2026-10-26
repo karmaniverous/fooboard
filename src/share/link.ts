@@ -54,12 +54,14 @@ function decodePayload(payload: string): LinkPayload {
 }
 
 /** What a link pasted into the import dialog holds: the payload after its
- * `#b=`, or nothing readable when the text has none. */
+ * `#b=`, decoded as opening the link decodes it (anything after the
+ * payload, such as a line break, is past its end and ignored), or nothing
+ * readable when the text has no `#b=`. */
 export function pastedLink(text: string): LinkPayload {
   const at = text.indexOf(SHARE_LINK_PREFIX);
   return at < 0
     ? { kind: 'damaged' }
-    : decodePayload(text.slice(at + SHARE_LINK_PREFIX.length).trim());
+    : decodePayload(text.slice(at + SHARE_LINK_PREFIX.length));
 }
 
 /**

@@ -10,43 +10,16 @@
 import LZString from 'lz-string';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
+import { windowAt } from '@/test/linkWindow';
 import { shareBoard } from '@/test/shareBoard';
 
 import { buildEnvelope } from './envelope';
-import {
-  type LinkWindow,
-  SHARE_LINK_PREFIX,
-  shareLink,
-  takeShareLink,
-} from './link';
+import { SHARE_LINK_PREFIX, shareLink, takeShareLink } from './link';
 
 const decompress = vi.spyOn(LZString, 'decompressFromEncodedURIComponent');
 afterEach(() => {
   decompress.mockClear();
 });
-
-/** A window at `url`, whose `replaceState` really changes the URL. */
-function windowAt(url: string): LinkWindow & { url: URL } {
-  const at = { url: new URL(url) };
-  return {
-    get url() {
-      return at.url;
-    },
-    location: {
-      get hash() {
-        return at.url.hash;
-      },
-    },
-    history: {
-      state: { idx: 0 },
-      replaceState: vi.fn(
-        (_state: unknown, _unused: string, to?: string | URL | null) => {
-          at.url = new URL(to ?? '', at.url);
-        },
-      ),
-    },
-  };
-}
 
 const envelope = buildEnvelope([shareBoard()], null);
 
