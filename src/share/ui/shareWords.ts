@@ -39,6 +39,10 @@ export const refusalHint = (origin: ShareOrigin): string =>
     ? 'Ask whoever sent it for a new link, or for a file.'
     : 'Ask whoever sent it for a new file.';
 
+/** Under the dashboards when one already here will be replaced. */
+export const REPLACE_MINE_NOTE =
+  'Replace mine updates the dashboard already here to this version, overwriting any changes you made to it on this device. Its credentials stay. Keep as a copy leaves yours as it is.';
+
 /** What a share holds, above the import dialog's choices. */
 export function shareSummary(share: Share, origin: ShareOrigin): string {
   const n = share.dashboards.length;

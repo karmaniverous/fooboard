@@ -40,6 +40,30 @@ describe('applyImport', () => {
     expect(device.getItem('fooboard:credential:gh-org')).toBeNull();
   });
 
+  it('leaves a remembered secret that is unchanged where it is', () => {
+    const device = memoryStorage();
+    const stores = createAppStores(device);
+    stores.credentials.set('gh-org', gh, true);
+    applyImport(stores, plan(), false);
+    expect(stores.credentials.isRemembered('gh-org')).toBe(true);
+    expect(createAppStores(device).credentials.get('gh-org')).toEqual(gh);
+  });
+
+  it('still replaces a remembered secret that changed, for this tab only', () => {
+    const stores = createAppStores(memoryStorage());
+    stores.credentials.set('gh-org', { kind: 'github', token: 'mine' }, true);
+    applyImport(stores, plan(), false);
+    expect(stores.credentials.get('gh-org')).toEqual(gh);
+    expect(stores.credentials.isRemembered('gh-org')).toBe(false);
+  });
+
+  it('remembers an unchanged tab-only secret when asked', () => {
+    const stores = createAppStores(memoryStorage());
+    stores.credentials.set('gh-org', gh, false);
+    applyImport(stores, plan(), true);
+    expect(stores.credentials.isRemembered('gh-org')).toBe(true);
+  });
+
   it('remembers the secrets on this device when asked', () => {
     const device = memoryStorage();
     const stores = createAppStores(device);

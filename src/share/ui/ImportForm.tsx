@@ -16,6 +16,7 @@ import type { Dashboard } from '@/domain/config/dashboard';
 
 import type { ImportMode, SameIdChoice } from '../importPlan';
 import { DashboardChecklist } from './DashboardChecklist';
+import { REPLACE_MINE_NOTE } from './shareWords';
 import type { ImportForm as Form } from './useImportForm';
 
 const MODES = [
@@ -35,6 +36,12 @@ export function ImportForm({
   form: Form;
   dashboards: readonly Dashboard[];
 }): React.JSX.Element {
+  const replacing = dashboards.some(
+    (d) =>
+      form.selected.has(d.id) &&
+      form.clashes(d.id) &&
+      form.sameIdOf(d.id) === 'replace',
+  );
   return (
     <div className="flex flex-col gap-3">
       <DashboardChecklist
@@ -59,6 +66,9 @@ export function ImportForm({
           )
         }
       />
+      {replacing && (
+        <p className="text-xs text-muted-foreground">{REPLACE_MINE_NOTE}</p>
+      )}
       <Choice
         label="How to import"
         value={form.mode}
