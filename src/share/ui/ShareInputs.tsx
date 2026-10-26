@@ -1,9 +1,10 @@
 /**
  * Where the import dialog's share comes from when no link opened it
  * (spec.md §3.8, §3.9 *Import from link or file*): a fooboard file the
- * user chooses, or a share link pasted in, read as opening it would read
- * it. Each read is handed to `onRead` with its origin, so the dialog's
- * refusals name a link or a file; clearing the link field clears it.
+ * user chooses, or a share link pasted in, with the same effect as
+ * opening it (Decision 69). Each read is handed to `onRead` with its
+ * origin, so the dialog's refusals name a link or a file; clearing the
+ * link field clears it.
  *
  * @module
  */

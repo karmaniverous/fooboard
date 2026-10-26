@@ -22,11 +22,10 @@ export function windowAt(url: string): LinkWindow & { url: URL } {
     },
     history: {
       state: { idx: 0 },
-      replaceState: vi.fn(
-        (_state: unknown, _unused: string, to?: string | URL | null) => {
-          at.url = new URL(to ?? '', at.url);
-        },
-      ),
+      // `takeShareLink` always passes where to go.
+      replaceState: vi.fn((_state: unknown, _unused: string, to: string) => {
+        at.url = new URL(to, at.url);
+      }),
     },
   };
 }

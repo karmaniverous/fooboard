@@ -53,10 +53,13 @@ function decodePayload(payload: string): LinkPayload {
   return text ? { kind: 'text', text } : { kind: 'damaged' };
 }
 
-/** What a link pasted into the import dialog holds: the payload after its
- * `#b=`, decoded as opening the link decodes it (anything after the
- * payload, such as a line break, is past its end and ignored), or nothing
- * readable when the text has no `#b=`. */
+/**
+ * What a link pasted into the import dialog holds: the payload after its
+ * `#b=`, decoded as opening the link decodes it, or nothing readable when
+ * the text has no `#b=` (Decision 69). No trim: lz-string stops at the
+ * stream's end marker, so whatever follows the payload (spaces, a line
+ * break, more text) is never read, as `linkParity.test.ts` pins.
+ */
 export function pastedLink(text: string): LinkPayload {
   const at = text.indexOf(SHARE_LINK_PREFIX);
   return at < 0
