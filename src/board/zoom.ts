@@ -47,10 +47,6 @@ function minZoom(input: LayoutInput): number {
   return Math.floor(lo * 100) / 100;
 }
 
-/** The board's width at a layout. */
-const boardWidth = (input: LayoutInput, l: Layout) =>
-  l.rowNameWidth + Math.max(1, input.stages) * (l.colWidth + l.gap);
-
 /** Width is the constraint when even rung 1 cannot fit across at 100%:
  * then zooming in may widen the board too, or it could never add detail. */
 const widthBound = (input: LayoutInput) =>
@@ -63,7 +59,7 @@ function budgetBase(input: LayoutInput) {
   const at100 = fitLayout(input, BASE_FONT_PX);
   return {
     height: Math.max(input.height, at100.boardHeight),
-    width: Math.max(input.width, boardWidth(input, at100)),
+    width: Math.max(input.width, at100.boardWidth),
   };
 }
 
@@ -72,7 +68,7 @@ export function zoomRange(input: LayoutInput): ZoomRange {
   const base = budgetBase(input);
   const ratio = Math.max(
     full.boardHeight / Math.max(1, base.height),
-    widthBound(input) ? boardWidth(input, full) / Math.max(1, base.width) : 1,
+    widthBound(input) ? full.boardWidth / Math.max(1, base.width) : 1,
   );
   const top = Math.max(1, Math.ceil(ratio * 10 - 1e-9) / 10);
   return { min: minZoom(input), top, max: round(top * MAX_MAGNIFY) };

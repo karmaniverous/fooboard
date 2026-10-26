@@ -11,7 +11,8 @@ import type { RowGroup } from '@/domain/config/groups';
 import type { Row } from '@/domain/config/row';
 import { cn } from '@/lib/utils';
 
-import { BOUNDARY, GROUP_LABEL } from './gridStyles';
+import { GROUP_LABEL, PIN_LEFT } from './gridStyles';
+import { PinnedCover, RowLine } from './GroupFrames';
 import { ProblemMark } from './ProblemMark';
 import { useProblemMarks } from './problemMarksContext';
 import { rowLabel } from './rowLabel';
@@ -19,20 +20,24 @@ import { SettingsGear } from './SettingsGear';
 
 /** A labelled row group's label, across the grid above its rows: a row
  * of its own whose one header spans every column, so the label and its
- * gear sit in the grid's rows like everything else in it. */
+ * gear sit in the grid's rows like everything else in it. Below another
+ * segment, the row is the boundary's gutter, and the boundary's line runs
+ * across it above the label, so the label and its gear sit inside the
+ * group (spec.md §3.7). */
 export function RowGroupLabel({
   group,
   label,
   columns,
-  boundary,
+  lineTop,
   style,
 }: {
   group: RowGroup;
   label: string;
   /** The grid's columns (the row names' and the stages'), all spanned. */
   columns: number;
-  /** Draw the boundary line above it (not the first segment). */
-  boundary: boolean;
+  /** Where the boundary line runs, from the row's top (px): none for the
+   * board's first segment. */
+  lineTop?: number;
   style: React.CSSProperties;
 }): React.JSX.Element {
   return (
@@ -40,22 +45,25 @@ export function RowGroupLabel({
       <div
         role="rowheader"
         aria-colspan={columns}
-        className={cn(
-          'col-span-full flex items-end',
-          GROUP_LABEL,
-          boundary && BOUNDARY.top,
-        )}
+        className={cn('relative col-span-full flex items-end', GROUP_LABEL)}
         style={style}
       >
+        {lineTop !== undefined && (
+          <RowLine top={lineTop} data-boundary="row" className="inset-x-0" />
+        )}
         {/* The label, not the full-width row, is pinned, so it stays on
-            screen when the board scrolls right (C-13). */}
-        <span className="sticky left-0 flex items-center px-[var(--cell-pad-x)]">
-          {label}
-          <SettingsGear
-            place={{ level: 'rowGroup', groupId: group.id }}
-            spot="header"
-          />
-        </span>
+            screen when the board scrolls right (C-13), on the pinned
+            cover that hides the column frames passing under the row
+            names; the label sits at the bottom, below the line. */}
+        <PinnedCover lineTop={lineTop} className="px-[var(--cell-pad-x)]">
+          <span className="flex items-center">
+            {label}
+            <SettingsGear
+              place={{ level: 'rowGroup', groupId: group.id }}
+              spot="header"
+            />
+          </span>
+        </PinnedCover>
       </div>
     </div>
   );
@@ -64,12 +72,9 @@ export function RowGroupLabel({
 /** A row's pinned header. */
 export function RowHeader({
   row,
-  className,
   style,
 }: {
   row: Row;
-  /** Pinning and the boundary line. */
-  className: string;
   style: React.CSSProperties;
 }): React.JSX.Element {
   const marks = useProblemMarks();
@@ -80,7 +85,7 @@ export function RowHeader({
         tabIndex={0}
         className={cn(
           'flex items-center px-[var(--cell-pad-x)] font-medium',
-          className,
+          PIN_LEFT,
         )}
         style={style}
       >

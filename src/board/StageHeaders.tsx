@@ -10,8 +10,7 @@ import { WithTooltip } from '@/components/ui/tooltip';
 import type { Stage } from '@/domain/config/stage';
 import { cn } from '@/lib/utils';
 
-import type { ColumnLines } from './columnFrame';
-import { BOUNDARY } from './gridStyles';
+import { PIN_LEFT, PIN_TOP } from './gridStyles';
 import { capText } from './layout';
 import { ProblemMark } from './ProblemMark';
 import { useProblemMarks } from './problemMarksContext';
@@ -20,20 +19,13 @@ import { stageLabel } from './stageLabel';
 
 export function StageHeaders({
   stages,
-  lines,
-  frameTop,
-  pinTop,
-  pinLeft,
+  columns,
   style,
 }: {
   stages: readonly Stage[];
-  /** Where the group boundaries run (C-14b). */
-  lines: ColumnLines;
-  /** Stages whose header carries the top of their group's frame. */
-  frameTop: ReadonlySet<string>;
-  /** The pinned classes, top and left. */
-  pinTop: string;
-  pinLeft: string;
+  /** Each stage's grid column, by stage index: gutters sit between
+   * groups (spec.md §3.7). */
+  columns: readonly number[];
   /** The header row's height. */
   style: React.CSSProperties;
 }): React.JSX.Element {
@@ -42,10 +34,10 @@ export function StageHeaders({
     <div role="row" className="contents">
       <div
         role="columnheader"
-        className={cn(pinTop, pinLeft, 'z-30')}
-        style={style}
+        className={cn(PIN_TOP, PIN_LEFT, 'z-30')}
+        style={{ ...style, gridColumn: '1' }}
       />
-      {stages.map((stage) => (
+      {stages.map((stage, i) => (
         <WithTooltip key={stage.id} label={stageLabel(stage)}>
           <div
             role="columnheader"
@@ -53,12 +45,9 @@ export function StageHeaders({
             tabIndex={0}
             className={cn(
               'flex items-center justify-center truncate px-[var(--cell-pad-x)] text-center font-semibold',
-              pinTop,
-              lines.headerLeft.has(stage.id) && BOUNDARY.left,
-              lines.headerRight.has(stage.id) && BOUNDARY.right,
-              frameTop.has(stage.id) && BOUNDARY.top,
+              PIN_TOP,
             )}
-            style={style}
+            style={{ ...style, gridColumn: String(columns[i]) }}
           >
             <span className="truncate">{capText(stage.name)}</span>
             <ProblemMark problems={marks.stages.get(stage.id)} />

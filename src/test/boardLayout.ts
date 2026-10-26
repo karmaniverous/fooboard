@@ -21,5 +21,7 @@ export const TEST_LAYOUT: Layout = {
   overflowX: false,
   overflowY: false,
   boardHeight: 600,
+  boardWidth: 800,
+  gutter: 9,
   headerGears: true,
 };

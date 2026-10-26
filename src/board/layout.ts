@@ -20,6 +20,7 @@
  */
 import type { Density } from '@/domain/config/devicePreferences';
 
+import { gutterPx } from './groupGutters';
 import { headerGearEm } from './headerGears';
 import {
   type CellFormat,
@@ -82,6 +83,9 @@ export interface LayoutInput {
   stages: number;
   /** Extra one-line rows: the column group strip and labelled row dividers. */
   labelRows: number;
+  /** Group gutters across and down (spec.md §3.7, `boardGroups`). */
+  columnGutters: number;
+  rowGutters: number;
   rowNames: readonly string[];
   /** Everything that must fit one cell, at each rung. */
   contents: (rung: Rung) => readonly Content[];
@@ -111,8 +115,11 @@ export interface Layout {
   overflowX: boolean;
   /** The board is taller than the grid area: it scrolls down. */
   overflowY: boolean;
-  /** The whole board's height, in px. */
+  /** The whole board's height and width, in px, gutters included. */
   boardHeight: number;
+  boardWidth: number;
+  /** A group gutter's spacer track (spec.md §3.7), in px. */
+  gutter: number;
   /** Headers carry settings gears (`LayoutInput.headerGears`). */
   headerGears: boolean;
 }
@@ -133,12 +140,28 @@ function frame(input: LayoutInput, fontPx: number) {
     longestName + 2 * padX + headerGearEm(input.headerGears) * fontPx,
   );
   const stages = Math.max(1, input.stages);
+  // Each gutter is a track of its own, with a gap beside it (§3.7).
+  const gutter = gutterPx(fontPx);
   const colWidth = Math.max(
     0,
-    Math.floor((input.width - rowNameWidth - d.gap * stages) / stages),
+    Math.floor(
+      (input.width -
+        rowNameWidth -
+        d.gap * stages -
+        input.columnGutters * (gutter + d.gap)) /
+        stages,
+    ),
   );
   const lineRowHeight = LINE_HEIGHT * fontPx + 2 * padY;
-  return { gap: d.gap, padX, padY, rowNameWidth, colWidth, lineRowHeight };
+  return {
+    gap: d.gap,
+    padX,
+    padY,
+    rowNameWidth,
+    colWidth,
+    lineRowHeight,
+    gutter,
+  };
 }
 
 /** The layout for one rung: packed into the column width; if anything
@@ -169,7 +192,12 @@ export function layoutAtRung(
   const rowHeight = packed.lines * LINE_HEIGHT * fontPx + 2 * f.padY;
   const total =
     (1 + input.labelRows) * (f.lineRowHeight + f.gap) +
-    input.rows * (rowHeight + f.gap);
+    input.rows * (rowHeight + f.gap) +
+    input.rowGutters * (f.gutter + f.gap);
+  const boardWidth =
+    f.rowNameWidth +
+    Math.max(1, input.stages) * (colWidth + f.gap) +
+    input.columnGutters * (f.gutter + f.gap);
   return {
     rung,
     format: packed.format,
@@ -185,6 +213,8 @@ export function layoutAtRung(
     overflowX,
     overflowY: total > input.height + PX_SLACK,
     boardHeight: total,
+    boardWidth,
+    gutter: f.gutter,
     headerGears: input.headerGears,
   };
 }
