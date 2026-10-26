@@ -6,19 +6,18 @@
  *
  * @module
  */
-import { useId, useState } from 'react';
+import { useState } from 'react';
 
 import { ExternalLink } from '@/components/ExternalLink';
 import { SecretInput } from '@/components/SecretInput';
 import { Button } from '@/components/ui/button';
-import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import type { CredentialKind } from '@/domain/config/credentials';
 import { readmeSection } from '@/lib/site';
 import type { CredentialSecret } from '@/storage/credentialStore';
 
 import { CopyAwsPolicy } from './CopyAwsPolicy';
+import { RememberCheckbox } from './RememberCheckbox';
 
 /** The worst case, stated plainly on the token screen (spec.md C-7). */
 const WORST_CASE: Record<CredentialKind, string> = {
@@ -51,7 +50,6 @@ export function SecretFields({
   const [keyId, setKeyId] = useState('');
   const [secretKey, setSecretKey] = useState('');
   const [remember, setRemember] = useState(false);
-  const rememberId = useId();
   const secret: CredentialSecret | undefined =
     kind === 'github'
       ? token.trim()
@@ -108,18 +106,7 @@ export function SecretFields({
           />
         </>
       )}
-      <div className="flex items-center gap-2">
-        <Checkbox
-          id={rememberId}
-          checked={remember}
-          onCheckedChange={(checked) => {
-            setRemember(checked === true);
-          }}
-        />
-        <Label htmlFor={rememberId}>
-          Remember on this device (otherwise kept only until this tab closes)
-        </Label>
-      </div>
+      <RememberCheckbox checked={remember} onCheckedChange={setRemember} />
       <ExternalLink href={readmeSection(kind)} className="self-start text-xs">
         {HOW_TO[kind]}
       </ExternalLink>

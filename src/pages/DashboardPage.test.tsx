@@ -9,6 +9,7 @@ import { fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { branchRules } from '@/domain/config/placement';
+import { expand } from '@/test/openItem';
 import { renderDashboardPage } from '@/test/renderDashboardPage';
 
 describe('DashboardPage', () => {
@@ -89,6 +90,8 @@ describe('DashboardPage credential lifecycle', () => {
     expect(fetch).toHaveBeenCalled();
 
     fireEvent.click(screen.getByRole('button', { name: 'Credentials' }));
+    // Credentials start closed (Decision 32).
+    expand('GitHub token');
     fireEvent.click(screen.getByRole('button', { name: 'Forget' }));
     close();
     await screen.findByRole('button', { name: /needs credential/ });

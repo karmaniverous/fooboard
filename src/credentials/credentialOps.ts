@@ -61,7 +61,7 @@ function saveOrRollBack(
   }
 }
 
-/** Add a credential with its secret; returns the saved dashboard. */
+/** Add a credential with its secret; returns its id. */
 export function addWithSecret(
   store: CredentialStore,
   save: (dashboard: Dashboard) => void,
@@ -69,14 +69,14 @@ export function addWithSecret(
   ref: Omit<CredentialRef, 'id'>,
   secret: CredentialSecret,
   remember: boolean,
-): Dashboard {
+): string {
   const id = newCredentialId();
   store.set(id, secret, remember);
   const next = addCredential(dashboard, { ...ref, id });
   saveOrRollBack(store, [id], () => {
     save(next);
   });
-  return next;
+  return id;
 }
 
 /** Copy another dashboard's credential (an independent copy). */

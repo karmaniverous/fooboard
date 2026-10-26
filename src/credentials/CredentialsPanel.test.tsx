@@ -7,71 +7,13 @@
  *
  * @module
  */
-import { act, fireEvent, render, screen } from '@testing-library/react';
-import { useState } from 'react';
-import { MemoryRouter } from 'react-router-dom';
+import { act, fireEvent, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
-import { type Dashboard, DashboardSchema } from '@/domain/config/dashboard';
-import { type AppStores, createAppStores } from '@/storage';
-import { memoryStorage } from '@/storage/keyValue';
-import { StoresContext } from '@/storage/storesContext';
+import { DashboardSchema } from '@/domain/config/dashboard';
 import { choose } from '@/test/choose';
-
-import { CredentialsPanel } from './CredentialsPanel';
-
-const blank = DashboardSchema.parse({ id: 'd', name: 'D' });
-
-function setup({
-  initial = blank,
-  others = [],
-  expiry,
-  seed,
-  keyApps,
-}: {
-  initial?: Dashboard;
-  others?: Dashboard[];
-  expiry?: string;
-  seed?: (stores: AppStores) => void;
-  keyApps?: Record<string, { region: string; appId: string }[]>;
-} = {}) {
-  const stores = createAppStores(memoryStorage());
-  seed?.(stores);
-  const latest = { current: initial };
-  function Harness(): React.JSX.Element {
-    const [dashboard, setDashboard] = useState(initial);
-    return (
-      <CredentialsPanel
-        dashboard={dashboard}
-        otherDashboards={others}
-        tokenExpiry={() => expiry}
-        keyApps={(id) => keyApps?.[id]}
-        onChange={(next) => {
-          latest.current = DashboardSchema.parse(next);
-          setDashboard(next);
-        }}
-      />
-    );
-  }
-  render(
-    <StoresContext value={stores}>
-      <MemoryRouter>
-        <Harness />
-      </MemoryRouter>
-    </StoresContext>,
-  );
-  return { stores, latest };
-}
-
-const addToken = (name: string, token: string, remember = false) => {
-  fireEvent.change(screen.getByLabelText('Name'), { target: { value: name } });
-  fireEvent.change(screen.getByLabelText('Token'), {
-    target: { value: token },
-  });
-  if (remember)
-    fireEvent.click(screen.getByLabelText(/Remember on this device/));
-  fireEvent.click(screen.getByRole('button', { name: 'Add' }));
-};
+import { addToken, setupPanel as setup } from '@/test/credentialsPanel';
+import { expand, isOpen } from '@/test/openItem';
 
 describe('CredentialsPanel', () => {
   it('stores the secret apart from the dashboard, as the default', () => {
@@ -95,9 +37,9 @@ describe('CredentialsPanel', () => {
   it('asks for the secret again after Forget, and confirms removal', () => {
     const { latest } = setup();
     addToken('acme', 'github_pat_1', true);
-    expect(screen.getByText(/remembered on this device/)).toBeInTheDocument();
+    expect(screen.getByText(/· remembered/)).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Forget' }));
-    expect(screen.getByText(/not entered on this device/)).toBeInTheDocument();
+    expect(screen.getByText(/· not entered/)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Save' })).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: 'Remove' }));
@@ -122,6 +64,8 @@ describe('CredentialsPanel', () => {
     });
     fireEvent.click(screen.getByRole('button', { name: 'Copy' }));
     const copy = latest.current.credentials[0];
+    // The copy, just added, is the one open.
+    expect(isOpen('shared')).toBe(true);
     expect(copy.id).not.toBe('src');
     act(() => {
       stores.credentials.forget('src');
@@ -212,6 +156,7 @@ describe('CredentialsPanel failures and form hygiene', () => {
       }),
       keyApps: { prod: [{ region: 'eu-west-1', appId: 'd2' }] },
     });
+    expand('prod');
     const [onKey] = screen.getAllByRole('button', { name: 'Copy AWS policy' });
     await click(onKey);
     expect(writeText.mock.calls[0]?.[0]).toContain(
