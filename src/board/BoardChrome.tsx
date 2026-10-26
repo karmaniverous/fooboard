@@ -9,6 +9,7 @@ import { WithTooltip } from '@/components/ui/tooltip';
 import type { BoardModel } from '@/engine';
 import { cn } from '@/lib/utils';
 
+import { BASE_FONT_PX } from './boardText';
 import { type BadgeKind, type CellFilter, summarize } from './summary';
 
 /** Summary-status chips get a dot in the status's colour; behind and
@@ -49,7 +50,10 @@ export function BoardSummary({
             key={id}
             value={id}
             aria-label={label}
-            className="inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5"
+            className="inline-flex items-center gap-1.5 rounded-full border px-2 py-0.5"
+            // Never under the board's 13 px, on every screen (Decision 66);
+            // padded so the seven chips still fit one line on a 390 px phone.
+            style={{ fontSize: BASE_FONT_PX }}
           >
             <span
               aria-hidden

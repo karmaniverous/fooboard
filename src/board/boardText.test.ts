@@ -1,7 +1,7 @@
 /**
- * Tests for the board's smaller text (spec.md C-13, row N5a): the floor
- * on a phone at, below and above 100%; and the layout measuring badges
- * and group labels as they are drawn.
+ * Tests for the board's smaller text (spec.md C-13, row N5a, Decision
+ * 66): the floor at, below and above 100%, on every screen; and the
+ * layout measuring badges and group labels as they are drawn.
  *
  * @module
  */
@@ -29,38 +29,30 @@ const every = (em: number): TextEms => ({
 });
 
 describe('textEms', () => {
-  it('keeps every smaller text smaller off a phone, at any size', () => {
-    for (const px of [6.5, BASE_FONT_PX, 39])
-      expect(textEms(px, false)).toEqual(TEXT_EM);
-  });
-
-  it('floors every smaller text at the board text on a phone at and below 100%', () => {
-    expect(textEms(BASE_FONT_PX, true)).toEqual(every(1));
+  it('floors every smaller text at the board text at and below 100%', () => {
+    expect(textEms(BASE_FONT_PX)).toEqual(every(1));
     // 70%: as large as the board's text, never larger.
-    expect(textEms(0.7 * BASE_FONT_PX, true)).toEqual(every(1));
+    expect(textEms(0.7 * BASE_FONT_PX)).toEqual(every(1));
   });
 
-  it('floors at 13 px above 100% on a phone, where the ems allow less', () => {
+  it('floors at 13 px above 100%, where the ems allow less', () => {
     // At 15.6 px (120%) 13 px is 0.83 em: the badge grows to it, the rest
     // are larger already.
-    const { badge, ...rest } = textEms(15.6, true);
+    const { badge, ...rest } = textEms(15.6);
     expect(badge).toBeCloseTo(BASE_FONT_PX / 15.6);
     expect(rest).toEqual({ label: 0.85, empty: 0.9, sha: 0.95 });
-    expect(textEms(39, true)).toEqual(TEXT_EM);
+    expect(textEms(39)).toEqual(TEXT_EM);
   });
 });
 
 describe('the layout and the smaller text', () => {
-  it('floors the smaller text in a phone-width grid area only', () => {
-    expect(fitLayout(input({ width: 390 }), BASE_FONT_PX).textEm).toEqual(
-      every(1),
-    );
-    expect(fitLayout(input({ width: 639 }), BASE_FONT_PX).textEm).toEqual(
-      every(1),
-    );
-    expect(fitLayout(input({ width: 640 }), BASE_FONT_PX).textEm).toEqual(
-      TEXT_EM,
-    );
+  it('floors the smaller text on a phone and off it alike', () => {
+    for (const width of [390, 639, 640, 1888])
+      expect(fitLayout(input({ width }), BASE_FONT_PX).textEm).toEqual(
+        every(1),
+      );
+    // Zoomed in, the layout passes its own text size to the floor.
+    expect(fitLayout(input({ width: 1888 }), 39).textEm).toEqual(TEXT_EM);
   });
 
   it('keeps room for a badge as drawn: its count at its size, padding and border', () => {
@@ -74,10 +66,10 @@ describe('the layout and the smaller text', () => {
     expect(room(every(1))).toBeCloseTo(drawn(1) + 2 * BADGE_BORDER_PX);
   });
 
-  it('gives every phone-width column room for its badge as drawn there', () => {
+  it('gives every column room for its badge as drawn there', () => {
     const content = { lead: 'x', badge: '99+', items: [] };
     const drawn = minWidth(content, BASE_FONT_PX, measure, every(1));
-    for (let width = 300; width < 640; width += 1) {
+    for (let width = 300; width < 1000; width += 1) {
       const l = fitLayout(
         input({ width, contents: () => [content] }),
         BASE_FONT_PX,

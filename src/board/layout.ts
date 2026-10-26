@@ -59,8 +59,8 @@ const FREE_TEXT_CAP = 40;
 /** The row-name column takes at most this share of the grid area. */
 const ROW_NAME_SHARE = 0.3;
 /** On phones (grid area narrower than this) the row-name column takes at
- * most a smaller share; names are cut off, full name in the title; and no
- * smaller text is under 13 px at 100% (`textEms`). */
+ * most a smaller share; names are cut off, full name in the title; and a
+ * row-group label is cut before the first frame line (Decision 65). */
 const PHONE_WIDTH = 640;
 const PHONE_ROW_NAME_SHARE = 0.18;
 
@@ -123,14 +123,13 @@ export interface Layout {
   /** Headers carry settings gears (`LayoutInput.headerGears`). */
   headerGears: boolean;
   /** The grid area is a phone's (under `PHONE_WIDTH`): row names take
-   * a smaller share, no smaller text is under 13 px at 100% (`textEm`),
-   * and a row-group label is cut at the row-name column (Decision 65).
-   * The grid area's width, not the viewport the header gears follow
-   * (Decision 60): the floor only makes text larger, with room kept for
-   * it, and the cut only keeps a label clear of the frames. */
+   * a smaller share, and a row-group label that would run past the first
+   * frame line is cut before it (Decision 65). The grid area's width, not
+   * the viewport the header gears follow (Decision 60): the cut only
+   * keeps a label clear of the frames. */
   phone: boolean;
   /** The smaller texts' sizes, in ems of `fontPx` (`boardText`): never
-   * under 13 px at 100% on a phone. */
+   * under 13 px at 100% (Decision 66). */
   textEm: TextEms;
 }
 
@@ -165,7 +164,7 @@ function frame(input: LayoutInput, fontPx: number) {
   const lineRowHeight = LINE_HEIGHT * fontPx + 2 * padY;
   return {
     phone,
-    textEm: textEms(fontPx, phone),
+    textEm: textEms(fontPx),
     gap: d.gap,
     padX,
     padY,

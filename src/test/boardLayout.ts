@@ -4,7 +4,7 @@
  *
  * @module
  */
-import { TEXT_EM } from '@/board/boardText';
+import { textEms } from '@/board/boardText';
 import type { Layout } from '@/board/layout';
 
 export const TEST_LAYOUT: Layout = {
@@ -26,5 +26,5 @@ export const TEST_LAYOUT: Layout = {
   gutter: 9,
   headerGears: true,
   phone: false,
-  textEm: { ...TEXT_EM },
+  textEm: textEms(13),
 };

@@ -1,6 +1,7 @@
 /**
  * Tests for the board chrome: a summary chip toggles its filter on and off,
- * and the budget display flags a credential running low.
+ * its counts and words are never under 13 px, and the budget display flags
+ * a credential running low.
  *
  * @module
  */
@@ -8,8 +9,10 @@ import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
 import type { BoardModel } from '@/engine';
+import { textSizes } from '@/test/fontSize';
 
 import { BoardSummary, BudgetMeter } from './BoardChrome';
+import { BASE_FONT_PX } from './boardText';
 
 const model: BoardModel = {
   cells: {},
@@ -38,6 +41,32 @@ describe('BoardSummary', () => {
     fireEvent.click(screen.getByRole('radio', { name: /behind/ }));
     expect(onFilter).toHaveBeenLastCalledWith(null);
   });
+});
+
+describe('BoardSummary text', () => {
+  it.each([true, false])(
+    'draws every count and word at 13 px or more (words %s)',
+    (words) => {
+      // The page's text is 16 px; the toolbar sets nothing larger.
+      render(
+        <div data-testid="page" style={{ fontSize: '16px' }}>
+          <BoardSummary
+            model={model}
+            filter={null}
+            onFilter={vi.fn()}
+            words={words}
+          />
+        </div>,
+      );
+      const texts = textSizes(screen.getByTestId('page'));
+      // Every chip's count (and word) is there.
+      const chips = screen.getAllByRole('radio').length;
+      expect(chips).toBeGreaterThan(0);
+      expect(texts.filter((t) => /^\d+$/.test(t.text))).toHaveLength(chips);
+      expect(texts.length).toBe(words ? 2 * chips : chips);
+      expect(new Set(texts.map((t) => t.px))).toEqual(new Set([BASE_FONT_PX]));
+    },
+  );
 });
 
 describe('BoardSummary without words', () => {

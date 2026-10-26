@@ -217,6 +217,16 @@ describe('zoom', () => {
     expect(phone.rowNameWidth).toBeLessThanOrEqual(0.18 * 390);
   });
 
+  it('calls a grid area under 640 px a phone (Decision 65)', () => {
+    const at = (width: number) => fitLayout(input({ width }), 13).phone;
+    expect([at(390), at(639), at(640), at(1888)]).toEqual([
+      true,
+      true,
+      false,
+      false,
+    ]);
+  });
+
   it('magnifies past the top rung, up to 300% text', () => {
     const l = layoutAtZoom(tall, range.top * 2, range);
     expect(l).toMatchObject({ rung: 5, fontPx: 26 });

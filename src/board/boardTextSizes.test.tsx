@@ -1,8 +1,8 @@
 /**
- * Board text sizes on the demo board (spec.md C-13, row N5a, Decision
- * 63): on a 390 px phone at rung 0 no text is under 13 px, the badges,
- * group labels and empty cells included; off a phone those keep their
- * smaller sizes. Sizes are worked out from what the board sets
+ * Board text sizes on the demo board (spec.md C-13, row N5a, Decisions
+ * 63 and 66): on a 390 px phone at rung 0 and at `DEMO_VIEWPORT` no text
+ * is under 13 px, the badges, group labels, empty cells and SHAs
+ * included. Sizes are worked out from what the board sets
  * (`src/test/fontSize.ts`).
  *
  * @module
@@ -22,12 +22,7 @@ import {
 import { textSizes } from '@/test/fontSize';
 import { renderSettingsBoard } from '@/test/settingsBoard';
 
-import {
-  BADGE_BORDER_PX,
-  BADGE_PAD_X_EM,
-  BASE_FONT_PX,
-  TEXT_EM,
-} from './boardText';
+import { BADGE_BORDER_PX, BADGE_PAD_X_EM, BASE_FONT_PX } from './boardText';
 import { badgeText, EMPTY_SYMBOL } from './cellView';
 import { fitLayout, type LayoutInput } from './layout';
 
@@ -54,6 +49,7 @@ function boardText(model: BoardModel, area: LayoutInput) {
     badge: sizes((t) => badges.includes(t.text)),
     label: sizes((t) => labels.includes(t.text)),
     empty: sizes((t) => symbols.includes(t.text)),
+    sha: sizes((t) => /^[0-9a-f]{7}$/.test(t.text)),
   };
 }
 
@@ -82,12 +78,20 @@ describe('board text sizes', () => {
   );
 
   it(
-    'keeps badges and group labels smaller off a phone',
+    'draws no text under 13 px at DEMO_VIEWPORT either (Decision 66)',
     async () => {
       const model = await acmeModel();
       const text = boardText(model, acmeInput(model, DEMO_AREA));
-      expect(text.badge).toEqual(new Set([TEXT_EM.badge * BASE_FONT_PX]));
-      expect(text.label).toEqual(new Set([TEXT_EM.label * BASE_FONT_PX]));
+      expect([text.badge, text.label, text.empty]).toEqual([
+        new Set([BASE_FONT_PX]),
+        new Set([BASE_FONT_PX]),
+        new Set([BASE_FONT_PX]),
+      ]);
+      // SHAs show from rung 2, as the demo is here.
+      expect(text.rung).toBeGreaterThanOrEqual(2);
+      expect(text.sha).toEqual(new Set([BASE_FONT_PX]));
+      const small = text.all.filter((t) => t.px < BASE_FONT_PX);
+      expect(small.map((t) => `${t.text} ${String(t.px)}`)).toEqual([]);
     },
     BOARD_TEST_TIMEOUT_MS,
   );
