@@ -37,8 +37,9 @@ export const DEMO_FULL_BOARD_MAX_MS = 11_000;
 /** Reload: the cached board within this long of the page loading (ms). */
 export const RELOAD_FULL_BOARD_MAX_MS = 500;
 /** The 16-repo validation board on a cold cache: full board (ms).
- * Interim (Decision 45 item 1, replacing Decision 30's 15 s): revisited
- * in N8, after N3's persisted cache. */
+ * Interim (Decision 45 item 1, replacing Decision 30's 15 s): N8
+ * measured it after N3's persisted cache; it stays interim until the
+ * owner decides whether to keep it (a change to a target takes a decision). */
 export const REAL_COLD_FULL_BOARD_MAX_MS = 30_000;
 /** At one request in flight per credential, full board may be at most
  * this fraction slower than the N1 baseline. */
@@ -51,7 +52,7 @@ export type BoardKind = 'demo' | 'real';
 /** Measured from the board opening, or from the page (re)loading. */
 export type Origin = 'open' | 'reload';
 
-/** One Decision 30 target (as Decision 45 amends it). */
+/** One Decision 30 target (as Decisions 45 and 61 amend it). */
 export interface PerformanceTarget {
   label: string;
   board: BoardKind | 'any';
@@ -60,7 +61,8 @@ export interface PerformanceTarget {
   maxMs: number;
 }
 
-/** Decision 30's targets (Decision 45's interim full-board ones), as the
+/** Decision 30's targets (Decision 45's interim real-board one and
+ * Decision 61's demo one for the full board), as the
  * summary reports them. The relative
  * one-in-flight target ({@link ONE_IN_FLIGHT_MAX_SLOWDOWN}) has no fixed
  * number until a baseline exists, so the summary states it as a note. */
