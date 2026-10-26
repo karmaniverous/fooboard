@@ -12,6 +12,7 @@ import { MemoryRouter } from 'react-router-dom';
 import { vi } from 'vitest';
 
 import { BoardGrid } from '@/board/BoardGrid';
+import type { Layout } from '@/board/layout';
 import { SettingsPopupProvider } from '@/board/SettingsPopup';
 import type { Dashboard } from '@/domain/config/dashboard';
 import type { SettingsPlace } from '@/domain/settings/places';
@@ -33,11 +34,13 @@ export function renderSettingsBoard(
   {
     editor = true,
     save,
+    layout = TEST_LAYOUT,
   }: {
     /** The board has a dashboard editor (not the demo, until N3b). */
     editor?: boolean;
     /** Replaces the save (e.g. one that throws). */
     save?: (d: Dashboard) => void;
+    layout?: Layout;
   } = {},
 ): SettingsBoard {
   const onChange = vi.fn<(d: Dashboard) => void>();
@@ -54,7 +57,7 @@ export function renderSettingsBoard(
         }}
         onOpenSettings={editor ? onOpenSettings : undefined}
       >
-        <BoardGrid dashboard={d} model={model} layout={TEST_LAYOUT} now={0} />
+        <BoardGrid dashboard={d} model={model} layout={layout} now={0} />
       </SettingsPopupProvider>
     );
   }

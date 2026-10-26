@@ -14,6 +14,7 @@
  *
  * @module
  */
+import { pick } from 'radash';
 import { useEffect, useMemo, useRef, useState } from 'react';
 
 import { useMediaQuery } from '@/components/useMediaQuery';
@@ -23,6 +24,7 @@ import { cn } from '@/lib/utils';
 
 import { BoardGrid } from './BoardGrid';
 import { BoardToolbar } from './BoardToolbar';
+import { boardGroups } from './groupGutters';
 import { type LayoutInput } from './layout';
 import { boardContents } from './layoutContents';
 import {
@@ -95,9 +97,11 @@ export function BoardViewport({
       height: area.height || 720,
       rows: dashboard.rows.length,
       stages: dashboard.stages.length,
-      labelRows:
-        dashboard.rowGroups.filter((g) => g.label).length +
-        (dashboard.columnGroups.some((g) => g.label) ? 1 : 0),
+      ...pick(boardGroups(dashboard), [
+        'labelRows',
+        'columnGutters',
+        'rowGutters',
+      ]),
       rowNames: dashboard.rows.map((r) => r.displayName),
       contents: boardContents(dashboard, sizingModel, headerGears),
       measure,

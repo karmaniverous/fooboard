@@ -8,8 +8,10 @@
  * measured in `vite preview`; text is measured at a fixed width per
  * character, as the layout's own tests do.
  */
+import { pick } from 'radash';
 import { describe, expect, it } from 'vitest';
 
+import { boardGroups } from '@/board/groupGutters';
 import { BASE_FONT_PX, fitLayout, type LayoutInput } from '@/board/layout';
 import { boardContents } from '@/board/layoutContents';
 import { DEMO_VIEWPORT } from '@/demo/constants';
@@ -37,9 +39,7 @@ async function input(extraRows: number): Promise<LayoutInput> {
     height: DEMO_VIEWPORT.height - PAGE_CHROME_PX,
     rows,
     stages: board.stages.length,
-    labelRows:
-      board.rowGroups.filter((g) => g.label).length +
-      (board.columnGroups.some((g) => g.label) ? 1 : 0),
+    ...pick(boardGroups(board), ['labelRows', 'columnGutters', 'rowGutters']),
     rowNames: [
       ...board.rows.map((r) => r.displayName),
       ...Array.from({ length: extraRows }, () => 'one-more'),

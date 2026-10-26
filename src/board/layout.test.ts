@@ -9,58 +9,12 @@
  */
 import { describe, expect, it } from 'vitest';
 
-import {
-  BASE_FONT_PX,
-  capText,
-  fitLayout,
-  type LayoutInput,
-  type Rung,
-} from './layout';
+import { cell, input, measure } from '@/test/layoutInput';
+
+import { BASE_FONT_PX, capText, fitLayout, type Rung } from './layout';
 import { type Content, minWidth, packContent } from './packing';
 import { HEADER_GEAR_EM } from './settingsGearSize';
 import { layoutAtZoom, snapZoom, stepZoom, zoomLabel, zoomRange } from './zoom';
-
-/** Every character is 0.6 em wide. */
-const measure = (text: string, px: number) => text.length * px * 0.6;
-
-const cell = (rung: Rung): Content => ({
-  lead: rung === 0 ? 'x' : 'x Cancelled',
-  items: [
-    ...(rung >= 2 ? [{ key: 'time' as const, text: '59m' }] : []),
-    ...(rung >= 3
-      ? [
-          { key: 'commit' as const, text: '0000000' },
-          { key: 'extra' as const, text: 'deploy' },
-        ]
-      : []),
-    ...(rung >= 4
-      ? [{ key: 'branch' as const, text: 'release/24.3', free: true }]
-      : []),
-    ...(rung >= 5
-      ? [
-          {
-            key: 'message' as const,
-            text: 'Fix flaky checkout test',
-            free: true,
-          },
-        ]
-      : []),
-  ],
-});
-
-const input = (over: Partial<LayoutInput> = {}): LayoutInput => ({
-  width: 1440,
-  height: 800,
-  rows: 10,
-  stages: 6,
-  labelRows: 0,
-  rowNames: ['api-core'],
-  contents: (rung) => [cell(rung)],
-  measure,
-  density: 'default',
-  headerGears: true,
-  ...over,
-});
 
 describe('packContent', () => {
   it('puts everything on one line when it fits, else packs lines after the lead', () => {

@@ -1,8 +1,9 @@
 /**
  * Tests that the theme tokens in `index.css` keep their contrast in light
  * and dark mode: borders and field outlines at least 3:1 against the
- * surfaces they sit on (WCAG 2.2 SC 1.4.11, non-text contrast), and muted
- * text at least 4.5:1 (SC 1.4.3). The tokens are parsed from the CSS, so
+ * surfaces they sit on (WCAG 2.2 SC 1.4.11, non-text contrast), the group
+ * frame lines at least 3:1 on the background they are drawn on (spec.md
+ * §3.7), and muted text at least 4.5:1 (SC 1.4.3). The tokens are parsed from the CSS, so
  * a change that fades them fails here.
  *
  * @module
@@ -77,6 +78,12 @@ describe.each(Object.entries(MODES))('%s theme contrast', (_, mode) => {
   it.each(SURFACES)('borders reach 3:1 on %s', (surface) => {
     expect(
       contrast(token(mode, 'border'), token(mode, surface)),
+    ).toBeGreaterThanOrEqual(NON_TEXT);
+  });
+
+  it('group frame lines reach 3:1 on the background', () => {
+    expect(
+      contrast(token(mode, 'frame'), token(mode, 'background')),
     ).toBeGreaterThanOrEqual(NON_TEXT);
   });
 

@@ -4,44 +4,20 @@
  *
  * @module
  */
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, screen } from '@testing-library/react';
 import { beforeAll, describe, expect, it } from 'vitest';
 
 import { measureBoard } from '@/demo/scenarios/measure';
 import { type BoardModel, emptyModel } from '@/engine';
-import { createAppStores } from '@/storage';
-import { memoryStorage } from '@/storage/keyValue';
-import { StoresContext } from '@/storage/storesContext';
 import { fullModel } from '@/test/boardModel';
-
-import { BoardViewport } from './BoardViewport';
-import { useBoardView } from './useBoardView';
+import { renderViewport } from '@/test/boardViewport';
 
 let demoModel: BoardModel = emptyModel();
 beforeAll(async () => {
   demoModel = await fullModel(measureBoard);
 });
 
-function Harness({
-  model = emptyModel(),
-}: {
-  model?: BoardModel;
-}): React.JSX.Element {
-  const view = useBoardView('demo', 19, 6);
-  return (
-    <BoardViewport dashboard={measureBoard} model={model} now={0} view={view} />
-  );
-}
-
-const setup = (model?: BoardModel) => {
-  const stores = createAppStores(memoryStorage());
-  render(
-    <StoresContext value={stores}>
-      <Harness model={model} />
-    </StoresContext>,
-  );
-  return stores;
-};
+const setup = renderViewport;
 
 describe('BoardViewport', () => {
   it('sizes the grid area from the window, never from the grid itself', () => {
@@ -71,6 +47,20 @@ describe('BoardViewport', () => {
       if (width) Object.defineProperty(root, 'clientWidth', width);
       else Reflect.deleteProperty(root, 'clientWidth');
     }
+  });
+
+  it('fits the board across the width it lays out for, group gutters included', () => {
+    setup(demoModel);
+    const grid = screen.getByRole('grid');
+    const cols = grid.style.gridTemplateColumns.split(' ').map(parseFloat);
+    const gap = parseFloat(grid.style.gap);
+    const width = cols.reduce((a, b) => a + b, 0) + gap * (cols.length - 1);
+    // Row names, six stages, and a gutter either side of the Preview group.
+    expect(cols).toHaveLength(1 + 6 + 2);
+    // Before measuring (and in tests) the viewport assumes 1280 px; the
+    // columns are whole px, so the board falls short by under one a stage.
+    expect(width).toBeLessThanOrEqual(1280);
+    expect(width).toBeGreaterThan(1280 - 6);
   });
 
   it('zooms in with the button and saves the zoom with the board size', () => {
