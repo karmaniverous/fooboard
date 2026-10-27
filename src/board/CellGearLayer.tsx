@@ -18,11 +18,20 @@
  * board re-renders (a new layout). It is hidden on a touch screen, where
  * the detail sheet carries the gear.
  *
+ * The pointer or focus leaving the gear is reported (`onLeave`, with
+ * where it went), so the cell's tooltip can stay open while it moves
+ * between the cell and its gear (issue #42).
+ *
  * @module
  */
 import { useId, useLayoutEffect, useRef, useState } from 'react';
 
-import { gearPlace, type GearTarget, gearTargetOf } from './cellGearTarget';
+import {
+  gearOwnerProps,
+  gearPlace,
+  type GearTarget,
+  gearTargetOf,
+} from './cellGearTarget';
 import { CELL_SETTINGS_KEY } from './cellView';
 import { SettingsGear } from './SettingsGear';
 import { useSettingsPopup } from './settingsPopupContext';
@@ -33,10 +42,13 @@ const keyboardFocus = (node: EventTarget): boolean =>
 
 export function CellGearLayer({
   style,
+  onLeave,
   children,
 }: {
   /** The board's text size and gear sizes, inherited by the grid. */
   style: React.CSSProperties;
+  /** The pointer or focus left the gear, for `to`. */
+  onLeave?: (to: EventTarget | null) => void;
   children: React.ReactNode;
 }): React.JSX.Element {
   const popup = useSettingsPopup();
@@ -69,6 +81,17 @@ export function CellGearLayer({
     if (next?.el !== shown?.el) setShown(next);
   };
 
+  /** In the gear (the button or its icon). */
+  const inGear = (node: EventTarget | null) =>
+    node instanceof Node && gear.current?.contains(node) === true;
+  /** The pointer or focus leaving the gear for somewhere else. Heard on
+   * pointerout, which comes before the pointerover that moves the gear
+   * away, so the gear is still on the board to hear it. */
+  const leaveGear = (e: React.PointerEvent | React.FocusEvent) => {
+    if (inGear(e.target) && !inGear(e.relatedTarget))
+      onLeave?.(e.relatedTarget);
+  };
+
   useLayoutEffect(() => {
     const g = gear.current;
     const l = layer.current;
@@ -89,11 +112,7 @@ export function CellGearLayer({
       className="relative w-max"
       style={style}
       onPointerOver={(e) => {
-        if (
-          e.pointerType === 'touch' ||
-          (e.target instanceof Node && gear.current?.contains(e.target))
-        )
-          return;
+        if (e.pointerType === 'touch' || inGear(e.target)) return;
         hovered.current = gearTargetOf(e.target);
         lead.current = 'pointer';
         pick();
@@ -109,7 +128,9 @@ export function CellGearLayer({
         lead.current = 'focus';
         pick();
       }}
+      onPointerOut={leaveGear}
       onBlur={(e) => {
+        leaveGear(e);
         if (gearTargetOf(e.target)) focused.current = null;
         pick();
       }}
@@ -142,6 +163,7 @@ export function CellGearLayer({
           id={gearId}
           place={gearPlace(shown)}
           spot="corner"
+          marks={gearOwnerProps(shown)}
         />
       )}
     </div>

@@ -5,9 +5,12 @@
  * it, a touch tap or the details key (Space) opens the detail sheet. A
  * record with no link (possible with a custom source rule) has nothing to
  * follow, so the cover is a button, as an empty cell is: a click, a tap,
- * Enter or Space opens the sheet. Either way the cell is reached with Tab,
- * shows its tooltip on focus and says Space opens its details (and, on a
- * board with settings, that `,` opens its settings: `keyshortcuts`).
+ * Enter or Space opens the sheet. Either way the cell is reached with Tab
+ * and says Space opens its details (and, on a board with settings, that
+ * `,` opens its settings: `keyshortcuts`). The cover has no hover or focus
+ * handlers: its focus bubbles to the cell's box, which shows the tooltip
+ * (`Cell`); it is marked as the cell's control (`CELL_CONTROL`), so the
+ * tooltip names its keys only while it has focus.
  *
  * @module
  */
@@ -15,15 +18,8 @@ import { useRef } from 'react';
 
 import { ExternalLink } from '@/components/ExternalLink';
 
+import { CELL_CONTROL } from './cellBox';
 import { cellKeyshortcuts, DETAILS_KEY } from './cellView';
-
-/** Hover and focus handlers showing the cell's tooltip. */
-export interface Inspect {
-  onMouseEnter: (e: React.MouseEvent<HTMLElement>) => void;
-  onMouseLeave: () => void;
-  onFocus: (e: React.FocusEvent<HTMLElement>) => void;
-  onBlur: () => void;
-}
 
 const COVER_CLASS =
   'absolute inset-0 rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-white';
@@ -31,7 +27,6 @@ const COVER_CLASS =
 export function CellCover({
   href,
   name,
-  inspect,
   onOpenSheet,
   settingsKey,
 }: {
@@ -39,7 +34,6 @@ export function CellCover({
   href: string | undefined;
   /** The cell's accessible name. */
   name: string;
-  inspect: Inspect;
   onOpenSheet?: () => void;
   /** The board has a settings popup, which `,` opens. */
   settingsKey?: boolean;
@@ -54,7 +48,7 @@ export function CellCover({
         aria-keyshortcuts={keyshortcuts}
         className={COVER_CLASS}
         onClick={onOpenSheet}
-        {...inspect}
+        {...CELL_CONTROL}
       />
     );
   }
@@ -89,7 +83,7 @@ export function CellCover({
         e.preventDefault();
         onOpenSheet();
       }}
-      {...inspect}
+      {...CELL_CONTROL}
     />
   );
 }

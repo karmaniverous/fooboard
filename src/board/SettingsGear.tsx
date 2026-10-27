@@ -49,6 +49,7 @@ export function SettingsGear({
   spot,
   id,
   ref,
+  marks,
 }: {
   place: BoardPlace;
   spot: GearSpot;
@@ -56,6 +57,8 @@ export function SettingsGear({
   id?: string;
   /** The button, for the cell gear to place it. */
   ref?: React.Ref<HTMLButtonElement>;
+  /** Data attributes for the button: the cell gear names its cell. */
+  marks?: Record<`data-${string}`, string>;
 }): React.JSX.Element | null {
   const popup = useSettingsPopup();
   const headerGears = use(HeaderGearsContext);
@@ -72,6 +75,7 @@ export function SettingsGear({
       aria-label={gearLabel(popup.dashboard, place)}
       aria-haspopup="dialog"
       aria-expanded={expanded}
+      {...marks}
       className={cn(
         'flex shrink-0 items-center justify-center rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
         SPOT[spot],

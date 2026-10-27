@@ -9,7 +9,10 @@
  * has a settings gear (spec.md §3.11), except on a narrow screen
  * (`Layout.headerGears`), and one gear follows the cell under the pointer
  * or keyboard focus (`CellGearLayer`). Gears are sized from the named gear
- * constants in ems of the board's text, so they scale with zoom.
+ * constants in ems of the board's text, so they scale with zoom. A cell's
+ * tooltip stays open while the pointer or focus moves between the cell,
+ * its badge and its gear, and closes when it leaves them all (`withinCell`,
+ * issue #42); it is hidden while a settings popup is open.
  *
  * @module
  */
@@ -19,6 +22,7 @@ import type { Dashboard } from '@/domain/config/dashboard';
 import type { BoardModel } from '@/engine';
 
 import { BoardRows } from './BoardRows';
+import { controlHasFocus, withinCell } from './cellBox';
 import { CellDetail, CellSheet, CellTooltip } from './CellDetail';
 import { CellGearLayer } from './CellGearLayer';
 import { cellNames, cellSettingsAt } from './cellNames';
@@ -64,6 +68,9 @@ export function BoardGrid({
 
   const [tip, setTip] = useState<{
     key: string;
+    /** The cell's box, which the pointer or focus may leave only for its
+     * own badge or gear. */
+    el: HTMLElement;
     rect: DOMRect;
     /** The cell has focus, so the details key works: say so. */
     focused: boolean;
@@ -73,7 +80,13 @@ export function BoardGrid({
     rowId: string;
     stageId: string;
   } | null>(null);
-  const hasSettings = useSettingsPopup() !== null;
+  const popup = useSettingsPopup();
+  const hasSettings = popup !== null;
+  /** The pointer or focus left a cell or the cell gear, for `to`: the
+   * tooltip closes unless `to` is still in its cell as a whole. */
+  const leave = (to: EventTarget | null | undefined) => {
+    setTip((shown) => (shown && withinCell(shown.el, to) ? shown : null));
+  };
   const names = (key: string) => cellNames(dashboard, key);
   const detail = (key: string, gear?: React.ReactNode) => {
     const cell = model.cells[key];
@@ -116,7 +129,7 @@ export function BoardGrid({
 
   return (
     <HeaderGearsContext value={layout.headerGears}>
-      <CellGearLayer style={boardTextStyle(layout)}>
+      <CellGearLayer style={boardTextStyle(layout)} onLeave={leave}>
         <div
           role="grid"
           aria-label={dashboard.name}
@@ -163,16 +176,15 @@ export function BoardGrid({
             now={now}
             filter={filter}
             cellStyles={cellStyles}
-            onInspect={(key, el) => {
-              setTip(
-                el
-                  ? {
-                      key,
-                      rect: el.getBoundingClientRect(),
-                      focused: el === document.activeElement,
-                    }
-                  : null,
-              );
+            onInspect={(key, el, to) => {
+              if (el)
+                setTip({
+                  key,
+                  el,
+                  rect: el.getBoundingClientRect(),
+                  focused: controlHasFocus(el),
+                });
+              else leave(to);
             }}
             onOpenSheet={(key, rowId, stageId) => {
               setSheet({ key, rowId, stageId });
@@ -182,7 +194,7 @@ export function BoardGrid({
         </div>
       </CellGearLayer>
 
-      {tip && !sheet && (
+      {tip && !sheet && !popup?.request && (
         <CellTooltip
           rect={tip.rect}
           keyHint={tip.focused}

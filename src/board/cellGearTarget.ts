@@ -5,6 +5,7 @@
  *
  * @module
  */
+import { cellKey } from '@/engine';
 
 import type { BoardPlace } from './settingsGearWords';
 
@@ -23,6 +24,27 @@ export const gearTargetProps = (
   'data-gear-row': rowId,
   'data-gear-stage': stageId,
 });
+
+/** The attribute that marks the cell gear with the key of the grid cell
+ * it sits on, so the cell's tooltip knows the gear is its own
+ * (`withinCell`). */
+export const gearOwnerProps = (
+  target: Pick<GearTarget, 'rowId' | 'stageId'>,
+): Record<'data-gear-of', string> => ({
+  'data-gear-of': gearTargetKey(target),
+});
+
+/** The key of the grid cell whose gear an element is in, if any. */
+export const gearOwnerOf = (node: Element): string | undefined =>
+  node.closest<HTMLElement>('[data-gear-of]')?.dataset.gearOf;
+
+/** The key of a grid cell the gear can sit on. */
+export function gearTargetKey({
+  rowId,
+  stageId,
+}: Pick<GearTarget, 'rowId' | 'stageId'>): string {
+  return cellKey(rowId, stageId);
+}
 
 /** The settings place of a grid cell the gear can sit on. */
 export const gearPlace = ({ rowId, stageId }: GearTarget): BoardPlace => ({
