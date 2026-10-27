@@ -8,6 +8,7 @@ import { NEWER_VERSION_MESSAGE } from '@/domain/config/migrate';
 
 import type { Share, ShareRefusal } from '../envelope';
 import { SHARE_LINK_MAX_CHARS, X_LINK_MAX_CHARS } from '../link';
+import type { SecretAnswer } from '../secretQuestions';
 
 /** Where a share came from. */
 export type ShareOrigin = 'link' | 'file';
@@ -43,9 +44,32 @@ export const refusalHint = (origin: ShareOrigin): string =>
 export const REPLACE_MINE_NOTE =
   'Replace mine updates the dashboard already here to this version, overwriting any changes you made to it on this device. Its credentials stay. Keep as a copy leaves yours as it is.';
 
+const ASKS_IF_DIFFERENT =
+  "You choose for any whose secret differs from this device's.";
+
+/** Under the credentials when *Remember on this device* is ticked. */
+export const REMEMBER_NOTE = `The credentials are kept in this browser until you forget them. ${ASKS_IF_DIFFERENT}`;
+
 /** Under the credentials when *Remember on this device* is unticked. */
-export const TAB_ONLY_NOTE =
-  'The credentials are kept for this tab only, until it closes. Any this browser already remembers, unchanged, stay remembered.';
+export const TAB_ONLY_NOTE = `The credentials are kept for this tab only, until it closes. Any this browser already remembers, unchanged, stay remembered. ${ASKS_IF_DIFFERENT}`;
+
+/** Above the questions about secrets that differ (Decision 70). */
+export const SECRETS_DIFFER =
+  "This share's secret differs from the one this device holds for the credentials below. Neither is shown. Choose for each one; the share's follows Remember on this device.";
+
+/** Each question about a secret that differs, after the credential's
+ * kind and label. */
+export const SECRET_QUESTION = 'keep yours, or use the one in this share?';
+
+/** The answers to each question about a secret that differs. */
+export const SECRET_ANSWERS = [
+  { value: 'mine', label: 'Keep yours' },
+  { value: 'theirs', label: "Use the share's" },
+] as const satisfies readonly { value: SecretAnswer; label: string }[];
+
+/** Why *Import* is disabled while a question is unanswered. */
+export const ANSWER_TO_IMPORT =
+  "Choose Keep yours or Use the share's for each credential above to import.";
 
 /** What a share holds, above the import dialog's choices. */
 export function shareSummary(share: Share, origin: ShareOrigin): string {

@@ -19,7 +19,7 @@ import type { ImportPlan } from './importPlan';
 const gh = { kind: 'github', token: 'imported' } as const;
 const plan = (more: Partial<ImportPlan> = {}): ImportPlan => ({
   dashboards: [shareBoard()],
-  secrets: [{ id: 'gh-org', secret: gh }],
+  secrets: [{ id: 'gh-org', label: 'Northwind org', secret: gh }],
   forget: [],
   removed: [],
   imported: ['northwind'],
@@ -106,8 +106,8 @@ describe('applyImport', () => {
         stores,
         plan({
           secrets: [
-            { id: 'aws-dev', secret: bad },
-            { id: 'gh-org', secret: gh },
+            { id: 'aws-dev', label: 'Dev account', secret: bad },
+            { id: 'gh-org', label: 'Northwind org', secret: gh },
           ],
         }),
         false,

@@ -4,13 +4,15 @@
  * ("This link isn't a fooboard board, or it's damaged", or that a newer
  * fooboard made it); one that can lists its dashboards and the choices
  * (`ImportForm`). *Replace the whole setup* asks for confirmation in an
- * alert dialog. Nothing is written until *Import*; cancelling discards
+ * alert dialog. While a question about a secret that differs is
+ * unanswered, *Import* is disabled and says why (`aria-describedby`).
+ * Nothing is written until *Import*; cancelling discards
  * the share. After an import the app opens the imported dashboard, or the
  * home page when there were several.
  *
  * @module
  */
-import { useMemo, useState } from 'react';
+import { useId, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 import {
@@ -36,6 +38,7 @@ import { DIALOG_SCROLLS } from './dialogClass';
 import { ImportForm } from './ImportForm';
 import { ShareInputs } from './ShareInputs';
 import {
+  ANSWER_TO_IMPORT,
   refusalHint,
   refusalMessage,
   type ShareOrigin,
@@ -54,7 +57,10 @@ function ImportChoices({
 }): React.JSX.Element {
   const stores = useStores();
   const existing = useMemo(() => dashboardsOf(stores.config.load()), [stores]);
-  const form = useImportForm(share, existing);
+  const form = useImportForm(share, existing, (id) =>
+    stores.credentials.get(id),
+  );
+  const why = useId();
   const [confirming, setConfirming] = useState<ImportPlan | null>(null);
   const [imported, setImported] = useState<ImportPlan | null>(null);
   const apply = (plan: ImportPlan) => {
@@ -73,6 +79,11 @@ function ImportChoices({
   return (
     <>
       <ImportForm form={form} dashboards={share.dashboards} />
+      {form.asking && !imported && (
+        <p id={why} className="text-xs text-muted-foreground">
+          {ANSWER_TO_IMPORT}
+        </p>
+      )}
       <div className="flex justify-end gap-2">
         {imported ? (
           <Button
@@ -89,6 +100,7 @@ function ImportChoices({
             </Button>
             <Button
               disabled={!form.ready}
+              aria-describedby={form.asking ? why : undefined}
               onClick={() => {
                 form.plan().then(
                   (plan) => {

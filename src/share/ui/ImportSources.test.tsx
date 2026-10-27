@@ -18,6 +18,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 
 import v4Board from '@/domain/config/fixtures/v4-board.json';
 import {
+  dialog,
   fragmentOf,
   payloadOf,
   renderImport,
@@ -27,8 +28,6 @@ import {
 import { shareBoard } from '@/test/shareBoard';
 
 import { buildEnvelope } from '../envelope';
-
-const dialog = () => screen.getByRole('dialog', { name: 'Import dashboards' });
 
 /** Choose a file holding `text` in the dialog's file field. */
 const chooseFile = async (text: string) => {

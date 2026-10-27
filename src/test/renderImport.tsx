@@ -2,11 +2,12 @@
  * Render the app shell for share and import tests: stores on an in-memory
  * device, a router whose path is shown (`where`), and the navigation
  * dialogs, opened by a share link when one is given. Also builds share
- * links and payloads from envelopes.
+ * links and payloads from envelopes, and finds the import dialog, its
+ * checkboxes and its *Import* button.
  *
  * @module
  */
-import { render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 
 import { AppNavProvider } from '@/components/AppNavProvider';
@@ -59,3 +60,19 @@ export const savedIds = (stores: AppStores): string[] => {
   const loaded = stores.config.load();
   return loaded.kind === 'ok' ? loaded.root.dashboards.map((d) => d.id) : [];
 };
+
+/** The open import dialog. */
+export const dialog = (): HTMLElement =>
+  screen.getByRole('dialog', { name: 'Import dashboards' });
+
+/** The import dialog's checkbox named `name`. */
+export const box = (name: string): HTMLElement =>
+  within(dialog()).getByRole('checkbox', { name });
+
+/** Click the import dialog's *Import* and let its planning settle. */
+export async function importNow(): Promise<void> {
+  await act(async () => {
+    fireEvent.click(within(dialog()).getByRole('button', { name: 'Import' }));
+    await Promise.resolve();
+  });
+}

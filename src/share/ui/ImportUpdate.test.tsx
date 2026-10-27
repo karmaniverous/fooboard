@@ -7,34 +7,27 @@
  *
  * @module
  */
-import {
-  act,
-  cleanup,
-  fireEvent,
-  screen,
-  within,
-} from '@testing-library/react';
+import { cleanup, fireEvent, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
 import type { Dashboard } from '@/domain/config/dashboard';
 import { type AppStores, createAppStores } from '@/storage';
 import { memoryStorage } from '@/storage/keyValue';
 import { choose } from '@/test/choose';
-import { payloadOf, renderImport, where } from '@/test/renderImport';
+import {
+  box,
+  dialog,
+  importNow,
+  payloadOf,
+  renderImport,
+  where,
+} from '@/test/renderImport';
 import { shareBoard } from '@/test/shareBoard';
 
 import { makeShare } from '../exportShare';
 import { REPLACE_MINE_NOTE, TAB_ONLY_NOTE } from './shareWords';
 
 const gh = { kind: 'github', token: 'ghp_sender' } as const;
-const dialog = () => screen.getByRole('dialog', { name: 'Import dashboards' });
-const box = (name: string) => within(dialog()).getByRole('checkbox', { name });
-const importNow = async () => {
-  await act(async () => {
-    fireEvent.click(within(dialog()).getByRole('button', { name: 'Import' }));
-    await Promise.resolve();
-  });
-};
 const dashboardsOf = (stores: AppStores): Dashboard[] => {
   const loaded = stores.config.load();
   return loaded.kind === 'ok' ? loaded.root.dashboards : [];

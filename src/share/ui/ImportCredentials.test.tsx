@@ -9,19 +9,21 @@
  *
  * @module
  */
-import {
-  act,
-  fireEvent,
-  screen,
-  waitFor,
-  within,
-} from '@testing-library/react';
+import { fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
 import { createAppStores } from '@/storage';
 import { memoryStorage } from '@/storage/keyValue';
 import { LEFTOVER_SECRETS_HINT } from '@/storage/leftoverSecrets';
-import { payloadOf, renderImport, savedIds, where } from '@/test/renderImport';
+import {
+  box,
+  dialog,
+  importNow,
+  payloadOf,
+  renderImport,
+  savedIds,
+  where,
+} from '@/test/renderImport';
 import { shareBoard } from '@/test/shareBoard';
 
 import { buildEnvelope } from '../envelope';
@@ -33,14 +35,6 @@ const gh = { kind: 'github', token: 'ghp_shared' } as const;
 const secrets: ShareSecrets = {
   'gh-org': gh,
   stranger: { kind: 'github', token: 'not-referenced' },
-};
-const dialog = () => screen.getByRole('dialog', { name: 'Import dashboards' });
-const box = (name: string) => within(dialog()).getByRole('checkbox', { name });
-const importNow = async () => {
-  await act(async () => {
-    fireEvent.click(within(dialog()).getByRole('button', { name: 'Import' }));
-    await Promise.resolve();
-  });
 };
 const encrypted = async () =>
   payloadOf(

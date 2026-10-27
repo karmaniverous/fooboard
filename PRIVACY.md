@@ -1,6 +1,6 @@
 # Privacy
 
-_Effective 26 October 2026._
+_Effective 27 October 2026._
 
 fooboard is a static web app that runs entirely in your browser. This page says, plainly, what it does with your data. In short: **we don't collect any.**
 
@@ -34,7 +34,7 @@ Links to X, GitHub and other sites are ordinary links: nothing is sent until you
 
 **Sharing your dashboards.** A board link or an exported file carries the dashboards you chose, as they are saved (names, repos, branches, rules, groups, settings and pinned apps), and nothing about your device: never zoom, density, theme, the answers kept from GitHub and AWS, or anything held for a tab. It carries tokens and keys **only if you tick _Include credentials_**, and then only those the chosen dashboards use; they are encrypted with your passphrase unless you untick it, and anyone holding a link or file with unencrypted credentials, or with the passphrase too, can use them. A board link keeps everything in the part after `#`, which browsers don't send to the host or in `Referer` headers; when one opens, fooboard removes that part from the address bar and the history at once. What you do with a link or file after copying or saving it (the chat, email or post it goes into) is up to you and that service. _Post this board on X_ never includes credentials, but its link shows your repo and branch names to anyone who opens it.
 
-**Importing.** Nothing from a link or file is saved until you press _Import_. Imported tokens and keys are kept in the page's memory for the tab only, unless you tick _Remember on this device_, which keeps them in local storage like any other remembered credential. One already in local storage, unchanged, stays there.
+**Importing.** Nothing from a link or file is saved until you press _Import_. Imported tokens and keys are kept in the page's memory for the tab only, unless you tick _Remember on this device_, which keeps them in local storage like any other remembered credential. One already in local storage, unchanged, stays there. When a credential's secret in the import differs from the one this browser holds, fooboard asks whether to keep yours or use the imported one before writing anything; the two are compared in the page, neither is shown, and nothing is sent anywhere. Keeping yours leaves it where it was; using the imported one stores it as _Remember on this device_ says.
 
 ## Your credentials are your responsibility
 
