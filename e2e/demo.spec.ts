@@ -15,6 +15,17 @@ import { expect, test } from './guard';
 /** Time for dnd-kit's keyboard sensor between keys. */
 const KEY_SETTLE_MS = 300;
 
+/** `locator`'s box once it has stopped moving (a drop animates). */
+async function settledBox(locator: Locator) {
+  let last = await locator.boundingBox();
+  for (;;) {
+    await new Promise((resolve) => setTimeout(resolve, KEY_SETTLE_MS));
+    const box = await locator.boundingBox();
+    if (box && last && box.x === last.x && box.y === last.y) return box;
+    last = box;
+  }
+}
+
 /** Press `button` from the keyboard. (WebKit, like Safari, doesn't focus a
  * clicked button, so focus has nothing to return to after a click.) */
 async function press(page: Page, button: Locator): Promise<void> {
@@ -152,12 +163,9 @@ test('every dialog, sheet, popover and drag works under the CSP', async ({
   await page.waitForTimeout(KEY_SETTLE_MS);
   await page.keyboard.press('Space');
   await expect(rows.nth(1)).toContainText('storefront');
-
-  const handle = editor.getByRole('button', {
-    name: 'Drag storefront to reorder',
-  });
-  const box = await handle.boundingBox();
-  if (!box) throw new Error('the drag handle has no box');
+  // Measure once the drop has finished moving the item.
+  await expect(dragHandle).not.toHaveAttribute('aria-pressed', 'true');
+  const box = await settledBox(dragHandle);
   await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
   await page.mouse.down();
   await page.mouse.move(box.x + box.width / 2, box.y - 40, { steps: 8 });

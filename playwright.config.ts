@@ -42,6 +42,8 @@ export default defineConfig({
   // Firefox and WebKit on a busy machine take seconds where Chromium takes
   // milliseconds (a Tab press can take half a second in Firefox).
   timeout: 60_000,
+  // Likewise a closing panel's focus return: 3.7 s seen in Firefox here.
+  expect: { timeout: 15_000 },
   forbidOnly: CI,
   retries: 0,
   reporter: CI ? [['list'], ['github']] : 'list',
