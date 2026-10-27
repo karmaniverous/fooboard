@@ -8,6 +8,7 @@
  * @module
  */
 import { gearOwnerOf, gearTargetKey, gearTargetOf } from './cellGearTarget';
+import type { CellFocus } from './cellView';
 
 /** The attribute marking a cell's control: its cover link or button. */
 export const CELL_CONTROL: Record<'data-cell-control', string> = {
@@ -22,6 +23,15 @@ const FOCUSED_CONTROL = '[data-cell-control]:focus';
  * else. */
 export const controlHasFocus = (box: Element): boolean =>
   box.matches(FOCUSED_CONTROL) || box.querySelector(FOCUSED_CONTROL) !== null;
+
+/** Where focus is in a cell box (`CellFocus`): on its control, or on
+ * its badge, the only other thing in the box that takes focus. */
+export const cellFocus = (box: Element): CellFocus =>
+  controlHasFocus(box)
+    ? 'control'
+    : box.contains(box.ownerDocument.activeElement)
+      ? 'badge'
+      : undefined;
 
 /** Whether a node is in a cell as a whole: in its box (its control or its
  * badge), or on the cell gear sitting on it. */

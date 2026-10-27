@@ -31,9 +31,9 @@ import { readmeSection } from '@/lib/site';
 
 import {
   badgeDescription,
-  CELL_SETTINGS_KEY,
+  type CellFocus,
+  cellKeyHint,
   cellPlace,
-  DETAILS_KEY,
   EMPTY_LABEL,
   firstLine,
   shortSha,
@@ -219,18 +219,20 @@ function SubjectList({
  * and never focused (the cell keeps focus); it has the tooltip role. */
 export function CellTooltip({
   rect,
-  keyHint = false,
+  focus,
   settingsHint = false,
   children,
 }: {
   rect: DOMRect;
-  /** The cell has focus: say which key opens its detail sheet. */
-  keyHint?: boolean;
-  /** ...and which opens its settings popup, where the board has one. */
+  /** Where focus is in the cell: the hint names the keys that work there
+   * (`cellKeyHint`). */
+  focus?: CellFocus;
+  /** The board has a settings popup, which `,` opens. */
   settingsHint?: boolean;
   children: React.ReactNode;
 }): React.JSX.Element {
   const anchor = { current: { getBoundingClientRect: () => rect } };
+  const hint = cellKeyHint(focus, settingsHint);
   return (
     <Popover open>
       <PopoverAnchor virtualRef={anchor} />
@@ -245,13 +247,7 @@ export function CellTooltip({
         className="pointer-events-none max-h-[var(--radix-popover-content-available-height)] w-80 max-w-[calc(100vw-12px)] overflow-hidden rounded-lg border-0 bg-slate-900 p-3 text-slate-100 shadow-xl"
       >
         {children}
-        {keyHint && (
-          <p className="mt-2 text-xs text-slate-400">
-            Press {DETAILS_KEY.name} for details
-            {settingsHint &&
-              ` or ${CELL_SETTINGS_KEY.name} (comma) for settings`}
-          </p>
-        )}
+        {hint && <p className="mt-2 text-xs text-slate-400">{hint}</p>}
       </PopoverContent>
     </Popover>
   );

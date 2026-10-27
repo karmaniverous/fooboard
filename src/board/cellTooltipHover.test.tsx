@@ -204,9 +204,11 @@ describe('focus over the cell as a whole', () => {
     fireEvent.focusOut(cover, { relatedTarget: badge });
     expect(tip()).toBe(text);
     focusElement(badge);
-    // Still the cell's tooltip; Space is the cover's key, not the badge's.
+    // Still the cell's tooltip; Space is the cover's key, not the badge's,
+    // so only comma is named.
     expect(tip()).toMatch(/billing/);
     expect(tip()).not.toMatch(/Press Space/);
+    expect(tip()).toMatch(/Press , \(comma\) for settings$/);
     focusElement(cover);
     expect(tip()).toBe(text);
   });

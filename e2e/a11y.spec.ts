@@ -34,7 +34,8 @@ async function violations(page: Page): Promise<string[]> {
     .withTags(WCAG)
     // Experimental in axe (WCAG 2.5.3, label in name), so off by default;
     // the tags turn it on. Its findings on the board are recorded in the
-    // accessibility pass for the owner (the diverged badge's "1/2").
+    // accessibility pass for the owner (the diverged badge's "1/2", named
+    // "diverged: 1 commit behind, 2 commits ahead of its source").
     .disableRules(['label-content-name-mismatch'])
     .analyze();
   return found.flatMap((v) =>

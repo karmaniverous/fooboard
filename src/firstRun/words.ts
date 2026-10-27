@@ -10,6 +10,7 @@ import {
   type BranchPresetId,
   BranchPresetIdSchema,
 } from '@/domain/config/presets';
+import { plural } from '@/lib/plural';
 
 /** Creating a dashboard: token, repos, stages, then the board. */
 const FIRST_RUN_STEPS = 4;
@@ -50,9 +51,6 @@ export const suggestionText = (
 /** Every preset, in the order offered. */
 export const PRESET_IDS: readonly BranchPresetId[] =
   BranchPresetIdSchema.options;
-
-const plural = (n: number, one: string, many: string) =>
-  `${String(n)} ${n === 1 ? one : many}`;
 
 /** What the note says of the unmapped runs. */
 export const unmappedText = (unmapped: number): string =>

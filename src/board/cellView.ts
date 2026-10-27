@@ -10,6 +10,7 @@ import type { EmptyCellState } from '@/domain/derivation';
 import type { StalenessBadge } from '@/domain/derivation';
 import type { ResolvedStatus } from '@/domain/statuses/resolved';
 import { textOn } from '@/lib/contrast';
+import { plural } from '@/lib/plural';
 
 /** How a status fills a cell or a legend swatch: its colour, text in white
  * or near-black (whichever reads, WCAG AA), and a dashed outline when
@@ -41,6 +42,25 @@ export const CELL_SETTINGS_KEY = { key: ',', name: ',' } as const;
  * settings popup. */
 export const cellKeyshortcuts = (settings = false): string =>
   settings ? `${DETAILS_KEY.name} ${CELL_SETTINGS_KEY.name}` : DETAILS_KEY.name;
+
+/** Where focus is in a cell: on its control (cover link or button),
+ * where Space and `,` work; on its behind/diverged badge, where only `,`
+ * works; or nowhere in it. */
+export type CellFocus = 'control' | 'badge' | undefined;
+
+/** The focused cell's tooltip hint: the keys that work where focus is.
+ * On the cell's control, Space for details and, where the board has a
+ * settings popup, `,`; on its badge, only `,` (Space would follow the
+ * badge's link, not open details), so nothing without settings. */
+export function cellKeyHint(
+  focus: CellFocus,
+  settings: boolean,
+): string | undefined {
+  const settingsHint = `${CELL_SETTINGS_KEY.name} (comma) for settings`;
+  if (focus === 'control')
+    return `Press ${DETAILS_KEY.name} for details${settings ? ` or ${settingsHint}` : ''}`;
+  return focus === 'badge' && settings ? `Press ${settingsHint}` : undefined;
+}
 
 /** The glyph for each status icon (A§4.3.6). */
 export const STATUS_GLYPH: Record<StatusIcon, string> = {
@@ -82,11 +102,14 @@ export function badgeText(badge: NonNullable<StalenessBadge>): string {
     : `${capCount(badge.behind)}/${capCount(badge.ahead)}`;
 }
 
-/** Badge description for tooltips and screen readers. */
+const commits = (n: number) => plural(n, 'commit', 'commits');
+
+/** Badge description for tooltips, the detail sheet and screen readers:
+ * every count with its noun, "1 commit" or "2 commits". */
 export function badgeDescription(badge: NonNullable<StalenessBadge>): string {
   return badge.kind === 'behind'
-    ? `${String(badge.count)} commits behind its source`
-    : `diverged: ${String(badge.behind)} behind, ${String(badge.ahead)} ahead of its source`;
+    ? `${commits(badge.count)} behind its source`
+    : `diverged: ${commits(badge.behind)} behind, ${commits(badge.ahead)} ahead of its source`;
 }
 
 /** Compact relative time: `now`, `4m`, `3h`, `2d`, `5w`. */
