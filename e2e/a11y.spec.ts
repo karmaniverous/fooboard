@@ -75,11 +75,16 @@ for (const colorScheme of ['light', 'dark'] as const)
       await expect(page.getByRole('dialog')).toBeVisible();
       expect(await violations(page), 'settings popup').toEqual([]);
       await page.keyboard.press('Escape');
+    });
 
+    test('axe finds no WCAG A or AA violation on the error screen', async ({
+      page,
+    }) => {
+      // A fresh page, so no cache serves the demo's code.
       await page.route('**/assets/DemoPage-*.js', (route) => route.abort());
-      await page.reload();
+      await page.goto('/demo');
       await expect(page.getByRole('alert')).toBeVisible();
-      expect(await violations(page), 'error screen').toEqual([]);
+      expect(await violations(page)).toEqual([]);
     });
   });
 

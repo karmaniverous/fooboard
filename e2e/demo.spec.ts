@@ -13,7 +13,7 @@ import { firstCell, openDemo } from './board';
 import { expect, test } from './guard';
 
 /** Time for dnd-kit's keyboard sensor between keys. */
-const KEY_SETTLE_MS = 150;
+const KEY_SETTLE_MS = 300;
 
 /** Press `button` from the keyboard. (WebKit, like Safari, doesn't focus a
  * clicked button, so focus has nothing to return to after a click.) */
@@ -142,10 +142,15 @@ test('every dialog, sheet, popover and drag works under the CSP', async ({
     .getByRole('button', { name: 'Drag storefront to reorder' })
     .focus();
   // The sensor attaches its listeners a moment after each key.
-  for (const key of ['Space', 'ArrowDown', 'Space']) {
-    await page.keyboard.press(key);
-    await page.waitForTimeout(KEY_SETTLE_MS);
-  }
+  const dragHandle = editor.getByRole('button', {
+    name: 'Drag storefront to reorder',
+  });
+  await page.keyboard.press('Space');
+  await expect(dragHandle).toHaveAttribute('aria-pressed', 'true');
+  await page.waitForTimeout(KEY_SETTLE_MS);
+  await page.keyboard.press('ArrowDown');
+  await page.waitForTimeout(KEY_SETTLE_MS);
+  await page.keyboard.press('Space');
   await expect(rows.nth(1)).toContainText('storefront');
 
   const handle = editor.getByRole('button', {
