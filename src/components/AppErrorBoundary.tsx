@@ -40,7 +40,7 @@ const windowEnv = (): ErrorScreenEnv => ({
 });
 
 /** The error screen: what went wrong, the version, and the way out. */
-export function ErrorScreen({
+function ErrorScreen({
   error,
   env,
 }: {

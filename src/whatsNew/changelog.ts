@@ -11,7 +11,7 @@
  */
 
 /** One kind of change in a release (*Features*, *Bug Fixes*, …). */
-export interface ReleaseSection {
+interface ReleaseSection {
   title: string;
   /** One line per change, as inline Markdown. */
   items: string[];

@@ -33,7 +33,8 @@ test("What's new marks the newest release until it is opened", async ({
   await page.getByRole('menuitem', { name: /^What's new/ }).click();
   const dialog = page.getByRole('dialog', { name: "What's new" });
   await expect(dialog).toBeVisible();
-  const [newest, older] = RELEASES;
+  const newest = RELEASES.at(0);
+  const older = RELEASES.at(1);
   if (newest === undefined)
     await expect(dialog).toContainText('No releases yet');
   else

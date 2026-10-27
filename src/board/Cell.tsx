@@ -189,11 +189,7 @@ export function Cell({
         key: 'commit',
         node: (
           <span className="flex items-center" style={gapStyle}>
-            <span
-              aria-hidden
-              className="font-mono"
-              style={textSize('sha')}
-            >
+            <span aria-hidden className="font-mono" style={textSize('sha')}>
               {shortSha(commit)}
             </span>
             {badgeLink}

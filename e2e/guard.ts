@@ -7,7 +7,7 @@
  *
  * @module
  */
-import { test as base, expect, type Page } from '@playwright/test';
+import { expect, type Page, test as base } from '@playwright/test';
 
 /** What a page did that it mustn't. */
 export interface Guard {
