@@ -50,22 +50,27 @@ const parseUrl = (url: string): URL | undefined => {
   }
 };
 
+/** The app's own built files: their links stay in a message. */
+const ASSETS_PATH = '/assets/';
+
 /** `message` without secrets or a board's names (see the module), links
- * to `origin` (the app's own files) kept without their query or
+ * to the app's own built files at `origin` kept without their query or
  * fragment, and cut to {@link ISSUE_MESSAGE_MAX} characters. */
 export function cleanErrorMessage(message: string, origin: string): string {
+  const assets = `${origin}${ASSETS_PATH}`;
   const urls = message.replace(URL_PATTERN, (url) => {
     const parsed = parseUrl(url);
-    return parsed?.origin === origin
+    return parsed?.origin === origin && parsed.pathname.startsWith(ASSETS_PATH)
       ? `${parsed.origin}${parsed.pathname}`
       : '<url>';
   });
   // Links to the app's own files keep their paths (an asset's hashed name
-  // says which build failed to load); everything else is cleaned.
+  // says which build failed to load); everything else, the app's own pages
+  // included, is cleaned.
   const cleaned = urls
     .split(/(\s+)/)
     .map((word) =>
-      word.startsWith(`${origin}/`)
+      word.startsWith(assets)
         ? word
         : REDACTIONS.reduce((w, [pattern, by]) => w.replace(pattern, by), word),
     )

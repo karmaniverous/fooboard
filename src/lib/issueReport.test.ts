@@ -73,6 +73,12 @@ describe('cleanErrorMessage', () => {
     );
   });
 
+  it("cleans a link to one of the app's own pages", () => {
+    expect(
+      cleanErrorMessage(`at ${ORIGIN}/d/1f0c2b9e-acme?x=1 failed`, ORIGIN),
+    ).toBe('at <url> failed');
+  });
+
   it('treats a look-alike host as another site', () => {
     expect(cleanErrorMessage(`${ORIGIN}.evil.example/x?t=1`, ORIGIN)).toBe(
       '<url>',

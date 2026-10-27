@@ -50,40 +50,42 @@ function ErrorScreen({
   const message = cleanErrorMessage(describeError(error), env.origin);
   const report = { version: APP_VERSION, browser: env.userAgent, message };
   return (
-    <main
-      role="alert"
-      className="mx-auto flex max-w-xl flex-col gap-4 p-5 text-foreground"
-    >
-      <h1 className="text-lg font-semibold">Something went wrong</h1>
-      <p className="text-sm">
-        {site.name} hit an error it couldn&apos;t recover from. Reloading
-        usually clears it; your dashboards and settings are kept.
-      </p>
-      <pre className="whitespace-pre-wrap break-words rounded-md border bg-muted p-3 text-sm">
-        {message}
-      </pre>
-      <p className="text-sm text-muted-foreground">
-        {site.name} {APP_VERSION}
-      </p>
-      <div className="flex flex-wrap gap-2">
-        <Button className="gap-2" onClick={env.reload}>
-          <RotateCcw aria-hidden className="size-4" />
-          Reload
-        </Button>
-        <ExternalLink
-          unstyled
-          href={issueUrl(report)}
-          className={buttonVariants({ variant: 'outline', className: 'gap-2' })}
-        >
-          <Bug aria-hidden className="size-4" />
-          Report an issue
-        </ExternalLink>
+    <main className="mx-auto max-w-xl p-5 text-foreground">
+      <div role="alert" className="flex flex-col gap-4">
+        <h1 className="text-lg font-semibold">Something went wrong</h1>
+        <p className="text-sm">
+          {site.name} hit an error it couldn&apos;t recover from. Reloading
+          usually clears it; your dashboards and settings are kept.
+        </p>
+        <pre className="whitespace-pre-wrap break-words rounded-md border bg-muted p-3 text-sm">
+          {message}
+        </pre>
+        <p className="text-sm text-muted-foreground">
+          {site.name} {APP_VERSION}
+        </p>
+        <div className="flex flex-wrap gap-2">
+          <Button className="gap-2" onClick={env.reload}>
+            <RotateCcw aria-hidden className="size-4" />
+            Reload
+          </Button>
+          <ExternalLink
+            unstyled
+            href={issueUrl(report)}
+            className={buttonVariants({
+              variant: 'outline',
+              className: 'gap-2',
+            })}
+          >
+            <Bug aria-hidden className="size-4" />
+            Report an issue
+          </ExternalLink>
+        </div>
+        <p className="text-sm text-muted-foreground">
+          <em>Report an issue</em> opens a new issue on GitHub with the version,
+          your browser ({env.userAgent}) and the message above, and no board
+          data. Nothing is sent until you submit it there.
+        </p>
       </div>
-      <p className="text-sm text-muted-foreground">
-        <em>Report an issue</em> opens a new issue on GitHub with the version,
-        your browser ({env.userAgent}) and the message above, and no board data.
-        Nothing is sent until you submit it there.
-      </p>
     </main>
   );
 }

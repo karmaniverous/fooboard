@@ -64,6 +64,8 @@ describe('AppErrorBoundary', () => {
       </AppErrorBoundary>,
     );
     const alert = screen.getByRole('alert');
+    // The page keeps its main landmark; the alert sits inside it.
+    expect(screen.getByRole('main')).toContainElement(alert);
     expect(alert).toHaveTextContent('Something went wrong');
     expect(alert).toHaveTextContent(`${site.name} ${APP_VERSION}`);
     // What the issue will carry is what the screen shows: cleaned.
