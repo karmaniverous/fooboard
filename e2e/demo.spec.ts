@@ -134,9 +134,13 @@ test('every dialog, sheet, popover and drag works under the CSP', async ({
   }
 
   // The board's panels and popover.
-  await page.getByRole('button', { name: 'Legend' }).click();
+  const legend = page.getByRole('button', { name: 'Legend' });
+  await legend.click();
   await expect(page.getByRole('dialog')).toBeVisible();
   await page.keyboard.press('Escape');
+  // Its focus returns once it has closed (a second later in Firefox
+  // here), and would take the next key press with it.
+  await expect(legend).toBeFocused();
   // The counts change as the demo's story plays.
   for (const panel of [/^Problems/, /^Unmapped/, /^Credentials$/]) {
     const opener = page.getByRole('button', { name: panel });
@@ -146,6 +150,9 @@ test('every dialog, sheet, popover and drag works under the CSP', async ({
   // The dashboard editor: a select, a keyboard drag and a pointer drag.
   await page.getByRole('button', { name: 'Edit', exact: true }).click();
   const editor = page.getByRole('dialog', { name: 'Edit dashboard' });
+  // The panel focuses its selected tab once open (late in Firefox here);
+  // wait, so it can't take focus from the drag handle.
+  await expect(editor.getByRole('tab', { selected: true })).toBeFocused();
   await editor.getByRole('tab', { name: 'Rows' }).click();
   const rows = editor.getByRole('listitem');
   await expect(rows.first()).toContainText('storefront');
@@ -159,8 +166,16 @@ test('every dialog, sheet, popover and drag works under the CSP', async ({
   await page.keyboard.press('Space');
   await expect(dragHandle).toHaveAttribute('aria-pressed', 'true');
   await page.waitForTimeout(KEY_SETTLE_MS);
-  await page.keyboard.press('ArrowDown');
-  await page.waitForTimeout(KEY_SETTLE_MS);
+  // dnd-kit's live region says where the item is. Its sensor listens from a
+  // timer after the pick-up, which a busy Firefox can run late, losing the
+  // key; so press again until the item has moved one place.
+  const live = page.locator('[id^="DndLiveRegion"]');
+  await expect(async () => {
+    await page.keyboard.press('ArrowDown');
+    await expect(live).toContainText('moved over droppable area mobile-web', {
+      timeout: 2_000,
+    });
+  }).toPass({ timeout: 15_000 });
   await page.keyboard.press('Space');
   await expect(rows.nth(1)).toContainText('storefront');
   // Measure once the drop has finished moving the item.
