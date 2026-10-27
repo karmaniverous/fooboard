@@ -10,3 +10,6 @@ esm/
 node_modules/
 context/
 
+# Playwright
+/test-results/
+/playwright-report/

@@ -40,6 +40,11 @@ import {
 } from './cellView';
 import { CommitSha } from './CommitSha';
 
+/** Secondary text on the detail's dark surface (the sheet and the hover
+ * card are slate in both themes): the theme's muted text is too dim on
+ * it in light (spec.md §3.10, contrast; 4.5:1 or more on slate-900). */
+const SHEET_MUTED = 'text-slate-400';
+
 export function CellDetail({
   cell,
   rowName,
@@ -72,7 +77,7 @@ export function CellDetail({
         <div>
           {EMPTY_LABEL[derivation.state]}
           {derivation.reason && (
-            <div className="text-muted-foreground">{derivation.reason}</div>
+            <div className={SHEET_MUTED}>{derivation.reason}</div>
           )}
           {interactive && derivation.state === EMPTY_STATES.needsCredential && (
             <ExternalLink
@@ -86,13 +91,13 @@ export function CellDetail({
         </div>
       ) : (
         <dl className="grid grid-cols-[auto_1fr] gap-x-3">
-          <dt className="text-muted-foreground">Status</dt>
+          <dt className={SHEET_MUTED}>Status</dt>
           <dd>{derivation.status.name}</dd>
-          <dt className="text-muted-foreground">Branch</dt>
+          <dt className={SHEET_MUTED}>Branch</dt>
           <dd className="truncate">{derivation.branch}</dd>
           {derivation.commit && (
             <>
-              <dt className="text-muted-foreground">Commit</dt>
+              <dt className={SHEET_MUTED}>Commit</dt>
               <dd className={interactive ? undefined : 'font-mono'}>
                 {interactive ? (
                   // Keyed by SHA: a poll that swaps the commit while the
@@ -106,7 +111,7 @@ export function CellDetail({
           )}
           {derivation.message && (
             <>
-              <dt className="text-muted-foreground">Message</dt>
+              <dt className={SHEET_MUTED}>Message</dt>
               <dd
                 className={
                   interactive ? 'whitespace-pre-wrap break-words' : 'truncate'
@@ -120,7 +125,7 @@ export function CellDetail({
           )}
           {derivation.time && (
             <>
-              <dt className="text-muted-foreground">Time</dt>
+              <dt className={SHEET_MUTED}>Time</dt>
               <dd>{new Date(derivation.time).toLocaleString()}</dd>
             </>
           )}
@@ -168,10 +173,9 @@ export function CellDetail({
         <dl aria-label="Settings" className="grid grid-cols-[auto_1fr] gap-x-3">
           {settings.map((s) => (
             <div key={s.name} className="contents">
-              <dt className="text-muted-foreground">{s.name}</dt>
+              <dt className={SHEET_MUTED}>{s.name}</dt>
               <dd>
-                {s.value}{' '}
-                <span className="text-muted-foreground">({s.origin})</span>
+                {s.value} <span className={SHEET_MUTED}>({s.origin})</span>
               </dd>
             </div>
           ))}
@@ -198,7 +202,7 @@ function SubjectList({
   if (subjects.length === 0) return null;
   return (
     <div className="mt-1">
-      <div className="text-muted-foreground">{title}</div>
+      <div className={SHEET_MUTED}>{title}</div>
       <ul className="list-disc pl-4">
         {subjects.map((s, i) => (
           <li key={`${String(i)}-${s}`} className="truncate">

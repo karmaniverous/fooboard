@@ -47,7 +47,8 @@ describe('App', () => {
         .getAttribute('href') ?? '';
     const issue = decodeURIComponent(href);
     expect(issue).not.toContain(TOKEN);
-    for (const row of acmeBoard.rows) expect(issue).not.toContain(row.name);
+    for (const row of acmeBoard.rows)
+      expect(issue).not.toContain(row.displayName);
     expect(issue).not.toContain(acmeBoard.name);
   });
 });

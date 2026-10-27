@@ -191,7 +191,7 @@ export function Cell({
           <span className="flex items-center" style={gapStyle}>
             <span
               aria-hidden
-              className="font-mono opacity-90"
+              className="font-mono"
               style={textSize('sha')}
             >
               {shortSha(commit)}
@@ -258,7 +258,8 @@ export function Cell({
                 aria-hidden
                 className={cn(
                   'w-[1em] flex-none text-center',
-                  status.summary.inProgress && 'animate-pulse',
+                  // Still, with reduced motion (spec.md §3.10).
+                  status.summary.inProgress && 'motion-safe:animate-pulse',
                 )}
               >
                 {STATUS_GLYPH[status.icon]}
