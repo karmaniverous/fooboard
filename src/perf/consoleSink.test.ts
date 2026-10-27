@@ -38,12 +38,24 @@ describe('headline', () => {
 });
 
 describe('summaryTables', () => {
+  it('shows a reload against the median target without a verdict', () => {
+    const reload = summaryTables(summary('reload'), {}).targets.find((t) =>
+      String(t.target).startsWith('Reload'),
+    );
+    expect(reload).toEqual({
+      target: 'Reload: cached board (median reload)',
+      max: '500 ms',
+      measured: '12500 ms',
+      met: 'median of reloads',
+    });
+  });
+
   it('marks missed targets, unjudged ones, and names rows', () => {
     const tables = summaryTables(summary(), { api: 'API' });
     expect(tables.targets.map((t) => [t.measured, t.met])).toEqual([
       ['912 ms', 'yes'],
       ['12001 ms', 'NO'],
-      ['—', 'n/a'],
+      ['—', 'median of reloads'],
       ['—', 'n/a'],
     ]);
     expect(tables['requests per row']).toEqual([

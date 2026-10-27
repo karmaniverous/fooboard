@@ -37,7 +37,13 @@ export function summaryTables(
       target: t.label,
       max: ms(t.maxMs),
       measured: ms(t.actualMs),
-      met: t.met === undefined ? 'n/a' : t.met ? 'yes' : 'NO',
+      met: t.median
+        ? 'median of reloads'
+        : t.met === undefined
+          ? 'n/a'
+          : t.met
+            ? 'yes'
+            : 'NO',
     })),
     'requests by kind': summary.requests.byKind.map((k) => ({
       request: `${k.provider} ${k.kind}`,

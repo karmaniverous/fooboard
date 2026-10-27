@@ -61,7 +61,11 @@ interface TargetResult {
   label: string;
   maxMs: number;
   actualMs?: number;
+  /** Whether this load met it; never set for a median target, which
+   * one load can't meet or miss. */
   met?: boolean;
+  /** The target bounds the median of several loads. */
+  median?: true;
 }
 
 /** Everything the console summary shows for one board load. */
@@ -160,14 +164,18 @@ export function summarise(input: {
 }): TimingSummary {
   const { records, kind, demoLatencyMs, pageLoad } = input;
   const moments = { firstCell: input.firstCell, fullBoard: input.fullBoard };
-  const targets = PERFORMANCE_TARGETS.map((target) => {
+  const targets = PERFORMANCE_TARGETS.map((target): TargetResult => {
     const actualMs = actualFor(target, input, moments);
+    const byMedian = target.judged === 'median';
     return {
       label: target.label,
       maxMs: target.maxMs,
+      ...(byMedian ? { median: true as const } : {}),
       ...(actualMs === undefined
         ? {}
-        : { actualMs, met: actualMs <= target.maxMs }),
+        : byMedian
+          ? { actualMs }
+          : { actualMs, met: actualMs <= target.maxMs }),
     };
   });
   const notes = [
@@ -176,6 +184,10 @@ export function summarise(input: {
   if (kind === 'demo' && demoLatencyMs !== DEMO_TARGET_LATENCY_MS)
     notes.push(
       `Demo targets assume ${String(DEMO_TARGET_LATENCY_MS)} ms latency; this load had ${String(demoLatencyMs)} ms.`,
+    );
+  if (targets.some((t) => t.median && t.actualMs !== undefined))
+    notes.push(
+      'The reload target is for the median of several reloads, not each one: compare the median of this and other reloads with it.',
     );
   if (input.strayRequests > 0)
     notes.push(
