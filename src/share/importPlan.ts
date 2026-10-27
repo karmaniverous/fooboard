@@ -41,8 +41,9 @@ export interface ImportChoice {
 export interface ImportPlan {
   /** The whole dashboard list after the import. */
   dashboards: Dashboard[];
-  /** Secrets to store, under the ids the imported dashboards now use. */
-  secrets: { id: string; secret: CredentialSecret }[];
+  /** Secrets to store, under the ids the imported dashboards now use,
+   * each with its credential's label. */
+  secrets: { id: string; label: string; secret: CredentialSecret }[];
   /** Credential ids no dashboard references any more. */
   forget: string[];
   /** Dashboard ids no longer present. */
@@ -65,7 +66,9 @@ function secretsFor(
   return original.credentials.flatMap((ref, i) => {
     const secret = Object.hasOwn(secrets, ref.id) ? secrets[ref.id] : null;
     const id = placed.credentials.at(i)?.id;
-    return secret?.kind === ref.kind && id ? [{ id, secret }] : [];
+    return secret?.kind === ref.kind && id
+      ? [{ id, label: ref.label, secret }]
+      : [];
   });
 }
 

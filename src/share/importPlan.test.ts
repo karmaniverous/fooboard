@@ -57,8 +57,8 @@ describe('planImport', () => {
     expect(plan.dashboards.map((d) => d.id)).toEqual(['other', 'northwind']);
     expect(plan.dashboards[1]).toEqual(incoming);
     expect(plan.secrets).toEqual([
-      { id: 'gh-org', secret: gh },
-      { id: 'aws-prod', secret: aws },
+      { id: 'gh-org', label: 'Northwind org', secret: gh },
+      { id: 'aws-prod', label: 'Prod account', secret: aws },
     ]);
     expect(plan.forget).toEqual([]);
     expect(plan.removed).toEqual([]);
@@ -119,8 +119,8 @@ describe('planImport', () => {
     expect(levelsNamed(copy)).toEqual(levelsNamed(incoming));
     const where = new Map(newIds.map((id, i) => [credIds(incoming)[i], id]));
     expect(plan.secrets).toEqual([
-      { id: where.get('gh-org'), secret: gh },
-      { id: where.get('aws-prod'), secret: aws },
+      { id: where.get('gh-org'), label: 'Northwind org', secret: gh },
+      { id: where.get('aws-prod'), label: 'Prod account', secret: aws },
     ]);
     expect(plan.forget).toEqual([]);
   });
@@ -169,7 +169,9 @@ describe('planImport', () => {
       }),
       ids(),
     );
-    expect(plan.secrets).toEqual([{ id: 'aws-dev', secret: aws }]);
+    expect(plan.secrets).toEqual([
+      { id: 'aws-dev', label: 'Dev account', secret: aws },
+    ]);
     expect(
       planImport([], add([shareBoard()], { secrets: null }), ids()).secrets,
     ).toEqual([]);

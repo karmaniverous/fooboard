@@ -7,11 +7,21 @@
  * as when a secret is entered, C-5). Planning decrypts the credentials
  * only if they are imported; nothing is written here.
  *
+ * When the share's secret for a credential differs from the one this
+ * device holds, the form asks whether to keep this device's or use the
+ * share's (Decision 70; `secretQuestions`), with nothing chosen, and
+ * isn't ready until every question is answered. Encrypted credentials
+ * are compared only once the passphrase has opened them: the first
+ * *Import* opens them and, if anything differs, stops to ask. Unticking
+ * *Import its credentials* or changing the passphrase drops the questions
+ * and their answers.
+ *
  * @module
  */
 import { useState } from 'react';
 
 import type { Dashboard } from '@/domain/config/dashboard';
+import type { CredentialSecret } from '@/storage/credentialStore';
 
 import type { Share } from '../envelope';
 import {
@@ -20,6 +30,13 @@ import {
   planImport,
   type SameIdChoice,
 } from '../importPlan';
+import {
+  allAnswered,
+  type SecretAnswer,
+  type SecretQuestion,
+  secretQuestions,
+  withAnswers,
+} from '../secretQuestions';
 import { decryptSecrets, type ShareSecrets } from '../secrets';
 import { DAMAGED_CREDENTIALS, WRONG_PASSPHRASE } from './shareWords';
 
@@ -42,6 +59,14 @@ export interface ImportForm {
   setPassphrase: (text: string) => void;
   remember: boolean;
   setRemember: (on: boolean) => void;
+  /** The credentials whose secret differs from this device's. */
+  questions: readonly SecretQuestion[];
+  answerOf: (id: string) => SecretAnswer | undefined;
+  setAnswer: (id: string, answer: SecretAnswer) => void;
+  /** Is a question still unanswered? */
+  asking: boolean;
+  /** How many times *Import* has stopped to ask. */
+  asked: number;
   error: string | null;
   setError: (error: string | null) => void;
   busy: boolean;
@@ -53,6 +78,8 @@ export interface ImportForm {
 export function useImportForm(
   share: Share,
   existing: readonly Dashboard[],
+  /** The secret this device holds for a credential id. */
+  held: (id: string) => CredentialSecret | undefined,
 ): ImportForm {
   const [selected, setSelected] = useState(
     () => new Set(share.dashboards.map((d) => d.id)),
@@ -65,22 +92,43 @@ export function useImportForm(
   const [remember, setRemember] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [answers, setAnswers] = useState<Record<string, SecretAnswer>>({});
+  // The encrypted secrets, once the passphrase has opened them.
+  const [opened, setOpened] = useState<ShareSecrets | null>(null);
+  const [asked, setAsked] = useState(0);
 
   const chosen = share.dashboards.filter((d) => selected.has(d.id));
   const here = new Set(existing.map((d) => d.id));
   const importing = carried && withCredentials;
   const asksPassphrase = importing && share.credentials.kind === 'encrypted';
+  const c = share.credentials;
+  const planWith = (secrets: ShareSecrets | null) =>
+    planImport(existing, { dashboards: chosen, mode, sameId, secrets });
+  // The secrets known without a passphrase step still to take.
+  const known = !importing ? null : c.kind === 'plain' ? c.secrets : opened;
+  const questions = known ? secretQuestions(planWith(known).secrets, held) : [];
+  const asking = !allAnswered(questions, answers);
 
   /** The share's secrets as chosen, or a message why not. */
   const secrets = async (): Promise<ShareSecrets | null | string> => {
-    const c = share.credentials;
     if (!importing || c.kind === 'none') return null;
     if (c.kind === 'plain') return c.secrets;
-    const opened = await decryptSecrets(c.block, passphrase);
-    if (opened.ok) return opened.secrets;
-    return opened.reason === 'wrongPassphrase'
+    if (opened) return opened;
+    const got = await decryptSecrets(c.block, passphrase);
+    if (got.ok) {
+      setOpened(got.secrets);
+      return got.secrets;
+    }
+    return got.reason === 'wrongPassphrase'
       ? WRONG_PASSPHRASE
       : DAMAGED_CREDENTIALS;
+  };
+
+  /** Drop the questions and their answers (the secrets compared changed). */
+  const unask = () => {
+    setError(null);
+    setOpened(null);
+    setAnswers({});
   };
 
   const plan = async (): Promise<ImportPlan | null> => {
@@ -92,12 +140,13 @@ export function useImportForm(
         setError(got);
         return null;
       }
-      return planImport(existing, {
-        dashboards: chosen,
-        mode,
-        sameId,
-        secrets: got,
-      });
+      const planned = planWith(got);
+      const asks = secretQuestions(planned.secrets, held);
+      if (!allAnswered(asks, answers)) {
+        setAsked((n) => n + 1);
+        return null;
+      }
+      return withAnswers(planned, asks, answers);
     } finally {
       setBusy(false);
     }
@@ -116,21 +165,32 @@ export function useImportForm(
     carried,
     withCredentials,
     setWithCredentials: (on) => {
-      setError(null);
+      unask();
       setWithCredentials(on);
     },
     asksPassphrase,
     passphrase,
     setPassphrase: (text) => {
-      setError(null);
+      unask();
       setPassphrase(text);
     },
     remember,
     setRemember,
+    questions,
+    answerOf: (id) => answers[id],
+    setAnswer: (id, answer) => {
+      setAnswers((a) => ({ ...a, [id]: answer }));
+    },
+    asking,
+    asked,
     error,
     setError,
     busy,
-    ready: chosen.length > 0 && !busy && !(asksPassphrase && passphrase === ''),
+    ready:
+      chosen.length > 0 &&
+      !busy &&
+      !(asksPassphrase && passphrase === '') &&
+      !asking,
     plan,
   };
 }

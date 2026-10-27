@@ -4,8 +4,9 @@
  * *Keep as a copy*; *Add to my dashboards* or *Replace the whole setup*;
  * and, when the share carries credentials, whether to import them, the
  * passphrase for encrypted ones (asked here, after the dashboards are
- * chosen and before *Import*, never on load) and *Remember on this
- * device*.
+ * chosen and before *Import*, never on load), *Remember on this device*
+ * and a question for each credential whose secret differs from this
+ * device's (`SecretQuestions`).
  *
  * @module
  */
@@ -18,7 +19,8 @@ import type { Dashboard } from '@/domain/config/dashboard';
 
 import type { ImportMode, SameIdChoice } from '../importPlan';
 import { DashboardChecklist } from './DashboardChecklist';
-import { REPLACE_MINE_NOTE, TAB_ONLY_NOTE } from './shareWords';
+import { SecretQuestions } from './SecretQuestions';
+import { REMEMBER_NOTE, REPLACE_MINE_NOTE, TAB_ONLY_NOTE } from './shareWords';
 import type { ImportForm as Form } from './useImportForm';
 
 const MODES = [
@@ -116,12 +118,13 @@ export function ImportForm({
           <p className="text-xs text-muted-foreground">
             {form.withCredentials
               ? form.remember
-                ? 'The credentials are kept in this browser until you forget them.'
+                ? REMEMBER_NOTE
                 : TAB_ONLY_NOTE
               : 'Without credentials, rows show Needs credential until you add them.'}
           </p>
         </div>
       )}
+      <SecretQuestions form={form} />
       {form.error && (
         <p role="alert" className="text-sm text-status-failure">
           {form.error}

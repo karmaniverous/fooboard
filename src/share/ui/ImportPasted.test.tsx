@@ -10,14 +10,13 @@
 import { act, fireEvent, screen, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
-import { renderImport, savedIds, where } from '@/test/renderImport';
+import { dialog, renderImport, savedIds, where } from '@/test/renderImport';
 import { shareBoard } from '@/test/shareBoard';
 
 import { buildEnvelope } from '../envelope';
 import { shareLink } from '../link';
 
 const board = shareBoard();
-const dialog = () => screen.getByRole('dialog', { name: 'Import dashboards' });
 const paste = (text: string) => {
   fireEvent.change(within(dialog()).getByLabelText('Or a fooboard link'), {
     target: { value: text },

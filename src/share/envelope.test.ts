@@ -150,7 +150,9 @@ describe('the share envelope', () => {
       sameId: {},
       secrets: result.share.credentials.secrets,
     });
-    expect(plan.secrets).toEqual([{ id: 'gh-org', secret: gh }]);
+    expect(plan.secrets).toEqual([
+      { id: 'gh-org', label: 'Northwind org', secret: gh },
+    ]);
   });
 
   it('carries encrypted secrets, refusing an unknown cipher', async () => {

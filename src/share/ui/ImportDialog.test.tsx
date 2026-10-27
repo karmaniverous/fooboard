@@ -21,7 +21,13 @@ import type { Dashboard } from '@/domain/config/dashboard';
 import { createAppStores } from '@/storage';
 import { memoryStorage } from '@/storage/keyValue';
 import { choose } from '@/test/choose';
-import { payloadOf, renderImport, savedIds, where } from '@/test/renderImport';
+import {
+  dialog,
+  payloadOf,
+  renderImport,
+  savedIds,
+  where,
+} from '@/test/renderImport';
 import { shareBoard } from '@/test/shareBoard';
 
 import { buildEnvelope } from '../envelope';
@@ -37,7 +43,6 @@ const strip = (d: Dashboard): Dashboard => ({
   settings: { requestsInFlight: d.settings.requestsInFlight },
 });
 const two = strip(other);
-const dialog = () => screen.getByRole('dialog', { name: 'Import dashboards' });
 const press = async (name: string) => {
   await act(async () => {
     fireEvent.click(within(dialog()).getByRole('button', { name }));

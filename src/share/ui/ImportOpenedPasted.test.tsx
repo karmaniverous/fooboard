@@ -11,7 +11,6 @@
  * @module
  */
 import {
-  act,
   cleanup,
   fireEvent,
   screen,
@@ -22,7 +21,13 @@ import { afterEach, describe, expect, it } from 'vitest';
 
 import { createDashboard } from '@/domain/config/presets';
 import type { AppStores } from '@/storage';
-import { renderImport, savedIds, where } from '@/test/renderImport';
+import {
+  dialog,
+  importNow,
+  renderImport,
+  savedIds,
+  where,
+} from '@/test/renderImport';
 import { shareBoard } from '@/test/shareBoard';
 
 import { buildEnvelope } from '../envelope';
@@ -32,7 +37,6 @@ import { encryptSecrets } from '../secrets';
 const board = shareBoard();
 const second = createDashboard('Second board');
 const gh = { 'gh-org': { kind: 'github', token: 'ghp_shared' } } as const;
-const dialog = () => screen.getByRole('dialog', { name: 'Import dashboards' });
 
 afterEach(() => {
   window.history.replaceState(null, '', '/');
@@ -88,13 +92,6 @@ function shown() {
     importEnabled: importButton ? !importButton.hasAttribute('disabled') : null,
   };
 }
-
-const importNow = async () => {
-  await act(async () => {
-    fireEvent.click(within(dialog()).getByRole('button', { name: 'Import' }));
-    await Promise.resolve();
-  });
-};
 
 /**
  * Each way's dialog, and what importing (with `passphrase`) left once the
