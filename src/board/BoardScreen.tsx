@@ -30,11 +30,15 @@ import { useBoardModel } from './useBoardModel';
 import { useBoardView } from './useBoardView';
 import { type BoardProblems, useProblems } from './useProblems';
 
+/** The board's title, which takes focus when a note above it closes. */
+export const BOARD_TITLE_ID = 'board-title';
+
 export function BoardScreen({
   dashboard,
   around,
   refreshKey,
   actions,
+  intro,
   onOpenProblem,
   onChange,
   onOpenSettings,
@@ -49,6 +53,9 @@ export function BoardScreen({
   actions?:
     | React.ReactNode
     | ((model: BoardModel, problems: BoardProblems) => React.ReactNode);
+  /** Shown between the title and the board (the first run's last step),
+   * given the live model. */
+  intro?: (model: BoardModel, problems: BoardProblems) => React.ReactNode;
   /** Open the editor at a problem (clicking a marker); none in the demo. */
   onOpenProblem?: (problem: Problem) => void;
 }): React.JSX.Element {
@@ -78,7 +85,11 @@ export function BoardScreen({
         )}
       >
         <ProblemMarksContext value={marks}>
-          <h1 className="flex items-center text-base font-semibold">
+          <h1
+            id={BOARD_TITLE_ID}
+            tabIndex={-1}
+            className="flex items-center text-base font-semibold outline-none"
+          >
             {dashboard.name}
             <ProblemMark problems={marks.dashboard} />
           </h1>
@@ -99,6 +110,7 @@ export function BoardScreen({
           {typeof actions === 'function' ? actions(model, problems) : actions}
         </div>
       </div>
+      {intro && <div className={PINNED_X}>{intro(model, problems)}</div>}
       <ProblemMarksContext value={marks}>
         <SettingsPopupProvider
           dashboard={dashboard}

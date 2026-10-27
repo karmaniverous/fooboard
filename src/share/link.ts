@@ -4,7 +4,8 @@
  * a server, nor in a `Referer` header. Opening one clears the fragment
  * before anything else, with `history.replaceState`, so the link stays out
  * of history and a reload can't import it twice; only then is the payload
- * decompressed, into memory.
+ * decompressed, into memory. A link pasted into the import dialog is read
+ * the same way (`pastedLink`).
  *
  * @module
  */
@@ -41,6 +42,31 @@ export interface LinkWindow {
   history: Pick<History, 'replaceState' | 'state'>;
 }
 
+/** Decompress a share link's payload (what follows `#b=`). */
+function decodePayload(payload: string): LinkPayload {
+  let text: string | null;
+  try {
+    text = LZString.decompressFromEncodedURIComponent(payload);
+  } catch {
+    text = null;
+  }
+  return text ? { kind: 'text', text } : { kind: 'damaged' };
+}
+
+/**
+ * What a link pasted into the import dialog holds: the payload after its
+ * `#b=`, decoded as opening the link decodes it, or nothing readable when
+ * the text has no `#b=` (Decision 69). No trim: lz-string stops at the
+ * stream's end marker, so whatever follows the payload (spaces, a line
+ * break, more text) is never read, as `linkParity.test.ts` pins.
+ */
+export function pastedLink(text: string): LinkPayload {
+  const at = text.indexOf(SHARE_LINK_PREFIX);
+  return at < 0
+    ? { kind: 'damaged' }
+    : decodePayload(text.slice(at + SHARE_LINK_PREFIX.length));
+}
+
 /**
  * If the window's URL is a share link, clear the fragment at once (the URL
  * becomes the app's home, `home`), then decompress the payload; else
@@ -53,13 +79,5 @@ export function takeShareLink(
   const { hash } = win.location;
   if (!hash.startsWith(SHARE_LINK_PREFIX)) return null;
   win.history.replaceState(win.history.state, '', home);
-  let text: string | null;
-  try {
-    text = LZString.decompressFromEncodedURIComponent(
-      hash.slice(SHARE_LINK_PREFIX.length),
-    );
-  } catch {
-    text = null;
-  }
-  return text ? { kind: 'text', text } : { kind: 'damaged' };
+  return decodePayload(hash.slice(SHARE_LINK_PREFIX.length));
 }

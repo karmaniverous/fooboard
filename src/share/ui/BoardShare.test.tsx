@@ -22,6 +22,7 @@ import { ShareDialog } from '@/components/ShareDialog';
 import type { Dashboard } from '@/domain/config/dashboard';
 import { createAppStores } from '@/storage';
 import { memoryStorage } from '@/storage/keyValue';
+import { windowAt } from '@/test/linkWindow';
 import { renderShell } from '@/test/renderShell';
 import { shareBoard } from '@/test/shareBoard';
 
@@ -97,12 +98,7 @@ function copied(): {
   dashboards: Dashboard[];
   credentials: ShareCredentialsIn;
 } {
-  const link = writes.at(-1) ?? '';
-  const url = new URL(link);
-  const payload = takeShareLink(
-    { location: url, history: { state: null, replaceState: () => undefined } },
-    '/',
-  );
+  const payload = takeShareLink(windowAt(writes.at(-1) ?? ''), '/');
   const read = payload?.kind === 'text' ? readShare(payload.text) : null;
   if (!read?.ok) throw new Error('the copied link is not a share');
   return read.share;

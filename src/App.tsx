@@ -1,6 +1,7 @@
 /**
- * App shell: router wiring for the home page, the demo and saved
- * dashboards, and the share link the page was opened with.
+ * App shell: router wiring for the home page, the demo, creating a
+ * dashboard (the first run's steps) and saved dashboards, and the share
+ * link the page was opened with.
  *
  * @module
  */
@@ -12,6 +13,7 @@ import { Footer } from '@/components/Footer';
 import { Header } from '@/components/Header';
 import { StorageBanner } from '@/components/StorageBanner';
 import { ThemeProvider } from '@/components/ThemeProvider';
+import { FIRST_RUN_PATH } from '@/firstRun/paths';
 import { useViewportWidthVar } from '@/lib/useViewportWidthVar';
 import { Home } from '@/pages/Home';
 import type { LinkPayload } from '@/share/link';
@@ -23,6 +25,9 @@ const DashboardPage = lazy(async () => ({
 }));
 const DemoPage = lazy(async () => ({
   default: (await import('@/pages/DemoPage')).DemoPage,
+}));
+const FirstRunPage = lazy(async () => ({
+  default: (await import('@/firstRun/FirstRunPage')).FirstRunPage,
 }));
 
 /** Pages other than boards are as wide as the window, so their text wraps
@@ -64,6 +69,17 @@ export default function App({
                   }
                 />
                 <Route path="/demo" element={<DemoPage />} />
+                {[FIRST_RUN_PATH, `${FIRST_RUN_PATH}/:id/:step`].map((path) => (
+                  <Route
+                    key={path}
+                    path={path}
+                    element={
+                      <Page>
+                        <FirstRunPage />
+                      </Page>
+                    }
+                  />
+                ))}
                 <Route path="/d/:id" element={<DashboardPage />} />
               </Routes>
             </Suspense>

@@ -35,9 +35,12 @@ export function Choice<T extends string>({
   className,
   disabled,
   describedBy,
+  labelledBy,
 }: {
   /** The accessible name. */
   label: string;
+  /** The id of a visible label naming the choice instead of `label`. */
+  labelledBy?: string;
   /** The id of the text that describes the choice (its hint). */
   describedBy?: string;
   value: T;
@@ -58,6 +61,7 @@ export function Choice<T extends string>({
     >
       <SelectTrigger
         aria-label={label}
+        aria-labelledby={labelledBy}
         aria-describedby={describedBy}
         className={cn('h-9 w-fit max-w-full shrink-0 text-sm', className)}
       >
