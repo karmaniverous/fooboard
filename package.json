@@ -133,6 +133,7 @@
     "build": "tsc -b --noEmit && vite build",
     "changelog": "git-cliff -o CHANGELOG.md",
     "dev": "vite",
+    "e2e": "playwright test",
     "knip": "knip",
     "lint": "eslint . && npm run lint:md",
     "lint:fix": "eslint --fix . && prettier --write \"**/*.md\"",
