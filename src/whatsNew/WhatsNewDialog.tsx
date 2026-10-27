@@ -1,18 +1,19 @@
 /**
- * What's new (spec.md C-20, §3.10): the bundled changelog, a collapsed
- * entry per release (Decision 44 item 3), newest first and open, one open
- * at a time; each entry's changes by kind, and its post on X when it has
- * one. Opened from the menu, which marks the newest release seen.
+ * What's new (spec.md C-20, §3.10): the bundled changelog in a side panel
+ * whose header stays pinned (a first release lists every change, so the
+ * body is long), a collapsed entry per release (Decision 44 item 3),
+ * newest first and open, one open at a time; each entry's changes by
+ * kind, and its post on X when it has one. Opened from the menu, which
+ * marks the newest release seen.
  *
  * @module
  */
-import { useMemo } from 'react';
+import { useState } from 'react';
 
 import { CollapsibleItem } from '@/components/CollapsibleItem';
 import { ExternalLink } from '@/components/ExternalLink';
-import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
-import { useAccordion } from '@/editors/useAccordion';
-import { DIALOG_SCROLLS } from '@/share/ui/dialogClass';
+import { PanelSheetContent } from '@/components/SidePanel';
+import { Sheet } from '@/components/ui/sheet';
 
 import type { Release } from './changelog';
 import { InlineMarkdown } from './InlineMarkdown';
@@ -55,43 +56,36 @@ export function WhatsNewDialog({
   /** Newest first. */
   releases: readonly Release[];
 }): React.JSX.Element {
-  const newest = releases.at(0)?.version;
-  const items = useMemo(
-    () => releases.map((r) => ({ key: r.version, targets: [] })),
-    [releases],
-  );
-  const request = useMemo(
-    () => (newest === undefined ? undefined : { key: newest }),
-    [newest],
-  );
-  const { itemProps } = useAccordion(items, request);
+  // The newest starts open; opening one closes the others.
+  const [expanded, setExpanded] = useState(releases.at(0)?.version);
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent
-        className={DIALOG_SCROLLS}
+    <Sheet open={open} onOpenChange={onOpenChange}>
+      <PanelSheetContent
+        side="right"
+        title="What's new"
         onCloseAutoFocus={onCloseAutoFocus}
       >
-        <DialogTitle>What&apos;s new</DialogTitle>
         {releases.length === 0 ? (
           <p className="text-sm text-muted-foreground">
             No releases yet: this build is ahead of the first one.
           </p>
         ) : (
-          <div className="flex flex-col gap-2">
-            {releases.map((r) => (
-              <CollapsibleItem
-                key={r.version}
-                name={r.version}
-                summary={r.date}
-                label={`Release ${r.version}`}
-                {...itemProps(r.version)}
-              >
-                <ReleaseBody release={r} />
-              </CollapsibleItem>
-            ))}
-          </div>
+          releases.map((r) => (
+            <CollapsibleItem
+              key={r.version}
+              name={r.version}
+              summary={r.date}
+              label={`Release ${r.version}`}
+              open={expanded === r.version}
+              onOpenChange={(next) => {
+                setExpanded(next ? r.version : undefined);
+              }}
+            >
+              <ReleaseBody release={r} />
+            </CollapsibleItem>
+          ))
         )}
-      </DialogContent>
-    </Dialog>
+      </PanelSheetContent>
+    </Sheet>
   );
 }
