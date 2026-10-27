@@ -77,6 +77,14 @@ describe('hostingMiddleware', () => {
     expect(r.end).toHaveBeenCalledOnce();
   });
 
+  it('answers a malformed escape 404 rather than throwing', () => {
+    const exists = vi.fn(() => true);
+    const r = serve('/assets/%E0%A4%A.js', exists);
+    expect(r.status).toBe(404);
+    expect(r.headers.get('X-A')).toBe('a');
+    expect(exists).not.toHaveBeenCalled();
+  });
+
   it('decodes the path before asking whether the file exists', () => {
     const exists = vi.fn(() => true);
     serve('/assets/a%20b.js', exists);
@@ -94,7 +102,7 @@ describe('within', () => {
   it.each(['/../secret.txt', '/assets/../../secret.txt', '/'])(
     'refuses %s, which is not a file inside it',
     (sitePath) => {
-      expect(within('/srv/dist', sitePath)).toBe('');
+      expect(within('/srv/dist', sitePath)).toBeUndefined();
     },
   );
 });

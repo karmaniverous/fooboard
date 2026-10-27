@@ -18,6 +18,9 @@ import { z } from 'zod';
 /** The only header pattern the local server reproduces: every path. */
 export const EVERY_PATH = '**';
 
+/** A header name: an HTTP token (RFC 9110 §5.6.2). */
+const HTTP_TOKEN = /^[!#$%&'*+.^_`|~0-9A-Za-z-]+$/;
+
 /** The page every rewritten path is served. */
 export const SPA_ENTRY = '/index.html';
 
@@ -29,7 +32,7 @@ const CustomHttpSchema = z.strictObject({
         headers: z
           .array(
             z.strictObject({
-              key: z.string().min(1),
+              key: z.string().regex(HTTP_TOKEN, 'not a header name'),
               value: z.string().min(1),
             }),
           )

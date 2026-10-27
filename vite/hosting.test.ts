@@ -37,6 +37,8 @@ describe('parseCustomHttp', () => {
     ],
     ['no headers', "customHeaders:\n  - pattern: '**'\n    headers: []"],
     ['an empty value', customHttp('**', ['X-A', ''])],
+    ['a header name with a space', customHttp('**', ['X-Frame Options', 'a'])],
+    ['an empty header name', customHttp('**', ['', 'a'])],
     ['an unknown key', `${customHttp('**', ['X-A', 'a'])}\nredirects: []`],
   ])('refuses %s', (_why, text) => {
     expect(() => parseCustomHttp(text)).toThrow();

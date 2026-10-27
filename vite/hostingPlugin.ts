@@ -60,6 +60,16 @@ interface Response {
 /** A connect middleware over {@link Request} and {@link Response}. */
 type Middleware = (req: Request, res: Response, next: () => void) => void;
 
+/** A URL path decoded, or undefined if it has a malformed escape (which
+ * no file can match, so it is a 404 as on Amplify, not a 500). */
+const decodePath = (pathname: string): string | undefined => {
+  try {
+    return decodeURIComponent(pathname);
+  } catch {
+    return undefined;
+  }
+};
+
 /** The preview middleware: headers on every response, then the rewrite,
  * then a 404 for a path that is neither rewritten nor a file. */
 export function hostingMiddleware({
@@ -77,7 +87,8 @@ export function hostingMiddleware({
       next();
       return;
     }
-    if (exists(decodeURIComponent(url.pathname))) {
+    const sitePath = decodePath(url.pathname);
+    if (sitePath !== undefined && exists(sitePath)) {
       next();
       return;
     }
@@ -86,15 +97,16 @@ export function hostingMiddleware({
   };
 }
 
-/** Whether `file` is a regular file. */
-const isFile = (file: string): boolean =>
-  file !== '' && statSync(file, { throwIfNoEntry: false })?.isFile() === true;
+/** Whether `file` is given and is a regular file. */
+const isFile = (file: string | undefined): boolean =>
+  file !== undefined &&
+  statSync(file, { throwIfNoEntry: false })?.isFile() === true;
 
-/** `sitePath` as a file under `dir`, or `''` if it would escape `dir`
- * (`/..%2f..` decodes to a parent path). */
-export const within = (dir: string, sitePath: string): string => {
+/** `sitePath` as a file under `dir`, or undefined if it would escape
+ * `dir` (`/..%2f..` decodes to a parent path). */
+export const within = (dir: string, sitePath: string): string | undefined => {
   const file = path.resolve(dir, `.${sitePath}`);
-  return file.startsWith(`${path.resolve(dir)}${path.sep}`) ? file : '';
+  return file.startsWith(`${path.resolve(dir)}${path.sep}`) ? file : undefined;
 };
 
 /** Every file under `dir` as a site path (`/favicon.svg`); none if `dir`
