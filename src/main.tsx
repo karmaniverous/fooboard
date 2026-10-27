@@ -5,6 +5,8 @@
  *
  * @module
  */
+// First: zod must be jitless before any schema is built (the CSP).
+import './zodJitless';
 import './index.css';
 
 import { StrictMode } from 'react';

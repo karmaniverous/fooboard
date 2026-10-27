@@ -14,7 +14,7 @@ npx lefthook install   # install Git hooks (once, after cloning)
 ```bash
 npm run dev          # start the Vite dev server
 npm run build        # type-check (tsc -b) and build the static site to dist/
-npm run preview      # preview the production build locally
+npm run preview      # the production build, with the hosted headers and CSP
 npm run lint         # ESLint (+ Prettier), then lint:md
 npm run lint:fix     # ESLint --fix, then Prettier --write on Markdown
 npm run lint:md      # Prettier --check on Markdown (not CHANGELOG.md)
@@ -30,6 +30,18 @@ npm run knip         # find unused files, dependencies and exports
 - **Commit and push** after every green commit. Before every push, check the branch's PR state with `gh pr list --head <branch> --state all --json number,state` (without `--state all`, merged and closed PRs are hidden and the branch looks PR-free). Look at the **newest** PR on the branch: if it is merged or closed, stop. A merged branch takes new work only through a new PR opened from it, by agreement; once that follow-up PR is open, pushing to it is fine.
 - **Open the PR as a draft early** so progress is visible; mark it ready only after the pre-review checks below.
 - **Only the maintainer merges, deploys and releases** (see the README, [Releasing and deployment](./README.md#releasing-and-deployment)). Don't edit `CHANGELOG.md` by hand; it is generated at release.
+
+## The hosted sites
+
+Amplify Hosting serves three sites, one per long-running branch:
+
+| Site                                            | Branch                                | User name | Password   |
+| ----------------------------------------------- | ------------------------------------- | --------- | ---------- |
+| dev.fooboard.dev                                | `main`, deployed on every merge       | `dev`     | `fooboard` |
+| release.fooboard.dev                            | `preview/release`, the latest release | `release` | `fooboard` |
+| www.fooboard.dev (fooboard.dev redirects there) | `prod`, production                    | `prod`    | `fooboard` |
+
+The password isn't a secret: it guards against opening the wrong version by accident, not against access. Production's password comes off at launch, once the first release is deployed to `prod`.
 
 ## Quality gate (every commit)
 
@@ -89,6 +101,7 @@ fooboard is static and browser-only; credentials never leave the user's browser 
 - Never commit, log or print credentials, and never put them in error messages, fixtures or screenshots.
 - Credentials are stored only where the user chooses: session memory, or local storage under _Remember on this device_.
 - No third-party or inline scripts, cookies or telemetry.
+- Everything runs under the CSP of `customHttp.yml` (README _Hosting_): no inline `<script>` or `<style>`, no `eval` or `new Function` (zod runs jitless: `src/zodJitless.ts`, the first import of `main.tsx`), no third-party script, embed, font or image, and requests only to `api.github.com` and the Amplify endpoints. React `style` props are fine. A region added to `AMPLIFY_REGIONS` goes into `connect-src` too, and a library that injects a `<style>` needs its hash: `src/workflows.test.ts` and `src/cspStyles.test.tsx` fail until they match. Check a change that adds a dialog, a library control or a request with `npm run preview` and the browser console open: a CSP violation is a bug.
 
 ## Timing (development builds)
 
