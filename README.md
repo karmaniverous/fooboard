@@ -361,12 +361,15 @@ See [PRIVACY.md](./PRIVACY.md).
 
 ## Releasing and deployment
 
-Only the maintainer releases and deploys. Two long-running branches feed the hosted sites through Amplify Hosting:
+Only the maintainer releases and deploys. Three long-running branches feed the hosted sites through Amplify Hosting:
 
-| Branch            | Site                                      | Updated by                                              |
-| ----------------- | ----------------------------------------- | ------------------------------------------------------- |
-| `preview/release` | release.fooboard.dev (password-protected) | `npm run release`, which moves it to the newest release |
-| `prod`            | fooboard.dev                              | a PR from a `release/x.y.z` branch, and nothing else    |
+| Branch            | Site                                           | Updated by                                              |
+| ----------------- | ---------------------------------------------- | ------------------------------------------------------- |
+| `main`            | dev.fooboard.dev                               | every PR merged into `main`                             |
+| `preview/release` | release.fooboard.dev                           | `npm run release`, which moves it to the newest release |
+| `prod`            | fooboard.dev and www.fooboard.dev (production) | a PR from a `release/x.y.z` branch, and nothing else    |
+
+All three sites are password-protected for now; production's password comes off once the first production deploy is complete.
 
 **Release.** On an up-to-date `main`, run `npm run release`. release-it runs the quality gate, bumps the version, writes `CHANGELOG.md`, commits, tags, pushes `main`, creates the GitHub release, then:
 
@@ -387,12 +390,12 @@ This path needs no direct push to `prod`, so `prod` never holds a commit that di
 
 ### Hosting
 
-fooboard is static files: no server code, cookies or telemetry. Amplify Hosting builds each connected branch with [`amplify.yml`](./amplify.yml) (Node 22, `npm ci`, `npm run build`) and serves `dist`. Only `preview/release` and `prod` are connected, and automatic branch detection and PR previews are off, so a pull request never builds.
+fooboard is static files: no server code, cookies or telemetry. Amplify Hosting builds each connected branch with [`amplify.yml`](./amplify.yml) (Node 22, `npm ci`, `npm run build`) and serves `dist`. Only `main`, `preview/release` and `prod` are connected, and automatic branch detection and PR previews are off, so a pull request never builds; merging one into `main` deploys dev.fooboard.dev. The build reads nothing about its branch or host, so all three sites build the same way, and each branch is built from its own commit's `amplify.yml` and `customHttp.yml`: a change to either reaches dev.fooboard.dev when it merges, and release and production with the next release.
 
-- **Headers.** [`customHttp.yml`](./customHttp.yml) puts these on every response, each explained in the file: a Content-Security-Policy that loads scripts and styles only from the site (plus, by their hashes, the two style elements the UI library injects), connects only to `api.github.com` and the Amplify endpoint of each region fooboard lists, and forbids framing, `<base>` and form posts; HSTS for two years, subdomains included; `X-Content-Type-Options: nosniff`; `Referrer-Policy: no-referrer`; a `Permissions-Policy` denying the camera, microphone, location, payments, USB and screen capture; `X-Frame-Options: DENY`; and same-origin opener and resource policies.
+- **Headers.** [`customHttp.yml`](./customHttp.yml) puts these on every response, on every site (the policy names no host of its own, so it is the same on all three), each explained in the file: a Content-Security-Policy that loads scripts and styles only from the site (plus, by their hashes, the two style elements the UI library injects), connects only to `api.github.com` and the Amplify endpoint of each region fooboard lists, and forbids framing, `<base>` and form posts; HSTS for two years, subdomains included; `X-Content-Type-Options: nosniff`; `Referrer-Policy: no-referrer`; a `Permissions-Policy` denying the camera, microphone, location, payments, USB and screen capture; `X-Frame-Options: DENY`; and same-origin opener and resource policies.
 - **Rewrite.** A path without a file extension (`/demo`, `/d/<id>`, `/new`) is served `index.html`, so a deep link or a reload opens the app; an asset path (scripts, styles, images, fonts) never is, so a missing asset is a 404 rather than the page. Amplify keeps rewrites in the app's settings rather than the repository, so the rule is committed as [`amplify-rewrites.json`](./amplify-rewrites.json) and pasted into the console's _Rewrites and redirects_ text editor (or set with `aws amplify update-app --custom-rules file://amplify-rewrites.json`). A build fails if the rule would hide one of its files.
 - **Locally.** `npm run preview` serves the build with the same headers and rewrite, read from those two files, so the CSP is tested before a release. `npm run dev` applies neither.
-- **Two origins.** release.fooboard.dev and fooboard.dev are separate sites to your browser: dashboards, credentials and the kept answers saved on one don't appear on the other. To move a setup across, export it on one and import it on the other ([Sharing, export and import](#sharing-export-and-import)).
+- **Three origins.** dev.fooboard.dev, release.fooboard.dev and fooboard.dev are separate sites to your browser: dashboards, credentials and the kept answers saved on one don't appear on the others (www.fooboard.dev is a fourth, unless it redirects to fooboard.dev). A share link opens on the site it was made on, and the import dialog takes a link from any of them, so to move a setup across, export it on one and import it on another ([Sharing, export and import](#sharing-export-and-import)).
 
 ## Contributing
 
