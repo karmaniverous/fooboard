@@ -17,8 +17,9 @@ export const CELL_CONTROL: Record<'data-cell-control', string> = {
 /** A cell's control with focus (the box itself, for an empty cell). */
 const FOCUSED_CONTROL = '[data-cell-control]:focus';
 
-/** Whether keyboard focus is on the control of this cell box (so its
- * keys work), rather than on its badge or anywhere else. */
+/** Whether focus (from the keyboard or a click) is on the control of
+ * this cell box, so its keys work, rather than on its badge or anywhere
+ * else. */
 export const controlHasFocus = (box: Element): boolean =>
   box.matches(FOCUSED_CONTROL) || box.querySelector(FOCUSED_CONTROL) !== null;
 
