@@ -179,7 +179,7 @@ describe('summarise', () => {
       },
     ]);
     expect(reload.notes).toContain(
-      'The reload target is for the median of several reloads, not each one: compare the median of this and other reloads with it.',
+      'Reload: cached board (median reload) is a target for the median of several loads, not each one: compare the median of this and other loads with it.',
     );
     expect(cold.notes.some((n) => n.includes('median'))).toBe(false);
   });

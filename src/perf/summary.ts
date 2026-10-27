@@ -185,10 +185,11 @@ export function summarise(input: {
     notes.push(
       `Demo targets assume ${String(DEMO_TARGET_LATENCY_MS)} ms latency; this load had ${String(demoLatencyMs)} ms.`,
     );
-  if (targets.some((t) => t.median && t.actualMs !== undefined))
-    notes.push(
-      'The reload target is for the median of several reloads, not each one: compare the median of this and other reloads with it.',
-    );
+  for (const t of targets)
+    if (t.median && t.actualMs !== undefined)
+      notes.push(
+        `${t.label} is a target for the median of several loads, not each one: compare the median of this and other loads with it.`,
+      );
   if (input.strayRequests > 0)
     notes.push(
       `${String(input.strayRequests)} requests ran meanwhile for boards no longer shown (StrictMode's discarded board model, or a closed board's reads still running), sharing the credentials' queues.`,

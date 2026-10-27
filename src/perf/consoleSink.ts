@@ -27,6 +27,14 @@ export function headline(summary: TimingSummary): string {
   return `${TIMING_PREFIX} ${summary.board} (${summary.kind}, ${String(summary.cells)} cells, ${String(summary.requests.total)} requests): from opening: ${momentText('first cell', firstCell)}, ${momentText('full board', fullBoard)}${fromLoad}`;
 }
 
+/** A target's verdict for this load: met or not, not judged here, or,
+ * for a median target, none (one load can't meet or miss it). */
+const verdict = (t: TimingSummary['targets'][number]): string => {
+  if (t.median) return 'median of reloads';
+  if (t.met === undefined) return 'n/a';
+  return t.met ? 'yes' : 'NO';
+};
+
 /** The console summary's tables, keyed by title. */
 export function summaryTables(
   summary: TimingSummary,
@@ -37,13 +45,7 @@ export function summaryTables(
       target: t.label,
       max: ms(t.maxMs),
       measured: ms(t.actualMs),
-      met: t.median
-        ? 'median of reloads'
-        : t.met === undefined
-          ? 'n/a'
-          : t.met
-            ? 'yes'
-            : 'NO',
+      met: verdict(t),
     })),
     'requests by kind': summary.requests.byKind.map((k) => ({
       request: `${k.provider} ${k.kind}`,

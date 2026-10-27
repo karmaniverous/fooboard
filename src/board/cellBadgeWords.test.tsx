@@ -9,7 +9,7 @@
  *
  * @module
  */
-import { fireEvent, render, screen, within } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { beforeAll, describe, expect, it } from 'vitest';
 
@@ -18,6 +18,7 @@ import type { StalenessBadge } from '@/domain/derivation';
 import type { BoardModel } from '@/engine';
 import { TEST_LAYOUT } from '@/test/boardLayout';
 import { fullModel } from '@/test/boardModel';
+import { badgeCell, tooltipText } from '@/test/cellTooltip';
 import { focusElement } from '@/test/focus';
 import { renderSettingsBoard } from '@/test/settingsBoard';
 
@@ -41,15 +42,7 @@ const renderPlainBoard = (m: BoardModel = model) =>
     </MemoryRouter>,
   );
 
-const tip = () => screen.queryByRole('tooltip')?.textContent ?? null;
-
-/** The billing row's behind badge, and its cell's cover link. */
-const badgeCell = (name: RegExp = /^3 commits behind/) => {
-  const badge = screen.getAllByRole('link', { name })[0];
-  const cell = badge.closest('[role="gridcell"]');
-  if (!(cell instanceof HTMLElement)) throw new Error('no badge cell');
-  return { badge, cover: within(cell).getAllByRole('link')[0] };
-};
+const tip = tooltipText;
 
 describe('focus on a badge', () => {
   it('names comma for settings, and not Space, on a board with settings', () => {
