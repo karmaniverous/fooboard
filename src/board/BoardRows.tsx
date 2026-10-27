@@ -42,7 +42,11 @@ export function BoardRows({
   /** Each stage's cell style (its row height and grid column), by stage
    * index, shared by every row. */
   cellStyles: readonly React.CSSProperties[];
-  onInspect: (key: string, el: HTMLElement | null) => void;
+  onInspect: (
+    key: string,
+    el: HTMLElement | null,
+    to?: EventTarget | null,
+  ) => void;
   onOpenSheet: (key: string, rowId: string, stageId: string) => void;
 }): React.JSX.Element {
   const { rows, stages } = dashboard;
@@ -87,8 +91,8 @@ export function BoardRows({
                         rung={layout.rung}
                         lineOf={layout.lineOf}
                         now={now}
-                        onInspect={(el) => {
-                          onInspect(key, el);
+                        onInspect={(el, to) => {
+                          onInspect(key, el, to);
                         }}
                         onOpenSheet={() => {
                           onOpenSheet(key, row.id, stage.id);

@@ -12,13 +12,19 @@
  * nest). The cover's accessible name carries status, time and badge,
  * whatever the rung shows.
  *
+ * Hover and focus are heard on the cell's box, which holds the cover and
+ * the badge, so moving onto the badge keeps the cell's tooltip; a leave
+ * says where the pointer or focus went, so the board keeps the tooltip
+ * when it went to the cell's gear (`withinCell`, issue #42).
+ *
  * @module
  */
 import { ExternalLink } from '@/components/ExternalLink';
 import type { BoardCell } from '@/engine';
 import { cn } from '@/lib/utils';
 
-import { CellCover, type Inspect } from './CellCover';
+import { CELL_CONTROL } from './cellBox';
+import { CellCover } from './CellCover';
 import { type Keyed, Lines } from './CellLines';
 import { markedLook, markWords } from './cellMarks';
 import { gapStyle } from './cellStyles';
@@ -45,14 +51,23 @@ export interface CellProps {
   /** The board's line map: which line each item sits on (C-13). */
   lineOf: LineMap;
   now: number;
-  /** Hover or focus: show the tooltip for this cell. */
-  onInspect?: (target: HTMLElement | null) => void;
+  /** Hover or focus entered the cell's box (`target`): show its
+   * tooltip; or left it (`null`) for `to`. */
+  onInspect?: (target: HTMLElement | null, to?: EventTarget | null) => void;
   /** Open the detail sheet: a touch tap or the details key (Space) on a
    * status cell, or any activation of an empty cell (which has no link to
    * follow). */
   onOpenSheet?: () => void;
   /** The board has a settings popup: the cell says `,` opens it. */
   settingsKey?: boolean;
+}
+
+/** Hover and focus handlers for the cell's box, showing its tooltip. */
+interface Inspect {
+  onMouseEnter: (e: React.MouseEvent<HTMLElement>) => void;
+  onMouseLeave: (e: React.MouseEvent<HTMLElement>) => void;
+  onFocus: (e: React.FocusEvent<HTMLElement>) => void;
+  onBlur: (e: React.FocusEvent<HTMLElement>) => void;
 }
 
 const EMPTY_CLASS = {
@@ -79,9 +94,11 @@ export function Cell({
   const inspect: Inspect = {
     onMouseEnter: (e: React.MouseEvent<HTMLElement>) =>
       onInspect?.(e.currentTarget),
-    onMouseLeave: () => onInspect?.(null),
+    onMouseLeave: (e: React.MouseEvent<HTMLElement>) =>
+      onInspect?.(null, e.relatedTarget),
     onFocus: (e: React.FocusEvent<HTMLElement>) => onInspect?.(e.currentTarget),
-    onBlur: () => onInspect?.(null),
+    onBlur: (e: React.FocusEvent<HTMLElement>) =>
+      onInspect?.(null, e.relatedTarget),
   };
   const pad = 'px-[var(--cell-pad-x)] py-[var(--cell-pad-y)]';
 
@@ -107,6 +124,7 @@ export function Cell({
         )}
         style={textSize('empty')}
         onClick={onOpenSheet}
+        {...CELL_CONTROL}
         {...inspect}
       >
         <Lines
@@ -218,11 +236,11 @@ export function Cell({
         look.className,
       )}
       style={look.style}
+      {...inspect}
     >
       <CellCover
         href={derivation.linkUrl}
         name={name}
-        inspect={inspect}
         onOpenSheet={onOpenSheet}
         settingsKey={settingsKey}
       />

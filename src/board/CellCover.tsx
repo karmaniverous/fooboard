@@ -15,15 +15,8 @@ import { useRef } from 'react';
 
 import { ExternalLink } from '@/components/ExternalLink';
 
+import { CELL_CONTROL } from './cellBox';
 import { cellKeyshortcuts, DETAILS_KEY } from './cellView';
-
-/** Hover and focus handlers showing the cell's tooltip. */
-export interface Inspect {
-  onMouseEnter: (e: React.MouseEvent<HTMLElement>) => void;
-  onMouseLeave: () => void;
-  onFocus: (e: React.FocusEvent<HTMLElement>) => void;
-  onBlur: () => void;
-}
 
 const COVER_CLASS =
   'absolute inset-0 rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-white';
@@ -31,7 +24,6 @@ const COVER_CLASS =
 export function CellCover({
   href,
   name,
-  inspect,
   onOpenSheet,
   settingsKey,
 }: {
@@ -39,7 +31,6 @@ export function CellCover({
   href: string | undefined;
   /** The cell's accessible name. */
   name: string;
-  inspect: Inspect;
   onOpenSheet?: () => void;
   /** The board has a settings popup, which `,` opens. */
   settingsKey?: boolean;
@@ -54,7 +45,7 @@ export function CellCover({
         aria-keyshortcuts={keyshortcuts}
         className={COVER_CLASS}
         onClick={onOpenSheet}
-        {...inspect}
+        {...CELL_CONTROL}
       />
     );
   }
@@ -89,7 +80,7 @@ export function CellCover({
         e.preventDefault();
         onOpenSheet();
       }}
-      {...inspect}
+      {...CELL_CONTROL}
     />
   );
 }
