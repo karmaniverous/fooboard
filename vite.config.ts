@@ -4,8 +4,10 @@
  * require: a relative base would resolve assets against the route path on
  * deep links. A production build fails if it contains the development
  * timing instrumentation or the Query Devtools
- * (`vite/noDevInstrumentation.ts`). The app's version (`package.json`)
- * is defined as `__APP_VERSION__` (the persisted cache's buster). Vitest
+ * (`vite/noDevInstrumentation.ts`). `vite preview` serves the committed
+ * Amplify headers and SPA rewrite, and a build fails if the rewrite would
+ * hide one of its files (`vite/hostingPlugin.ts`). The app's version
+ * (`package.json`) is defined as `__APP_VERSION__` (the persisted cache's buster). Vitest
  * extends this config (see `vitest.config.ts`).
  *
  * @module
@@ -17,6 +19,7 @@ import tailwindcss from '@tailwindcss/vite';
 import react from '@vitejs/plugin-react';
 import { defineConfig } from 'vite';
 
+import { hosting } from './vite/hostingPlugin.ts';
 import { noDevInstrumentation } from './vite/noDevInstrumentation.ts';
 
 /** Heavy, rarely-changing vendor code, each group its own cacheable chunk:
@@ -53,7 +56,7 @@ const version = ((): string => {
 })();
 
 export default defineConfig({
-  plugins: [react(), tailwindcss(), noDevInstrumentation()],
+  plugins: [react(), tailwindcss(), noDevInstrumentation(), hosting()],
   define: { __APP_VERSION__: JSON.stringify(version) },
   resolve: {
     alias: {

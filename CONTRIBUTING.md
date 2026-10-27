@@ -14,7 +14,7 @@ npx lefthook install   # install Git hooks (once, after cloning)
 ```bash
 npm run dev          # start the Vite dev server
 npm run build        # type-check (tsc -b) and build the static site to dist/
-npm run preview      # preview the production build locally
+npm run preview      # the production build, with the hosted headers and CSP
 npm run lint         # ESLint (+ Prettier), then lint:md
 npm run lint:fix     # ESLint --fix, then Prettier --write on Markdown
 npm run lint:md      # Prettier --check on Markdown (not CHANGELOG.md)
@@ -89,6 +89,7 @@ fooboard is static and browser-only; credentials never leave the user's browser 
 - Never commit, log or print credentials, and never put them in error messages, fixtures or screenshots.
 - Credentials are stored only where the user chooses: session memory, or local storage under _Remember on this device_.
 - No third-party or inline scripts, cookies or telemetry.
+- Everything runs under the CSP of `customHttp.yml` (README _Hosting_): no inline `<script>` or `<style>`, no `eval` or `new Function` (zod runs jitless: `src/zodJitless.ts`, the first import of `main.tsx`), no third-party script, embed, font or image, and requests only to `api.github.com` and the Amplify endpoints. React `style` props are fine. A region added to `AMPLIFY_REGIONS` goes into `connect-src` too, and a library that injects a `<style>` needs its hash: `src/workflows.test.ts` and `src/cspStyles.test.tsx` fail until they match. Check a change that adds a dialog, a library control or a request with `npm run preview` and the browser console open: a CSP violation is a bug.
 
 ## Timing (development builds)
 

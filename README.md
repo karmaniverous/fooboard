@@ -34,6 +34,7 @@ fooboard shows the deployment state of every repo × stage at a glance. Paste a 
 - [Header, menu and footer](#header-menu-and-footer)
 - [Your data](#your-data)
 - [Releasing and deployment](#releasing-and-deployment)
+  - [Hosting](#hosting)
 - [Contributing](#contributing)
 - [License](#license)
 
@@ -380,9 +381,18 @@ This path needs no direct push to `prod`, so `prod` never holds a commit that di
 
 **Prereleases.** `npm run release:pre` (from any branch) tags a prerelease such as `0.2.0-0`, creates a GitHub prerelease and pushes `release/0.2.0-0`, but leaves `preview/release` alone: the preview site only ever shows a stable release, and a prerelease can't be PR'd into `prod`.
 
-**Hotfixes.** Normally fix on `main` and release again. When `main` holds work that mustn't ship yet, branch `hotfix/<slug>` from the `release/x.y.z` branch, fix it there, run `npm run release -- --no-git.requireBranch` from the hotfix branch (this cuts `release/x.y.(z+1)` and moves `preview/release`), PR that into `prod`, then merge the hotfix branch back into `main` by PR.
+**Hotfixes.** Normally fix on `main` and release again. When `main` holds work that mustn't ship yet, branch `hotfix/<slug>` from the `release/x.y.z` branch, fix it there, run `npm run release -- --no-git.requireBranch` from the hotfix branch (this cuts `release/x.y.(z+1)` and moves `preview/release`), PR that into `prod`, then merge the hotfix branch back into `main` by PR. The merge keeps the hotfix's higher version and its generated `CHANGELOG.md`.
 
 **`.env.local`.** `npm run release` loads `.env.local` with dotenvx. It needs `GITHUB_TOKEN` (a token that can create releases on this repo) for release-it's GitHub release; copy `.env.local.template` to start. Other local-only variables, such as validation credentials, may live there too. `.env.local` is gitignored: never commit it or paste its contents.
+
+### Hosting
+
+fooboard is static files: no server code, cookies or telemetry. Amplify Hosting builds each connected branch with [`amplify.yml`](./amplify.yml) (Node 22, `npm ci`, `npm run build`) and serves `dist`. Only `preview/release` and `prod` are connected, and automatic branch detection and PR previews are off, so a pull request never builds.
+
+- **Headers.** [`customHttp.yml`](./customHttp.yml) puts these on every response, each explained in the file: a Content-Security-Policy that loads scripts and styles only from the site (plus, by their hashes, the two style elements the UI library injects), connects only to `api.github.com` and the Amplify endpoint of each region fooboard lists, and forbids framing, `<base>` and form posts; HSTS for two years, subdomains included; `X-Content-Type-Options: nosniff`; `Referrer-Policy: no-referrer`; a `Permissions-Policy` denying the camera, microphone, location, payments, USB and screen capture; `X-Frame-Options: DENY`; and same-origin opener and resource policies.
+- **Rewrite.** A path without a file extension (`/demo`, `/d/<id>`, `/new`) is served `index.html`, so a deep link or a reload opens the app; an asset path (scripts, styles, images, fonts) never is, so a missing asset is a 404 rather than the page. Amplify keeps rewrites in the app's settings rather than the repository, so the rule is committed as [`amplify-rewrites.json`](./amplify-rewrites.json) and pasted into the console's _Rewrites and redirects_ text editor (or set with `aws amplify update-app --custom-rules file://amplify-rewrites.json`). A build fails if the rule would hide one of its files.
+- **Locally.** `npm run preview` serves the build with the same headers and rewrite, read from those two files, so the CSP is tested before a release. `npm run dev` applies neither.
+- **Two origins.** release.fooboard.dev and fooboard.dev are separate sites to your browser: dashboards, credentials and the kept answers saved on one don't appear on the other. To move a setup across, export it on one and import it on the other ([Sharing, export and import](#sharing-export-and-import)).
 
 ## Contributing
 
