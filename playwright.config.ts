@@ -39,6 +39,9 @@ const ENGINES: Project[] = [
 export default defineConfig({
   testDir: 'e2e',
   fullyParallel: true,
+  // Firefox and WebKit on a busy machine take seconds where Chromium takes
+  // milliseconds (a Tab press can take half a second in Firefox).
+  timeout: 60_000,
   forbidOnly: CI,
   retries: 0,
   reporter: CI ? [['list'], ['github']] : 'list',

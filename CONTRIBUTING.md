@@ -20,8 +20,13 @@ npm run lint:fix     # ESLint --fix, then Prettier --write on Markdown
 npm run lint:md      # Prettier --check on Markdown (not CHANGELOG.md)
 npm run typecheck    # tsc -b --noEmit
 npm test             # Vitest (jsdom, coverage reported)
+npm run e2e          # Playwright smoke tests on the build (run npm run build first)
 npm run knip         # find unused files, dependencies and exports
 ```
+
+The Playwright tests (`e2e/`) run against `vite preview` serving `dist/` with `customHttp.yml`'s headers, so under the CSP that ships. A guard on every page fails a test on any CSP violation and on any request to a host but the app's own. They cover the demo board, every dialog, sheet, popover and drag, What's new, the error screen, the served headers and the automated accessibility checks (axe, WCAG 2.1 A and AA, light and dark; Tab order; reduced motion). CI runs them in Chromium; install it once with `npx playwright install chromium`.
+
+**Browser pass** (before a release): `FOOBOARD_E2E_BROWSERS=all npm run e2e` runs them in Playwright's Chromium, the installed Chrome and Edge, Firefox and WebKit (`npx playwright install chromium firefox webkit`). WebKit stands in for Safari; real Safari on macOS and iOS is checked by hand (the spec's Verification Checklist lists the steps).
 
 ## Workflow
 
@@ -53,6 +58,7 @@ npm run typecheck
 npm test
 npm run knip
 npm run build
+npm run e2e
 ```
 
 - **Lint rules cover tests.** Every rule applies to tests and test utilities (`*.test.ts(x)`, `src/test/**`) exactly as to app code; tests only gain rules (Vitest's recommended set).

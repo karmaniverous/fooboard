@@ -7,24 +7,20 @@
  *
  * @module
  */
-import type { Page } from '@playwright/test';
+import type { Locator, Page } from '@playwright/test';
 
+import { firstCell, openDemo } from './board';
 import { expect, test } from './guard';
 
 /** Time for dnd-kit's keyboard sensor between keys. */
 const KEY_SETTLE_MS = 150;
 
-/** Open the demo and wait for its board. */
-async function openDemo(page: Page): Promise<void> {
-  await page.goto('/demo');
-  await expect(
-    page.getByRole('grid', { name: 'Acme platform (demo)' }),
-  ).toBeVisible();
+/** Press `button` from the keyboard. (WebKit, like Safari, doesn't focus a
+ * clicked button, so focus has nothing to return to after a click.) */
+async function press(page: Page, button: Locator): Promise<void> {
+  await button.focus();
+  await page.keyboard.press('Enter');
 }
-
-/** The first status cell's link (one Tab stop per cell). */
-const firstCell = (page: Page) =>
-  page.getByRole('gridcell').first().getByRole('link').first();
 
 /** Open a modal with `open`, check it, close it with Escape, and check
  * focus went back to `returnsTo`. */
@@ -32,7 +28,7 @@ async function roundTrip(
   page: Page,
   open: () => Promise<void>,
   name: string | RegExp,
-  returnsTo: ReturnType<Page['locator']>,
+  returnsTo: Locator,
   role: 'dialog' | 'alertdialog' = 'dialog',
 ): Promise<void> {
   await open();
@@ -123,7 +119,7 @@ test('every dialog, sheet, popover and drag works under the CSP', async ({
     ['Import', /^Import/],
   ] as const) {
     const opener = header.getByRole('button', { name: button });
-    await roundTrip(page, () => opener.click(), dialog, opener);
+    await roundTrip(page, () => press(page, opener), dialog, opener);
   }
 
   // The board's panels and popover.
@@ -133,7 +129,7 @@ test('every dialog, sheet, popover and drag works under the CSP', async ({
   // The counts change as the demo's story plays.
   for (const panel of [/^Problems/, /^Unmapped/, /^Credentials$/]) {
     const opener = page.getByRole('button', { name: panel });
-    await roundTrip(page, () => opener.click(), /./, opener);
+    await roundTrip(page, () => press(page, opener), /./, opener);
   }
 
   // The dashboard editor: a select, a keyboard drag and a pointer drag.

@@ -13,7 +13,10 @@
 
 </div>
 
-> 📷 _Screenshot to come: the demo board, light and dark._
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/demo-dark.png" />
+  <img src="docs/screenshots/demo-light.png" alt="The fooboard demo board: rows of repos grouped by team, columns of stages, each cell coloured by its latest deployment's status, with drift and pipeline badges." width="960" />
+</picture>
 
 fooboard shows the deployment state of every repo × stage at a glance. Paste a GitHub token, pick your repos and a branch preset, and the board fills itself in from your GitHub Actions runs (and, if you use them, AWS Amplify builds). No workflow changes, no account, no server: it is a free, open-source, static web app, and nothing leaves your browser except the calls it makes directly to GitHub and AWS.
 
@@ -32,6 +35,8 @@ fooboard shows the deployment state of every repo × stage at a glance. Paste a 
 - [Credentials](#credentials)
 - [Sharing, export and import](#sharing-export-and-import)
 - [Header, menu and footer](#header-menu-and-footer)
+  - [What's new](#whats-new)
+  - [When something goes wrong](#when-something-goes-wrong)
 - [Your data](#your-data)
 - [Releasing and deployment](#releasing-and-deployment)
   - [Hosting](#hosting)
@@ -340,14 +345,22 @@ The header stays at the top of the window. Its buttons, each with a tooltip:
 - **GitHub**: this repo.
 - **Report an issue**: [GitHub Issues](https://github.com/karmaniverous/fooboard/issues).
 
-As the window narrows, buttons move into the menu from the right, then the tagline goes; _README_ and _News & support_ stay longest. [Privacy](./PRIVACY.md) and [Terms](./TERMS.md) are always in the menu. The footer repeats every item as a link, turning to icons and then dropping out from the left as space runs short; Privacy and Terms always stay.
+As the window narrows, buttons move into the menu from the right, then the tagline goes; _README_ and _News & support_ stay longest. [Privacy](./PRIVACY.md) and [Terms](./TERMS.md) are always in the menu, followed by _What's new_ and _Reset…_; the menu ends with fooboard's version. The footer repeats every item as a link, turning to icons and then dropping out from the left as space runs short; Privacy and Terms always stay.
+
+### What's new
+
+_What's new_, in the menu, lists every release from the [changelog](./CHANGELOG.md) bundled with this version, newest first: each release is a collapsed entry (the newest starts open, and opening one closes the others) listing its features and fixes, with a link to its announcement on X when there is one. A dot on the menu button and on the item marks a release this browser hasn't seen; opening _What's new_ clears it. The last version seen is saved on this device, like the theme; it is never exported, and _Reset_ clears it, so the dot comes back.
+
+### When something goes wrong
+
+If fooboard hits an error it can't recover from, it shows an error screen in place of the app: the error message, fooboard's version, _Reload_ (your dashboards and settings are kept) and _Report an issue_. _Report an issue_ opens a new GitHub issue, prefilled with the version, your browser (its user agent string) and the error message, and nothing else: no dashboards, names, repos, tokens or keys. Before it goes into the issue, the message is cleaned of anything shaped like a secret or a board's names (tokens and keys, long opaque strings such as commit SHAs, links to other sites, email addresses, GitHub repo paths and Amplify app ids), and the screen shows the message as the issue will carry it. Nothing is sent until you submit the issue on GitHub, where you can read and edit it first. fooboard has no telemetry, so this is the only way it learns about errors.
 
 ## Your data
 
 Everything stays in this browser:
 
 - **Dashboards** are saved under a versioned format; older saves are upgraded when they load, and data that can't be read is reported and never overwritten. The first save after an upgrade keeps a copy of the old save (e.g. `fooboard:config.v5`) until the next save succeeds.
-- **Zoom, density and theme** are saved on each device. Deleting a dashboard removes its settings on this device too.
+- **Zoom, density, theme and the last version whose _What's new_ you've seen** are saved on each device, and never exported. Deleting a dashboard removes its settings on this device too.
 - **Tokens and keys** are kept only for the current tab unless you tick _Remember on this device_. Unticking it later removes the stored copy, so a token or key kept for the tab only leaves nothing on the device. _Forget_ removes one.
 - **Answers from GitHub and AWS** (runs, jobs, branches, behind counts, and the app search's lists of each AWS key's Amplify apps, with their names and repository URLs) are kept in this browser's IndexedDB, **unencrypted**, for up to 24 hours, so a reload shows the last known board at once. A new version of fooboard starts the cache afresh. Only answers read with the token or key remembered on this device are kept, each marked with a fingerprint of that secret (a one-way hash, never the secret itself): the answers read with a token or key kept for the current tab only are never kept, even when another tab remembers a different one for the same credential, and a reload just after you replace a secret shows none of the old answers. Unticking _Remember_, _Forget_, replacing a secret, removing a credential and deleting a dashboard remove what was read with it, in every open fooboard tab. The editors' lookups (repos, branches) aren't kept; the app picker reads the app search's lists, so those are. If the browser refuses IndexedDB (a full disk, or a privacy setting), or refuses the lock that lets one tab write it, fooboard says so in the banner and keeps answers for the tab only.
 - **Several tabs**: each reads with its own requests in flight; one tab at a time writes the kept answers, and the others read them when they open. The last configuration saved wins.

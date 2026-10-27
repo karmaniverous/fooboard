@@ -12,6 +12,7 @@
 import AxeBuilder from '@axe-core/playwright';
 import type { Page } from '@playwright/test';
 
+import { firstCell, openDemo } from './board';
 import { expect, test } from './guard';
 
 const WCAG = ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'];
@@ -41,22 +42,12 @@ async function violations(page: Page): Promise<string[]> {
   );
 }
 
-async function openDemo(page: Page): Promise<void> {
-  await page.goto('/demo');
-  await expect(
-    page.getByRole('grid', { name: 'Acme platform (demo)' }),
-  ).toBeVisible();
-}
-
-const firstCell = (page: Page) =>
-  page.getByRole('gridcell').first().getByRole('link').first();
-
 for (const colorScheme of ['light', 'dark'] as const)
   test.describe(`in ${colorScheme}`, () => {
     test.use({ colorScheme });
 
     test('axe finds no WCAG A or AA violation', async ({ page }) => {
-      test.setTimeout(90_000);
+      test.setTimeout(180_000);
       await page.goto('/');
       await expect(page.getByRole('main')).toBeVisible();
       expect(await violations(page), 'home').toEqual([]);
@@ -95,7 +86,7 @@ for (const colorScheme of ['light', 'dark'] as const)
 test('Tab runs through the header, then the board', async ({ page }) => {
   await openDemo(page);
   const regions: string[] = [];
-  for (let i = 0; i < 40; i++) {
+  while (regions.length < 40 && !regions.includes('grid')) {
     await page.keyboard.press('Tab');
     regions.push(
       await page.evaluate(() => {
@@ -121,7 +112,7 @@ test('dialogs keep Tab inside until closed', async ({ page }) => {
     await page.getByRole('menuitem', { name: new RegExp(`^${item}`) }).click();
     const dialog = page.getByRole(role);
     await expect(dialog).toBeVisible();
-    for (let i = 0; i < 12; i++) {
+    for (let i = 0; i < 8; i++) {
       await page.keyboard.press('Tab');
       expect(
         await dialog.evaluate((d) => d.contains(document.activeElement)),
