@@ -1,6 +1,7 @@
 /**
- * Device-preferences store (spec.md C-13): per-dashboard view settings on
- * this device (zoom, row height). Never exported or shared. Unlike the
+ * Device-preferences store (spec.md C-13, C-14, C-20): per-dashboard view
+ * settings on this device (zoom, density), the theme, and the last
+ * version whose What's new was seen. Never exported or shared. Unlike the
  * configuration, these are disposable: unreadable data falls back to the
  * defaults.
  *
@@ -36,6 +37,10 @@ export interface PreferencesStore {
   getTheme(): ThemeChoice;
   /** Save the theme choice on this device. */
   setTheme(theme: ThemeChoice): void;
+  /** The newest version whose What's new this browser has seen. */
+  getLastSeenVersion(): string | undefined;
+  /** Record that What's new was seen up to `version`. */
+  setLastSeenVersion(version: string): void;
 }
 
 export function createPreferencesStore(store: KeyValueStore): PreferencesStore {
@@ -84,6 +89,10 @@ export function createPreferencesStore(store: KeyValueStore): PreferencesStore {
     getTheme: () => load().theme,
     setTheme: (theme) => {
       save({ ...load(), theme });
+    },
+    getLastSeenVersion: () => load().lastSeenVersion,
+    setLastSeenVersion: (lastSeenVersion) => {
+      save({ ...load(), lastSeenVersion });
     },
   };
 }

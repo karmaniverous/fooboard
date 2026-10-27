@@ -96,6 +96,12 @@ export interface NavDialogs {
   openImport: () => void;
   /** The *Reset* confirmation (spec.md §3.9). */
   openReset: () => void;
+  /** What's new (spec.md C-20, §3.10); opening it marks the newest
+   * release seen. */
+  openWhatsNew: () => void;
+  /** Whether this browser hasn't seen the newest release's What's new
+   * (the menu's dot). */
+  whatsNewUnseen: boolean;
 }
 
 export const NavContext = createContext<NavDialogs | null>(null);
