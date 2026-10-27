@@ -30,7 +30,7 @@ import {
   THEIRS,
 } from '@/test/secretImport';
 
-import { ANSWER_TO_IMPORT } from './shareWords';
+import { ANSWER_TO_IMPORT, SECRETS_DIFFER } from './shareWords';
 
 describe('a secret in the share that differs from this device', () => {
   it('raises its question, unanswered, and blocks Import until answered', () => {
@@ -39,6 +39,8 @@ describe('a secret in the share that differs from this device', () => {
       deviceWith({ 'gh-org': MINE }),
     );
     expect(questions()).toHaveLength(1);
+    expect(question(GH_QUESTION)).toBeRequired();
+    expect(within(dialog()).getByText(SECRETS_DIFFER)).toBeVisible();
     const radios = ['Keep yours', "Use the share's"].map((name) =>
       within(question(GH_QUESTION)).getByRole('radio', { name }),
     );
@@ -62,6 +64,7 @@ describe('a secret in the share that differs from this device', () => {
       question(GH_QUESTION),
       question(AWS_QUESTION),
     ]);
+    for (const q of questions()) expect(q).toBeRequired();
     answer(GH_QUESTION, 'Keep yours');
     expect(importButton()).toBeDisabled();
     answer(AWS_QUESTION, "Use the share's");

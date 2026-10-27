@@ -1,9 +1,9 @@
 /**
  * The import dialog's questions about secrets (spec.md §3.8, Decision
- * 70): one labelled radio group per credential whose secret in the share
- * differs from this device's, named by its kind and label, with *Keep
- * yours* and *Use the share's* and nothing chosen. Neither secret's value
- * is shown. When *Import* stops to ask (encrypted credentials, compared
+ * 70): one labelled, required radio group per credential whose secret
+ * in the share differs from this device's, named by its kind and label,
+ * with *Keep yours* and *Use the share's* and nothing chosen. Neither
+ * secret's value is shown. When *Import* stops to ask (encrypted credentials, compared
  * once the passphrase opens them), focus moves to the first question, so
  * a screen reader announces it and Tab continues from it.
  *
@@ -36,6 +36,7 @@ function Question({
       </p>
       <RadioGroup
         aria-labelledby={`${id}-q`}
+        required
         value={form.answerOf(question.id) ?? null}
         onValueChange={(value) => {
           const picked = SECRET_ANSWERS.find((a) => a.value === value);

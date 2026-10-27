@@ -55,7 +55,7 @@ export const TAB_ONLY_NOTE = `The credentials are kept for this tab only, until 
 
 /** Above the questions about secrets that differ (Decision 70). */
 export const SECRETS_DIFFER =
-  "This share's secret differs from the one this device holds for the credentials below. Neither is shown. Choose for each one; the share's follows Remember on this device.";
+  "For the credentials below, this share holds a different secret from this device's. Neither is shown. Choose for each one; the share's follows Remember on this device.";
 
 /** Each question about a secret that differs, after the credential's
  * kind and label. */
