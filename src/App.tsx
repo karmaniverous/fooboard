@@ -1,13 +1,16 @@
 /**
  * App shell: router wiring for the home page, the demo, creating a
  * dashboard (the first run's steps) and saved dashboards, and the share
- * link the page was opened with.
+ * link the page was opened with; under the theme, the error boundary
+ * (spec.md §3.10), which shows the error screen in place of the whole
+ * app if any of it throws while rendering.
  *
  * @module
  */
 import { lazy, Suspense } from 'react';
 import { Route, Routes } from 'react-router-dom';
 
+import { AppErrorBoundary } from '@/components/AppErrorBoundary';
 import { AppNavProvider } from '@/components/AppNavProvider';
 import { Footer } from '@/components/Footer';
 import { Header } from '@/components/Header';
@@ -47,46 +50,53 @@ export default function App({
   // while header, warning and footer stay pinned (C-13).
   return (
     <ThemeProvider>
-      <AppNavProvider link={link}>
-        <div className="flex min-h-screen w-max min-w-full flex-col">
-          <Header />
-          <StorageBanner />
-          <main className="flex-1">
-            <Suspense
-              fallback={
-                <p role="status" className="p-5 text-sm text-muted-foreground">
-                  Loading…
-                </p>
-              }
-            >
-              <Routes>
-                <Route
-                  path="/"
-                  element={
-                    <Page>
-                      <Home />
-                    </Page>
-                  }
-                />
-                <Route path="/demo" element={<DemoPage />} />
-                {[FIRST_RUN_PATH, `${FIRST_RUN_PATH}/:id/:step`].map((path) => (
+      <AppErrorBoundary>
+        <AppNavProvider link={link}>
+          <div className="flex min-h-screen w-max min-w-full flex-col">
+            <Header />
+            <StorageBanner />
+            <main className="flex-1">
+              <Suspense
+                fallback={
+                  <p
+                    role="status"
+                    className="p-5 text-sm text-muted-foreground"
+                  >
+                    Loading…
+                  </p>
+                }
+              >
+                <Routes>
                   <Route
-                    key={path}
-                    path={path}
+                    path="/"
                     element={
                       <Page>
-                        <FirstRunPage />
+                        <Home />
                       </Page>
                     }
                   />
-                ))}
-                <Route path="/d/:id" element={<DashboardPage />} />
-              </Routes>
-            </Suspense>
-          </main>
-          <Footer />
-        </div>
-      </AppNavProvider>
+                  <Route path="/demo" element={<DemoPage />} />
+                  {[FIRST_RUN_PATH, `${FIRST_RUN_PATH}/:id/:step`].map(
+                    (path) => (
+                      <Route
+                        key={path}
+                        path={path}
+                        element={
+                          <Page>
+                            <FirstRunPage />
+                          </Page>
+                        }
+                      />
+                    ),
+                  )}
+                  <Route path="/d/:id" element={<DashboardPage />} />
+                </Routes>
+              </Suspense>
+            </main>
+            <Footer />
+          </div>
+        </AppNavProvider>
+      </AppErrorBoundary>
     </ThemeProvider>
   );
 }

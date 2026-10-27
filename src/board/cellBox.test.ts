@@ -1,13 +1,18 @@
 /**
  * Tests for the cell as a whole (issue #42): what counts as within a cell
  * (its box, and the cell gear sitting on it, not another cell's), and
- * whether its control has focus.
+ * whether its control or its badge has focus.
  *
  * @module
  */
 import { afterEach, describe, expect, it } from 'vitest';
 
-import { CELL_CONTROL, controlHasFocus, withinCell } from './cellBox';
+import {
+  CELL_CONTROL,
+  cellFocus,
+  controlHasFocus,
+  withinCell,
+} from './cellBox';
 import { gearOwnerProps, gearTargetProps } from './cellGearTarget';
 
 const el = (tag: string, attrs: Record<string, string> = {}) => {
@@ -74,5 +79,18 @@ describe('controlHasFocus', () => {
     const other = board();
     other.control.focus();
     expect(controlHasFocus(box)).toBe(false);
+  });
+});
+
+describe('cellFocus', () => {
+  it('says whether focus is on the control, on the badge, or elsewhere', () => {
+    const { box, control, badge } = board();
+    expect(cellFocus(box)).toBeUndefined();
+    control.focus();
+    expect(cellFocus(box)).toBe('control');
+    badge.focus();
+    expect(cellFocus(box)).toBe('badge');
+    board().control.focus();
+    expect(cellFocus(box)).toBeUndefined();
   });
 });

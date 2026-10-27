@@ -13,7 +13,10 @@
 
 </div>
 
-> 📷 _Screenshot to come: the demo board, light and dark._
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/demo-dark.png" />
+  <img src="docs/screenshots/demo-light.png" alt="The fooboard demo board: rows of repos grouped by team, columns of stages, each cell coloured by its latest deployment's status, with drift and pipeline badges." width="960" />
+</picture>
 
 fooboard shows the deployment state of every repo × stage at a glance. Paste a GitHub token, pick your repos and a branch preset, and the board fills itself in from your GitHub Actions runs (and, if you use them, AWS Amplify builds). No workflow changes, no account, no server: it is a free, open-source, static web app, and nothing leaves your browser except the calls it makes directly to GitHub and AWS.
 
@@ -32,6 +35,8 @@ fooboard shows the deployment state of every repo × stage at a glance. Paste a 
 - [Credentials](#credentials)
 - [Sharing, export and import](#sharing-export-and-import)
 - [Header, menu and footer](#header-menu-and-footer)
+  - [What's new](#whats-new)
+  - [When something goes wrong](#when-something-goes-wrong)
 - [Your data](#your-data)
 - [Releasing and deployment](#releasing-and-deployment)
   - [Hosting](#hosting)
@@ -84,7 +89,7 @@ Each status has a name, a colour, an icon (✓ success, ✕ failure, ◔ running
 
 A record that matches no status shows **Unknown** (purple, ?), so a gap in the rules is visible; see [Rules](#rules).
 
-A cell can carry a **badge**: _behind_ (amber, with a count) when its branch is missing commits from the stage it is promoted from, or _diverged_ (with `behind/ahead`) when it also has commits the source lacks. A badge links to GitHub's compare page. Badges need git: they show on rows linked to a GitHub repo (a GitHub row's own repo; an Amplify row's repo) when the cell's record has a commit and a branch.
+A cell can carry a **badge**: _behind_ (amber, with a count; its name and tooltip say "1 commit behind" or "3 commits behind") when its branch is missing commits from the stage it is promoted from, or _diverged_ (with `behind/ahead`) when it also has commits the source lacks. A badge links to GitHub's compare page. Badges need git: they show on rows linked to a GitHub repo (a GitHub row's own repo; an Amplify row's repo) when the cell's record has a commit and a branch.
 
 An **empty cell** says why: _no records_, _needs credential_ (with a link to [Credentials](#credentials)), _error_ or, in an Amplify row, _no app_ (see below). A **warning marker** (!) on a row or stage header, or beside the board's name for board-wide problems, means a rule there has a problem (a group's problems mark its members; a status set's problems mark the rows whose cells use it); hover it to read them, click it to open the editor at the problem. A cell's own problems (such as a hint to read more) are listed in its detail. _Problems (N)_ in the toolbar lists every problem with _Fix_ to open the editor at the exact item, and notes on what the rule check couldn't decide; when there are only notes it reads _Notes (N)_.
 
@@ -142,7 +147,7 @@ A few values may differ by row, by column or by cell: the **GitHub token** a cel
 
 > 📷 _Screenshot to come: a row's settings popup._
 
-You can change a place's settings without leaving the board. Every row header, stage header and labelled group label has a gear (⚙) after its name, always shown and in the Tab order after the header; its room is kept in the layout, so the board never shifts. On a screen narrower than 640 px headers and labels have no gear, so row names get the room: set those places in _Edit dashboard_. One gear follows the cell under the pointer or with keyboard focus, in its top-right corner, and stays while you move onto it. The cell's gear isn't a Tab stop of its own: press `,` (comma) on a focused cell instead (its tooltip says so, beside Space for details). On a touch screen, tap the cell for its detail sheet, which has the cell's gear. Clicking a header or a label still opens nothing, and clicking a cell still opens its job.
+You can change a place's settings without leaving the board. Every row header, stage header and labelled group label has a gear (⚙) after its name, always shown and in the Tab order after the header; its room is kept in the layout, so the board never shifts. On a screen narrower than 640 px headers and labels have no gear, so row names get the room: set those places in _Edit dashboard_. One gear follows the cell under the pointer or with keyboard focus, in its top-right corner, and stays while you move onto it. The cell's gear isn't a Tab stop of its own: press `,` (comma) on a focused cell instead (its tooltip says so, beside Space for details). Comma works from a cell's behind or diverged badge too, and with focus there the tooltip names only comma, since Space would follow the badge's link. On a touch screen, tap the cell for its detail sheet, which has the cell's gear. Clicking a header or a label still opens nothing, and clicking a cell still opens its job.
 
 A gear opens its **settings popup**: next to the gear, or as a sheet from the bottom of the screen on a phone. Its title names the place ("Row settings: api-core", "Cell settings: api-core × prod"), and it holds the same [settings editor](#settings) as _Edit dashboard_, for that place only: every field, its origin, _Set here_, _Reset to inherited_ and _nothing here reads it yet_. A change is saved at once (or refused with _Not saved_), and the board updates under it. _Open in dashboard settings_ opens the editor at that place. An unlabelled group has no gear; where a row's or stage's popup names one as an origin, that origin opens the editor at the group's settings. One popup is open at a time: a header's or label's gear switches to its own popup in one click, while a click at a cell first only closes the open popup (it keeps the pointer while open, as it keeps keyboard focus), so a cell's gear takes a second click. Focus moves into the popup and Tab stays there; Escape closes the innermost open control, then the popup, and returns you to the gear (or the cell where you pressed `,`).
 
@@ -340,14 +345,22 @@ The header stays at the top of the window. Its buttons, each with a tooltip:
 - **GitHub**: this repo.
 - **Report an issue**: [GitHub Issues](https://github.com/karmaniverous/fooboard/issues).
 
-As the window narrows, buttons move into the menu from the right, then the tagline goes; _README_ and _News & support_ stay longest. [Privacy](./PRIVACY.md) and [Terms](./TERMS.md) are always in the menu. The footer repeats every item as a link, turning to icons and then dropping out from the left as space runs short; Privacy and Terms always stay.
+As the window narrows, buttons move into the menu from the right, then the tagline goes; _README_ and _News & support_ stay longest. [Privacy](./PRIVACY.md) and [Terms](./TERMS.md) are always in the menu, followed by _What's new_ and _Reset…_; the menu ends with fooboard's version. The footer repeats every item as a link, turning to icons and then dropping out from the left as space runs short; Privacy and Terms always stay.
+
+### What's new
+
+_What's new_, in the menu, lists every release from the [changelog](./CHANGELOG.md) bundled with this version, newest first: each release is a collapsed entry (the newest starts open, and opening one closes the others) listing its features and fixes, with a link to its announcement on X when there is one. A dot on the menu button and on the item marks a release this browser hasn't seen; opening _What's new_ clears it. The last version seen is saved on this device, like the theme; it is never exported, and _Reset_ clears it, so the dot comes back.
+
+### When something goes wrong
+
+If fooboard hits an error it can't recover from, it shows an error screen in place of the app: the error message, fooboard's version, _Reload_ (your dashboards and settings are kept) and _Report an issue_. _Report an issue_ opens a new GitHub issue, prefilled with the version, your browser (its user agent string) and the error message, and nothing else: no dashboards, names, repos, tokens or keys. Before it goes into the issue, the message is cleaned of anything shaped like a secret or a board's names (tokens and keys, long opaque strings such as commit SHAs, links to other sites, email addresses, GitHub repo paths and Amplify app ids), and the screen shows the message as the issue will carry it. Nothing is sent until you submit the issue on GitHub, where you can read and edit it first. fooboard has no telemetry, so this is the only way it learns about errors.
 
 ## Your data
 
 Everything stays in this browser:
 
 - **Dashboards** are saved under a versioned format; older saves are upgraded when they load, and data that can't be read is reported and never overwritten. The first save after an upgrade keeps a copy of the old save (e.g. `fooboard:config.v5`) until the next save succeeds.
-- **Zoom, density and theme** are saved on each device. Deleting a dashboard removes its settings on this device too.
+- **Zoom, density, theme and the last version whose _What's new_ you've seen** are saved on each device, and never exported. Deleting a dashboard removes its settings on this device too.
 - **Tokens and keys** are kept only for the current tab unless you tick _Remember on this device_. Unticking it later removes the stored copy, so a token or key kept for the tab only leaves nothing on the device. _Forget_ removes one.
 - **Answers from GitHub and AWS** (runs, jobs, branches, behind counts, and the app search's lists of each AWS key's Amplify apps, with their names and repository URLs) are kept in this browser's IndexedDB, **unencrypted**, for up to 24 hours, so a reload shows the last known board at once. A new version of fooboard starts the cache afresh. Only answers read with the token or key remembered on this device are kept, each marked with a fingerprint of that secret (a one-way hash, never the secret itself): the answers read with a token or key kept for the current tab only are never kept, even when another tab remembers a different one for the same credential, and a reload just after you replace a secret shows none of the old answers. Unticking _Remember_, _Forget_, replacing a secret, removing a credential and deleting a dashboard remove what was read with it, in every open fooboard tab. The editors' lookups (repos, branches) aren't kept; the app picker reads the app search's lists, so those are. If the browser refuses IndexedDB (a full disk, or a privacy setting), or refuses the lock that lets one tab write it, fooboard says so in the banner and keeps answers for the tab only.
 - **Several tabs**: each reads with its own requests in flight; one tab at a time writes the kept answers, and the others read them when they open. The last configuration saved wins.

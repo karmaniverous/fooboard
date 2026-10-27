@@ -34,7 +34,10 @@ export const DEMO_FIRST_CELL_MAX_MS = 1_500;
  * development-only measurement scenario (Decision 61, replacing Decision
  * 45's interim 8 s: the simulator charges its latency per HTTP request). */
 export const DEMO_FULL_BOARD_MAX_MS = 11_000;
-/** Reload: the cached board within this long of the page loading (ms). */
+/** Reload: the median reload shows the cached board within this long of
+ * the page loading (ms). A target for the median of several reloads, not
+ * for each one (Decision 74 item 3): a single slow reload usually means a busy
+ * machine, not a regression. */
 export const RELOAD_FULL_BOARD_MAX_MS = 500;
 /** The 16-repo validation board on a cold cache: full board (ms).
  * Final (Decision 64 item 1, confirming Decision 45 item 1's interim
@@ -51,6 +54,9 @@ export type Measure = 'firstCell' | 'fullBoard';
 export type BoardKind = 'demo' | 'real';
 /** Measured from the board opening, or from the page (re)loading. */
 export type Origin = 'open' | 'reload';
+/** What a target bounds: each load, or the median of several (one load
+ * can't meet or miss it on its own). */
+type Judged = 'each' | 'median';
 
 /** One Decision 30 target (as Decisions 45, 61 and 64 amend it). */
 export interface PerformanceTarget {
@@ -59,6 +65,7 @@ export interface PerformanceTarget {
   measure: Measure;
   from: Origin;
   maxMs: number;
+  judged: Judged;
 }
 
 /** Decision 30's targets (Decision 64's final real-board one and
@@ -73,6 +80,7 @@ export const PERFORMANCE_TARGETS: readonly PerformanceTarget[] = [
     measure: 'firstCell',
     from: 'open',
     maxMs: DEMO_FIRST_CELL_MAX_MS,
+    judged: 'each',
   },
   {
     label: `Demo (${String(DEMO_TARGET_LATENCY_MS)} ms latency, ${String(DEMO_TARGET_IN_FLIGHT)} in flight): full board`,
@@ -80,13 +88,15 @@ export const PERFORMANCE_TARGETS: readonly PerformanceTarget[] = [
     measure: 'fullBoard',
     from: 'open',
     maxMs: DEMO_FULL_BOARD_MAX_MS,
+    judged: 'each',
   },
   {
-    label: 'Reload: cached board',
+    label: 'Reload: cached board (median reload)',
     board: 'any',
     measure: 'fullBoard',
     from: 'reload',
     maxMs: RELOAD_FULL_BOARD_MAX_MS,
+    judged: 'median',
   },
   {
     label: 'Real board, cold cache: full board',
@@ -94,5 +104,6 @@ export const PERFORMANCE_TARGETS: readonly PerformanceTarget[] = [
     measure: 'fullBoard',
     from: 'open',
     maxMs: REAL_COLD_FULL_BOARD_MAX_MS,
+    judged: 'each',
   },
 ];

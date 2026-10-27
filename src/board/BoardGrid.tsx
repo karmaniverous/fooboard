@@ -22,11 +22,11 @@ import type { Dashboard } from '@/domain/config/dashboard';
 import type { BoardModel } from '@/engine';
 
 import { BoardRows } from './BoardRows';
-import { controlHasFocus, withinCell } from './cellBox';
+import { cellFocus, withinCell } from './cellBox';
 import { CellDetail, CellSheet, CellTooltip } from './CellDetail';
 import { CellGearLayer } from './CellGearLayer';
 import { cellNames, cellSettingsAt } from './cellNames';
-import { cellPlace } from './cellView';
+import { type CellFocus, cellPlace } from './cellView';
 import { ColumnGroupLabels } from './ColumnGroupLabels';
 import { boardTextStyle } from './gridStyles';
 import { ColumnFrames } from './GroupFrames';
@@ -72,8 +72,9 @@ export function BoardGrid({
      * own badge or gear. */
     el: HTMLElement;
     rect: DOMRect;
-    /** The cell has focus, so the details key works: say so. */
-    focused: boolean;
+    /** Where focus is in the cell: the tooltip names the keys that work
+     * there. */
+    focus: CellFocus;
   } | null>(null);
   const [sheet, setSheet] = useState<{
     key: string;
@@ -182,7 +183,7 @@ export function BoardGrid({
                   key,
                   el,
                   rect: el.getBoundingClientRect(),
-                  focused: controlHasFocus(el),
+                  focus: cellFocus(el),
                 });
               else leave(to);
             }}
@@ -197,7 +198,7 @@ export function BoardGrid({
       {tip && !sheet && !popup?.request && (
         <CellTooltip
           rect={tip.rect}
-          keyHint={tip.focused}
+          focus={tip.focus}
           settingsHint={hasSettings}
         >
           {detail(tip.key)}

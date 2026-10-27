@@ -8,7 +8,7 @@
  *
  * @module
  */
-import { defineConfig, mergeConfig } from 'vitest/config';
+import { configDefaults, defineConfig, mergeConfig } from 'vitest/config';
 
 import viteConfig from './vite.config.ts';
 
@@ -18,6 +18,8 @@ export default mergeConfig(
     test: {
       globals: true,
       environment: 'jsdom',
+      // The Playwright smoke tests (e2e/) run in browsers, not here.
+      exclude: [...configDefaults.exclude, 'e2e/**'],
       // Editor tests drive many renders in jsdom; under a full parallel run
       // the slowest come near the 5 s default.
       testTimeout: 15_000,

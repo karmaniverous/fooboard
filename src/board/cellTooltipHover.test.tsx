@@ -16,6 +16,7 @@ import { measureBoard } from '@/demo/scenarios/measure';
 import type { BoardModel } from '@/engine';
 import { fullModel } from '@/test/boardModel';
 import { shownCellGear } from '@/test/cellGear';
+import { badgeCell, tooltipText } from '@/test/cellTooltip';
 import { focusElement } from '@/test/focus';
 import { renderSettingsBoard } from '@/test/settingsBoard';
 
@@ -33,8 +34,7 @@ const move = (from: Element | null, to: Element) => {
   fireEvent.mouseOver(to, { relatedTarget: from });
 };
 
-/** The tooltip's text, or null when it is closed. */
-const tip = () => screen.queryByRole('tooltip')?.textContent ?? null;
+const tip = tooltipText;
 
 const gear = (): HTMLElement => {
   const g = shownCellGear();
@@ -45,14 +45,6 @@ const gear = (): HTMLElement => {
 /** Somewhere off every cell: a stage header. */
 const header = (name: RegExp = /Bali/) =>
   screen.getByRole('columnheader', { name });
-
-/** The billing row's behind badge, and its cell's cover link. */
-const badgeCell = () => {
-  const badge = screen.getAllByRole('link', { name: /^3 commits behind/ })[0];
-  const cell = badge.closest('[role="gridcell"]');
-  if (!(cell instanceof HTMLElement)) throw new Error('no badge cell');
-  return { badge, cover: within(cell).getAllByRole('link')[0] };
-};
 
 const covers = () =>
   screen
@@ -204,9 +196,11 @@ describe('focus over the cell as a whole', () => {
     fireEvent.focusOut(cover, { relatedTarget: badge });
     expect(tip()).toBe(text);
     focusElement(badge);
-    // Still the cell's tooltip; Space is the cover's key, not the badge's.
+    // Still the cell's tooltip; Space is the cover's key, not the badge's,
+    // so only comma is named.
     expect(tip()).toMatch(/billing/);
     expect(tip()).not.toMatch(/Press Space/);
+    expect(tip()).toMatch(/Press , \(comma\) for settings$/);
     focusElement(cover);
     expect(tip()).toBe(text);
   });

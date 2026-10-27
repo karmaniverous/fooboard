@@ -146,7 +146,7 @@ describe('summarise', () => {
     expect(summary.notes.some((n) => n.includes('assume 300 ms'))).toBe(true);
   });
 
-  it('judges a real board from opening, and a reload from the page load', () => {
+  it('judges a real board from opening, and measures a reload from the page load for its median', () => {
     const cold = summarise({
       ...base,
       kind: 'real',
@@ -168,13 +168,32 @@ describe('summarise', () => {
       pageLoad: 'reload',
       fullBoard: { sinceOpen: 9_000, sinceLoad: 9_800 },
     });
+    // Decision 74 item 3: the reload target is for the median reload, so one
+    // reload is measured but neither meets nor misses it.
     expect(measured(reload)).toEqual([
-      expect.objectContaining({
+      {
+        label: 'Reload: cached board (median reload)',
         maxMs: RELOAD_FULL_BOARD_MAX_MS,
         actualMs: 9_800,
-        met: false,
-      }),
+        median: true,
+      },
     ]);
+    expect(reload.notes).toContain(
+      'Reload: cached board (median reload) is a target for the median of several loads, not each one: compare the median of this and other loads with it.',
+    );
+    expect(cold.notes.some((n) => n.includes('median'))).toBe(false);
+  });
+
+  it('keeps the reload target at 500 ms, judged by the median, and every other target per load', () => {
+    expect(RELOAD_FULL_BOARD_MAX_MS).toBe(500);
+    expect(PERFORMANCE_TARGETS.map((t) => [t.from, t.judged, t.maxMs])).toEqual(
+      [
+        ['open', 'each', DEMO_FIRST_CELL_MAX_MS],
+        ['open', 'each', DEMO_FULL_BOARD_MAX_MS],
+        ['reload', 'median', 500],
+        ['open', 'each', REAL_COLD_FULL_BOARD_MAX_MS],
+      ],
+    );
   });
 
   it('counts requests and failures, lists the slowest, and notes stray requests', () => {

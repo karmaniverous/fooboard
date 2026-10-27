@@ -65,7 +65,7 @@ describe('Header', () => {
       within(openMenu())
         .getAllByRole('menuitem')
         .map((i) => i.textContent),
-    ).toEqual(['Privacy', 'Terms', 'Reset…']);
+    ).toEqual(['Privacy', 'Terms', "What's new", 'Reset…']);
   });
 
   it('folds buttons into the menu, before the separator, when narrow', () => {
@@ -92,6 +92,7 @@ describe('Header', () => {
       'Report an issue',
       'Privacy',
       'Terms',
+      "What's new",
       'Reset…',
     ]);
     const order = [

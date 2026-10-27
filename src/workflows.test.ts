@@ -6,7 +6,8 @@
  *   `prod`); the prod guard runs on `pull_request_target`, so its workflow
  *   comes from `prod` and the PR it checks can't replace it, with no token
  *   permissions, never checks out PR code and passes PR fields to its
- *   script only through env variables;
+ *   script only through env variables; CI also runs the Playwright tests
+ *   in Chromium against a fresh build;
  * - `amplify.yml` builds with Node 22, `npm ci` and `npm run build`, and
  *   publishes `dist`;
  * - `customHttp.yml` sets the CSP and the security headers (the CSP's style
@@ -26,6 +27,7 @@ import prodPrRaw from '../.github/workflows/prod-pr.yml?raw';
 import amplifyRaw from '../amplify.yml?raw';
 import rewritesRaw from '../amplify-rewrites.json?raw';
 import customHttpRaw from '../customHttp.yml?raw';
+import packageJsonRaw from '../package.json?raw';
 import viteConfigRaw from '../vite.config.ts?raw';
 import {
   parseCustomHttp,
@@ -59,6 +61,9 @@ const Workflow = z.object({
 });
 
 const ci = Workflow.parse(parse(ciRaw));
+const packageJson = z
+  .object({ scripts: z.record(z.string(), z.string()) })
+  .parse(JSON.parse(packageJsonRaw));
 const prodPr = Workflow.parse(parse(prodPrRaw));
 const steps = (workflow: z.infer<typeof Workflow>) =>
   Object.values(workflow.jobs).flatMap((job) => job.steps);
@@ -69,6 +74,23 @@ describe('CI workflow', () => {
     expect(ci.on.pull_request.types).toEqual(
       expect.arrayContaining(['opened', 'synchronize', 'reopened', 'edited']),
     );
+  });
+});
+
+describe('CI e2e job', () => {
+  it('runs the Playwright tests in Chromium against a fresh build', () => {
+    expect(Object.keys(ci.jobs)).toContain('e2e');
+    const runs = Object.entries(ci.jobs)
+      .filter(([name]) => name === 'e2e')
+      .flatMap(([, job]) => job.steps)
+      .flatMap((step) => step.run ?? []);
+    expect(runs).toEqual([
+      'npm ci',
+      'npm run build',
+      'npx playwright install --with-deps chromium',
+      'npm run e2e',
+    ]);
+    expect(packageJson.scripts.e2e).toBe('playwright test');
   });
 });
 
