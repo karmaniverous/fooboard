@@ -31,6 +31,18 @@ npm run knip         # find unused files, dependencies and exports
 - **Open the PR as a draft early** so progress is visible; mark it ready only after the pre-review checks below.
 - **Only the maintainer merges, deploys and releases** (see the README, [Releasing and deployment](./README.md#releasing-and-deployment)). Don't edit `CHANGELOG.md` by hand; it is generated at release.
 
+## The hosted sites
+
+Amplify Hosting serves three sites, one per long-running branch:
+
+| Site                                            | Branch                                | User name | Password   |
+| ----------------------------------------------- | ------------------------------------- | --------- | ---------- |
+| dev.fooboard.dev                                | `main`, deployed on every merge       | `dev`     | `fooboard` |
+| release.fooboard.dev                            | `preview/release`, the latest release | `release` | `fooboard` |
+| www.fooboard.dev (fooboard.dev redirects there) | `prod`, production                    | `prod`    | `fooboard` |
+
+The password isn't a secret: it guards against opening the wrong version by accident, not against access. Production's password comes off at launch, once the first release is deployed to `prod`.
+
 ## Quality gate (every commit)
 
 All of these pass with **zero errors and zero warnings**:
