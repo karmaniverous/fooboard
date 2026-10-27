@@ -146,12 +146,14 @@ describe("What's new", () => {
     ).toBeNull();
   });
 
-  it('says so when the build has no release yet, and marks nothing', () => {
-    const stores = shell(memoryStorage(), []);
+  it('says so when the build has no release yet, and forgets nothing', () => {
+    const device = memoryStorage();
+    createAppStores(device).preferences.setLastSeenVersion('0.1.0');
+    const stores = shell(device, []);
     expect(dotShown()).toBe(false);
     const dialog = openWhatsNew();
     expect(within(dialog).getByText(/No releases yet/)).toBeInTheDocument();
-    expect(stores.preferences.getLastSeenVersion()).toBeUndefined();
+    expect(stores.preferences.getLastSeenVersion()).toBe('0.1.0');
   });
 
   it("shows the app's version at the foot of the menu", () => {

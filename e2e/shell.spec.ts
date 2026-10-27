@@ -60,7 +60,8 @@ test('a page that fails to load shows the error screen', async ({ page }) => {
   const screen = page.getByRole('alert');
   await expect(screen).toContainText('Something went wrong');
   await expect(screen).toContainText(`fooboard ${VERSION}`);
-  await expect(page.getByRole('button', { name: 'Reload' })).toBeVisible();
+  const reload = page.getByRole('button', { name: 'Reload' });
+  await expect(reload).toBeVisible();
 
   const link = page.getByRole('link', { name: 'Report an issue' });
   await expect(link).toHaveAttribute('target', '_blank');
@@ -78,4 +79,8 @@ test('a page that fails to load shows the error screen', async ({ page }) => {
   const message = await screen.locator('pre').textContent();
   expect(message).toBeTruthy();
   expect(body).toContain(`\n${message ?? ''}\n`);
+
+  // Reload loads the page again (here, to the same error).
+  await Promise.all([page.waitForEvent('load'), reload.click()]);
+  await expect(page.getByRole('alert')).toBeVisible();
 });
