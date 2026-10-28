@@ -5,6 +5,10 @@
  * then until it lands; overdue data is marked at once; and the delay's
  * timer is cleared when the fetch lands and when the model is destroyed.
  *
+ * The clock (`Date`) is frozen from the start, so the data can't age while
+ * the board fills: on a slow machine a fill longer than the 5 s poll
+ * interval made the first rows overdue, and marked, before the test began.
+ *
  * @module
  */
 import { afterEach, describe, expect, it, vi } from 'vitest';
@@ -12,7 +16,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { measureBoard } from '@/demo/scenarios/measure';
 import type { QueryEnv } from '@/query/client';
 import { githubKey } from '@/query/keys';
-import { demoEnv, OVERDUE_MS, settle } from '@/test/boardModel';
+import { demoEnv, freezeDate, OVERDUE_MS, settle } from '@/test/boardModel';
 import { DEMO_TOKEN, demoGithubRow } from '@/test/githubCache';
 import { markFetching, markLanded } from '@/test/queryState';
 
@@ -29,14 +33,16 @@ const marks = (model: BoardModel) =>
     (s) => model.cells[cellKey(row.id, s.id)]?.refreshing === true,
   );
 
-/** The demo board, read once through `env`; the clock and timeouts are
- * fake from then on. */
+/** The demo board, read once through `env` under a frozen clock; timeouts
+ * are fake too from then on, the clock still where it froze. */
 async function readBoard(env: QueryEnv, now = () => Date.now()) {
+  const frozen = freezeDate();
   const board = createBoardModel({ dashboard: measureBoard, env, now });
   await settle(env, board);
   vi.useFakeTimers({
     toFake: ['setTimeout', 'clearTimeout', 'Date'],
     shouldClearNativeTimers: true,
+    now: frozen,
   });
   return board;
 }

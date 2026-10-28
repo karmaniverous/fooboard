@@ -5,14 +5,18 @@
  * marked. A fetch in flight marks its rows only past the refreshing
  * delay: see boardModelRefreshingDelay.test.ts.
  *
+ * The clock (`Date`) is frozen for each test, so the data can't age while
+ * the board fills: on a slow machine a fill longer than the 5 s poll
+ * interval made the first rows overdue, and marked, at reopen.
+ *
  * @module
  */
-import { describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { measureBoard } from '@/demo/scenarios/measure';
 import { EMPTY_STATES } from '@/domain/derivation';
 import { ACTIVE_INTERVAL_MS, BUDGET_BACKOFF } from '@/query/intervals';
-import { demoEnv, OVERDUE_MS, settle } from '@/test/boardModel';
+import { demoEnv, freezeDate, OVERDUE_MS, settle } from '@/test/boardModel';
 
 import { createBoardModel } from './boardModel';
 import { type BoardModel, cellKey } from './types';
@@ -38,6 +42,11 @@ async function readOnce() {
 }
 
 describe('board model refreshing', () => {
+  beforeEach(freezeDate);
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
   it('shows fresh cached data at once, unmarked, when a board reopens', async () => {
     const { env, filled } = await readOnce();
     const later = createBoardModel({ dashboard: measureBoard, env });

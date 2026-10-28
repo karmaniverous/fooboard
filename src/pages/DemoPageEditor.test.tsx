@@ -14,6 +14,7 @@ import { createAppStores } from '@/storage';
 import { memoryStorage } from '@/storage/keyValue';
 import { StoresContext } from '@/storage/storesContext';
 import { DEMO_RENDER_TIMEOUT_MS } from '@/test/demoRender';
+import { WAIT } from '@/test/timeouts';
 
 import { DemoPage } from './DemoPage';
 
@@ -53,7 +54,7 @@ describe('the demo dashboard editor', () => {
           await screen.findByRole(
             'button',
             { name: 'Settings for row api-core' },
-            { timeout: 20_000 },
+            WAIT,
           ),
         ).toBeVisible();
       } finally {
@@ -121,7 +122,7 @@ describe('the demo dashboard editor', () => {
       );
       // sandbox (off the board) in us-east-1, admin-console in us-west-2.
       expect(
-        await within(editor()).findAllByText(/sandbox/, {}, { timeout: 5000 }),
+        await within(editor()).findAllByText(/sandbox/, {}, WAIT),
       ).not.toHaveLength(0);
       expect(within(editor()).getAllByText(/admin-console/)).not.toHaveLength(
         0,

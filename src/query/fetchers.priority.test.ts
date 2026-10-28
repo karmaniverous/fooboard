@@ -11,6 +11,7 @@ import { describe, expect, it, vi } from 'vitest';
 
 import type { GitHubApi } from '@/lib/github';
 import { fakeGitHubApi, fetched } from '@/test/fakeReaders';
+import { WAIT } from '@/test/timeouts';
 
 import { createQueryFn } from './fetchers';
 import { passThrough } from './instrument';
@@ -109,7 +110,7 @@ function setup() {
         running: 0,
         queued: 0,
       });
-    });
+    }, WAIT);
     await Promise.all(pending);
   };
   return { client, started, send, queueDependents, drain };
