@@ -21,6 +21,7 @@ export function CommitInput({
   optional = false,
   placeholder,
   list,
+  describedBy,
 }: {
   value: string;
   onCommit: (value: string) => void;
@@ -30,6 +31,8 @@ export function CommitInput({
   placeholder?: string;
   /** A datalist id offering suggestions. */
   list?: string;
+  /** The id of the text that describes the field (its hint). */
+  describedBy?: string;
 }): React.JSX.Element {
   const [draft, setDraft] = useState(value);
   const [seen, setSeen] = useState(value);
@@ -48,6 +51,7 @@ export function CommitInput({
       className={className}
       placeholder={placeholder}
       list={list}
+      aria-describedby={describedBy}
       value={draft}
       onChange={(e) => {
         setDraft(e.target.value);

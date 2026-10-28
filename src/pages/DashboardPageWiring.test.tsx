@@ -2,17 +2,22 @@
  * Tests for the dashboard page's wiring: the Problems button counts
  * problems (or reads *Notes* when there are only notes), *Fix* opens the
  * editor on the problem's tab, *Customise* saves an editable copy of a
- * built-in and opens it, *Dismiss* hides a problem for good, and the
- * editor opens at General, where the dashboard can be deleted.
+ * built-in and opens it, *Dismiss* hides a problem for good (an Amplify
+ * source without an AWS key too, its cells still needing one), and the
+ * editor opens at General, where the dashboard can be deleted, its device
+ * preferences with it.
  *
  * @module
  */
 import { fireEvent, screen, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
+import { DevicePreferencesSchema } from '@/domain/config/devicePreferences';
 import { branchRules } from '@/domain/config/placement';
 import { builtinSourceFor } from '@/domain/model/builtinSources';
 import { BUILTIN_KEYS } from '@/domain/model/keys';
+import { memoryStorage, readJson } from '@/storage/keyValue';
+import { DEVICE_PREFERENCES_KEY } from '@/storage/preferencesStore';
 import { HOME_TEXT, renderDashboardPage } from '@/test/renderDashboardPage';
 
 const githubRow = {
@@ -39,7 +44,7 @@ const selectedTab = () =>
 
 describe('DashboardPage problems', () => {
   it('counts problems and opens the editor at the fix', async () => {
-    renderDashboardPage({
+    await renderDashboardPage({
       id: 'p',
       name: 'P',
       rows: [githubRow],
@@ -55,8 +60,8 @@ describe('DashboardPage problems', () => {
     expect(selectedTab()).toBe('Stages');
   });
 
-  it('reads Notes when there are only notes', () => {
-    renderDashboardPage({
+  it('reads Notes when there are only notes', async () => {
+    await renderDashboardPage({
       id: 'n',
       name: 'N',
       stages: [{ id: 'dev', name: 'Dev', rules: branchRules('dev') }],
@@ -70,7 +75,7 @@ describe('DashboardPage problems', () => {
 
   it('customises a built-in status set with a problem, saving the copy', async () => {
     const github = builtinSourceFor('github');
-    const stores = renderDashboardPage({
+    const stores = await renderDashboardPage({
       id: 'c',
       name: 'C',
       rows: [githubRow],
@@ -106,8 +111,8 @@ describe('DashboardPage problems', () => {
 });
 
 describe('DashboardPage dismissal', () => {
-  it('drops a dismissed note from the count and remembers it', () => {
-    const stores = renderDashboardPage({
+  it('drops a dismissed note from the count and remembers it', async () => {
+    const stores = await renderDashboardPage({
       id: 'd',
       name: 'D',
       stages: [{ id: 'dev', name: 'Dev', rules: branchRules('dev') }],
@@ -125,20 +130,59 @@ describe('DashboardPage dismissal', () => {
   });
 });
 
+describe('DashboardPage dismissing an unresolvable AWS key', () => {
+  const noKey = /^Dev have no AWS key/;
+
+  it('hides the problem, and the cells still need a credential', async () => {
+    await renderDashboardPage({
+      id: 'k',
+      name: 'K',
+      rows: [
+        {
+          type: 'amplify',
+          id: 'site',
+          displayName: 'site',
+          repo: 'acme/site',
+          pinnedApps: [{ region: 'us-east-1', appId: 'a1' }],
+        },
+      ],
+      stages: [{ id: 'dev', name: 'Dev', rules: branchRules('dev') }],
+    });
+    await settled();
+    const panel = openPanel(/^Problems \(\d+\)$/);
+    const item = within(panel).getByText(noKey).closest('li');
+    if (!item) throw new Error('no problem item');
+    fireEvent.click(within(item).getByRole('button', { name: 'Dismiss' }));
+    expect(within(panel).queryByText(noKey)).toBeNull();
+    fireEvent.click(within(panel).getByRole('button', { name: 'Close' }));
+    expect(await settled()).not.toEqual([]);
+  });
+});
+
 describe('DashboardPage editor', () => {
-  it('opens at General from Edit', () => {
-    renderDashboardPage({ id: 'e', name: 'E' });
+  it('opens at General from Edit', async () => {
+    await renderDashboardPage({ id: 'e', name: 'E' });
     fireEvent.click(screen.getByRole('button', { name: 'Edit' }));
     expect(selectedTab()).toBe('General');
   });
 
-  it('deletes the dashboard from General', () => {
-    const stores = renderDashboardPage({ id: 'x', name: 'Gone' });
+  it('deletes the dashboard from General, with its device preferences', async () => {
+    const device = memoryStorage();
+    const stores = await renderDashboardPage({ id: 'x', name: 'Gone' }, device);
+    stores.preferences.setView('x', { density: 'compact' });
+    stores.preferences.setView('kept', { density: 'compact' });
+    const dashboardsWithPreferences = () =>
+      Object.keys(
+        DevicePreferencesSchema.parse(readJson(device, DEVICE_PREFERENCES_KEY))
+          .dashboards,
+      );
+    expect(dashboardsWithPreferences()).toEqual(['x', 'kept']);
     fireEvent.click(screen.getByRole('button', { name: 'Edit' }));
     fireEvent.click(screen.getByRole('button', { name: 'Delete dashboard' }));
     fireEvent.click(screen.getByRole('button', { name: 'Delete Gone' }));
     const loaded = stores.config.load();
     expect(loaded.kind === 'ok' && loaded.root.dashboards).toEqual([]);
+    expect(dashboardsWithPreferences()).toEqual(['kept']);
     expect(screen.getByText(HOME_TEXT)).toBeVisible();
   });
 });

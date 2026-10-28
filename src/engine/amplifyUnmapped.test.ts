@@ -1,7 +1,8 @@
 /**
- * Tests for unmapped Amplify jobs: a kept job no row reading its app
- * places, with each row's reason, and what the panel shows when its raw
- * data is incomplete.
+ * Tests for unmapped Amplify jobs: a kept job no cell reading its app
+ * places, with each reading row's reason, judged against only the cells
+ * that read the app (spec.md §3.12), and what the panel shows when its
+ * raw data is incomplete.
  *
  * @module
  */
@@ -32,8 +33,9 @@ const row = (id: string): AmplifyRow => ({
   id,
   displayName: id,
   repo: '',
-  sources: [{ region: source.region, appId: source.appId }],
-  cellStatusSets: {},
+  pinnedApps: [{ region: source.region, appId: source.appId }],
+  settings: {},
+  cellSettings: {},
   stageRules: {},
 });
 const rules: CellRules = {
@@ -43,16 +45,12 @@ const rules: CellRules = {
   set: presetById(PRESET_IDS.amplify),
   order: BUILTIN_ORDER_KEYS.amplify,
 };
-const input = (rows: AmplifyRow[]) => ({
-  rows,
-  stages: [{ id: 'prod', name: 'prod', rules: {} }],
-  rulesFor: () => rules,
-});
 const unmapped = (records: RecordDoc[], rows = [row('site')]) =>
   amplifyUnmapped(
-    input(rows),
-    new Map(rows.map((r) => [r.id, [source]])),
-    new Map([[key, { records }]]),
+    rows.map((r) => ({ row: r, stageIds: ['prod'] })),
+    () => rules,
+    key,
+    records,
   );
 
 describe('amplifyUnmapped', () => {
@@ -124,12 +122,26 @@ describe('amplifyUnmapped', () => {
   });
 
   it('lists nothing for an app no row reads', () => {
-    expect(
-      amplifyUnmapped(
-        input([row('site')]),
-        new Map(),
-        new Map([[key, { records: [{ branch: 'x' }] }]]),
-      ),
-    ).toEqual([]);
+    expect(amplifyUnmapped([], () => rules, key, [{ branch: 'x' }])).toEqual(
+      [],
+    );
+  });
+
+  it('judges a job against only the cells that read its app', () => {
+    // prod reads this app; dev places develop but reads another app.
+    const byStage = (_: AmplifyRow, stageId: string): CellRules => ({
+      ...rules,
+      stage: branchRule(stageId === 'prod' ? 'main' : 'develop'),
+    });
+    const develop = {
+      branch: 'develop',
+      [BUILTIN_ORDER_KEYS.amplify]: '2026-10-01T00:00:00Z',
+    };
+    const judged = (stageIds: string[]) =>
+      amplifyUnmapped([{ row: row('site'), stageIds }], byStage, key, [
+        develop,
+      ]);
+    expect(judged(['prod'])).toHaveLength(1);
+    expect(judged(['prod', 'dev'])).toEqual([]);
   });
 });

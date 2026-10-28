@@ -1,195 +1,238 @@
 /**
- * The Amplify rows sharing apps, refreshed together (spec.md A§4.3.7):
- * each app is read once per poll however many rows use it (its branch
- * list, then the jobs of the branches the branch rule chooses), each job
- * translated once into a record, and records placed in each row's cells
- * from the apps that row reads. Records kept by *keep* that land in no
- * cell of any row reading their app are unmapped, with each row's reason;
- * a full read gives the row's empty cells a window hint.
+ * One Amplify row derived from the cache (spec.md §3.1, §2.3, §3.12):
+ * each cell reads the apps its AWS key gives it (`amplifyAccess`: pinned
+ * apps, else the apps the key's search finds building the row's repo), so
+ * the row's columns derive in parts, one per key, and merge. A cell shows
+ * as soon as a landed record places it; until every app its part reads
+ * has landed it is not settled, and a cell no landed record places stays
+ * loading, as do the cells of a part whose search hasn't finished. A cell
+ * whose key can't be resolved (none set at any level, or no secret
+ * entered) shows *Needs credential*, with one dismissable problem per
+ * missing kind naming the row's columns (Decisions 21, 48). A part whose
+ * search failed shows *Error* naming the region; one with no app shows
+ * *No app* with its problem; one reading several found apps pools them,
+ * with the *Pin* problem. A failed read of one app shows on the cells
+ * reading that app only. A part is refreshing while any of its apps'
+ * reads has been fetching longer than the refreshing delay or is older
+ * than its poll interval (Decisions 46, 47). Pure.
  *
  * @module
  */
-import type { JSONValue } from 'json-p3';
-import { objectify } from 'radash';
+import type { QueryClient } from '@tanstack/query-core';
 
-import {
-  type DefaultCredentials,
-  resolveCredentialId,
-} from '@/domain/config/credentialRefs';
 import type { AmplifyRow } from '@/domain/config/row';
 import type { Stage } from '@/domain/config/stage';
-import {
-  type CellDerivation,
-  type CredentialStatus,
-  deriveCell,
-  type ProviderFailure,
-} from '@/domain/derivation';
+import { deriveCell } from '@/domain/derivation';
 import { type CellRules, placeCell } from '@/domain/model/cell';
-import { asJson } from '@/domain/model/json';
 import type { SourceRuleOf } from '@/domain/model/sourceRule';
-import type { KeyProblem, RecordDoc } from '@/domain/model/translate';
-import { evaluateRule } from '@/domain/rules/check';
-import { amplifyTranslate } from '@/domain/statuses/documents';
-import { AmplifyAuthError, AmplifyThrottledError } from '@/lib/amplify/errors';
+import type { ResolvedAmplifySource } from '@/lib/amplify/rowJobs';
+import { amplifySnapshot } from '@/query/cache';
+import { rootFreshness } from '@/query/intervals';
+import { amplifyKey } from '@/query/keys';
+
 import {
-  type AmplifyReaderFor,
-  appKey,
-  memoizeReaderFor,
-  readAppJobs,
-  type ResolvedAmplifySource,
-} from '@/lib/amplify/rowJobs';
+  type AccessContext,
+  type Part,
+  rowParts,
+  searchedKeys,
+  searchNeeds,
+} from './amplifyAccess';
+import { type AppState, appState } from './amplifyApp';
+import {
+  type KeyLabel,
+  noAppProblem,
+  noAppReason,
+  severalProblem,
+  skippedRegionsNote,
+  unpinNotes,
+} from './amplifyProblems';
+import { emptyViews, finalView, noAppViews } from './cells';
+import { mergeDerivations } from './cellSegments';
+import type { Need, RowDerivation } from './need';
+import {
+  failedDerivation,
+  failedViews,
+  failureProblem,
+  rowProblem,
+} from './providerOutcome';
+import { isRefreshing, markRefreshing, type RefreshClock } from './refreshing';
+import type { CellView } from './types';
 
-import { amplifyUnmapped } from './amplifyUnmapped';
-import { emptyCells } from './cells';
-import { failureOutcome } from './providerOutcome';
-import type { UnmappedRun } from './types';
-
-export type AmplifyRowsRefresh =
-  | {
-      kind: 'refreshed';
-      /** Each row's cells, by stage id. */
-      rows: Record<string, Record<string, CellDerivation>>;
-      /** Keys the source rule couldn't translate cleanly. */
-      keyProblems: KeyProblem[];
-      unmapped: UnmappedRun[];
-      /** Rows reading an app whose read came back full. */
-      fullRows: string[];
-      /** The branch list entries read. */
-      branches: JSONValue[];
-    }
-  | { kind: 'rate-limited' };
-
-export interface AmplifyRowsInput {
-  rows: readonly AmplifyRow[];
-  stages: readonly Stage[];
+/** What every Amplify row derivation shares. */
+export interface AmplifyContext extends RefreshClock, AccessContext {
+  client: QueryClient;
   rulesFor: (row: AmplifyRow, stageId: string) => CellRules;
-  defaultsFor: (row: AmplifyRow) => DefaultCredentials;
-  readersFor: (credentialId: string) => AmplifyReaderFor | undefined;
   source: SourceRuleOf<'amplify'>;
+  /** Names a key in problems. */
+  keyLabel: KeyLabel;
 }
 
-/** A row's apps with their credentials, or `undefined` when one has no
- * credential or no reader. */
-export function resolvedSources(
-  row: AmplifyRow,
-  defaults: DefaultCredentials,
-  readersFor: AmplifyRowsInput['readersFor'],
-): ResolvedAmplifySource[] | undefined {
-  const out: ResolvedAmplifySource[] = [];
-  for (const s of row.sources) {
-    const credentialId = resolveCredentialId(defaults, 'aws', s.credentialId);
-    if (!credentialId || !readersFor(credentialId)) return undefined;
-    out.push({ ...s, credentialId });
-  }
-  return out;
-}
-
-const emptyRowCells = (
-  input: AmplifyRowsInput,
-  row: AmplifyRow,
-  credentialStatus: CredentialStatus,
-  providerFailure?: ProviderFailure,
+/** The problem naming the columns of row `rowId` whose cells can't read
+ * for want of a key or a secret: dismissable, like the other credential
+ * problems (Decision 48), since a session-only secret raises it after
+ * every reload. Its id names the row, the columns and what's missing, not
+ * the key. */
+const unresolvedProblem = (
+  rowId: string,
+  missing: 'key' | 'secret',
+  stages: readonly Stage[],
 ) =>
-  emptyCells(
-    input.stages,
-    (stageId) => input.rulesFor(row, stageId).set,
-    credentialStatus,
-    providerFailure,
+  rowProblem(
+    rowId,
+    `${stages.map((s) => s.name).join(', ')} ${
+      missing === 'key'
+        ? 'have no AWS key: set one for the row or its columns'
+        : "need their AWS key's secret"
+    }, so those cells don't show`,
+    true,
+    { kind: 'settings', place: { level: 'row', rowId }, field: 'awsKey' },
   );
 
-interface AppRecords {
-  records: RecordDoc[];
-  full: boolean;
+/** The queries the apps need, polling fast while the row is `active`. */
+const appNeeds = (states: readonly AppState[], active: boolean): Need[] =>
+  states.flatMap((state) =>
+    state.requests.map((request) => ({
+      key: amplifyKey(state.credentialId, request),
+      freshness: rootFreshness(active, false),
+    })),
+  );
+
+/** The cells in `stages` of `row`, reading `apps`. */
+function deriveApps(
+  ctx: AmplifyContext,
+  row: AmplifyRow,
+  apps: readonly ResolvedAmplifySource[],
+  stages: readonly Stage[],
+): RowDerivation {
+  const setFor = (stageId: string) => ctx.rulesFor(row, stageId).set;
+  const states = apps.map((app) => appState(ctx.client, app, ctx.source));
+  const failedAt = states.findIndex((s) => s.failure);
+  const failure = states[failedAt]?.failure;
+  if (failure)
+    return failedDerivation(
+      failure,
+      { id: row.id, stages },
+      setFor,
+      `Amplify app ${apps[failedAt]?.appId ?? ''}`,
+      appNeeds(states, false),
+    );
+  const records = states.flatMap((s) => s.records);
+  const complete = states.every((s) => s.complete);
+  const updatedAt =
+    states.length > 0 ? Math.min(...states.map((s) => s.updatedAt)) : 0;
+  const derived: Record<string, CellView> = {};
+  for (const stage of stages) {
+    const rules = ctx.rulesFor(row, stage.id);
+    const placed =
+      rules.stage === undefined ? undefined : placeCell(records, rules);
+    if (!complete && !placed) continue;
+    const view = finalView(
+      deriveCell({ placed, set: rules.set, credentialStatus: 'ok' }),
+    );
+    derived[stage.id] = { ...view, pending: !complete };
+  }
+  const active = Object.values(derived).some((c) => c.active);
+  const freshness = rootFreshness(active, false);
+  const cells = markRefreshing(
+    derived,
+    states.some((s) =>
+      s.requests.some((request) =>
+        isRefreshing(
+          amplifySnapshot(ctx.client, s.credentialId, request),
+          freshness,
+          ctx,
+        ),
+      ),
+    ),
+  );
+  return {
+    cells,
+    needs: appNeeds(states, active),
+    problems: [],
+    ...(updatedAt > 0 ? { refreshedAt: updatedAt } : {}),
+  };
 }
 
-export async function refreshAmplifyRows(
-  input: AmplifyRowsInput,
-): Promise<AmplifyRowsRefresh> {
-  const { source } = input;
-  const rows: Record<string, Record<string, CellDerivation>> = {};
-  const reading = new Map<string, ResolvedAmplifySource[]>();
-  for (const row of input.rows) {
-    const sources = resolvedSources(
-      row,
-      input.defaultsFor(row),
-      input.readersFor,
-    );
-    if (sources) reading.set(row.id, sources);
-    else rows[row.id] = emptyRowCells(input, row, 'missing');
-  }
-  const readerFor: AmplifyReaderFor = memoizeReaderFor((s) => {
-    const forCredential = input.readersFor(s.credentialId);
-    if (!forCredential) throw new Error('missing Amplify credential');
-    return forCredential(s);
-  });
-  const keyProblems: KeyProblem[] = [];
-  const branches: JSONValue[] = [];
-  const apps = new Map<string, AppRecords>();
-  try {
-    for (const s of [...reading.values()].flat()) {
-      const key = appKey(s);
-      if (apps.has(key)) continue;
-      const read = await readAppJobs(s, readerFor, source.reader);
-      branches.push(...read.branches.map((b) => asJson(b)));
-      const translated = read.jobs.map((j) => amplifyTranslate(j, source));
-      keyProblems.push(...translated.flatMap((t) => t.problems));
-      apps.set(key, {
-        records: translated
-          .map((t) => t.record)
-          .filter((r) => evaluateRule(source.keep, r)),
-        full: read.full,
-      });
+/** The part `part` of `row` derived, unless its key or secret is
+ * missing. */
+function derivePart(
+  ctx: AmplifyContext,
+  row: AmplifyRow,
+  { stages, access }: Part,
+): RowDerivation {
+  const empty: RowDerivation = { cells: {}, needs: [], problems: [] };
+  const setFor = (stageId: string) => ctx.rulesFor(row, stageId).set;
+  switch (access.kind) {
+    case 'missing':
+      return { ...empty, cells: emptyViews(stages, setFor, 'missing') };
+    case 'searching':
+      return empty;
+    case 'failed': {
+      const problem = failureProblem(
+        access.outcome,
+        row.id,
+        `the Amplify apps of the AWS key ${ctx.keyLabel(access.key)} in ${access.region}`,
+      );
+      return {
+        ...empty,
+        cells: failedViews(access.outcome, stages, setFor),
+        problems: problem ? [problem] : [],
+      };
     }
-  } catch (err) {
-    const outcome = failureOutcome(err, {
-      isRateLimit: (e) => e instanceof AmplifyThrottledError,
-      isAuth: (e) => e instanceof AmplifyAuthError,
-    });
-    if (outcome.kind === 'rate-limited') return outcome;
-    for (const row of input.rows)
-      if (reading.has(row.id))
-        rows[row.id] = emptyRowCells(
-          input,
-          row,
-          outcome.credentialStatus,
-          outcome.providerFailure,
-        );
-    return {
-      kind: 'refreshed',
-      rows,
-      keyProblems: [],
-      unmapped: [],
-      fullRows: [],
-      branches: [],
-    };
+    case 'none':
+      return {
+        ...empty,
+        cells: noAppViews(stages, noAppReason(row)),
+        problems: [noAppProblem(row, access.key, stages, ctx.keyLabel)],
+      };
+    case 'apps': {
+      const derived = deriveApps(ctx, row, access.apps, stages);
+      const { search } = access;
+      return search && search.found.length > 1
+        ? {
+            ...derived,
+            problems: [
+              ...derived.problems,
+              severalProblem(row.id, access.key, search, ctx.keyLabel),
+            ],
+          }
+        : derived;
+    }
   }
-  const appsOf = (rowId: string) =>
-    (reading.get(rowId) ?? []).flatMap((s) => apps.get(appKey(s)) ?? []);
-  for (const row of input.rows) {
-    if (!reading.has(row.id)) continue;
-    const records = appsOf(row.id).flatMap((a) => a.records);
-    rows[row.id] = objectify(
-      input.stages,
-      (s) => s.id,
-      (s) => {
-        const rules = input.rulesFor(row, s.id);
-        return deriveCell({
-          placed:
-            rules.stage === undefined ? undefined : placeCell(records, rules),
-          set: rules.set,
-          credentialStatus: 'ok',
-        });
-      },
+}
+
+/** `row` derived from the cache: one part per AWS key its cells resolve
+ * to, merged, with the search's queries and notes for every key. */
+export function deriveAmplifyRow(
+  ctx: AmplifyContext,
+  row: AmplifyRow,
+): RowDerivation {
+  const parts = rowParts(ctx, row);
+  const merged = mergeDerivations(parts.map((p) => derivePart(ctx, row, p)));
+  const unresolved = (['key', 'secret'] as const).flatMap((missing) => {
+    const stages = parts.flatMap((p) =>
+      p.access.kind === 'missing' && p.access.missing === missing
+        ? p.stages
+        : [],
     );
-  }
+    return stages.length > 0
+      ? [unresolvedProblem(row.id, missing, stages)]
+      : [];
+  });
+  const regionNotes = searchedKeys(ctx, parts).flatMap((key) => {
+    const search = ctx.search(key).state;
+    return search.kind === 'done'
+      ? skippedRegionsNote(key, search.noted, ctx.keyLabel)
+      : [];
+  });
   return {
-    kind: 'refreshed',
-    rows,
-    keyProblems,
-    unmapped: amplifyUnmapped(input, reading, apps),
-    fullRows: input.rows
-      .filter((r) => appsOf(r.id).some((a) => a.full))
-      .map((r) => r.id),
-    branches,
+    ...merged,
+    needs: [...merged.needs, ...searchNeeds(ctx, parts)],
+    problems: [
+      ...unresolved,
+      ...merged.problems,
+      ...unpinNotes(ctx, row, parts, ctx.keyLabel),
+      ...regionNotes,
+    ],
   };
 }

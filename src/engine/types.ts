@@ -1,7 +1,10 @@
 /**
- * Board engine types (spec.md §8 step 7): the per-dashboard cell model the
- * UI renders, and the provider lookup the engine reads through. Cells hold
- * the domain derivation plus the staleness badge and compare detail.
+ * Board model types (spec.md §3.1): the per-dashboard cell model the UI
+ * renders. Cells hold the domain derivation plus the staleness badge and
+ * compare detail, and say whether they are provisional (shown from the
+ * run alone until its jobs land), refreshing (cached data being read
+ * again or overdue for it, Decision 46) and settled (final: nothing they show is still
+ * loading for the first time).
  *
  * @module
  */
@@ -16,11 +19,9 @@ import type {
 } from '@/domain/derivation';
 import type { RecordDoc } from '@/domain/model/translate';
 import type { Problem } from '@/domain/problems/problem';
-import type { AmplifyReaderFor } from '@/lib/amplify/rowJobs';
-import type { GitHubReader } from '@/lib/github';
 import type { RateLimitBudget } from '@/lib/github';
 
-/** Compare detail for a cell with a source stage (spec.md §4.3.5). */
+/** Compare detail for a cell with a source stage (spec.md §2.7). */
 export interface CompareDetail {
   sourceBranch: string;
   htmlUrl: string;
@@ -30,24 +31,41 @@ export interface CompareDetail {
   aheadSubjects: string[];
 }
 
+/** How a provisional cell looks (Decision 37): in a summary status
+ * matched by name, or neutral when its set has none of that name. */
+export type ProvisionalLook = 'status' | 'neutral';
+
 /** One rendered cell. */
 export interface BoardCell {
   rowId: string;
   stageId: string;
   derivation: CellDerivation;
-  /** A job in the cell's run is still queued or running; drives the fast
-   * poll even when the displayed status is final (e.g. a failed test with
-   * a deploy still running). */
+  /** Still queued or running (or provisionally *Running*); drives the
+   * fast poll even when the displayed status is final (e.g. a failed
+   * test with a deploy still running). */
   active: boolean;
   badge: StalenessBadge;
   compare?: CompareDetail;
+  /** Shown from the run's own state until its jobs land (§3.1). */
+  provisional?: ProvisionalLook;
+  /** Cached data shown while newer data loads (§3.1). */
+  refreshing?: boolean;
+  /** Nothing the cell shows is still loading for the first time: not
+   * provisional, and its compares have answered (Decision 30). */
+  settled: boolean;
 }
 
-/** What a provider refresh yields per cell, before staleness. */
-export type CellView = Pick<BoardCell, 'derivation' | 'active'>;
+/** What a row's derivation yields per cell, before staleness. */
+export type CellView = Pick<
+  BoardCell,
+  'derivation' | 'active' | 'provisional' | 'refreshing'
+> & {
+  /** Waiting for jobs that may change it. */
+  pending: boolean;
+};
 
 /** A record the board couldn't place, for the Unmapped panel (C-15,
- * spec.md A§4.3.7): a GitHub run or an Amplify job. */
+ * spec.md §2.5): a GitHub run or an Amplify job. */
 export interface UnmappedRun {
   provider: Provider;
   /** Unique on the board; a record is listed once per repo or app, not
@@ -63,25 +81,29 @@ export interface UnmappedRun {
   record: RecordDoc;
   /** The first row's reason (one row reads most repos). */
   reason: UnmappedReason;
-  /** Why each row reading the repo didn't place it (spec.md A§4.3.7). */
+  /** Why each row reading the repo didn't place it (spec.md §2.5). */
   rows: { rowId: string; reason: UnmappedReason }[];
 }
 
 /** Everything the board renders for one dashboard. */
 export interface BoardModel {
   /** Keyed by `cellKey(rowId, stageId)`; a cell is absent until its row
-   * first refreshes. */
+   * has data for it. */
   cells: Partial<Record<string, BoardCell>>;
   unmapped: UnmappedRun[];
-  /** Problems found while reading (spec.md A§4.3.7): translation
-   * problems and window hints. */
+  /** Problems found while reading (spec.md §2.5, Decisions 25 and 26):
+   * translation problems, window hints, read errors, renamed repos. */
   problems: Problem[];
   /** Entries of the Amplify branch lists read, for the branch rule's
    * field picker and preview. */
   amplifyBranches: JSONValue[];
-  /** Latest known GitHub budget per credential id (spec.md C-16). */
+  /** The Amplify apps the board reads with each AWS key whose app search
+   * has finished, by credential id (*Copy AWS policy*, spec.md §3.12). */
+  amplifyKeyApps: Record<string, { region: string; appId: string }[]>;
+  /** Latest known GitHub budget per credential id; `undefined` until the
+   * token's first response (Decision 6). */
   budgets: Record<string, RateLimitBudget | undefined>;
-  /** When each row last refreshed (ms), keyed by row id. */
+  /** When each row's data last landed (ms), keyed by row id. */
   refreshedAt: Record<string, number>;
 }
 
@@ -92,11 +114,3 @@ export const CellKeySchema = z.tuple([z.string(), z.string()]);
  * character, so the pair is encoded unambiguously. */
 export const cellKey = (rowId: string, stageId: string): string =>
   JSON.stringify([rowId, stageId]);
-
-/** Readers for the dashboard's credentials; `undefined` means the
- * credential is missing (no token or key entered), so its cells show
- * *needs credential*. */
-export interface EngineProviders {
-  github(credentialId: string): GitHubReader | undefined;
-  amplify(credentialId: string): AmplifyReaderFor | undefined;
-}

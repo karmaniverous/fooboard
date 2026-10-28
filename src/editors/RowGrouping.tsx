@@ -1,34 +1,30 @@
 /**
  * A row's group and overrides in the row editor (spec.md C-14b, C-14c,
- * C-1a, C-15, A§4.3.6): its group; its group's default credentials,
- * status sets and stage-rule overrides (shown on each member, since a
- * group has no editor of its own); *Add override* from an unmapped
+ * C-15, §3.11): its group; its group's settings (the shared settings
+ * editor), row rules and stage-rule overrides (shown on each member,
+ * since a group has no editor of its own); *Add override* from an unmapped
  * record; and the row's own overrides, as branch patterns or general
  * rules (A§4.3.7).
  *
  * @module
  */
-import { useContext } from 'react';
-
 import { Disclosure } from '@/components/Disclosure';
 import type { Dashboard } from '@/domain/config/dashboard';
 import { groupOf, type RowGroup } from '@/domain/config/groups';
 import { ownOverride } from '@/domain/config/ownOverride';
 import type { Row } from '@/domain/config/row';
 import type { Stage } from '@/domain/config/stage';
-import { ITEM_NAME_PATH } from '@/domain/model/keys';
 import { always } from '@/domain/rules/always';
 import { branchOf } from '@/domain/rules/branch';
+import { countSet } from '@/domain/settings/schema';
 import { targetKey } from '@/editors/editTarget';
-import type { EngineProviders } from '@/engine';
+import { useQueryEnv } from '@/query/queryEnvContext';
 
 import { discoverBranches } from './branches';
-import { CredentialSelect } from './CredentialSelect';
 import { GroupControl } from './GroupControl';
 import {
   groupOverridePattern,
   rowOverridePattern,
-  setRowGroupCredential,
   setRowGroupOverride,
   setRowGroupStageRule,
   setRowOverride,
@@ -39,21 +35,18 @@ import { OverrideFix } from './OverrideFix';
 import { setGroupRowRule } from './rowRuleEdit';
 import { ProviderRules } from './rules/ProviderRules';
 import { RuleEditor } from './rules/RuleEditor';
-import { SourcesWithItemsContext } from './rules/samples';
-import { GroupStatusSets, RowStatusSets } from './statuses/StatusSetOverrides';
+import { SettingsEntries } from './settings/SettingsEditor';
 
 interface Props {
   dashboard: Dashboard;
-  providers: EngineProviders;
   onChange: (dashboard: Dashboard) => void;
 }
 
 /** How many of a group's settings are set (shown on its closed
- * section): default credentials, row rules, status sets, overrides. */
+ * section): its settings fields, row rules and overrides. */
 const groupSettingsCount = (g: RowGroup): number =>
-  Object.values(g.defaultCredentials).filter(Boolean).length +
+  countSet(g.settings) +
   Object.values(g.rowRules).filter(Boolean).length +
-  Object.values(g.statusSets).filter(Boolean).length +
   Object.keys(g.stageRules).length;
 
 /** A stage's own branch pattern, if its rules are one. */
@@ -98,7 +91,8 @@ export function RowGrouping({
    * rows reading its repo or app (shown on the first). */
   override?: { branch: string; rowIds: readonly string[] };
 }): React.JSX.Element {
-  const { dashboard, providers, onChange } = props;
+  const { dashboard, onChange } = props;
+  const env = useQueryEnv();
   const group = groupOf(dashboard.rowGroups, row.id);
   return (
     <>
@@ -136,24 +130,22 @@ export function RowGrouping({
             }}
           />
         )}
-        loadBranches={() => discoverBranches(dashboard, providers, [row])}
+        loadBranches={() => discoverBranches(dashboard, env, [row])}
         onChange={(stageId, pattern) => {
           onChange(setRowOverride(dashboard, row.id, stageId, pattern));
         }}
       />
-      <RowStatusSets dashboard={dashboard} row={row} onChange={onChange} />
     </>
   );
 }
 
 function RowGroupSettings({
   dashboard,
-  providers,
   onChange,
   group,
 }: Props & { group: RowGroup }): React.JSX.Element {
+  const env = useQueryEnv();
   const name = group.label ?? 'this group';
-  const withItems = useContext(SourcesWithItemsContext);
   return (
     // Shared by every member and edited less often than the row's own
     // fields: closed until opened, or opened by a fix inside it.
@@ -164,25 +156,11 @@ function RowGroupSettings({
       className="rounded border border-dashed px-1 py-0.5"
       contentClassName="flex flex-col gap-1 py-1"
     >
-      <div className="flex flex-wrap items-center gap-1">
-        {(
-          [
-            ['github', 'GitHub token'],
-            ['aws', 'AWS key'],
-          ] as const
-        ).map(([kind, noun]) => (
-          <CredentialSelect
-            key={kind}
-            dashboard={dashboard}
-            kind={kind}
-            label={`${noun} for ${name}`}
-            value={group.defaultCredentials[kind]}
-            onChange={(id) => {
-              onChange(setRowGroupCredential(dashboard, group.id, kind, id));
-            }}
-          />
-        ))}
-      </div>
+      <SettingsEntries
+        dashboard={dashboard}
+        place={{ level: 'rowGroup', groupId: group.id }}
+        onChange={onChange}
+      />
       <ProviderRules
         title={`Row rules of ${name}`}
         target={targetKey({
@@ -195,32 +173,8 @@ function RowGroupSettings({
           amplify: group.rowRules.amplify?.record,
         }}
         onChange={(p, record) => {
-          onChange(setGroupRowRule(dashboard, group.id, p, 'record', record));
+          onChange(setGroupRowRule(dashboard, group.id, p, record));
         }}
-      />
-      <ProviderRules
-        title={`Item rules of ${name}`}
-        scope="item"
-        newPath={ITEM_NAME_PATH}
-        target={targetKey({
-          kind: 'rowGroup',
-          id: group.id,
-          part: 'items',
-        })}
-        providers={withItems}
-        rules={{
-          github: group.rowRules.github?.items,
-          amplify: group.rowRules.amplify?.items,
-        }}
-        onChange={(p, items) => {
-          onChange(setGroupRowRule(dashboard, group.id, p, 'items', items));
-        }}
-      />
-      <GroupStatusSets
-        dashboard={dashboard}
-        group={group}
-        name={name}
-        onChange={onChange}
       />
       <OverrideFields
         name={name}
@@ -250,7 +204,7 @@ function RowGroupSettings({
         loadBranches={() =>
           discoverBranches(
             dashboard,
-            providers,
+            env,
             dashboard.rows.filter((r) => group.memberIds.includes(r.id)),
           )
         }

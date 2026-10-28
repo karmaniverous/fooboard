@@ -1,7 +1,7 @@
 /**
- * Tests for `DashboardSchema`: defaults for mapping, status sets, groups
- * and credentials, GitHub/Amplify row discrimination, the source-stage cycle
- * guard, and group membership checks.
+ * Tests for `DashboardSchema`: defaults for mapping, settings, groups
+ * and credentials, GitHub/Amplify row discrimination, settings a row may
+ * not hold, the source-stage cycle guard, and group membership checks.
  *
  * @module
  */
@@ -13,16 +13,16 @@ import { DashboardSchema } from './dashboard';
 import { PRESET_IDS } from './statusSets';
 
 describe('DashboardSchema', () => {
-  it('applies source rule, status set, group and credential defaults', () => {
+  it('applies source rule, settings, group and credential defaults', () => {
     const dashboard = DashboardSchema.parse({ id: 'd1', name: 'Dashboard 1' });
     expect(dashboard.sourceRules).toEqual({
       github: 'github',
       amplify: 'amplify',
     });
     expect(dashboard.customSourceRules).toEqual([]);
-    expect(dashboard.statusSets).toEqual({
-      github: PRESET_IDS.githubDeployTest,
-      amplify: 'amplify',
+    // No setting is set: the built-in applies (spec.md §3.11).
+    expect(dashboard.settings).toEqual({
+      requestsInFlight: { github: 10, aws: 10 },
     });
     expect(dashboard.customStatusSets).toEqual([]);
     expect(dashboard.rowGroups).toEqual([]);
@@ -48,7 +48,9 @@ describe('DashboardSchema', () => {
           id: 'r2',
           repo: 'acme/web-app',
           displayName: 'web-app',
-          sources: [{ credentialId: 'c1', region: 'us-east-1', appId: 'd123' }],
+          pinnedApps: [
+            { credentialId: 'c1', region: 'us-east-1', appId: 'd123' },
+          ],
         },
       ],
     });
@@ -57,22 +59,50 @@ describe('DashboardSchema', () => {
     expect(dashboard.rows[1]?.type).toBe('amplify');
   });
 
-  it('rejects an Amplify row with no sources', () => {
-    expect(() =>
-      DashboardSchema.parse({
+  it('needs a repo or a pinned app on an Amplify row', () => {
+    const parse = (row: object) =>
+      DashboardSchema.safeParse({
         id: 'd1',
         name: 'Dashboard 1',
-        rows: [
-          {
-            type: 'amplify',
-            id: 'r1',
-            repo: 'acme/web-app',
-            displayName: 'web-app',
-            sources: [],
-          },
-        ],
+        rows: [{ type: 'amplify', id: 'r1', displayName: 'web-app', ...row }],
+      });
+    expect(parse({ pinnedApps: [] }).error?.issues).toEqual([
+      expect.objectContaining({
+        path: ['rows', 0, 'pinnedApps'],
+        message: 'an Amplify row needs a repo or a pinned app',
       }),
-    ).toThrow();
+    ]);
+    expect(parse({ repo: 'acme/web-app' }).success).toBe(true);
+  });
+
+  it('accepts an Amplify row without a repo, but not with a GitHub token', () => {
+    const site = {
+      type: 'amplify',
+      id: 'site',
+      displayName: 'site',
+      pinnedApps: [{ region: 'eu-west-1', appId: 'a1' }],
+    };
+    const parse = (row: object) =>
+      DashboardSchema.safeParse({
+        id: 'd1',
+        name: 'Dashboard 1',
+        credentials: [{ id: 'gh', kind: 'github', label: 'gh' }],
+        rows: [row],
+      });
+    const parsed = parse(site);
+    expect(parsed.success && parsed.data.rows[0]).toMatchObject(site);
+    const token = { settings: { githubToken: 'gh' } };
+    expect(parse({ ...site, ...token }).error?.issues).toEqual([
+      expect.objectContaining({
+        path: ['rows', 0, 'settings', 'githubToken'],
+        message: 'an Amplify row without a repo reads no GitHub token',
+      }),
+    ]);
+    expect(
+      parse({ ...site, cellSettings: { dev: { githubToken: 'gh' } } }).error
+        ?.issues[0]?.path,
+    ).toEqual(['rows', 0, 'cellSettings', 'dev', 'githubToken']);
+    expect(parse({ ...site, repo: 'acme/site', ...token }).success).toBe(true);
   });
 
   it('rejects a repo that is not owner/name', () => {
@@ -131,6 +161,29 @@ describe('DashboardSchema', () => {
     });
     expect(parsed.success).toBe(false);
     expect(parsed.error?.issues[0]?.message).toBe('duplicate stage id: s1');
+  });
+
+  it('rejects duplicate row ids, whatever the rows read', () => {
+    const parsed = DashboardSchema.safeParse({
+      id: 'd1',
+      name: 'Dashboard 1',
+      rows: [
+        { type: 'github', id: 'r', repo: 'acme/api', displayName: 'api' },
+        {
+          type: 'amplify',
+          id: 'r',
+          repo: 'acme/web',
+          displayName: 'web',
+          pinnedApps: [{ region: 'us-east-1', appId: 'a1' }],
+        },
+      ],
+    });
+    expect(parsed.error?.issues).toEqual([
+      expect.objectContaining({
+        message: 'duplicate row id: r',
+        path: ['rows', 1, 'id'],
+      }),
+    ]);
   });
 
   it('accepts an acyclic source-stage chain', () => {
@@ -216,11 +269,11 @@ describe('DashboardSchema', () => {
     expect(result.error?.issues.map((i) => i.message)).toEqual([message]);
   });
 
-  it('loads unknown or other-source references (rule problems), but not a set for an unknown stage', () => {
+  it('loads unknown or other-source references (rule problems), but not settings for an unknown stage', () => {
     const bad = (extra: object) =>
       DashboardSchema.safeParse({ id: 'd', name: 'D', ...extra }).success;
-    expect(bad({ statusSets: { github: 'nope' } })).toBe(true);
-    expect(bad({ statusSets: { github: 'amplify' } })).toBe(true);
+    expect(bad({ settings: { statusSets: { github: 'nope' } } })).toBe(true);
+    expect(bad({ settings: { statusSets: { github: 'amplify' } } })).toBe(true);
     expect(bad({ sourceRules: { github: 'nope', amplify: 'github' } })).toBe(
       true,
     );
@@ -233,13 +286,15 @@ describe('DashboardSchema', () => {
             id: 'a',
             repo: 'acme/a',
             displayName: 'a',
-            cellStatusSets: { prod: PRESET_IDS.githubSingleJob },
+            cellSettings: {
+              prod: { statusSets: { github: PRESET_IDS.githubSingleJob } },
+            },
           },
         ],
       }),
     ).toBe(false);
-    expect(bad({ statusSets: { github: PRESET_IDS.githubSingleJob } })).toBe(
-      true,
-    );
+    expect(
+      bad({ settings: { statusSets: { github: PRESET_IDS.githubSingleJob } } }),
+    ).toBe(true);
   });
 });

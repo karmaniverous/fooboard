@@ -9,7 +9,11 @@
 import { describe, expect, it } from 'vitest';
 
 import { BUILTIN_SOURCES } from './builtinSources';
-import { sourceRuleFor, sourceRuleReferenceIssues } from './sources';
+import {
+  sourceRuleFor,
+  sourceRuleReferenceIssues,
+  sourcesWithItems,
+} from './sources';
 
 const [github, amplify] = BUILTIN_SOURCES;
 const mine = { ...github, id: 'mine', name: 'Mine' };
@@ -25,6 +29,22 @@ describe('sourceRuleFor', () => {
     expect(sourceRuleFor(scope('gone'), 'github')).toBe(github);
     expect(sourceRuleFor(scope('amplify'), 'github')).toBe(github);
     expect(sourceRuleFor(scope('github'), 'amplify')).toBe(amplify);
+  });
+});
+
+describe('sourcesWithItems', () => {
+  it('lists the sources whose rule reads items', () => {
+    const scope = (rule: typeof github) => ({
+      sourceRules: { github: rule.id, amplify: 'amplify' },
+      customSourceRules: [rule],
+    });
+    expect(sourcesWithItems(scope(mine))).toEqual(
+      ['github', 'amplify'].filter(
+        (p) => (p === 'github' ? github : amplify).items !== undefined,
+      ),
+    );
+    const flat = { ...github, id: 'flat', items: undefined };
+    expect(sourcesWithItems(scope(flat))).not.toContain('github');
   });
 });
 

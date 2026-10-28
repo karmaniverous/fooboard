@@ -5,7 +5,7 @@
  *
  * @module
  */
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, screen } from '@testing-library/react';
 import { useState } from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { describe, expect, it, vi } from 'vitest';
@@ -18,8 +18,11 @@ import type { UnmappedRun } from '@/engine';
 import { createAppStores } from '@/storage';
 import { memoryStorage } from '@/storage/keyValue';
 import { StoresContext } from '@/storage/storesContext';
+import { envRender } from '@/test/envRender';
 
 import { UnmappedPanel } from './UnmappedPanel';
+
+const render = envRender();
 
 const dashboard = DashboardSchema.parse({
   id: 'd',
@@ -146,7 +149,6 @@ describe('UnmappedPanel', () => {
       return draft ? (
         <DashboardEditor
           dashboard={d}
-          providers={{ github: () => undefined, amplify: () => undefined }}
           draft={draft}
           onChange={(next) => {
             saved.current = next;
@@ -180,7 +182,7 @@ describe('UnmappedPanel', () => {
       'true',
     );
     expect(
-      screen.getByRole('group', { name: 'Item rule for api' }),
+      screen.getByRole('group', { name: 'Record rule for api' }),
     ).toBeInTheDocument();
   });
 });

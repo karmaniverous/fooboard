@@ -19,6 +19,7 @@ body,
   --color-muted: var(--muted);
   --color-muted-foreground: var(--muted-foreground);
   --color-border: var(--border);
+  --color-frame: var(--frame);
   --color-primary: var(--primary);
   --color-primary-foreground: var(--primary-foreground);
   --color-accent: var(--accent);
@@ -69,6 +70,9 @@ body,
        1.4.11; theme.test.ts checks both modes). */
     --muted-foreground: #6b6b6b;
     --border: #858585;
+    /* Group frames and row-group boundary lines (spec.md §3.7): drawn on
+       the background, at least 3:1 on it (theme.test.ts). */
+    --frame: #6e6e6e;
     /* The hatched cell fill: a texture, not a boundary, so it stays quiet. */
     --hatch: #e5e5e5;
     --primary: #171717;
@@ -105,6 +109,7 @@ body,
     --muted: #262626;
     --muted-foreground: #a3a3a3;
     --border: #737373;
+    --frame: #8c8c8c;
     --hatch: #262626;
     --primary: #fafafa;
     --primary-foreground: #0a0a0a;

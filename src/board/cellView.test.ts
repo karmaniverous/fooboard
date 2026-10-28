@@ -6,7 +6,13 @@
  */
 import { describe, expect, it } from 'vitest';
 
-import { BADGE_CAP, badgeText, relativeTime } from './cellView';
+import {
+  BADGE_CAP,
+  badgeDescription,
+  badgeText,
+  firstLine,
+  relativeTime,
+} from './cellView';
 
 describe('badgeText', () => {
   it('caps counts above the cap', () => {
@@ -26,6 +32,31 @@ describe('badgeText', () => {
   });
 });
 
+describe('badgeDescription', () => {
+  it.each([
+    [0, '0 commits behind its source'],
+    [1, '1 commit behind its source'],
+    [2, '2 commits behind its source'],
+  ])('counts %i commits behind', (count, words) => {
+    expect(badgeDescription({ kind: 'behind', count })).toBe(words);
+  });
+
+  it.each([
+    [1, 2, 'diverged: 1 commit behind, 2 commits ahead of its source'],
+    [2, 1, 'diverged: 2 commits behind, 1 commit ahead of its source'],
+    [1, 1, 'diverged: 1 commit behind, 1 commit ahead of its source'],
+    [0, 3, 'diverged: 0 commits behind, 3 commits ahead of its source'],
+  ])('counts %i behind and %i ahead when diverged', (behind, ahead, words) => {
+    expect(badgeDescription({ kind: 'diverged', behind, ahead })).toBe(words);
+  });
+
+  it('gives the exact count past the badge cap', () => {
+    expect(badgeDescription({ kind: 'behind', count: BADGE_CAP + 1 })).toBe(
+      `${String(BADGE_CAP + 1)} commits behind its source`,
+    );
+  });
+});
+
 describe('relativeTime', () => {
   const now = Date.parse('2026-10-16T12:00:00Z');
   it.each([
@@ -37,5 +68,11 @@ describe('relativeTime', () => {
     ['2026-10-16T12:05:00Z', 'now'],
   ])('%s is %s', (iso, expected) => {
     expect(relativeTime(iso, now)).toBe(expected);
+  });
+});
+
+describe('firstLine', () => {
+  it('takes the first line of a commit message', () => {
+    expect(firstLine('Fix flaky test\n\nLonger body')).toBe('Fix flaky test');
   });
 });

@@ -6,8 +6,8 @@
  */
 import type { GithubWorkflowJob } from './types';
 
-/** Jobs of the run's latest attempt only (spec.md A§4.3.2: `filter=latest`,
- * re-running a run updates it in place). */
+/** Jobs of the run's latest attempt only (spec.md A§4.3.2: the jobs of the
+ * run's current attempt are read; re-running a run updates it in place). */
 export function latestAttemptJobs(
   jobs: readonly GithubWorkflowJob[],
 ): GithubWorkflowJob[] {

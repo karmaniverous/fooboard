@@ -6,22 +6,23 @@
  */
 import type { CellRules } from '@/domain/model/cell';
 import { sourceRuleFor } from '@/domain/model/sources';
+import { resolveSetting } from '@/domain/settings/resolve';
 import { statusSetFor } from '@/domain/statuses/resolve';
 
 import type { Dashboard } from './dashboard';
-import { rowRulesFor, stageRuleFor } from './placement';
+import { recordRuleFor, stageRuleFor } from './placement';
 import type { Row } from './row';
 
-/** The rules for `row`'s cell in `stageId`. */
+/** The rules for `row`'s cell in `stageId`: its item rule resolved for
+ * the cell (spec.md §3.11). */
 export function cellRulesFor(
   dashboard: Dashboard,
   row: Row,
   stageId: string,
 ): CellRules {
-  const { record, items } = rowRulesFor(dashboard, row);
   return {
-    record,
-    items,
+    record: recordRuleFor(dashboard, row),
+    items: resolveSetting(dashboard, row, stageId, 'itemRules').value,
     stage: stageRuleFor(dashboard, row, stageId),
     set: statusSetFor(dashboard, row, stageId),
     order: sourceRuleFor(dashboard, row.type).order,

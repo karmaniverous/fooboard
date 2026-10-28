@@ -8,28 +8,24 @@
  */
 import { beforeAll, describe, expect, it } from 'vitest';
 
-import { demoDashboard } from '@/demo/board';
-import { type BoardModel, createBoardEngine, demoProviders } from '@/engine';
+import { measureBoard } from '@/demo/scenarios/measure';
+import type { BoardModel } from '@/engine';
+import { fullModel } from '@/test/boardModel';
 
-import { boardContents, firstLine } from './layoutContents';
+import { boardContents } from './layoutContents';
+import { HEADER_GEAR_EM } from './settingsGearSize';
 
 let model: BoardModel;
 
 beforeAll(async () => {
-  const engine = createBoardEngine({
-    dashboard: demoDashboard,
-    providers: demoProviders(() => 0),
-    visibility: { isHidden: () => false, onChange: () => () => undefined },
-  });
-  await engine.refreshAll();
-  model = engine.getModel();
+  model = await fullModel(measureBoard);
 });
 
 describe('boardContents', () => {
   it('includes headers and group labels, and grows with the rung', () => {
-    const contents = boardContents(demoDashboard, model);
+    const contents = boardContents(measureBoard, model, true);
     const leads = contents(1).map((c) => c.lead);
-    for (const stage of demoDashboard.stages)
+    for (const stage of measureBoard.stages)
       expect(leads).toContain(stage.name);
     const status = (rung: 0 | 1 | 2 | 3 | 4 | 5) =>
       contents(rung).find((c) => c.lead.startsWith('\u2298'));
@@ -49,7 +45,34 @@ describe('boardContents', () => {
     expect(free(4)).toBe(true);
   });
 
-  it('takes the first line of a commit message', () => {
-    expect(firstLine('Fix flaky test\n\nLonger body')).toBe('Fix flaky test');
+  it('keeps room for the gear of every stage header and labelled group label, at every rung', () => {
+    const contents = boardContents(measureBoard, model, true);
+    for (const rung of [0, 3] as const) {
+      const all = contents(rung);
+      // Cells keep none: their gear is laid over a corner.
+      const kept = all.filter((c) => c.trail !== undefined);
+      expect(kept.every((c) => c.trail === HEADER_GEAR_EM)).toBe(true);
+      expect(kept).toHaveLength(measureBoard.stages.length + 1);
+      expect(all.find((c) => c.lead === 'Preview')).toMatchObject({
+        span: 3,
+        trail: HEADER_GEAR_EM,
+      });
+    }
+    expect(
+      contents(3)
+        .filter((c) => c.trail)
+        .map((c) => c.lead),
+    ).toEqual(expect.arrayContaining(measureBoard.stages.map((s) => s.name)));
+  });
+
+  it('marks labelled group labels, and nothing else, to be measured as labels', () => {
+    const all = boardContents(measureBoard, model, true)(0);
+    expect(all.filter((c) => c.label).map((c) => c.lead)).toEqual(['Preview']);
+  });
+
+  it('keeps no room for header gears on a narrow screen, where there are none', () => {
+    const contents = boardContents(measureBoard, model, false);
+    for (const rung of [0, 3] as const)
+      expect(contents(rung).filter((c) => c.trail)).toEqual([]);
   });
 });

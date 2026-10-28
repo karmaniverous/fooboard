@@ -8,7 +8,7 @@ import { omit } from 'radash';
 
 import { mapCredentialRefs } from '@/credentials/dashboardCredentials';
 import type { Dashboard } from '@/domain/config/dashboard';
-import type { GithubRow } from '@/domain/config/row';
+import type { AmplifyRow, GithubRow } from '@/domain/config/row';
 import { freshId } from '@/lib/ids';
 
 import { tidyGroups } from './groupEdit';
@@ -24,8 +24,8 @@ export function uniqueId(base: string, taken: Iterable<string>): string {
 }
 
 /** A GitHub row for a picked repo: the display name defaults to the repo
- * name without its owner, and it keeps the token it was picked with
- * (unset follows the default; spec.md C-21). */
+ * name without its owner, and it keeps the token it was picked with as
+ * its own setting (unset inherits; spec.md C-21, §3.11). */
 export function rowFromRepo(
   fullName: string,
   dashboard: Pick<Dashboard, 'rows'>,
@@ -40,9 +40,55 @@ export function rowFromRepo(
     ),
     repo: fullName,
     displayName: name,
-    ...(credentialId ? { credentialId } : {}),
     stageRules: {},
-    cellStatusSets: {},
+    settings: credentialId ? { githubToken: credentialId } : {},
+    cellSettings: {},
+  };
+}
+
+/** How a picked app becomes a row (spec.md §3.12 *Adding a row*). */
+export interface PickedApp {
+  /** The AWS key the app was listed with. */
+  credentialId?: string;
+  /** The GitHub repo it builds from, if any. */
+  repo?: string;
+  /** Pin the app: it has no repo, or isn't the only app building it
+   * under the key; otherwise the search finds it from the repo. */
+  pinned: boolean;
+  /** A key chosen in the picker rather than inherited: the row's own. */
+  awsKey?: string;
+}
+
+/** An Amplify row for a picked app: named after the app, building from
+ * its repo when it has one (spec.md C-21, Decision 21), the app pinned
+ * under the key it was listed with when `pinned`, and the chosen key as
+ * the row's `awsKey`. */
+export function rowFromApp(
+  app: { appId: string; name: string; region: string },
+  dashboard: Pick<Dashboard, 'rows'>,
+  { credentialId, repo, pinned, awsKey }: PickedApp,
+): AmplifyRow {
+  return {
+    type: 'amplify',
+    id: uniqueId(
+      app.name,
+      dashboard.rows.map((r) => r.id),
+    ),
+    ...(repo ? { repo } : {}),
+    displayName: app.name,
+    pinnedApps:
+      pinned || !repo
+        ? [
+            {
+              region: app.region,
+              appId: app.appId,
+              ...(credentialId ? { credentialId } : {}),
+            },
+          ]
+        : [],
+    stageRules: {},
+    settings: awsKey ? { awsKey } : {},
+    cellSettings: {},
   };
 }
 
@@ -68,15 +114,6 @@ export function duplicateDashboard(
   };
 }
 
-/** `owner/name` from an Amplify app's repository URL, if it is GitHub. */
-export function repoFromUrl(url: string | undefined): string | undefined {
-  const match =
-    /^https:\/\/github\.com\/([^/\s]+)\/([^/\s]+?)(?:\.git)?\/?$/.exec(
-      url ?? '',
-    );
-  return match ? `${match[1]}/${match[2]}` : undefined;
-}
-
 /** Remove a row; its group loses it (and disappears if empty). */
 export function removeRow(dashboard: Dashboard, id: string): Dashboard {
   return tidyGroups(
@@ -86,8 +123,8 @@ export function removeRow(dashboard: Dashboard, id: string): Dashboard {
 }
 
 /** Remove a stage: any stage's use of it as a source, its overrides on
- * rows and row groups (C-14c), rows' status-set choices for its cells
- * (A§4.3.6), and its column-group membership. */
+ * rows and row groups (C-14c), its cells' settings (§3.11), and its
+ * column-group membership. */
 export function removeStage(dashboard: Dashboard, id: string): Dashboard {
   const drop = <T extends { stageRules: Record<string, unknown> }>(
     x: T,
@@ -100,7 +137,7 @@ export function removeStage(dashboard: Dashboard, id: string): Dashboard {
       ...dashboard,
       rows: dashboard.rows.map((r) => ({
         ...drop(r),
-        cellStatusSets: omit(r.cellStatusSets, [id]),
+        cellSettings: omit(r.cellSettings, [id]),
       })),
       rowGroups: dashboard.rowGroups.map(drop),
       stages: dashboard.stages

@@ -10,6 +10,7 @@ import type { EmptyCellState } from '@/domain/derivation';
 import type { StalenessBadge } from '@/domain/derivation';
 import type { ResolvedStatus } from '@/domain/statuses/resolved';
 import { textOn } from '@/lib/contrast';
+import { plural } from '@/lib/plural';
 
 /** How a status fills a cell or a legend swatch: its colour, text in white
  * or near-black (whichever reads, WCAG AA), and a dashed outline when
@@ -22,6 +23,44 @@ export const statusLook = (
     : undefined,
   style: { backgroundColor: status.color, color: textOn(status.color) },
 });
+
+/** The key that opens a focused cell's detail sheet (Enter follows the
+ * link): `key` as `KeyboardEvent.key` reports it, `name` as
+ * `aria-keyshortcuts` and the tooltip's hint spell it. Empty cells are
+ * buttons, which open the sheet on it natively. */
+export const DETAILS_KEY = { key: ' ', name: 'Space' } as const;
+
+/** The key that opens a focused cell's settings popup (spec.md §3.11), as
+ * Space opens its detail sheet: comma. It isn't Space, Enter or Escape,
+ * has no default action on a link or button and no browser shortcut,
+ * needs no modifier, and echoes VS Code's settings shortcut, Ctrl+,
+ * (Decision 54). */
+export const CELL_SETTINGS_KEY = { key: ',', name: ',' } as const;
+
+/** The keys a focused cell answers to, as `aria-keyshortcuts` spells
+ * them: the details key, and the settings key where the board has a
+ * settings popup. */
+export const cellKeyshortcuts = (settings = false): string =>
+  settings ? `${DETAILS_KEY.name} ${CELL_SETTINGS_KEY.name}` : DETAILS_KEY.name;
+
+/** Where focus is in a cell: on its control (cover link or button),
+ * where Space and `,` work; on its behind/diverged badge, where only `,`
+ * works; or nowhere in it. */
+export type CellFocus = 'control' | 'badge' | undefined;
+
+/** The focused cell's tooltip hint: the keys that work where focus is.
+ * On the cell's control, Space for details and, where the board has a
+ * settings popup, `,`; on its badge, only `,` (Space would follow the
+ * badge's link, not open details), so nothing without settings. */
+export function cellKeyHint(
+  focus: CellFocus,
+  settings: boolean,
+): string | undefined {
+  const settingsHint = `${CELL_SETTINGS_KEY.name} (comma) for settings`;
+  if (focus === 'control')
+    return `Press ${DETAILS_KEY.name} for details${settings ? ` or ${settingsHint}` : ''}`;
+  return focus === 'badge' && settings ? `Press ${settingsHint}` : undefined;
+}
 
 /** The glyph for each status icon (A§4.3.6). */
 export const STATUS_GLYPH: Record<StatusIcon, string> = {
@@ -39,6 +78,7 @@ export const EMPTY_LABEL: Record<EmptyCellState, string> = {
   'no-records': 'no records',
   'needs-credential': 'needs credential',
   error: 'error',
+  'no-app': 'no app',
 };
 
 /** Empty states at rung 0 (icons only): a short symbol; the label is in
@@ -47,6 +87,7 @@ export const EMPTY_SYMBOL: Record<EmptyCellState, string> = {
   'no-records': '○',
   'needs-credential': '?',
   error: '!',
+  'no-app': '\u2205',
 };
 
 /** Badge text: a count when behind, `behind/ahead` when diverged. */
@@ -61,11 +102,14 @@ export function badgeText(badge: NonNullable<StalenessBadge>): string {
     : `${capCount(badge.behind)}/${capCount(badge.ahead)}`;
 }
 
-/** Badge description for tooltips and screen readers. */
+const commits = (n: number) => plural(n, 'commit', 'commits');
+
+/** Badge description for tooltips, the detail sheet and screen readers:
+ * every count with its noun, "1 commit" or "2 commits". */
 export function badgeDescription(badge: NonNullable<StalenessBadge>): string {
   return badge.kind === 'behind'
-    ? `${String(badge.count)} commits behind its source`
-    : `diverged: ${String(badge.behind)} behind, ${String(badge.ahead)} ahead of its source`;
+    ? `${commits(badge.count)} behind its source`
+    : `diverged: ${commits(badge.behind)} behind, ${commits(badge.ahead)} ahead of its source`;
 }
 
 /** Compact relative time: `now`, `4m`, `3h`, `2d`, `5w`. */
@@ -95,3 +139,17 @@ export const SHORT_SHA_LENGTH = 7;
 
 /** Short commit hash. */
 export const shortSha = (sha: string): string => sha.slice(0, SHORT_SHA_LENGTH);
+
+/** The first line of a commit message. */
+/** A cell's place (row and stage): the tooltip's heading and the detail
+ * sheet's title. */
+export const cellPlace = ({
+  rowName,
+  stageName,
+}: {
+  rowName: string;
+  stageName: string;
+}): string => `${rowName} · ${stageName}`;
+
+export const firstLine = (message: string): string =>
+  message.split('\n', 1)[0]?.trim() ?? '';

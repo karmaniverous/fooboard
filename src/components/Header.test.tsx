@@ -3,13 +3,15 @@
  * folding into the menu as it narrows (before the separator, Privacy and
  * Terms always after it), the theme chosen from the button (cycling) or
  * the menu (three-way) and saved on the device, the saved theme applied on
- * load, the header's height published for the board, and Import inert.
+ * load, the header's height published for the board, and Share / Export
+ * and Import opening their dialogs.
  *
  * @module
  */
 import { fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
+import { focusElement } from '@/test/focus';
 import { fakeLayout } from '@/test/layout';
 import { renderShell } from '@/test/renderShell';
 
@@ -54,7 +56,7 @@ describe('Header', () => {
       'Try the demo',
       'Theme: System',
       'Share / Export',
-      'Import (coming soon)',
+      'Import',
       'GitHub',
       'Report an issue',
       'Menu',
@@ -63,7 +65,7 @@ describe('Header', () => {
       within(openMenu())
         .getAllByRole('menuitem')
         .map((i) => i.textContent),
-    ).toEqual(['Privacy', 'Terms']);
+    ).toEqual(['Privacy', 'Terms', "What's new", 'Reset…']);
   });
 
   it('folds buttons into the menu, before the separator, when narrow', () => {
@@ -85,11 +87,13 @@ describe('Header', () => {
       'Theme: Light',
       'Theme: Dark',
       'Share / Export',
-      'Import (coming soon)',
+      'Import',
       'GitHub',
       'Report an issue',
       'Privacy',
       'Terms',
+      "What's new",
+      'Reset…',
     ]);
     const order = [
       ...menu.querySelectorAll('[role^=menuitem], [role=separator]'),
@@ -135,18 +139,13 @@ describe('Header', () => {
     ).toBe('49px');
   });
 
-  it('opens Share / Export, and leaves Import inert until it ships', () => {
+  it.each([
+    ['Share / Export', 'Share fooboard'],
+    ['Import', 'Import dashboards'],
+  ])('opens %s in its dialog', (button, dialog) => {
     renderShell(<Header />);
-    const importButton = screen.getByRole('button', {
-      name: 'Import (coming soon)',
-    });
-    expect(importButton).toHaveAttribute('aria-disabled', 'true');
-    fireEvent.click(importButton);
-    expect(screen.queryByRole('dialog')).toBeNull();
-    fireEvent.click(screen.getByRole('button', { name: 'Share / Export' }));
-    expect(
-      screen.getByRole('dialog', { name: 'Share fooboard' }),
-    ).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: button }));
+    expect(screen.getByRole('dialog', { name: dialog })).toBeInTheDocument();
   });
 
   it.each(['Light', 'Dark', 'System'] as const)(
@@ -174,7 +173,7 @@ describe('Header', () => {
     async (how) => {
       renderShell(<Header />);
       const share = screen.getByRole('button', { name: 'Share / Export' });
-      share.focus();
+      focusElement(share);
       fireEvent.click(share);
       const dialog = screen.getByRole('dialog');
       if (how === 'Escape') fireEvent.keyDown(dialog, { key: 'Escape' });

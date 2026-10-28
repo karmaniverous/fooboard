@@ -6,10 +6,25 @@
  *
  * @module
  */
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
-import { migrate } from './migrate';
+import { addSettings, FIRST_VERSION, migrate } from './migrate';
 import { CURRENT_SCHEMA_VERSION } from './root';
+import type * as Settings from './settings';
+
+// Today's default moves on; what v4 data migrates to must not.
+vi.mock('./settings', async (importOriginal) => ({
+  ...(await importOriginal<typeof Settings>()),
+  DEFAULT_REQUESTS_IN_FLIGHT: 3,
+  defaultSettings: () => ({ requestsInFlight: { github: 3, aws: 3 } }),
+}));
+
+/** The settings v5 gave every v4 dashboard: literal, so a change to
+ * today's defaults can't move them. */
+const V5_SETTINGS = { requestsInFlight: { github: 10, aws: 10 } };
+
+/** The status sets v6 gives a dashboard v5 stored none for: literal too. */
+const V5_STATUS_SETS = { github: 'github-deploy-test', amplify: 'amplify' };
 
 describe('migrate', () => {
   it('validates and returns current data, defaulting missing dashboards', () => {
@@ -49,6 +64,66 @@ describe('migrate', () => {
     );
     expect(seen).toEqual([1, 2]);
     expect(out.schemaVersion).toBe(CURRENT_SCHEMA_VERSION);
+  });
+
+  it('migrates v4 through v5 to v6, giving each dashboard default settings', () => {
+    const v4 = {
+      schemaVersion: FIRST_VERSION,
+      dashboards: [
+        { id: 'a', name: 'A' },
+        {
+          id: 'b',
+          name: 'B',
+          settings: { requestsInFlight: { github: 3, aws: 4 } },
+        },
+      ],
+    };
+    const out = migrate(v4);
+    expect(out.schemaVersion).toBe(CURRENT_SCHEMA_VERSION);
+    expect(out.dashboards.map((d) => d.settings)).toEqual([
+      { ...V5_SETTINGS, statusSets: V5_STATUS_SETS },
+      { requestsInFlight: { github: 3, aws: 4 }, statusSets: V5_STATUS_SETS },
+    ]);
+    expect(out.dashboards.map((d) => d.name)).toEqual(['A', 'B']);
+  });
+
+  it('writes the v5 settings in the step itself, not leaving them to schema defaults', () => {
+    // Frozen in time: a later default must not change what v4 data became.
+    const own = { requestsInFlight: { github: 3, aws: 4 } };
+    expect(
+      addSettings({ dashboards: [{ id: 'a' }, { id: 'b', settings: own }] }),
+    ).toEqual({
+      dashboards: [
+        { id: 'a', settings: V5_SETTINGS },
+        { id: 'b', settings: own },
+      ],
+    });
+  });
+
+  it.each([
+    [
+      'an invalid element beside a valid dashboard',
+      [{ id: 'a', name: 'A' }, null],
+    ],
+    ['a list that is not a list', 'dashboards'],
+  ])('refuses v4 data with %s, never emptying it', (_, dashboards) => {
+    expect(() =>
+      migrate({ schemaVersion: FIRST_VERSION, dashboards }),
+    ).toThrow();
+  });
+
+  it('gives v4 data with no dashboard list an empty one', () => {
+    expect(migrate({ schemaVersion: FIRST_VERSION }).dashboards).toEqual([]);
+  });
+
+  it('changes nothing when the v4 to v5 step runs again', () => {
+    const once = addSettings({
+      dashboards: [
+        { id: 'a' },
+        { id: 'b', settings: { requestsInFlight: { github: 3, aws: 4 } } },
+      ],
+    });
+    expect(addSettings(once)).toEqual(once);
   });
 
   it('refuses a version with no step to the next', () => {

@@ -3,12 +3,17 @@
  * token or AWS key, keep it for the tab or remember it on this device,
  * forget it, choose the defaults, copy one from another dashboard, and
  * remove it. Lists credentials by name. States the worst case plainly
- * and links the credential guide (C-3a). Secrets go to the credential store; the dashboard records only
- * ids and labels.
+ * and links the credential guide (C-3a). Secrets go to the credential
+ * store; the dashboard records only ids and labels.
+ *
+ * The credentials collapse (Decision 32), like the editors' lists
+ * (`useAccordion`): one open at a time, all closed at first; a credential
+ * just added or copied opens and scrolls into view, and one just added
+ * takes focus on its header (the form it was added from clears).
  *
  * @module
  */
-import { useState } from 'react';
+import { useId, useState } from 'react';
 
 import { ActionError } from '@/components/ActionError';
 import { Choice } from '@/components/Choice';
@@ -18,6 +23,7 @@ import { Input } from '@/components/ui/input';
 import { useActionError } from '@/components/useActionError';
 import type { CredentialKind } from '@/domain/config/credentials';
 import type { Dashboard } from '@/domain/config/dashboard';
+import { useAccordion } from '@/editors/useAccordion';
 import { readmeSection } from '@/lib/site';
 import { useStores } from '@/storage/storesContext';
 
@@ -32,19 +38,29 @@ export function CredentialsPanel({
   dashboard,
   otherDashboards,
   onChange,
-  tokenExpiry,
+  keyApps,
 }: {
   dashboard: Dashboard;
   otherDashboards: readonly Dashboard[];
   onChange: (dashboard: Dashboard) => void;
-  /** A GitHub token's reported expiry, once the board has used it. */
-  tokenExpiry?: (id: string) => string | undefined;
+  /** The Amplify apps the board reads with an AWS key, once its app
+   * search has finished (*Copy AWS policy*). */
+  keyApps?: (
+    id: string,
+  ) => readonly { region: string; appId: string }[] | undefined;
 }): React.JSX.Element {
   useCredentialVersion();
   const { credentials } = useStores();
   const [error, run] = useActionError();
   const [kind, setKind] = useState<CredentialKind>('github');
   const [label, setLabel] = useState('');
+  /** The credential just added here, whose header takes focus. */
+  const [added, setAdded] = useState<string>();
+  const addHeading = useId();
+  const listed = sortCredentials(dashboard.credentials);
+  const accordion = useAccordion(
+    listed.map((c) => ({ key: c.id, targets: [] })),
+  );
   const copyable = sortByCredential(
     otherDashboards.flatMap((d) =>
       d.credentials
@@ -64,23 +80,31 @@ export function CredentialsPanel({
       </p>
       <ActionError error={error} />
 
-      {dashboard.credentials.length > 0 && (
+      {listed.length > 0 && (
         <ul className="flex flex-col gap-2">
-          {sortCredentials(dashboard.credentials).map((c) => (
-            <CredentialItem
-              key={c.id}
-              dashboard={dashboard}
-              credential={c}
-              onChange={onChange}
-              tokenExpiry={tokenExpiry}
-              run={run}
-            />
+          {listed.map((c) => (
+            <li key={c.id}>
+              <CredentialItem
+                {...accordion.itemProps(c.id)}
+                focus={added === c.id}
+                dashboard={dashboard}
+                credential={c}
+                onChange={onChange}
+                keyApps={keyApps?.(c.id)}
+                run={run}
+              />
+            </li>
           ))}
         </ul>
       )}
 
-      <section className="flex flex-col gap-2 rounded-md border p-3">
-        <h3 className="font-semibold">Add a credential</h3>
+      <section
+        aria-labelledby={addHeading}
+        className="flex flex-col gap-2 rounded-md border p-3"
+      >
+        <h3 id={addHeading} className="font-semibold">
+          Add a credential
+        </h3>
         <div className="flex gap-2">
           <Choice
             label="Kind"
@@ -104,18 +128,20 @@ export function CredentialsPanel({
         </div>
         <SecretFields
           key={kind}
-          dashboard={dashboard}
           kind={kind}
+          newKeyName={label.trim() || 'this key'}
           submitLabel="Add"
           onSubmit={(secret, remember) =>
             run(() => {
-              addWithSecret(
-                credentials,
-                onChange,
-                dashboard,
-                { kind, label: label.trim() || KIND_LABEL[kind] },
-                secret,
-                remember,
+              setAdded(
+                addWithSecret(
+                  credentials,
+                  onChange,
+                  dashboard,
+                  { kind, label: label.trim() || KIND_LABEL[kind] },
+                  secret,
+                  remember,
+                ),
               );
               setLabel('');
             })

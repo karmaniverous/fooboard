@@ -58,7 +58,7 @@ const GITHUB_READER_DEFAULTS = {
 };
 
 /** What the Amplify reader asks for, by default: every branch. */
-export const AMPLIFY_READER_DEFAULTS = {
+const AMPLIFY_READER_DEFAULTS = {
   jobsPerBranch: DEFAULT_AMPLIFY_JOBS_PER_BRANCH,
   branches: always,
 };

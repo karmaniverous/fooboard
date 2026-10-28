@@ -1,12 +1,16 @@
 /**
  * GitHub rate-limit budget tracking (spec.md C-16): parse
  * `X-RateLimit-Limit/Remaining/Reset/Used` from a response, report `'low'`
- * once remaining budget drops under a configurable threshold (default 10%
- * of the limit) so the poll scheduler can slow down, and compute when to
- * resume after a `Retry-After` or primary-limit reset.
+ * once remaining budget is at or under 10% of the limit for the battery, say when a token is past its polling
+ * share (its rows then poll slower), and compute when to resume after a
+ * `Retry-After` or primary-limit reset.
  *
  * @module
  */
+
+import { secondsToMs } from '@/lib/retryAfter';
+
+import { HTTP_STATUS } from './status';
 
 /** Current rate-limit state for one credential. */
 export interface RateLimitBudget {
@@ -25,9 +29,9 @@ export interface RateLimitBudget {
 /** Fraction of `limit` at or under which the budget is reported `'low'`. */
 const LOW_BUDGET_FRACTION = 0.1;
 
-/** A budget from its numbers (rate-limit headers, or the `rate_limit`
- * endpoint's `core` resource), flagged low at 10% left. */
-export function budgetFrom({
+/** A budget from the rate-limit headers' numbers, flagged low at 10%
+ * left. */
+function budgetFrom({
   limit,
   remaining,
   reset,
@@ -65,20 +69,15 @@ export function parseRateLimitHeaders(
 /**
  * Compute the unix-ms timestamp to resume requests after a rate-limited
  * response: prefer `Retry-After` (seconds from now), fall back to
- * `X-RateLimit-Reset` (unix seconds), fall back to `now` if neither header
- * is present or parseable.
+ * `X-RateLimit-Reset` (unix seconds), fall back to a minute from `now` if
+ * neither header is present or parseable (negative or non-finite values
+ * are ignored).
  */
 export function computeRetryAt(headers: Headers, now = Date.now()): number {
-  const retryAfter = headers.get('retry-after');
-  if (retryAfter !== null) {
-    const seconds = Number(retryAfter);
-    if (!Number.isNaN(seconds)) return now + seconds * 1000;
-  }
-  const reset = headers.get('x-ratelimit-reset');
-  if (reset !== null) {
-    const resetSeconds = Number(reset);
-    if (!Number.isNaN(resetSeconds)) return resetSeconds * 1000;
-  }
+  const retryAfter = secondsToMs(headers.get('retry-after'));
+  if (retryAfter !== undefined) return now + retryAfter;
+  const reset = secondsToMs(headers.get('x-ratelimit-reset'));
+  if (reset !== undefined) return reset;
   // No hint: GitHub asks for at least a minute after a secondary limit.
   return now + FALLBACK_RETRY_MS;
 }
@@ -92,13 +91,20 @@ const FALLBACK_RETRY_MS = 60_000;
  * limit (`X-RateLimit-Remaining: 0`), or an HTTP 429.
  */
 export function isRateLimitResponse(status: number, headers: Headers): boolean {
-  if (status === 429) return true;
+  if (status === HTTP_STATUS.tooManyRequests) return true;
   if (headers.get('retry-after') !== null) return true;
   return headers.get('x-ratelimit-remaining') === '0';
 }
 
-/** Has this credential used more than half its hourly budget? Polling backs
- * off past this point so other tools keep headroom (spec.md C-16). */
-export function isOverPollingShare(budget: RateLimitBudget): boolean {
-  return budget.used > budget.limit / 2;
+/** The share of a token's hourly budget its polling may use before it
+ * backs off (spec.md C-16: half). */
+const POLLING_SHARE = 0.5;
+
+/** Has this credential used more than `POLLING_SHARE` of its hourly
+ * budget? Polling backs off past this point so other tools keep headroom
+ * (spec.md C-16). */
+export function isOverPollingShare(
+  budget: RateLimitBudget | undefined,
+): boolean {
+  return budget !== undefined && budget.used > budget.limit * POLLING_SHARE;
 }

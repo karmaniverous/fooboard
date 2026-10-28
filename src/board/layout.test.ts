@@ -9,71 +9,28 @@
  */
 import { describe, expect, it } from 'vitest';
 
-import {
-  BASE_FONT_PX,
-  capText,
-  fitLayout,
-  type LayoutInput,
-  type Rung,
-} from './layout';
+import { cell, input, measure } from '@/test/layoutInput';
+
+import { BASE_FONT_PX, TEXT_EM } from './boardText';
+import { capText, fitLayout, type Rung } from './layout';
 import { type Content, minWidth, packContent } from './packing';
+import { HEADER_GEAR_EM } from './settingsGearSize';
 import { layoutAtZoom, snapZoom, stepZoom, zoomLabel, zoomRange } from './zoom';
-
-/** Every character is 0.6 em wide. */
-const measure = (text: string, px: number) => text.length * px * 0.6;
-
-const cell = (rung: Rung): Content => ({
-  lead: rung === 0 ? 'x' : 'x Cancelled',
-  items: [
-    ...(rung >= 2 ? [{ key: 'time' as const, text: '59m' }] : []),
-    ...(rung >= 3
-      ? [
-          { key: 'commit' as const, text: '0000000' },
-          { key: 'extra' as const, text: 'deploy' },
-        ]
-      : []),
-    ...(rung >= 4
-      ? [{ key: 'branch' as const, text: 'release/24.3', free: true }]
-      : []),
-    ...(rung >= 5
-      ? [
-          {
-            key: 'message' as const,
-            text: 'Fix flaky checkout test',
-            free: true,
-          },
-        ]
-      : []),
-  ],
-});
-
-const input = (over: Partial<LayoutInput> = {}): LayoutInput => ({
-  width: 1440,
-  height: 800,
-  rows: 10,
-  stages: 6,
-  labelRows: 0,
-  rowNames: ['api-core'],
-  contents: (rung) => [cell(rung)],
-  measure,
-  density: 'default',
-  ...over,
-});
 
 describe('packContent', () => {
   it('puts everything on one line when it fits, else packs lines after the lead', () => {
     const c = cell(3); // lead 66, items 18 + 42 + 36 at 10 px, gaps 4.5
-    const one = packContent(c, 500, 10, measure);
+    const one = packContent(c, 500, 10, measure, TEXT_EM);
     expect(one).toMatchObject({ oneLine: true, lines: 1 });
-    const two = packContent(c, 110, 10, measure);
+    const two = packContent(c, 110, 10, measure, TEXT_EM);
     expect(two).toMatchObject({
       oneLine: false,
       lines: 2,
       lineOf: { time: 1, commit: 1, extra: 1 },
     });
-    const three = packContent(c, 70, 10, measure);
+    const three = packContent(c, 70, 10, measure, TEXT_EM);
     expect(three?.lineOf).toEqual({ time: 1, commit: 1, extra: 2 });
-    expect(packContent(c, 40, 10, measure)).toBeNull();
+    expect(packContent(c, 40, 10, measure, TEXT_EM)).toBeNull();
   });
 
   it('cuts free text off rather than wrapping or widening for it', () => {
@@ -84,13 +41,13 @@ describe('packContent', () => {
       ],
     };
     // 8 characters at 6 px each
-    expect(minWidth(long, 10, measure)).toBe(Math.max(66, 48));
-    expect(packContent(long, 66, 10, measure)?.lines).toBe(2);
+    expect(minWidth(long, 10, measure, TEXT_EM)).toBe(Math.max(66, 48));
+    expect(packContent(long, 66, 10, measure, TEXT_EM)?.lines).toBe(2);
   });
 
   it('shares a spanning label across its columns', () => {
     const label: Content = { lead: 'x'.repeat(20), items: [], span: 3 };
-    expect(minWidth(label, 10, measure)).toBe(40);
+    expect(minWidth(label, 10, measure, TEXT_EM)).toBe(40);
   });
 });
 
@@ -182,6 +139,23 @@ describe('fitLayout', () => {
     const l = fitLayout(input({ width: 800, rowNames: ['x'.repeat(300)] }), 13);
     expect(l.rowNameWidth).toBeCloseTo(0.3 * 800);
   });
+
+  it('keeps room in the row-name column for the header gear, and none without (a narrow screen)', () => {
+    const l = fitLayout(input(), 13);
+    const narrow = fitLayout(input({ headerGears: false }), 13);
+    const name = measure('api-core', 13);
+    expect(l.rowNameWidth).toBeCloseTo(name + 2 * l.padX + HEADER_GEAR_EM * 13);
+    expect(narrow.rowNameWidth).toBeCloseTo(name + 2 * narrow.padX);
+    expect([l.headerGears, narrow.headerGears]).toEqual([true, false]);
+  });
+
+  it('keeps room after a header lead for its gear', () => {
+    const header: Content = { lead: 'Release', items: [], trail: 1 };
+    // 7 characters at 6 px, and 1 em of 10 px.
+    expect(minWidth(header, 10, measure, TEXT_EM)).toBe(42 + 10);
+    expect(packContent(header, 51, 10, measure, TEXT_EM)).toBeNull();
+    expect(packContent(header, 52, 10, measure, TEXT_EM)?.lines).toBe(1);
+  });
 });
 
 describe('zoom', () => {
@@ -241,6 +215,16 @@ describe('zoom', () => {
     const names = ['a-very-long-repository-name'];
     const phone = fitLayout(input({ width: 390, rowNames: names }), 13);
     expect(phone.rowNameWidth).toBeLessThanOrEqual(0.18 * 390);
+  });
+
+  it('calls a grid area under 640 px a phone (Decision 65)', () => {
+    const at = (width: number) => fitLayout(input({ width }), 13).phone;
+    expect([at(390), at(639), at(640), at(1888)]).toEqual([
+      true,
+      true,
+      false,
+      false,
+    ]);
   });
 
   it('magnifies past the top rung, up to 300% text', () => {

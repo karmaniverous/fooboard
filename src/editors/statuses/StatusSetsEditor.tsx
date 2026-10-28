@@ -1,24 +1,26 @@
 /**
- * The dashboard's status sets (spec.md A§4.3.6): the set each provider's
- * cells use unless a row group, row or cell chooses another, from the
- * bundled presets and the dashboard's own sets. *Customise* copies the
- * chosen set into one the dashboard owns, to edit.
+ * The dashboard's status sets (spec.md A§4.3.6, §3.11): which set each
+ * provider's cells use by default and where that is chosen (the
+ * dashboard's *Settings* on the General tab; any level's settings may
+ * choose another), *Customise* to copy it into a set the dashboard owns
+ * to edit, the board's runs no status matches, and the dashboard's own
+ * sets.
  *
  * @module
  */
 import { useState } from 'react';
 
-import { Choice } from '@/components/Choice';
 import { Button } from '@/components/ui/button';
 import type { Dashboard } from '@/domain/config/dashboard';
 import { PROVIDER_LABELS, PROVIDERS } from '@/domain/config/providers';
+import { DEFAULT_STATUS_SET_IDS } from '@/domain/config/statusSets';
+import { readSetting } from '@/domain/settings/schema';
+import { findStatusSet } from '@/domain/statuses/resolve';
 import { targetKey } from '@/editors/editTarget';
 import { type OpenRequest, useAccordion } from '@/editors/useAccordion';
 
 import { customise, removeSet, setInUse, updateSet } from './customSet';
 import { CustomSetEditor } from './CustomSetEditor';
-import { setDashboardStatusSet } from './overrideSets';
-import { setOptions } from './statusSetOptions';
 import { addStatusWhere, type UnknownCell } from './unknownRuns';
 import { UnknownRunsList } from './UnknownRunsList';
 
@@ -55,35 +57,34 @@ export function StatusSetsEditor({
         A status set decides which jobs count and what status a cell shows: the
         first status whose test matches.
       </p>
-      {PROVIDER_OPTIONS.map(({ provider, label }) => (
-        <label
-          key={provider}
-          className="flex items-center gap-2"
-          data-edit-target={targetKey({
-            kind: 'dashboard',
-            part: 'statusSets',
-          })}
-        >
-          <span className="w-20">{label}</span>
-          <Choice
-            label={`${label} status set`}
-            value={dashboard.statusSets[provider]}
-            options={setOptions(dashboard, provider)}
-            onValueChange={(id) => {
-              onChange(setDashboardStatusSet(dashboard, provider, id));
-            }}
-          />
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={() => {
-              onChange(customise(dashboard, dashboard.statusSets[provider]));
-            }}
+      {PROVIDER_OPTIONS.map(({ provider, label }) => {
+        const own = readSetting(dashboard.settings, 'statusSets', provider);
+        const id = own ?? DEFAULT_STATUS_SET_IDS[provider];
+        const name = findStatusSet(id, dashboard.customStatusSets)?.name ?? id;
+        return (
+          <div
+            key={provider}
+            className="flex flex-wrap items-center gap-2"
+            data-edit-target="dashboard:statusSets"
           >
-            Customise
-          </Button>
-        </label>
-      ))}
+            <span className="w-20">{label}</span>
+            <span>{own ? name : `Built-in (${name})`}</span>
+            <span className="text-xs text-muted-foreground">
+              Chosen in Settings on the General tab; a group, row, column or
+              cell may choose another in its settings.
+            </span>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => {
+                onChange(customise(dashboard, id));
+              }}
+            >
+              Customise
+            </Button>
+          </div>
+        );
+      })}
       <UnknownRunsList
         unknown={unknown}
         onAddStatus={(c) => {

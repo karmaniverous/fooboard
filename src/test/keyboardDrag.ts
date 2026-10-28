@@ -9,10 +9,15 @@
 import { act, fireEvent } from '@testing-library/react';
 import { vi } from 'vitest';
 
+import { focusElement } from './focus';
+
 /** The laid-out size of a list item, and the gap between items. */
 const ITEM_HEIGHT = 40;
 const ITEM_GAP = 8;
 const ITEM_WIDTH = 300;
+
+/** How far apart list items sit: one keyboard step moves a drag this far. */
+export const ITEM_PITCH = ITEM_HEIGHT + ITEM_GAP;
 
 function rectAt(top: number): DOMRect {
   return {
@@ -40,7 +45,7 @@ function layOutListItems(): () => void {
       const index = li?.parentElement
         ? [...li.parentElement.children].indexOf(li)
         : 0;
-      return rectAt(index * (ITEM_HEIGHT + ITEM_GAP));
+      return rectAt(index * ITEM_PITCH);
     });
   return () => {
     spy.mockRestore();
@@ -64,7 +69,7 @@ export async function startKeyboardDrag(
   handle: HTMLElement,
 ): Promise<KeyboardDrag> {
   const restore = layOutListItems();
-  handle.focus();
+  focusElement(handle);
   fireEvent.keyDown(handle, { code: 'Space', key: ' ' });
   await settle();
   return {

@@ -3,53 +3,45 @@
  * dashboard default) and picking a repo it can see (display name defaults
  * to the repo without its owner; the row keeps the chosen token), or
  * an Amplify row by choosing credential, region and app (listed via
- * `ListApps`); rename, reorder, remove; per-row token override, row key
- * and item rules (item rules when its source rule reads items), extra
- * Amplify sources, the row's group, its stage-rule overrides, and its
- * group's overrides and default credentials.
+ * `ListApps`); rename, reorder, remove; the row's record rule, its
+ * *Settings* and *Cell settings* (the shared settings editor, spec.md
+ * §3.11), an Amplify row's pinned apps, the row's group, its stage-rule
+ * overrides, and its group's settings and overrides.
  *
  * @module
  */
-import { useContext } from 'react';
-
-import { ConfirmButton } from '@/components/ConfirmButton';
 import type { Dashboard } from '@/domain/config/dashboard';
 import { groupOf } from '@/domain/config/groups';
-import { inheritedCredential } from '@/domain/config/inheritance';
 import type { Row } from '@/domain/config/row';
-import { ITEM_NAME_PATH } from '@/domain/model/keys';
 import { always, unlessAlways } from '@/domain/rules/always';
 import { targetKey } from '@/editors/editTarget';
-import type { EngineProviders } from '@/engine';
 
-import { CredentialSelect } from './CredentialSelect';
 import { removeRow, rowFromRepo } from './edit';
 import { CommitInput } from './fields';
 import { listHandlers } from './groupEdit';
+import { PinnedApps } from './PinnedApps';
 import { ReorderList } from './ReorderList';
 import { RepoPicker } from './RepoPicker';
 import { RowGrouping } from './RowGrouping';
-import { AddSource, AmplifyPicker } from './rowPickers';
+import { AmplifyPicker } from './rowPickers';
 import { RuleEditor } from './rules/RuleEditor';
-import { SourcesWithItemsContext } from './rules/samples';
+import { CellSettings } from './settings/CellSettings';
+import { SettingsEditor } from './settings/SettingsEditor';
 
 /** A row's header summary: its repo, and its kind if not GitHub. */
 const rowSummary = (row: Row): string =>
-  `${row.type === 'amplify' ? 'Amplify · ' : ''}${row.repo}`;
+  `${row.type === 'amplify' ? 'Amplify · ' : ''}${row.repo ?? 'no GitHub repo'}`;
 
 export function RowsEditor({
   dashboard,
-  providers,
   onChange,
   override,
 }: {
   dashboard: Dashboard;
-  providers: EngineProviders;
   onChange: (dashboard: Dashboard) => void;
   /** *Add override*: a branch to offer on the rows reading a record. */
   override?: { branch: string; rowIds: readonly string[] };
 }): React.JSX.Element {
-  const withItems = useContext(SourcesWithItemsContext);
   const replaceRow = (row: Row) => {
     onChange({
       ...dashboard,
@@ -76,29 +68,11 @@ export function RowsEditor({
         {(row) => (
           <div className="flex flex-col gap-2 text-xs">
             <CommitInput
-              label={`Display name for ${row.repo}`}
+              label={`Display name for ${row.repo ?? row.id}`}
               className="h-8 text-xs"
               value={row.displayName}
               onCommit={(displayName) => {
                 replaceRow({ ...row, displayName });
-              }}
-            />
-            <CredentialSelect
-              dashboard={dashboard}
-              kind="github"
-              value={
-                row.type === 'github'
-                  ? row.credentialId
-                  : row.githubCredentialId
-              }
-              inherited={inheritedCredential(dashboard, row.id, 'github')}
-              label={`GitHub token for ${row.displayName}`}
-              onChange={(id) => {
-                replaceRow(
-                  row.type === 'github'
-                    ? { ...row, credentialId: id }
-                    : { ...row, githubCredentialId: id },
-                );
               }}
             />
             <div className="flex flex-col gap-1">
@@ -120,68 +94,21 @@ export function RowsEditor({
                 }}
               />
             </div>
-            {withItems.includes(row.type) && (
-              <div className="flex flex-col gap-1">
-                <span className="font-semibold">Items for this row</span>
-                <RuleEditor
-                  label={`Item rule for ${row.displayName}`}
-                  rule={row.itemRule ?? always}
-                  newPath={ITEM_NAME_PATH}
-                  provider={row.type}
-                  scope="item"
-                  target={targetKey({
-                    kind: 'row',
-                    id: row.id,
-                    part: 'items',
-                  })}
-                  onChange={(rule) => {
-                    replaceRow({
-                      ...row,
-                      itemRule: unlessAlways(rule),
-                    });
-                  }}
-                />
-              </div>
-            )}
+            <SettingsEditor
+              dashboard={dashboard}
+              place={{ level: 'row', rowId: row.id }}
+              onChange={onChange}
+            />
+            <CellSettings dashboard={dashboard} row={row} onChange={onChange} />
             {row.type === 'amplify' && (
-              <div className="flex flex-col gap-1">
-                <span className="font-semibold">Sources</span>
-                {row.sources.map((s, i) => (
-                  <div
-                    key={`${s.region}-${s.appId}`}
-                    className="flex items-center gap-2"
-                  >
-                    <span>
-                      {s.appId} in {s.region}
-                    </span>
-                    {row.sources.length > 1 && (
-                      <ConfirmButton
-                        confirmLabel={`Delete source ${s.appId}`}
-                        onConfirm={() => {
-                          replaceRow({
-                            ...row,
-                            sources: row.sources.filter((_, j) => j !== i),
-                          });
-                        }}
-                      >
-                        Delete source
-                      </ConfirmButton>
-                    )}
-                  </div>
-                ))}
-                <AddSource
-                  dashboard={dashboard}
-                  name={row.displayName}
-                  inherited={inheritedCredential(dashboard, row.id, 'aws')}
-                  onAdd={(source) => {
-                    replaceRow({ ...row, sources: [...row.sources, source] });
-                  }}
-                />
-              </div>
+              <PinnedApps
+                dashboard={dashboard}
+                row={row}
+                onChange={replaceRow}
+              />
             )}
             <RowGrouping
               dashboard={dashboard}
-              providers={providers}
               row={row}
               override={override}
               onChange={onChange}
@@ -194,7 +121,6 @@ export function RowsEditor({
         <h3 className="font-semibold">Add a row</h3>
         <RepoPicker
           dashboard={dashboard}
-          providers={providers}
           onPick={(repo, credentialId) => {
             onChange({
               ...dashboard,
@@ -207,7 +133,6 @@ export function RowsEditor({
         />
         <AmplifyPicker
           dashboard={dashboard}
-          providers={providers}
           onAdd={(row) => {
             onChange({ ...dashboard, rows: [...dashboard.rows, row] });
           }}

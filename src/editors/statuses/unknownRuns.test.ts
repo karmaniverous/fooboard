@@ -41,7 +41,9 @@ const base = DashboardSchema.parse({
       id: 'api',
       repo: 'acme/api',
       displayName: 'api',
-      cellStatusSets: { prod: PRESET_IDS.githubSingleJob },
+      cellSettings: {
+        prod: { statusSets: { github: PRESET_IDS.githubSingleJob } },
+      },
     },
   ],
 });
@@ -51,6 +53,7 @@ const unknownCell = (rowId: string, stageId: string): BoardCell => ({
   stageId,
   active: false,
   badge: undefined,
+  settled: true,
   derivation: {
     kind: 'ok',
     status: UNKNOWN,
@@ -90,9 +93,9 @@ describe('addStatusFor', () => {
     });
     expect(DashboardSchema.safeParse(next).success).toBe(true);
     const api = next.rows[1];
-    expect(api.cellStatusSets.prod).toBe('custom-github');
+    expect(api.cellSettings.prod.statusSets?.github).toBe('custom-github');
     // Other cells and the dashboard keep their sets.
-    expect(next.statusSets.github).toBe(PRESET_IDS.githubDeployTest);
+    expect(next.settings.statusSets).toBeUndefined();
     const set = statusSetFor(next, api, 'prod');
     expect(classify(run, set)?.id).toBe(set.cell[0]?.id);
     expect(set.cell[0]?.name).toBe('New status');
@@ -104,7 +107,8 @@ describe('addStatusFor', () => {
       stageId: 'dev',
       document: run,
     });
-    expect(once.statusSets.github).toBe('custom-github');
+    // The built-in is chosen at the dashboard.
+    expect(once.settings.statusSets?.github).toBe('custom-github');
     const twice = addStatusFor(once, {
       rowId: 'web',
       stageId: 'dev',
@@ -121,8 +125,35 @@ describe('addStatusFor', () => {
       'row',
       {
         rows: [
-          { ...base.rows[0], statusSet: PRESET_IDS.githubSingleJob },
+          {
+            ...base.rows[0],
+            settings: { statusSets: { github: PRESET_IDS.githubSingleJob } },
+          },
           base.rows[1],
+        ],
+      },
+    ],
+    [
+      'column',
+      {
+        stages: [
+          {
+            ...base.stages[0],
+            settings: { statusSets: { github: PRESET_IDS.githubSingleJob } },
+          },
+          base.stages[1],
+        ],
+      },
+    ],
+    [
+      'column group',
+      {
+        columnGroups: [
+          {
+            id: 'cg',
+            memberIds: ['dev'],
+            settings: { statusSets: { github: PRESET_IDS.githubSingleJob } },
+          },
         ],
       },
     ],
@@ -133,7 +164,7 @@ describe('addStatusFor', () => {
           {
             id: 'g',
             memberIds: ['web'],
-            statusSets: { github: PRESET_IDS.githubSingleJob },
+            settings: { statusSets: { github: PRESET_IDS.githubSingleJob } },
           },
         ],
       },
@@ -145,10 +176,11 @@ describe('addStatusFor', () => {
       stageId: 'dev',
       document: run,
     });
-    expect(next.statusSets.github).toBe(PRESET_IDS.githubDeployTest);
+    expect(next.settings.statusSets).toBeUndefined();
     expect(statusSetFor(next, next.rows[0], 'dev').id).toBe('custom-github');
-    expect(statusSetFor(next, next.rows[1], 'dev').id).toBe(
-      PRESET_IDS.githubDeployTest,
+    // A cell the choosing level doesn't reach keeps its set.
+    expect(statusSetFor(next, next.rows[1], 'prod').id).not.toBe(
+      'custom-github',
     );
   });
 

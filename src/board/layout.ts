@@ -20,6 +20,9 @@
  */
 import type { Density } from '@/domain/config/devicePreferences';
 
+import { type TextEms, textEms } from './boardText';
+import { gutterPx } from './groupGutters';
+import { headerGearEm } from './headerGears';
 import {
   type CellFormat,
   type Content,
@@ -49,8 +52,6 @@ const RUNGS_DOWN: readonly Rung[] = [5, 4, 3, 2, 1, 0];
  * a fit. */
 const PX_SLACK = 0.5;
 
-/** Readable text at 100% zoom (C-13). */
-export const BASE_FONT_PX = 13;
 /** Line height, in ems. */
 export const LINE_HEIGHT = 1.35;
 /** Free text (names, branches, messages) is cut off at this length. */
@@ -58,7 +59,8 @@ const FREE_TEXT_CAP = 40;
 /** The row-name column takes at most this share of the grid area. */
 const ROW_NAME_SHARE = 0.3;
 /** On phones (grid area narrower than this) the row-name column takes at
- * most a smaller share; names are cut off, full name in the title. */
+ * most a smaller share; names are cut off, full name in the title; and a
+ * row-group label is cut before the first frame line (Decision 65). */
 const PHONE_WIDTH = 640;
 const PHONE_ROW_NAME_SHARE = 0.18;
 
@@ -81,11 +83,17 @@ export interface LayoutInput {
   stages: number;
   /** Extra one-line rows: the column group strip and labelled row dividers. */
   labelRows: number;
+  /** Group gutters across and down (spec.md §3.7, `boardGroups`). */
+  columnGutters: number;
+  rowGutters: number;
   rowNames: readonly string[];
   /** Everything that must fit one cell, at each rung. */
   contents: (rung: Rung) => readonly Content[];
   measure: Measure;
   density: Density;
+  /** Headers carry settings gears (not on a narrow screen, spec.md
+   * §3.11): the row-name column keeps room for one. */
+  headerGears: boolean;
 }
 
 export interface Layout {
@@ -107,8 +115,22 @@ export interface Layout {
   overflowX: boolean;
   /** The board is taller than the grid area: it scrolls down. */
   overflowY: boolean;
-  /** The whole board's height, in px. */
+  /** The whole board's height and width, in px, gutters included. */
   boardHeight: number;
+  boardWidth: number;
+  /** A group gutter's spacer track (spec.md §3.7), in px. */
+  gutter: number;
+  /** Headers carry settings gears (`LayoutInput.headerGears`). */
+  headerGears: boolean;
+  /** The grid area is a phone's (under `PHONE_WIDTH`): row names take
+   * a smaller share, and a row-group label that would run past the first
+   * frame line is cut before it (Decision 65). The grid area's width, not
+   * the viewport the header gears follow (Decision 60): the cut only
+   * keeps a label clear of the frames. */
+  phone: boolean;
+  /** The smaller texts' sizes, in ems of `fontPx` (`boardText`): never
+   * under 13 px at 100% (Decision 66). */
+  textEm: TextEms;
 }
 
 /** Geometry shared by every layout at one text size. */
@@ -120,18 +142,37 @@ function frame(input: LayoutInput, fontPx: number) {
     0,
     ...input.rowNames.map((n) => input.measure(capText(n), fontPx)),
   );
+  const phone = input.width < PHONE_WIDTH;
   const rowNameWidth = Math.min(
-    (input.width < PHONE_WIDTH ? PHONE_ROW_NAME_SHARE : ROW_NAME_SHARE) *
-      input.width,
-    longestName + 2 * padX,
+    (phone ? PHONE_ROW_NAME_SHARE : ROW_NAME_SHARE) * input.width,
+    // A row header keeps room for its settings gear (spec.md §3.11).
+    longestName + 2 * padX + headerGearEm(input.headerGears) * fontPx,
   );
   const stages = Math.max(1, input.stages);
+  // Each gutter is a track of its own, with a gap beside it (§3.7).
+  const gutter = gutterPx(fontPx);
   const colWidth = Math.max(
     0,
-    Math.floor((input.width - rowNameWidth - d.gap * stages) / stages),
+    Math.floor(
+      (input.width -
+        rowNameWidth -
+        d.gap * stages -
+        input.columnGutters * (gutter + d.gap)) /
+        stages,
+    ),
   );
   const lineRowHeight = LINE_HEIGHT * fontPx + 2 * padY;
-  return { gap: d.gap, padX, padY, rowNameWidth, colWidth, lineRowHeight };
+  return {
+    phone,
+    textEm: textEms(fontPx),
+    gap: d.gap,
+    padX,
+    padY,
+    rowNameWidth,
+    colWidth,
+    lineRowHeight,
+    gutter,
+  };
 }
 
 /** The layout for one rung: packed into the column width; if anything
@@ -145,15 +186,18 @@ export function layoutAtRung(
   const f = frame(input, fontPx);
   const contents = input.contents(rung);
   const inner = f.colWidth - 2 * f.padX;
-  let packed = packBoard(contents, inner, fontPx, input.measure);
+  let packed = packBoard(contents, inner, fontPx, input.measure, f.textEm);
   const overflowX = packed === null;
   let colWidth = f.colWidth;
   if (!packed) {
     const need = Math.ceil(
-      Math.max(0, ...contents.map((c) => minWidth(c, fontPx, input.measure))),
+      Math.max(
+        0,
+        ...contents.map((c) => minWidth(c, fontPx, input.measure, f.textEm)),
+      ),
     );
     colWidth = need + Math.ceil(2 * f.padX);
-    packed = packBoard(contents, need, fontPx, input.measure) ?? {
+    packed = packBoard(contents, need, fontPx, input.measure, f.textEm) ?? {
       format: 'packed',
       lines: 1,
       lineOf: {},
@@ -162,7 +206,12 @@ export function layoutAtRung(
   const rowHeight = packed.lines * LINE_HEIGHT * fontPx + 2 * f.padY;
   const total =
     (1 + input.labelRows) * (f.lineRowHeight + f.gap) +
-    input.rows * (rowHeight + f.gap);
+    input.rows * (rowHeight + f.gap) +
+    input.rowGutters * (f.gutter + f.gap);
+  const boardWidth =
+    f.rowNameWidth +
+    Math.max(1, input.stages) * (colWidth + f.gap) +
+    input.columnGutters * (f.gutter + f.gap);
   return {
     rung,
     format: packed.format,
@@ -178,6 +227,11 @@ export function layoutAtRung(
     overflowX,
     overflowY: total > input.height + PX_SLACK,
     boardHeight: total,
+    boardWidth,
+    gutter: f.gutter,
+    headerGears: input.headerGears,
+    phone: f.phone,
+    textEm: f.textEm,
   };
 }
 

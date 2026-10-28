@@ -8,7 +8,9 @@
  */
 import { describe, expect, it } from 'vitest';
 
-import { demoDashboard } from '@/demo/board';
+import { measureBoard } from '@/demo/scenarios/measure';
+import { CURRENT_SCHEMA_VERSION } from '@/domain/config/root';
+import { CLEAR_EVERYTHING_STEPS, refusingDevice } from '@/test/refusingDevice';
 
 import { createConfigStore } from './configStore';
 import { createCredentialStore } from './credentialStore';
@@ -26,12 +28,12 @@ describe('config store', () => {
     const store = createConfigStore(memoryStorage());
     expect(store.load()).toEqual({
       kind: 'ok',
-      root: { schemaVersion: 4, dashboards: [] },
+      root: { schemaVersion: CURRENT_SCHEMA_VERSION, dashboards: [] },
     });
-    const second = { ...demoDashboard, id: 'second', name: 'Second' };
-    store.saveDashboard(demoDashboard);
+    const second = { ...measureBoard, id: 'second', name: 'Second' };
+    store.saveDashboard(measureBoard);
     store.saveDashboard(second);
-    store.saveDashboard({ ...demoDashboard, name: 'Renamed' });
+    store.saveDashboard({ ...measureBoard, name: 'Renamed' });
     const loaded = store.load();
     expect(
       loaded.kind === 'ok' && loaded.root.dashboards.map((d) => d.name),
@@ -51,7 +53,7 @@ describe('config store', () => {
     const store = createConfigStore(kv);
     expect(store.load().kind).toBe('unreadable');
     expect(() => {
-      store.saveDashboard(demoDashboard);
+      store.saveDashboard(measureBoard);
     }).toThrow(/Refusing to overwrite/);
     expect(kv.getItem('fooboard:config')).toBe(stored);
   });
@@ -140,6 +142,20 @@ describe('credential store', () => {
     expect(store.get('gh')).toBeUndefined();
   });
 
+  it('forgets a tab-only secret even when the device refuses the removal, saying how to clear what was left', () => {
+    const { device, refuse } = refusingDevice();
+    const store = createCredentialStore(device);
+    store.set('gh', token, false);
+    const seen: string[] = [];
+    store.subscribe((id) => seen.push(id));
+    refuse();
+    expect(() => {
+      store.forget('gh');
+    }).toThrow(CLEAR_EVERYTHING_STEPS);
+    expect(store.get('gh')).toBeUndefined();
+    expect(seen).toEqual(['gh']);
+  });
+
   it('copies as an independent secret with the same storage choice', () => {
     const store = createCredentialStore(memoryStorage());
     store.set('gh', token, true);
@@ -171,13 +187,13 @@ describe('clearAppData', () => {
 });
 
 describe('createAppStores reset', () => {
-  it('clears remembered and session secrets and the config', () => {
+  it('clears remembered and session secrets and the config', async () => {
     const kv = memoryStorage();
     const stores = createAppStores(kv);
-    stores.config.saveDashboard(demoDashboard);
+    stores.config.saveDashboard(measureBoard);
     stores.credentials.set('a', { kind: 'github', token: 't' }, true);
     stores.credentials.set('b', { kind: 'github', token: 't' }, false);
-    stores.reset();
+    await stores.reset();
     expect(stores.credentials.get('a')).toBeUndefined();
     expect(stores.credentials.get('b')).toBeUndefined();
     expect(kv.keys()).toEqual([]);

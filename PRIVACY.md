@@ -1,6 +1,6 @@
 # Privacy
 
-_Effective 18 October 2026._
+_Effective 27 October 2026._
 
 fooboard is a static web app that runs entirely in your browser. This page says, plainly, what it does with your data. In short: **we don't collect any.**
 
@@ -8,11 +8,13 @@ fooboard is a static web app that runs entirely in your browser. This page says,
 
 Everything fooboard keeps stays **in your browser**, on the device you are using:
 
-| What | Where | How long |
-| --- | --- | --- |
-| Your dashboards (names, rows, stages, rules, colours, groups) | Browser local storage | Until you delete them, choose _Reset_, or clear your browser's site data |
-| Zoom, density and theme | Browser local storage | The same |
-| GitHub tokens and AWS keys | The page's memory only, or local storage if you tick _Remember on this device_ | Until the tab closes (memory), or until you _Forget_ them, choose _Reset_ or clear site data (remembered) |
+| What                                                                                                                                                          | Where                                                                                                                                                                                                                | How long                                                                                                                                                                                                                                                       |
+| ------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Your dashboards (names, rows, stages, rules, colours, groups, settings and pinned apps)                                                                       | Browser local storage                                                                                                                                                                                                | Until you delete them, choose _Reset_, or clear your browser's data for the site                                                                                                                                                                               |
+| Zoom, density, theme, and the last version whose _What's new_ you've seen                                                                                     | Browser local storage                                                                                                                                                                                                | The same                                                                                                                                                                                                                                                       |
+| GitHub tokens and AWS keys                                                                                                                                    | The page's memory only, or local storage if you tick _Remember on this device_                                                                                                                                       | Until the tab closes (memory), or until you _Forget_ them, untick _Remember_, choose _Reset_ or clear the site's data (remembered)                                                                                                                             |
+| A copy of your dashboards from before an upgrade (e.g. `fooboard:config.v5`)                                                                                  | Browser local storage                                                                                                                                                                                                | Until the next save succeeds                                                                                                                                                                                                                                   |
+| What fooboard read from GitHub and AWS (runs, jobs, branches, rate-limit budgets, and the name and repository URL of every Amplify app each AWS key can list) | The page's memory; the answers a board reads with a remembered token or key are also kept in the browser's IndexedDB, unencrypted, each with a one-way fingerprint of the secret it was read with (never the secret) | Until the tab closes (memory); up to 24 hours (IndexedDB), and never for a token or key kept for the tab only. A changed, forgotten or no-longer-remembered secret, a removed credential or a deleted dashboard drops what was read with it, in every open tab |
 
 fooboard has no server of its own, no accounts, no database, no cookies, no analytics, no advertising and no third-party scripts. Nothing you enter is sent to us.
 
@@ -20,13 +22,21 @@ fooboard has no server of its own, no accounts, no database, no cookies, no anal
 
 - **The host** that serves fooboard's files. Like any website, it may keep standard access logs (your IP address, the time, the page requested). It never receives your dashboards or credentials.
 - **GitHub** (`api.github.com`), using your token, to read the repos, branches, workflow runs and jobs on your boards. GitHub's [privacy statement](https://docs.github.com/en/site-policy/privacy-policies/github-general-privacy-statement) applies.
-- **AWS** (Amplify's regional endpoints), using your key, to read the Amplify apps, branches and jobs on your boards. The [AWS privacy notice](https://aws.amazon.com/privacy/) applies.
+- **AWS** (Amplify's regional endpoints), using your key, to read the Amplify apps, branches and jobs on your boards. To find the apps that build your rows' repos, it lists the apps in every region that has Amplify Hosting under each key a board reads with, hourly (the same lists the editor shows when you add an app). So the answers kept for up to 24 hours include the names and repository URLs of every Amplify app those keys can list, not only the apps on your boards. The [AWS privacy notice](https://aws.amazon.com/privacy/) applies.
 
 These calls go **directly** from your browser to GitHub and AWS. fooboard does not proxy, see or keep them.
 
+**The demo** talks to neither: its GitHub and AWS are simulated inside the page, and it sends no request to them or anyone else. Its demo tokens and keys, and anything you change in it, stay in the tab's memory until you reload or leave; only zoom and density are saved, as for any board.
+
 ## Links and sharing
 
-Links to X, GitHub and other sites are ordinary links: nothing is sent until you follow one, and then that site's own privacy policy applies. _Share_ uses your device's share menu or your clipboard; fooboard doesn't see what you do with them.
+Links to X, GitHub and other sites are ordinary links: nothing is sent until you follow one, and then that site's own privacy policy applies.
+
+**Reporting an issue.** If fooboard hits an error it can't recover from, its error screen offers _Report an issue_: a link that opens a new issue on GitHub, prefilled with fooboard's version, your browser (its user agent string) and the error message, and nothing else: no dashboards, names, repos, tokens, keys or answers from GitHub and AWS. The message is cleaned first of anything shaped like a secret or a board's names (tokens and keys, long opaque strings such as commit SHAs, links to other sites, email addresses, GitHub repo paths and Amplify app ids), and the error screen shows it as the issue will carry it. Following the link sends that prefilled text to GitHub in the link's address, as following any link does; the issue is created only if you submit it, after you can read and edit it, and then it is public, under your GitHub account, and [GitHub's privacy statement](https://docs.github.com/en/site-policy/privacy-policies/github-general-privacy-statement) applies. fooboard has no telemetry: it reports nothing by itself. _Share_ uses your device's share menu or your clipboard; fooboard doesn't see what you do with them.
+
+**Sharing your dashboards.** A board link or an exported file carries the dashboards you chose, as they are saved (names, repos, branches, rules, groups, settings and pinned apps), and nothing about your device: never zoom, density, theme, the answers kept from GitHub and AWS, or anything held for a tab. It carries tokens and keys **only if you tick _Include credentials_**, and then only those the chosen dashboards use; they are encrypted with your passphrase unless you untick it, and anyone holding a link or file with unencrypted credentials, or with the passphrase too, can use them. A board link keeps everything in the part after `#`, which browsers don't send to the host or in `Referer` headers; when one opens, fooboard removes that part from the address bar and the history at once. What you do with a link or file after copying or saving it (the chat, email or post it goes into) is up to you and that service. _Post this board on X_ never includes credentials, but its link shows your repo and branch names to anyone who opens it.
+
+**Importing.** Nothing from a link or file is saved until you press _Import_. Imported tokens and keys are kept in the page's memory for the tab only, unless you tick _Remember on this device_, which keeps them in local storage like any other remembered credential. One already in local storage, unchanged, stays there. When a credential's secret in the import differs from the one this browser holds, fooboard asks whether to keep yours or use the imported one before writing anything; the two are compared in the page, neither is shown, and nothing is sent anywhere. Keeping yours leaves it where it was; using the imported one stores it as _Remember on this device_ says.
 
 ## Your credentials are your responsibility
 
@@ -35,8 +45,10 @@ Anyone with access to your browser profile can read what is stored in it, includ
 ## Removing your data
 
 - _Forget_ removes one credential from this browser.
-- _Reset_ removes all of fooboard's data from this browser, and nothing else.
-- Clearing your browser's data for the site does the same.
+- Unticking _Remember on this device_ on a credential removes its stored copy and what was read with it, in every open fooboard tab: a token or key kept for the tab only leaves nothing on the device, neither the secret nor the answers read with it. If the browser won't let fooboard remove the copy, fooboard says so and asks you to use _Reset_.
+- Deleting a dashboard removes it, its view settings and its credentials from this browser.
+- _Reset_ (in the menu) removes all of fooboard's data from this browser, and nothing else, in every open fooboard tab: dashboards, settings, credentials and the answers kept from GitHub and AWS. If the browser won't let it clear them, it says so, and no other tab reloads.
+- Clearing this site's data in your browser's settings removes what is stored; credentials held in an open tab's memory go when the tab closes.
 
 Removing data from fooboard does not revoke credentials at GitHub or AWS: [revoke them there](./README.md#revoking-a-credential) too.
 

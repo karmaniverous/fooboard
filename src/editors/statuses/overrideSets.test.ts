@@ -1,7 +1,7 @@
 /**
- * Tests for status-set choices below the dashboard: each level sets and
- * clears its own choice, the dashboard still validates, and resolution
- * follows cell over row over row group over dashboard.
+ * Tests for choosing status sets: each of the six levels chooses a set
+ * (the dashboard still validates), resolution follows the lattice, and
+ * swapping a set reaches every choice of it, the built-in's use included.
  *
  * @module
  */
@@ -10,13 +10,10 @@ import { describe, expect, it } from 'vitest';
 import { DashboardSchema } from '@/domain/config/dashboard';
 import { branchRules } from '@/domain/config/placement';
 import { PRESET_IDS } from '@/domain/config/statusSets';
-import { inheritedStatusSetId, statusSetFor } from '@/domain/statuses/resolve';
+import type { SettingsPlace } from '@/domain/settings/places';
+import { statusSetFor } from '@/domain/statuses/resolve';
 
-import {
-  setCellStatusSet,
-  setGroupStatusSet,
-  setRowStatusSet,
-} from './overrideSets';
+import { chooseSetAt, replaceSet } from './overrideSets';
 
 const base = DashboardSchema.parse({
   id: 'd',
@@ -24,26 +21,46 @@ const base = DashboardSchema.parse({
   stages: [{ id: 'dev', name: 'dev', rules: branchRules('dev') }],
   rows: [{ type: 'github', id: 'web', repo: 'acme/web', displayName: 'web' }],
   rowGroups: [{ id: 'g', memberIds: ['web'] }],
+  columnGroups: [{ id: 'c', memberIds: ['dev'] }],
 });
 const row = (d: typeof base) => d.rows[0];
+const SINGLE = PRESET_IDS.githubSingleJob;
+const DEPLOY = PRESET_IDS.githubDeployTest;
 
-describe('status-set overrides', () => {
-  it('resolve cell over row over row group over dashboard, and clear', () => {
-    let d = setGroupStatusSet(base, 'g', 'github', PRESET_IDS.githubSingleJob);
-    expect(inheritedStatusSetId(d, row(d))).toBe(PRESET_IDS.githubSingleJob);
-    expect(statusSetFor(d, row(d), 'dev').id).toBe(PRESET_IDS.githubSingleJob);
-    d = setRowStatusSet(d, 'web', PRESET_IDS.githubDeployTest);
-    expect(statusSetFor(d, row(d), 'dev').id).toBe(PRESET_IDS.githubDeployTest);
-    d = setCellStatusSet(d, 'web', 'dev', PRESET_IDS.githubSingleJob);
-    expect(statusSetFor(d, row(d), 'dev').id).toBe(PRESET_IDS.githubSingleJob);
+describe('choosing status sets', () => {
+  it.each<[string, SettingsPlace]>([
+    ['the dashboard', { level: 'dashboard' }],
+    ['a row group', { level: 'rowGroup', groupId: 'g' }],
+    ['a column group', { level: 'columnGroup', groupId: 'c' }],
+    ['a row', { level: 'row', rowId: 'web' }],
+    ['a column', { level: 'column', stageId: 'dev' }],
+    ['a cell', { level: 'cell', rowId: 'web', stageId: 'dev' }],
+  ])('chooses a set at %s, which the cell uses', (_label, place) => {
+    const d = chooseSetAt(base, place, 'github', SINGLE);
     expect(DashboardSchema.safeParse(d).success).toBe(true);
+    expect(statusSetFor(d, row(d), 'dev').id).toBe(SINGLE);
+  });
 
-    d = setCellStatusSet(d, 'web', 'dev', '');
-    d = setRowStatusSet(d, 'web', '');
-    d = setGroupStatusSet(d, 'g', 'github', '');
-    expect(row(d).statusSet).toBeUndefined();
-    expect(row(d).cellStatusSets).toEqual({});
-    expect(d.rowGroups[0]?.statusSets).toEqual({});
-    expect(statusSetFor(d, row(d), 'dev').id).toBe(PRESET_IDS.githubDeployTest);
+  it('swaps every choice of a set, and its built-in use', () => {
+    const chosen = chooseSetAt(
+      chooseSetAt(base, { level: 'row', rowId: 'web' }, 'github', SINGLE),
+      { level: 'cell', rowId: 'web', stageId: 'dev' },
+      'github',
+      SINGLE,
+    );
+    const swapped = replaceSet(chosen, 'github', SINGLE, 'mine');
+    expect(row(swapped).settings.statusSets).toEqual({ github: 'mine' });
+    expect(row(swapped).cellSettings.dev.statusSets).toEqual({
+      github: 'mine',
+    });
+    // The dashboard chose none, but the built-in is not the swapped set.
+    expect(swapped.settings.statusSets).toBeUndefined();
+    expect(
+      replaceSet(base, 'github', DEPLOY, 'mine').settings.statusSets,
+    ).toEqual({ github: 'mine' });
+    // Another source's choice of the same id is left alone.
+    expect(
+      replaceSet(base, 'amplify', DEPLOY, 'mine').settings.statusSets,
+    ).toBeUndefined();
   });
 });

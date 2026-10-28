@@ -1,8 +1,9 @@
 /**
- * Zod schema for device preferences (spec.md C-13): zoom level and row
- * height, per dashboard, per device. This is a **separate** schema from the
- * config root and is never part of an export or share link (spec.md step
- * 1, E-15).
+ * Zod schema for device preferences (spec.md C-13, C-14, C-20): zoom
+ * and density per dashboard, the theme, and the last version whose
+ * What's new this browser has seen. This is a **separate** schema from
+ * the config root and is never part of an export or share link (spec.md
+ * step 1, E-15); Reset clears it with every other `fooboard:` key.
  *
  * @module
  */
@@ -36,17 +37,30 @@ export type DashboardViewPreferences = z.infer<
 export const ThemeChoiceSchema = z.enum(['system', 'light', 'dark']);
 export type ThemeChoice = z.infer<typeof ThemeChoiceSchema>;
 
-export const CURRENT_DEVICE_PREFERENCES_VERSION = 2;
+export const CURRENT_DEVICE_PREFERENCES_VERSION = 3;
 
-/** All view settings on this device. Never exported or shared. */
-export const DevicePreferencesSchema = z.object({
-  schemaVersion: z.literal(CURRENT_DEVICE_PREFERENCES_VERSION),
+const devicePreferencesFields = {
   theme: ThemeChoiceSchema.default('system'),
   dashboards: z
     .record(z.string(), DashboardViewPreferencesSchema)
     .default(() => ({})),
+};
+
+/** All view settings on this device. Never exported or shared. */
+export const DevicePreferencesSchema = z.object({
+  schemaVersion: z.literal(CURRENT_DEVICE_PREFERENCES_VERSION),
+  ...devicePreferencesFields,
+  /** The newest version whose What's new this browser has seen (spec.md
+   * C-20, §3.10); none until What's new is first opened. */
+  lastSeenVersion: z.string().optional(),
 });
 export type DevicePreferences = z.infer<typeof DevicePreferencesSchema>;
+
+/** Version 2: the same, before What's new. */
+const V2Schema = z.object({
+  schemaVersion: z.literal(2),
+  ...devicePreferencesFields,
+});
 
 /** Version 1 stored a row height (Compact/Full) and a grid magnification. */
 const V1Schema = z.object({
@@ -58,16 +72,21 @@ const V1Schema = z.object({
 });
 
 /**
- * Bring stored preferences to the current version (spec.md step 11a):
- * Full becomes Default, Compact stays Compact, and every saved zoom resets
- * to 100% (the old value meant grid magnification). Anything unreadable
- * gives undefined, so the caller starts afresh.
+ * Bring stored preferences to the current version. Version 2 keeps
+ * everything and has seen no What's new (spec.md §3.10). Version 1
+ * (spec.md step 11a): Full becomes Default, Compact stays Compact, and
+ * every saved zoom resets to 100% (the old value meant grid
+ * magnification). Anything unreadable gives undefined, so the caller
+ * starts afresh.
  */
 export function migrateDevicePreferences(
   raw: unknown,
 ): DevicePreferences | undefined {
   const current = DevicePreferencesSchema.safeParse(raw);
   if (current.success) return current.data;
+  const v2 = V2Schema.safeParse(raw);
+  if (v2.success)
+    return { ...v2.data, schemaVersion: CURRENT_DEVICE_PREFERENCES_VERSION };
   const v1 = V1Schema.safeParse(raw);
   if (!v1.success) return undefined;
   return {

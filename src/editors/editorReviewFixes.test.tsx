@@ -1,12 +1,15 @@
 /**
- * Tests for editor fixes from review: deleting an Amplify source asks
- * first; a failed repo list retries; the same repo can be
- * added twice; listed apps hide when the region changes.
+ * Tests for editor fixes from review: unpinning an Amplify app asks
+ * first, and a repo-less row's last pin can't be unpinned; a failed repo list retries; the same repo can be
+ * added twice. (The Amplify app picker's tests are in
+ * `amplifyPicker.test.tsx`.)
  *
  * @module
  */
-import { act, fireEvent, screen, within } from '@testing-library/react';
+import { fireEvent, screen, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
+
+import { fetched, ghRepo } from '@/test/fakeReaders';
 
 import { setup, tab } from './editorSectionsHarness';
 
@@ -14,18 +17,10 @@ describe('editor review fixes', () => {
   it('retries a failed repo list', async () => {
     let calls = 0;
     setup({
-      listRepos: () =>
+      reposPage: () =>
         ++calls === 1
           ? Promise.reject(new Error('Bad gateway'))
-          : Promise.resolve([
-              {
-                full_name: 'acme/api',
-                name: 'api',
-                private: false,
-                html_url: '',
-                owner: { login: 'acme' },
-              },
-            ]),
+          : Promise.resolve(fetched([ghRepo('acme/api')])),
     });
     tab('Rows');
     fireEvent.click(screen.getByRole('button', { name: 'Add a GitHub row' }));
@@ -38,16 +33,7 @@ describe('editor review fixes', () => {
 
   it('adds the same repo twice as independent rows', async () => {
     const latest = setup({
-      listRepos: () =>
-        Promise.resolve([
-          {
-            full_name: 'acme/api',
-            name: 'api',
-            private: false,
-            html_url: '',
-            owner: { login: 'acme' },
-          },
-        ]),
+      reposPage: () => Promise.resolve(fetched([ghRepo('acme/api')])),
     });
     tab('Rows');
     fireEvent.click(screen.getByRole('button', { name: 'Add a GitHub row' }));
@@ -56,65 +42,46 @@ describe('editor review fixes', () => {
     expect(rows.map((r) => r.id)).toEqual(['api', 'api-2']);
 
     // The new row opens (one row at a time); its rule is its own.
-    const group = screen.getByRole('group', { name: 'Item rule for api' });
+    const group = screen.getByRole('group', { name: 'Record rule for api' });
     fireEvent.click(within(group).getByRole('button', { name: 'Add check' }));
     const checks = latest.current.rows
       .filter((r) => r.repo === 'acme/api')
-      .map((r) => r.itemRule?.checks.length ?? 0);
+      .map((r) => r.recordRule?.checks.length ?? 0);
     expect(checks).toEqual([0, 1]);
   });
 
-  it('hides listed apps when the region changes, before or after the response', async () => {
-    const latest = setup();
-    tab('Rows');
-    const region = screen.getByLabelText('Region');
-    // Changed while the request is pending.
-    fireEvent.click(screen.getByRole('button', { name: 'List Amplify apps' }));
-    fireEvent.change(region, { target: { value: 'eu-west-1' } });
-    await act(async () => {
-      await Promise.resolve();
-    });
-    expect(screen.queryByRole('button', { name: /site/ })).toBeNull();
-
-    // Listed for eu-west-1, then changed after the response.
-    fireEvent.click(screen.getByRole('button', { name: 'List Amplify apps' }));
-    expect(
-      await screen.findByRole('button', { name: /site/ }),
-    ).toBeInTheDocument();
-    fireEvent.change(region, { target: { value: 'us-west-2' } });
-    expect(screen.queryByRole('button', { name: /site/ })).toBeNull();
-
-    fireEvent.change(region, { target: { value: 'eu-west-1' } });
-    fireEvent.click(screen.getByRole('button', { name: /site/ }));
-    expect(latest.current.rows.at(-1)).toMatchObject({
-      sources: [{ region: 'eu-west-1', appId: 'a1' }],
-    });
-  });
-
-  it('asks before deleting an Amplify source', async () => {
+  it('asks before unpinning an Amplify app', async () => {
     const latest = setup();
     tab('Rows');
     fireEvent.click(screen.getByRole('button', { name: 'List Amplify apps' }));
     fireEvent.click(await screen.findByRole('button', { name: /site/ }));
-    fireEvent.change(screen.getByLabelText('Region for a new site source'), {
+    fireEvent.change(screen.getByLabelText('Region for a new site pin'), {
       target: { value: 'eu-west-1' },
     });
-    fireEvent.change(screen.getByLabelText('App ID for a new site source'), {
+    fireEvent.change(screen.getByLabelText('App ID for a new site pin'), {
       target: { value: 'a9' },
     });
-    fireEvent.click(screen.getByRole('button', { name: 'Add source' }));
-    const sources = () => {
+    fireEvent.click(screen.getByRole('button', { name: 'Pin' }));
+    fireEvent.change(screen.getByLabelText('Region for a new site pin'), {
+      target: { value: 'eu-west-1' },
+    });
+    fireEvent.change(screen.getByLabelText('App ID for a new site pin'), {
+      target: { value: 'a8' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Pin' }));
+    const pins = () => {
       const row = latest.current.rows.at(-1);
-      return row?.type === 'amplify' ? row.sources.length : 0;
+      return row?.type === 'amplify' ? row.pinnedApps.length : 0;
     };
-    expect(sources()).toBe(2);
-    fireEvent.click(
-      screen.getAllByRole('button', {
-        name: 'Delete source',
-      })[0],
+    expect(pins()).toBe(2);
+    fireEvent.click(screen.getAllByRole('button', { name: 'Unpin' })[0]);
+    expect(pins()).toBe(2);
+    fireEvent.click(screen.getByRole('button', { name: 'Unpin a9' }));
+    expect(pins()).toBe(1);
+    // A row without a repo keeps its last pin.
+    const row = latest.current.rows.at(-1);
+    expect(row?.repo === undefined).toBe(
+      screen.queryByRole('button', { name: 'Unpin' }) === null,
     );
-    expect(sources()).toBe(2);
-    fireEvent.click(screen.getByRole('button', { name: 'Delete source a1' }));
-    expect(sources()).toBe(1);
   });
 });

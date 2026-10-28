@@ -4,8 +4,9 @@
  * run (a bad path or regex) says why under its row. With real data for
  * the rule (the board's records for its source, or raw samples for a
  * source rule's translation and branch rules), each check and the rule
- * show how many they match, the path field suggests their paths, and the
- * field picker shows one as a tree. *Only items where* is offered when
+ * show how many they match, the path field suggests their paths, the
+ * field picker shows one as a tree, and a glob or regex check whose path
+ * finds an object or array in any of them says to test a field inside it. *Only items where* is offered when
  * the source has items; a check drafted from a record (*Add rule*) is
  * offered to add.
  *
@@ -25,7 +26,9 @@ import {
   checkProblem,
   evaluateCheck,
   evaluateRule,
+  findsObjectOrArray,
 } from '@/domain/rules/check';
+import { describeCheck } from '@/domain/rules/describe';
 import { PATH_IDENTIFIER } from '@/domain/rules/path';
 import { type Check, CheckSchema, type Rule } from '@/domain/rules/schema';
 import { patchAt } from '@/lib/lists';
@@ -51,9 +54,6 @@ const itemKeys = (records: readonly RecordDoc[]): string[] => {
     ? keys.filter((k) => PATH_IDENTIFIER.test(k))
     : [BUILTIN_KEYS.name, BUILTIN_KEYS.state];
 };
-
-const describe = (c: Check) =>
-  `${c.not ? 'NOT ' : ''}${c.path} ${c.operator === 'exists' ? 'exists' : `matches ${c.value}`}`;
 
 export function RuleEditor({
   label,
@@ -139,6 +139,7 @@ export function RuleEditor({
           listId={listId}
           pickFrom={docs[0]}
           matched={count((d) => evaluateCheck(c, d))}
+          findsObjectOrArray={findsObjectOrArray(c, docs)}
           onChange={(change) => {
             onChange({ ...rule, checks: patchAt(checks, i, change) });
           }}
@@ -163,7 +164,7 @@ export function RuleEditor({
         <div className="flex flex-wrap items-center gap-2 rounded border border-dashed px-2 py-1 text-xs">
           <span>
             Drafted from the record:{' '}
-            <code className="font-mono">{describe(offered)}</code>
+            <code className="font-mono">{describeCheck(offered)}</code>
             {count((d) => evaluateCheck(offered, d)) &&
               ` (${count((d) => evaluateCheck(offered, d)) ?? ''})`}
           </span>

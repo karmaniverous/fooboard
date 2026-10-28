@@ -1,55 +1,90 @@
 /**
- * Tests for the home page's storage failures: unreadable configuration
- * offers no *Create* (it couldn't be saved), and a refused write when
- * creating is reported with the name kept for retry.
+ * Tests for the home page: the empty app offers the three ways in
+ * (spec.md §3.9 *First run*): *Create a dashboard* opening the first
+ * run, *Import from link or file* opening the import dialog, and *Try the
+ * demo*; saved dashboards are listed; unreadable configuration offers no
+ * *Create* or *Import* (neither could be saved), but *Reset*.
  *
  * @module
  */
-import { fireEvent, render, screen } from '@testing-library/react';
-import { MemoryRouter } from 'react-router-dom';
+import { fireEvent, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
+import { createDashboard } from '@/domain/config/presets';
 import { createAppStores } from '@/storage';
 import { type KeyValueStore, memoryStorage } from '@/storage/keyValue';
-import { StoresContext } from '@/storage/storesContext';
+import { renderShell } from '@/test/renderShell';
+import { RouterProbe } from '@/test/RouterProbe';
 
 import { Home } from './Home';
 
-const renderHome = (store: KeyValueStore) => {
-  render(
-    <StoresContext value={createAppStores(store)}>
-      <MemoryRouter>
-        <Home />
-      </MemoryRouter>
-    </StoresContext>,
+const renderHome = (store: KeyValueStore = memoryStorage()) =>
+  renderShell(
+    <>
+      <Home />
+      <RouterProbe />
+    </>,
+    undefined,
+    createAppStores(store),
   );
-};
+
+describe('Home', () => {
+  it('offers creating a dashboard, importing one and the demo on the empty app', () => {
+    renderHome();
+    expect(
+      screen.getByRole('heading', { name: 'No dashboards yet' }),
+    ).toBeVisible();
+    expect(screen.getByRole('link', { name: 'Try the demo' })).toHaveAttribute(
+      'href',
+      '/demo',
+    );
+    fireEvent.click(screen.getByRole('link', { name: 'Create a dashboard' }));
+    expect(screen.getByTestId('where')).toHaveTextContent('/new');
+  });
+
+  it('opens the import dialog, for a file or a link', () => {
+    renderHome();
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Import from link or file…' }),
+    );
+    expect(
+      screen.getByRole('dialog', { name: 'Import dashboards' }),
+    ).toBeInTheDocument();
+    expect(screen.getByLabelText('A fooboard file')).toBeInTheDocument();
+    expect(screen.getByLabelText('Or a fooboard link')).toBeInTheDocument();
+  });
+
+  it('lists saved dashboards above the same three ways in', () => {
+    const stores = createAppStores(memoryStorage());
+    stores.config.saveDashboard(createDashboard('Acme', 'env-branches'));
+    renderShell(<Home />, undefined, stores);
+    expect(
+      screen.getByRole('heading', { name: 'Your dashboards' }),
+    ).toBeVisible();
+    expect(screen.getByRole('link', { name: /^Acme/ })).toHaveTextContent(
+      'Acme0 rows × 3 stages',
+    );
+    expect(
+      screen.getByRole('link', { name: 'Create a dashboard' }),
+    ).toBeVisible();
+  });
+});
 
 describe('Home storage failures', () => {
-  it('offers no Create when the saved configuration is unreadable', () => {
+  it('offers no Create or Import, but Reset, when the saved configuration is unreadable', () => {
     const store = memoryStorage();
     store.setItem('fooboard:config', '{not json');
     renderHome(store);
     expect(
-      screen.queryByRole('button', { name: 'Create a dashboard' }),
+      screen.queryByRole('link', { name: 'Create a dashboard' }),
     ).toBeNull();
-  });
-
-  it('reports a refused write and keeps the name', () => {
-    const store = memoryStorage();
-    renderHome({
-      ...store,
-      setItem: () => {
-        throw new Error('storage refused the write');
-      },
-    });
-    fireEvent.change(screen.getByLabelText('Dashboard name'), {
-      target: { value: 'Acme' },
-    });
-    fireEvent.click(screen.getByRole('button', { name: 'Create a dashboard' }));
-    expect(screen.getByRole('alert')).toHaveTextContent(
-      'storage refused the write',
-    );
-    expect(screen.getByLabelText('Dashboard name')).toHaveValue('Acme');
+    expect(
+      screen.queryByRole('button', { name: 'Import from link or file…' }),
+    ).toBeNull();
+    expect(screen.getByRole('link', { name: 'Try the demo' })).toBeVisible();
+    fireEvent.click(screen.getByRole('button', { name: 'Reset…' }));
+    expect(
+      screen.getByRole('alertdialog', { name: 'Reset fooboard?' }),
+    ).toBeInTheDocument();
   });
 });

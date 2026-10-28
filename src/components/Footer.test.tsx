@@ -53,7 +53,7 @@ describe('Footer', () => {
       'Try the demo',
       'Theme: System',
       'Share / Export',
-      'Import (coming soon)',
+      'Import',
       'GitHub',
       'Report an issue',
       'Privacy',
@@ -68,7 +68,7 @@ describe('Footer', () => {
     expect(shown()).toEqual([
       'Theme: System',
       'Share / Export',
-      'Import (coming soon)',
+      'Import',
       'GitHub',
       'Report an issue',
       'Privacy',

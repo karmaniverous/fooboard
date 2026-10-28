@@ -1,7 +1,6 @@
 /**
  * Tests for the editor sections the main editor tests don't reach:
- * Amplify rows from `ListApps` (apps without a GitHub repo can't be
- * added), repo-list failures, labelled column groups, drag reordering,
+ * repo-list failures, labelled column groups, drag reordering,
  * mapping rules and colours.
  *
  * @module
@@ -17,23 +16,8 @@ import { expand } from '@/test/openItem';
 import { setup, tab } from './editorSectionsHarness';
 
 describe('editor sections', () => {
-  it('adds an Amplify row from ListApps, refusing apps without a GitHub repo', async () => {
-    const latest = setup();
-    tab('Rows');
-    fireEvent.click(screen.getByRole('button', { name: 'List Amplify apps' }));
-    const orphan = await screen.findByRole('button', { name: /orphan/ });
-    expect(orphan).toBeDisabled();
-    fireEvent.click(screen.getByRole('button', { name: /site/ }));
-    expect(latest.current.rows.at(-1)).toMatchObject({
-      type: 'amplify',
-      repo: 'acme/site',
-      displayName: 'site',
-      sources: [{ region: 'us-east-1', appId: 'a1' }],
-    });
-  });
-
   it('reports a repo list that fails to load', async () => {
-    setup({ listRepos: () => Promise.reject(new Error('Bad credentials')) });
+    setup({ reposPage: () => Promise.reject(new Error('Bad credentials')) });
     tab('Rows');
     fireEvent.click(screen.getByRole('button', { name: 'Add a GitHub row' }));
     expect(await screen.findByRole('alert')).toHaveTextContent(
@@ -54,6 +38,7 @@ describe('editor sections', () => {
         id: 'group-prod',
         label: 'Production',
         memberIds: ['prod'],
+        settings: {},
         stageRules: {},
       },
     ]);
@@ -69,7 +54,7 @@ describe('editor sections', () => {
     expect(latest.current.stages.map((s) => s.id)).toEqual(['prod', 'dev']);
   });
 
-  it('customises a source rule and edits what it reads, and the status sets', () => {
+  it('customises a source rule and edits what it reads, and the status set in the settings', () => {
     const latest = setup();
     tab('Sources');
     fireEvent.click(screen.getAllByRole('button', { name: 'Customise' })[0]);
@@ -85,8 +70,16 @@ describe('editor sections', () => {
       screen.getByText('3 requests per repo per poll'),
     ).toBeInTheDocument();
 
-    tab('Statuses');
-    choose(screen.getByLabelText('GitHub status set'), 'GitHub single job');
-    expect(latest.current.statusSets.github).toBe(PRESET_IDS.githubSingleJob);
+    tab('General');
+    expand('Settings');
+    choose(
+      screen.getByRole('combobox', {
+        name: 'GitHub status set for Dashboard Board',
+      }),
+      'GitHub single job',
+    );
+    expect(latest.current.settings.statusSets?.github).toBe(
+      PRESET_IDS.githubSingleJob,
+    );
   });
 });

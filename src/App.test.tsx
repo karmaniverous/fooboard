@@ -1,6 +1,7 @@
 /**
  * Smoke test for the app shell: each route renders inside the shared
- * header and footer (board and spike pages once they have loaded).
+ * header and footer (board pages once they have loaded); the removed
+ * spike pages are gone.
  *
  * @module
  */
@@ -24,8 +25,6 @@ beforeAll(async () => {
   await Promise.all([
     import('@/pages/DashboardPage'),
     import('@/pages/DemoPage'),
-    import('@/pages/spike/AmplifySpikePage'),
-    import('@/pages/spike/GithubSpikePage'),
   ]);
 }, PAGE_LOAD_MS);
 
@@ -40,12 +39,20 @@ function renderAt(path: string): void {
 }
 
 describe('App', () => {
+  it.each(['/spike/amplify', '/spike/github'])(
+    'no longer serves the browser spike at %s',
+    async (path) => {
+      renderAt(path);
+      expect(await screen.findByRole('contentinfo')).toBeInTheDocument();
+      expect(screen.queryByText(/browser spike/i)).toBeNull();
+      expect(screen.getByRole('main')).toBeEmptyDOMElement();
+    },
+  );
+
   it.each([
     ['/', 'No dashboards yet'],
     ['/demo', 'Acme platform (demo)'],
     ['/d/missing', 'Dashboard not found'],
-    ['/spike/amplify', 'Amplify browser spike'],
-    ['/spike/github', 'GitHub browser spike'],
   ])('renders %s inside the shell', async (path, heading) => {
     renderAt(path);
     // Hidden measuring copies (aria-hidden) are not part of the page.

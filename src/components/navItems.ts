@@ -61,12 +61,7 @@ export type NavItem = {
 } & (
   | { kind: 'link'; href: string }
   | { kind: 'route'; to: string }
-  | {
-      kind: 'action';
-      onSelect?: () => void;
-      /** Shown but not usable yet (Import until PR E). */
-      disabled?: boolean;
-    }
+  | { kind: 'action'; onSelect: () => void }
   | {
       kind: 'choice';
       /** The choice's name (the menu's radio group). */
@@ -94,12 +89,33 @@ const THEME_LABEL: Record<ThemeChoice, string> = {
 
 const THEME_ICON = { system: Monitor, light: Sun, dark: Moon } as const;
 
-export const NavContext = createContext<{ openShare: () => void } | null>(null);
+/** The app's dialogs, opened from the navigation (`AppNavProvider`). */
+export interface NavDialogs {
+  openShare: () => void;
+  /** The import dialog, for a file (spec.md §3.8). */
+  openImport: () => void;
+  /** The *Reset* confirmation (spec.md §3.9). */
+  openReset: () => void;
+  /** What's new (spec.md C-20, §3.10); opening it marks the newest
+   * release seen. */
+  openWhatsNew: () => void;
+  /** Whether this browser hasn't seen the newest release's What's new
+   * (the menu's dot). */
+  whatsNewUnseen: boolean;
+}
+
+export const NavContext = createContext<NavDialogs | null>(null);
+
+/** Open the app's dialogs; throws outside `AppNavProvider`. */
+export function useNavDialogs(): NavDialogs {
+  const nav = useContext(NavContext);
+  if (!nav) throw new Error('the app navigation needs AppNavProvider');
+  return nav;
+}
 
 /** The navigation items in their C-19 order, legal ones last. */
 export function useNavItems(): NavItem[] {
-  const nav = useContext(NavContext);
-  if (!nav) throw new Error('useNavItems must be used inside AppNavProvider');
+  const nav = useNavDialogs();
   const { theme, setTheme } = useTheme();
   return [
     {
@@ -150,9 +166,9 @@ export function useNavItems(): NavItem[] {
     {
       id: 'import',
       kind: 'action',
-      label: 'Import (coming soon)',
+      label: 'Import',
       Icon: Import,
-      disabled: true,
+      onSelect: nav.openImport,
     },
     {
       id: 'github',

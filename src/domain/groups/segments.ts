@@ -7,7 +7,7 @@
  *
  * @module
  */
-import type { Group } from '@/domain/config/groups';
+import type { GroupShape } from '@/domain/config/groups';
 
 import { memberIndex } from './arrange';
 
@@ -20,7 +20,7 @@ export interface GroupSegment<G> {
 }
 
 /** Segment `itemIds`, in order, by the group (if any) each belongs to. */
-export function groupSegments<G extends Group>(
+export function groupSegments<G extends GroupShape>(
   itemIds: readonly string[],
   groups: readonly G[],
 ): GroupSegment<G>[] {

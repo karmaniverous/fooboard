@@ -15,19 +15,10 @@ import {
   duplicateDashboard,
   removeRow,
   removeStage,
-  repoFromUrl,
+  rowFromApp,
   rowFromRepo,
   uniqueId,
 } from './edit';
-
-describe('repoFromUrl', () => {
-  it('reads owner/name from a GitHub URL only', () => {
-    expect(repoFromUrl('https://github.com/acme/web.git')).toBe('acme/web');
-    expect(repoFromUrl('https://github.com/acme/web/')).toBe('acme/web');
-    expect(repoFromUrl('https://gitlab.com/acme/web')).toBeUndefined();
-    expect(repoFromUrl(undefined)).toBeUndefined();
-  });
-});
 
 describe('removing rows and stages', () => {
   const d = DashboardSchema.parse({
@@ -52,26 +43,26 @@ describe('removing rows and stages', () => {
     expect(removeRow(d, 'r')).toMatchObject({ rows: [], rowGroups: [] });
     const s = DashboardSchema.parse(removeStage(d, 'a'));
     expect(s.stages).toEqual([
-      { id: 'b', name: 'b', rules: branchRules('dev') },
+      { id: 'b', name: 'b', rules: branchRules('dev'), settings: {} },
     ]);
     expect(s.columnGroups).toEqual([]);
     expect(s.rowGroups[0]?.stageRules).toEqual({});
   });
 
-  it("drops a row's status-set choice for the removed stage, so the dashboard still saves", () => {
+  it("drops a row's settings for the removed stage's cell, so the dashboard still saves", () => {
     const chosen = DashboardSchema.parse({
       ...d,
       rows: d.rows.map((r) => ({
         ...r,
-        cellStatusSets: {
-          a: PRESET_IDS.githubSingleJob,
-          b: PRESET_IDS.githubSingleJob,
+        cellSettings: {
+          a: { statusSets: { github: PRESET_IDS.githubSingleJob } },
+          b: { statusSets: { github: PRESET_IDS.githubSingleJob } },
         },
       })),
     });
     const s = DashboardSchema.parse(removeStage(chosen, 'a'));
-    expect(s.rows[0]?.cellStatusSets).toEqual({
-      b: PRESET_IDS.githubSingleJob,
+    expect(s.rows[0]?.cellSettings).toEqual({
+      b: { statusSets: { github: PRESET_IDS.githubSingleJob } },
     });
   });
 });
@@ -85,6 +76,37 @@ describe('uniqueId and rowFromRepo', () => {
       id: 'api-core',
       repo: 'acme/api-core',
       displayName: 'api-core',
+      settings: {},
+    });
+    expect(rowFromRepo('acme/api-core', d, 'tok').settings).toEqual({
+      githubToken: 'tok',
+    });
+    const app = { appId: 'a1', name: 'site', region: 'us-east-1' };
+    expect(
+      rowFromApp(app, d, { credentialId: 'k1', pinned: true }).pinnedApps,
+    ).toEqual([{ region: 'us-east-1', appId: 'a1', credentialId: 'k1' }]);
+    expect(
+      rowFromApp(app, d, { repo: 'acme/site', pinned: true }),
+    ).toMatchObject({
+      repo: 'acme/site',
+      pinnedApps: [{ region: 'us-east-1', appId: 'a1' }],
+      settings: {},
+    });
+    expect(rowFromApp(app, d, { pinned: false }).pinnedApps).toEqual([
+      { region: 'us-east-1', appId: 'a1' },
+    ]);
+    // The only app building its repo: found by repo, not pinned.
+    expect(
+      rowFromApp(app, d, {
+        credentialId: 'k1',
+        repo: 'acme/site',
+        pinned: false,
+        awsKey: 'k1',
+      }),
+    ).toMatchObject({
+      repo: 'acme/site',
+      pinnedApps: [],
+      settings: { awsKey: 'k1' },
     });
   });
 });
@@ -95,14 +117,15 @@ describe('duplicateDashboard', () => {
       id: 'd',
       name: 'D',
       credentials: [{ id: 'c', kind: 'github', label: 'gh' }],
-      defaultCredentials: { github: 'c' },
+      settings: { githubToken: 'c' },
       rows: [
         {
           type: 'github',
           id: 'r',
           repo: 'o/r',
           displayName: 'r',
-          credentialId: 'c',
+          settings: { githubToken: 'c' },
+          cellSettings: { s: { githubToken: 'c' } },
           stageRules: { s: branchRule('rc/*') },
         },
       ],
@@ -112,7 +135,7 @@ describe('duplicateDashboard', () => {
           id: 'g',
           memberIds: ['r'],
           stageRules: { s: branchRules('release/*') },
-          defaultCredentials: { github: 'c' },
+          settings: { githubToken: 'c' },
         },
       ],
     });
@@ -121,10 +144,14 @@ describe('duplicateDashboard', () => {
     );
     expect(copy).toMatchObject({ id: 'd2', name: 'D copy' });
     expect(JSON.stringify(copy)).not.toMatch(/"c"/);
-    expect(copy.defaultCredentials.github).toBe('c-new');
+    expect(copy.settings.githubToken).toBe('c-new');
     expect(copy.rowGroups[0]).toMatchObject({
       stageRules: { s: branchRules('release/*') },
-      defaultCredentials: { github: 'c-new' },
+      settings: { githubToken: 'c-new' },
+    });
+    expect(copy.rows[0]).toMatchObject({
+      settings: { githubToken: 'c-new' },
+      cellSettings: { s: { githubToken: 'c-new' } },
     });
     expect(copy.rows[0]?.stageRules).toEqual({ s: branchRule('rc/*') });
     expect(d.credentials[0]?.id).toBe('c');

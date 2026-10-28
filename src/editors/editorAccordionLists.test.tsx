@@ -7,28 +7,23 @@
  *
  * @module
  */
-import { fireEvent, render, screen, within } from '@testing-library/react';
+import { fireEvent, screen, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
+
+const render = envRender();
 
 import { DashboardSchema } from '@/domain/config/dashboard';
 import { branchRules } from '@/domain/config/placement';
 import { RESERVED_KEYS } from '@/domain/model/keys';
-import type { EngineProviders } from '@/engine';
-import { expand, itemTrigger } from '@/test/openItem';
+import { envRender } from '@/test/envRender';
+import { focusElement } from '@/test/focus';
+import { expand, isOpen, itemTrigger } from '@/test/openItem';
 
 import { DashboardEditor } from './DashboardEditor';
 import type { EditorDraft } from './draft';
 import { setup, tab } from './editorSectionsHarness';
 import { customiseSource } from './sources/customSource';
 import { UnknownRunsList } from './statuses/UnknownRunsList';
-
-const isOpen = (name: string) =>
-  itemTrigger(name).getAttribute('aria-expanded') === 'true';
-
-const providers: EngineProviders = {
-  github: () => undefined,
-  amplify: () => undefined,
-};
 
 const board = customiseSource(
   DashboardSchema.parse({
@@ -52,7 +47,6 @@ const open = (draft: EditorDraft) =>
   render(
     <DashboardEditor
       dashboard={board}
-      providers={providers}
       draft={draft}
       onChange={() => undefined}
     />,
@@ -67,7 +61,7 @@ describe('headers', () => {
     expect(trigger).toHaveAttribute('aria-expanded', 'false');
     // A native button: Enter and Space click it, opening the item and
     // tying the header to its body.
-    trigger.focus();
+    focusElement(trigger);
     expect(trigger).toHaveFocus();
     fireEvent.click(trigger);
     expect(trigger).toHaveAttribute('aria-expanded', 'true');
@@ -100,7 +94,9 @@ describe('the editor opened on a fix', () => {
   it("opens a row group's settings in its member's row", () => {
     open({ tab: 'Rows', focus: ['rowGroup:g:record', 'rowGroup:g'] });
     expect(isOpen('api')).toBe(true);
-    expect(screen.getByLabelText('GitHub token for Back')).toBeVisible();
+    expect(
+      screen.getByRole('combobox', { name: 'GitHub token for Row group Back' }),
+    ).toBeVisible();
   });
 });
 

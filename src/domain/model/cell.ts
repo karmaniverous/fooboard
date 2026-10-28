@@ -16,7 +16,13 @@ import { evaluateRule } from '@/domain/rules/check';
 import type { Rule } from '@/domain/rules/schema';
 
 import { RECORD_KEYS } from './keys';
-import { compareOrder, hasItems, itemsOf, type RecordDoc } from './translate';
+import {
+  compareOrder,
+  hasItems,
+  itemsOf,
+  orderOf,
+  type RecordDoc,
+} from './translate';
 
 /** A path naming items, raw data or a descendant segment, so it can't be
  * judged before items are read. */
@@ -107,13 +113,13 @@ export function placeCell(
 ): PlacedRecord | undefined {
   let best: RecordDoc | undefined;
   for (const record of records) {
-    if ((record[rules.order] ?? null) === null) continue;
+    if (orderOf(record, rules.order) === null) continue;
     if (!placed(record, rules)) continue;
     const kept = counted(record, rules.items, rules.set.items);
     if (!kept) continue;
     if (
       !best ||
-      compareOrder(kept[rules.order] ?? null, best[rules.order] ?? null) > 0
+      compareOrder(orderOf(kept, rules.order), orderOf(best, rules.order)) > 0
     )
       best = kept;
   }

@@ -7,7 +7,7 @@
  *
  * @module
  */
-import { fireEvent, render, screen, within } from '@testing-library/react';
+import { fireEvent, screen, within } from '@testing-library/react';
 import { useState } from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { describe, expect, it } from 'vitest';
@@ -15,12 +15,12 @@ import { describe, expect, it } from 'vitest';
 import { type Dashboard, DashboardSchema } from '@/domain/config/dashboard';
 import { branchRules } from '@/domain/config/placement';
 import { branchRule } from '@/domain/rules/branch';
-import type { EngineProviders } from '@/engine';
 import { createAppStores } from '@/storage';
 import { memoryStorage } from '@/storage/keyValue';
 import { StoresContext } from '@/storage/storesContext';
 import { choose, optionsOf } from '@/test/choose';
-import { fakeGitHubReader, ghBranch } from '@/test/fakeReaders';
+import { envRender } from '@/test/envRender';
+import { fakeGitHubApi, fetched, ghBranch } from '@/test/fakeReaders';
 import { keyboardDrag } from '@/test/keyboardDrag';
 import { expand } from '@/test/openItem';
 
@@ -34,7 +34,7 @@ const start = DashboardSchema.parse({
     { id: 'org', kind: 'github', label: 'org' },
     { id: 'team', kind: 'github', label: 'team' },
   ],
-  defaultCredentials: { github: 'org' },
+  settings: { githubToken: 'org' },
   rows: [
     { type: 'github', id: 'api', repo: 'acme/api', displayName: 'api' },
     { type: 'github', id: 'web', repo: 'acme/web', displayName: 'web' },
@@ -45,13 +45,14 @@ const start = DashboardSchema.parse({
   ],
 });
 
-const reader = fakeGitHubReader({
-  listBranches: () => Promise.resolve([ghBranch('main'), ghBranch('rc/1')]),
+const reader = fakeGitHubApi({
+  branchesPage: () =>
+    Promise.resolve(fetched([ghBranch('main'), ghBranch('rc/1')])),
 });
-const providers: EngineProviders = {
+const render = envRender({
   github: () => reader,
   amplify: () => undefined,
-};
+});
 
 function setup(initial: Dashboard = start, draft?: EditorDraft) {
   const latest = { current: initial };
@@ -60,7 +61,6 @@ function setup(initial: Dashboard = start, draft?: EditorDraft) {
     return (
       <DashboardEditor
         dashboard={d}
-        providers={providers}
         draft={draft}
         onChange={(next) => {
           latest.current = next;
@@ -103,20 +103,26 @@ describe('row groups in the editor', () => {
     expand('api');
     choose(screen.getByLabelText('Group of api'), 'New group from api');
     fireEvent.click(screen.getByRole('button', { name: /^Group settings/ }));
-    choose(screen.getByLabelText('GitHub token for this group'), 'team');
+    choose(
+      screen.getByRole('combobox', { name: 'GitHub token for Row group api' }),
+      'team',
+    );
     commit('prod branch override for this group', 'release/*');
     expect(latest.current.rowGroups).toEqual([
       {
         id: 'group-api',
         memberIds: ['api'],
+        settings: { githubToken: 'team' },
         stageRules: { prod: branchRules('release/*') },
         rowRules: {},
-        defaultCredentials: { github: 'team' },
-        statusSets: {},
       },
     ]);
-    const token = screen.getByLabelText('GitHub token for api');
-    expect(optionsOf(token)[0]).toBe('Group default (team)');
+    fireEvent.click(screen.getAllByRole('button', { name: /^Settings/ })[0]);
+    const token = screen.getByRole('combobox', {
+      name: 'GitHub token for Row api',
+    });
+    expect(optionsOf(token)[0]).toBe('Row group default (team)');
+    expect(screen.getByText('from api')).toBeInTheDocument();
     openOverrides();
     expect(
       screen.getByLabelText('prod branch override for api'),

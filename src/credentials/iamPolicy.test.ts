@@ -8,10 +8,7 @@
  */
 import { describe, expect, it } from 'vitest';
 
-import { DashboardSchema } from '@/domain/config/dashboard';
-import { branchRules } from '@/domain/config/placement';
-
-import { amplifyPolicy, dashboardApps } from './iamPolicy';
+import { amplifyPolicy, policyApps } from './iamPolicy';
 
 const resourceOf = (policy: ReturnType<typeof amplifyPolicy>, action: string) =>
   policy.Statement.find((s) => s.Action.includes(action))?.Resource;
@@ -77,35 +74,35 @@ describe('amplifyPolicy', () => {
   });
 });
 
-describe('dashboardApps', () => {
-  it('collects each Amplify app once, skipping GitHub rows and invalid sources', () => {
-    const dashboard = DashboardSchema.parse({
-      id: 'd',
-      name: 'd',
-      credentials: [{ id: 'k', kind: 'aws', label: 'k' }],
-      rows: [
-        { type: 'github', id: 'api', repo: 'acme/api', displayName: 'api' },
-        {
-          type: 'amplify',
-          id: 'web',
-          displayName: 'web',
-          repo: 'acme/web',
-          sources: [
-            { region: 'us-east-1', appId: 'd1' },
-            { region: 'eu-west-1', appId: 'd2', credentialId: 'k' },
-            { region: 'us-east-1', appId: 'd1' },
-            { region: 'us-east-1', appId: '*' },
-          ],
-        },
-      ],
-      stages: [{ id: 'dev', name: 'dev', rules: branchRules('dev') }],
-    });
-    expect(dashboardApps(dashboard)).toEqual({
+describe('narrowed policies', () => {
+  it('grants only ListApps when the board reads no app with the key', () => {
+    expect(amplifyPolicy([], true).Statement.map((s) => s.Sid)).toEqual([
+      'FooboardListApps',
+    ]);
+  });
+
+  it('narrows to the apps when there are some, narrowed or not', () => {
+    const apps = [{ region: 'us-east-1', appId: 'd1' }];
+    expect(amplifyPolicy(apps, true)).toEqual(amplifyPolicy(apps));
+  });
+});
+
+describe('policyApps', () => {
+  it('keeps each valid app once and counts the invalid ones', () => {
+    expect(
+      policyApps([
+        { region: 'us-east-1', appId: 'd1' },
+        { region: 'eu-west-1', appId: 'd2' },
+        { region: 'us-east-1', appId: 'd1' },
+        { region: 'us-east-1', appId: '*' },
+        { region: 'nowhere', appId: 'd3' },
+      ]),
+    ).toEqual({
       apps: [
         { region: 'us-east-1', appId: 'd1' },
         { region: 'eu-west-1', appId: 'd2' },
       ],
-      skipped: 1,
+      skipped: 2,
     });
   });
 });

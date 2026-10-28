@@ -7,16 +7,23 @@
  *
  * @module
  */
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, screen } from '@testing-library/react';
 import { useState } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 
 import { type Dashboard, DashboardSchema } from '@/domain/config/dashboard';
-import type { EngineProviders } from '@/engine';
 import { choose, optionsOf } from '@/test/choose';
-import { fakeAmplifyReader, fakeGitHubReader } from '@/test/fakeReaders';
+import { envRender } from '@/test/envRender';
+import {
+  fakeAmplifyReader,
+  fakeGitHubApi,
+  fetched,
+  ghRepo,
+} from '@/test/fakeReaders';
+import { expand } from '@/test/openItem';
 
 import { CredentialSelect } from './CredentialSelect';
+import { dashboardDefault, type Unset } from './dashboardDefault';
 import { RowsEditor } from './RowsEditor';
 
 const board = (extra: object = {}) =>
@@ -27,27 +34,18 @@ const board = (extra: object = {}) =>
       { id: 'gh-b', kind: 'github', label: 'beta' },
       { id: 'gh-a', kind: 'github', label: 'alpha' },
     ],
-    defaultCredentials: { github: 'gh-a' },
+    settings: { githubToken: 'gh-a' },
     ...extra,
   });
 
 /** Each token sees one repo named after it. */
-const providers: EngineProviders = {
+const render = envRender({
   github: (id) =>
-    fakeGitHubReader({
-      listRepos: () =>
-        Promise.resolve([
-          {
-            full_name: `acme/${id}-repo`,
-            name: `${id}-repo`,
-            private: false,
-            html_url: '',
-            owner: { login: 'acme' },
-          },
-        ]),
+    fakeGitHubApi({
+      reposPage: () => Promise.resolve(fetched([ghRepo(`acme/${id}-repo`)])),
     }),
-  amplify: () => () => fakeAmplifyReader({}),
-};
+  amplify: () => fakeAmplifyReader({}),
+});
 
 /** The rows editor over a draft it updates; `onChange` sees each edit. */
 function renderRows(dashboard: Dashboard) {
@@ -57,7 +55,6 @@ function renderRows(dashboard: Dashboard) {
     return (
       <RowsEditor
         dashboard={d}
-        providers={providers}
         onChange={(next) => {
           onChange(next);
           setD(next);
@@ -86,7 +83,7 @@ describe('RepoPicker', () => {
     expect(screen.queryByRole('button', { name: 'acme/gh-a-repo' })).toBeNull();
     expect(onChange.mock.lastCall?.[0].rows.at(-1)).toMatchObject({
       repo: 'acme/gh-b-repo',
-      credentialId: 'gh-b',
+      settings: { githubToken: 'gh-b' },
     });
   });
 
@@ -98,10 +95,14 @@ describe('RepoPicker', () => {
     );
     const row = onChange.mock.lastCall?.[0].rows.at(-1);
     expect(row).toMatchObject({ repo: 'acme/gh-a-repo' });
-    expect(row).not.toHaveProperty('credentialId');
+    expect(row?.settings).toEqual({});
+    expand('gh-a-repo');
+    fireEvent.click(screen.getAllByRole('button', { name: /^Settings/ })[0]);
     expect(
       shown(
-        screen.getByRole('combobox', { name: 'GitHub token for gh-a-repo' }),
+        screen.getByRole('combobox', {
+          name: 'GitHub token for Row gh-a-repo',
+        }),
       ),
     ).toBe('Dashboard default (alpha)');
   });
@@ -120,7 +121,7 @@ describe('RepoPicker', () => {
   });
 
   it('offers a token choice when tokens exist but no default is set', () => {
-    renderRows(board({ defaultCredentials: {} }));
+    renderRows(board({ settings: {} }));
     expect(screen.queryByText(/Add a GitHub token/)).toBeNull();
     expect(
       screen.getByRole('button', { name: 'Add a GitHub row' }),
@@ -128,7 +129,7 @@ describe('RepoPicker', () => {
   });
 
   it('asks for a token when the dashboard has none', () => {
-    renderRows(board({ credentials: [], defaultCredentials: {} }));
+    renderRows(board({ credentials: [], settings: {} }));
     expect(screen.getByText(/Add a GitHub token/)).toBeInTheDocument();
   });
 });
@@ -138,17 +139,14 @@ describe('RepoPicker', () => {
 const shown = (trigger: HTMLElement) =>
   trigger.querySelector(':scope > span > span:first-child')?.textContent;
 
-function renderChoice(
-  value: string | undefined,
-  inherited?: { from: 'group' | 'dashboard'; id?: string },
-) {
+function renderChoice(value: string | undefined, unset: Unset) {
   render(
     <CredentialSelect
       dashboard={board()}
       kind="github"
       value={value}
       onChange={() => undefined}
-      inherited={inherited}
+      unset={unset}
       label="GitHub token for api"
     />,
   );
@@ -156,21 +154,25 @@ function renderChoice(
 }
 
 describe('CredentialSelect', () => {
-  it('lists the inherited default once, named after its level', () => {
-    expect(optionsOf(renderChoice(undefined))).toEqual([
-      'Dashboard default (alpha)',
-      'beta',
-    ]);
-  });
-
-  it('names a group default', () => {
+  it("lists the unset option's credential once, as the unset option", () => {
     expect(
-      optionsOf(renderChoice(undefined, { from: 'group', id: 'gh-b' })),
-    ).toEqual(['Group default (beta)', 'alpha']);
+      optionsOf(renderChoice(undefined, dashboardDefault(board(), 'github'))),
+    ).toEqual(['Dashboard default (alpha)', 'beta']);
   });
 
-  it('still shows a row pinned to the token that is now the default', () => {
-    const trigger = renderChoice('gh-a');
+  it('names no default when the dashboard sets none', () => {
+    expect(
+      optionsOf(
+        renderChoice(
+          undefined,
+          dashboardDefault(board({ settings: {} }), 'github'),
+        ),
+      ),
+    ).toEqual(['None (no default is set)', 'alpha', 'beta']);
+  });
+
+  it("still lists the unset option's credential when it is the value", () => {
+    const trigger = renderChoice('gh-a', dashboardDefault(board(), 'github'));
     expect(shown(trigger)).toBe('alpha');
     expect(optionsOf(trigger)).toEqual([
       'Dashboard default (alpha)',
@@ -180,6 +182,8 @@ describe('CredentialSelect', () => {
   });
 
   it('shows a value naming no credential instead of a blank choice', () => {
-    expect(shown(renderChoice('gone'))).toBe('gone (not on this dashboard)');
+    expect(shown(renderChoice('gone', { label: 'None' }))).toBe(
+      'gone (not on this dashboard)',
+    );
   });
 });

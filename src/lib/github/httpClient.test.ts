@@ -1,12 +1,15 @@
 /**
- * Tests for `GitHubHttpClient`: ETag conditional requests (200 then 304
- * returns the cached body), rate-limit/token-expiry header tracking,
- * `Retry-After` pausing the queue, and 401/403/404 error mapping. Uses an
- * injected fake `fetch`; no real network.
+ * Tests for `GitHubHttpClient`: a conditional GET with the caller's ETag
+ * (a 304 reports not-modified; the caller keeps the data), the budget
+ * reported from every response's headers, redirects, and
+ * the typed errors (401, 403, rate limits, 404, 5xx, network, bad JSON).
+ * Uses an injected fake `fetch`; no real network.
  *
  * @module
  */
 import { describe, expect, it, vi } from 'vitest';
+
+import { response } from '@/test/fetchResponse';
 
 import {
   GitHubAuthError,
@@ -19,268 +22,161 @@ import {
 } from './errors';
 import { type FetchLike, GitHubHttpClient } from './httpClient';
 
-/** Statuses the Fetch `Response` constructor forbids a body on (RFC 9110
- * §6.4.1: 304, plus the informational/no-content statuses). */
-const NULL_BODY_STATUSES = new Set([204, 205, 304]);
+const once =
+  (res: Response | (() => Promise<Response>)): FetchLike =>
+  () =>
+    typeof res === 'function' ? res() : Promise.resolve(res);
 
-function jsonResponse(
-  status: number,
-  body: unknown,
-  headers: Record<string, string> = {},
-): Response {
-  const hasBody = body !== undefined && !NULL_BODY_STATUSES.has(status);
-  return new Response(hasBody ? JSON.stringify(body) : null, {
-    status,
-    headers,
-  });
-}
+const URL = 'https://api.github.com/x';
 
 describe('GitHubHttpClient', () => {
-  it('sends If-None-Match and returns the cached body on a 304', async () => {
-    const calls: { url: string; headers: Record<string, string> }[] = [];
-    const fetchImpl: FetchLike = (url, init) => {
-      calls.push({ url, headers: init.headers });
-      if (calls.length === 1) {
-        return Promise.resolve(
-          jsonResponse(200, { hello: 'world' }, { etag: '"abc"' }),
-        );
-      }
-      return Promise.resolve(jsonResponse(304, undefined));
-    };
-    const client = new GitHubHttpClient({ token: 't', fetchImpl });
-
-    const first = await client.getJson('https://x/a');
-    const second = await client.getJson('https://x/a');
-
-    expect(first.data).toEqual({ hello: 'world' });
-    expect(second.data).toEqual({ hello: 'world' });
-    expect(calls[0].headers['If-None-Match']).toBeUndefined();
-    expect(calls[1].headers['If-None-Match']).toBe('"abc"');
-  });
-
-  it('tracks rate-limit headers as the budget', async () => {
-    const fetchImpl: FetchLike = () =>
-      Promise.resolve(
-        jsonResponse(
-          200,
-          {},
-          {
-            'x-ratelimit-limit': '5000',
-            'x-ratelimit-remaining': '4999',
-            'x-ratelimit-reset': '123',
-          },
-        ),
-      );
-    const client = new GitHubHttpClient({ token: 't', fetchImpl });
-    expect(client.getBudget()).toBeUndefined();
-    await client.getJson('https://x/a');
-    expect(client.getBudget()).toEqual({
-      limit: 5000,
-      remaining: 4999,
-      reset: 123,
-      used: 1,
-      status: 'ok',
-    });
-  });
-
-  it('tracks the token-expiration header', async () => {
-    const fetchImpl: FetchLike = () =>
-      Promise.resolve(
-        jsonResponse(
-          200,
-          {},
-          { 'github-authentication-token-expiration': '2026-12-01' },
-        ),
-      );
-    const client = new GitHubHttpClient({ token: 't', fetchImpl });
-    expect(client.getTokenExpiration()).toBeUndefined();
-    await client.getJson('https://x/a');
-    expect(client.getTokenExpiration()).toBe('2026-12-01');
-  });
-
-  it('maps 401 to GitHubAuthError', async () => {
-    const fetchImpl: FetchLike = () =>
-      Promise.resolve(jsonResponse(401, { message: 'Bad credentials' }));
-    const client = new GitHubHttpClient({ token: 't', fetchImpl });
-    await expect(client.getJson('https://x/a')).rejects.toBeInstanceOf(
-      GitHubAuthError,
-    );
-  });
-
-  it('maps 404 to GitHubNotFoundError', async () => {
-    const fetchImpl: FetchLike = () =>
-      Promise.resolve(jsonResponse(404, { message: 'Not Found' }));
-    const client = new GitHubHttpClient({ token: 't', fetchImpl });
-    await expect(client.getJson('https://x/a')).rejects.toBeInstanceOf(
-      GitHubNotFoundError,
-    );
-  });
-
-  it('maps a plain 403 (no rate-limit signal) to GitHubForbiddenError', async () => {
-    const fetchImpl: FetchLike = () =>
-      Promise.resolve(
-        jsonResponse(
-          403,
-          { message: 'insufficient scope' },
-          { 'x-ratelimit-remaining': '10' },
-        ),
-      );
-    const client = new GitHubHttpClient({ token: 't', fetchImpl });
-    await expect(client.getJson('https://x/a')).rejects.toBeInstanceOf(
-      GitHubForbiddenError,
-    );
-  });
-
-  it('maps an exhausted 403 to RateLimitedError and pauses the queue', async () => {
-    vi.useFakeTimers();
-    vi.setSystemTime(0);
-    let calls = 0;
-    const fetchImpl: FetchLike = () => {
-      calls++;
-      if (calls === 1) {
-        return Promise.resolve(
-          jsonResponse(
-            403,
-            { message: 'rate limited' },
-            { 'retry-after': '30' },
-          ),
-        );
-      }
-      return Promise.resolve(jsonResponse(200, { ok: true }));
-    };
-    const client = new GitHubHttpClient({ token: 't', fetchImpl });
-
-    await expect(client.getJson('https://x/a')).rejects.toBeInstanceOf(
-      RateLimitedError,
-    );
-
-    const secondCall = client.getJson('https://x/b');
-    await vi.advanceTimersByTimeAsync(30_000);
-    const result = await secondCall;
-
-    expect(result.data).toEqual({ ok: true });
-    expect(calls).toBe(2);
-    vi.useRealTimers();
-  });
-
-  it('maps a network failure to GitHubNetworkError without leaking the token', async () => {
-    const fetchImpl: FetchLike = () =>
-      Promise.reject(new TypeError('network down'));
-    const client = new GitHubHttpClient({
-      token: 'secret-token-value',
-      fetchImpl,
-    });
-    await expect(client.getJson('https://x/a')).rejects.toSatisfy(
-      (err: unknown) => {
-        expect(err).toBeInstanceOf(GitHubNetworkError);
-        expect(err instanceof Error ? err.message : String(err)).not.toContain(
-          'secret-token-value',
-        );
-        return true;
-      },
-    );
-  });
-
-  it('maps an unhandled status to GitHubHttpError', async () => {
-    const fetchImpl: FetchLike = () =>
-      Promise.resolve(jsonResponse(500, { message: 'boom' }));
-    const client = new GitHubHttpClient({ token: 't', fetchImpl });
-    await expect(client.getJson('https://x/a')).rejects.toBeInstanceOf(
-      GitHubHttpError,
-    );
-  });
-
-  it('never includes the token in the Authorization header beyond the bearer value sent, and never in errors', async () => {
-    const seenHeaders: Record<string, string>[] = [];
+  it('sends If-None-Match only when given an ETag', async () => {
+    const seen: Record<string, string>[] = [];
     const fetchImpl: FetchLike = (_url, init) => {
-      seenHeaders.push(init.headers);
-      return Promise.resolve(jsonResponse(404, {}));
+      seen.push(init.headers);
+      return Promise.resolve(response(200, { a: 1 }, { etag: '"e1"' }));
     };
-    const client = new GitHubHttpClient({
-      token: 'secret-token-value',
-      fetchImpl,
+    const client = new GitHubHttpClient({ token: 't', fetchImpl });
+    const first = await client.get(URL);
+    await client.get(URL, '"e1"');
+    expect(first).toMatchObject({
+      notModified: false,
+      data: { a: 1 },
+      etag: '"e1"',
     });
-    const err = await client.getJson('https://x/a').catch((e: unknown) => e);
-    expect(seenHeaders[0].Authorization).toBe('Bearer secret-token-value');
-    expect(err instanceof Error ? err.message : String(err)).not.toContain(
-      'secret-token-value',
-    );
+    expect(seen[0]?.['If-None-Match']).toBeUndefined();
+    expect(seen[1]?.['If-None-Match']).toBe('"e1"');
+    expect(seen[0]?.Authorization).toBe('Bearer t');
   });
 
-  it('keeps the Link header when a 304 omits it', async () => {
-    const link = '<https://x/a?page=2>; rel="next"';
-    let n = 0;
-    const fetchImpl: FetchLike = () =>
-      Promise.resolve(
-        n++ === 0
-          ? jsonResponse(200, [1], { etag: '"e"', link })
-          : jsonResponse(304, undefined),
-      );
-    const client = new GitHubHttpClient({ token: 't', fetchImpl });
-    await client.getJson('https://x/a');
-    const revalidated = await client.getJson('https://x/a');
-    expect(revalidated.headers.get('link')).toBe(link);
-  });
-
-  it('treats a 403 secondary limit without headers as rate limited and pauses', async () => {
-    const fetchImpl = vi.fn<FetchLike>(() =>
-      Promise.resolve(
-        jsonResponse(
-          403,
-          { message: 'You have exceeded a secondary rate limit.' },
-          { 'x-ratelimit-remaining': '4000' },
-        ),
-      ),
-    );
-    const client = new GitHubHttpClient({ token: 't', fetchImpl });
-    const before = Date.now();
-    const err: unknown = await client
-      .getJson('https://x/a')
-      .catch((e: unknown) => e);
-    expect(err).toBeInstanceOf(RateLimitedError);
-    if (!(err instanceof RateLimitedError)) throw err;
-    expect(err.retryAt).toBeGreaterThanOrEqual(before + 60_000);
-  });
-
-  it('makes a queued request wait after a headerless 429', async () => {
-    vi.useFakeTimers();
-    try {
-      const fetchImpl = vi.fn<FetchLike>(() =>
-        Promise.resolve(jsonResponse(429, { message: 'slow down' })),
-      );
-      const client = new GitHubHttpClient({ token: 't', fetchImpl });
-      await expect(client.getJson('https://x/a')).rejects.toBeInstanceOf(
-        RateLimitedError,
-      );
-      void client.getJson('https://x/b').catch(() => undefined);
-      await vi.advanceTimersByTimeAsync(59_000);
-      expect(fetchImpl).toHaveBeenCalledTimes(1);
-      await vi.advanceTimersByTimeAsync(1_000);
-      expect(fetchImpl).toHaveBeenCalledTimes(2);
-    } finally {
-      vi.useRealTimers();
-    }
-  });
-
-  it('maps a failed body read to a network error', async () => {
-    const res = jsonResponse(200, {});
-    vi.spyOn(res, 'text').mockRejectedValue(new Error('reset'));
+  it('reports a 304 as not modified', async () => {
     const client = new GitHubHttpClient({
       token: 't',
-      fetchImpl: () => Promise.resolve(res),
+      fetchImpl: once(response(304, undefined)),
     });
-    await expect(client.getJson('https://x/a')).rejects.toBeInstanceOf(
+    expect(await client.get(URL, '"e1"')).toEqual({ notModified: true });
+  });
+
+  it('reports the budget from every response, errors included', async () => {
+    const onBudget = vi.fn();
+    const headers = {
+      'x-ratelimit-limit': '5000',
+      'x-ratelimit-remaining': '4999',
+      'x-ratelimit-reset': '123',
+      'x-ratelimit-used': '1',
+    };
+    const client = new GitHubHttpClient({
+      token: 't',
+      fetchImpl: once(response(404, {}, headers)),
+      onBudget,
+    });
+    await expect(client.get(URL)).rejects.toBeInstanceOf(GitHubNotFoundError);
+    expect(onBudget).toHaveBeenCalledWith(
+      expect.objectContaining({ limit: 5000, remaining: 4999, used: 1 }),
+    );
+  });
+
+  it('reports no budget when the headers are missing', async () => {
+    const onBudget = vi.fn();
+    const client = new GitHubHttpClient({
+      token: 't',
+      fetchImpl: once(response(200, {})),
+      onBudget,
+    });
+    await client.get(URL);
+    expect(onBudget).not.toHaveBeenCalled();
+  });
+
+  it('returns the Link header and whether fetch followed a redirect', async () => {
+    const res = response(200, [], { link: '<https://x?page=2>; rel="next"' });
+    Object.defineProperty(res, 'redirected', { value: true });
+    const client = new GitHubHttpClient({ token: 't', fetchImpl: once(res) });
+    expect(await client.get(URL)).toMatchObject({
+      link: '<https://x?page=2>; rel="next"',
+      redirected: true,
+    });
+  });
+
+  it.each([
+    [401, {}, {}, GitHubAuthError],
+    [404, {}, {}, GitHubNotFoundError],
+    [403, { message: 'Resource not accessible' }, {}, GitHubForbiddenError],
+    [
+      403,
+      {},
+      { 'x-ratelimit-remaining': '0', 'x-ratelimit-reset': '9' },
+      RateLimitedError,
+    ],
+    [
+      403,
+      { message: 'You have exceeded a secondary rate limit' },
+      {},
+      RateLimitedError,
+    ],
+    [429, {}, { 'retry-after': '30' }, RateLimitedError],
+    [502, {}, {}, GitHubHttpError],
+  ] as const)('maps %d to its error', async (status, body, headers, type) => {
+    const client = new GitHubHttpClient({
+      token: 't',
+      fetchImpl: once(response(status, body, headers)),
+    });
+    await expect(client.get(URL)).rejects.toBeInstanceOf(type);
+  });
+
+  it('gives a rate limit its retry time', async () => {
+    const client = new GitHubHttpClient({
+      token: 't',
+      fetchImpl: once(
+        response(
+          403,
+          {},
+          {
+            'x-ratelimit-remaining': '0',
+            'x-ratelimit-reset': '1000',
+          },
+        ),
+      ),
+    });
+    await expect(client.get(URL)).rejects.toMatchObject({
+      retryAt: 1_000_000,
+    });
+  });
+
+  it('maps a failed fetch or body read to a network error', async () => {
+    const failing = new GitHubHttpClient({
+      token: 't',
+      fetchImpl: () => Promise.reject(new TypeError('offline')),
+    });
+    await expect(failing.get(URL)).rejects.toBeInstanceOf(GitHubNetworkError);
+    const res = response(200, {});
+    Object.defineProperty(res, 'text', {
+      value: () => Promise.reject(new Error('reset')),
+    });
+    const unreadable = new GitHubHttpClient({
+      token: 't',
+      fetchImpl: once(res),
+    });
+    await expect(unreadable.get(URL)).rejects.toBeInstanceOf(
       GitHubNetworkError,
     );
   });
 
-  it('maps malformed JSON to a validation error', async () => {
+  it('maps a body that is not JSON to a validation error', async () => {
     const client = new GitHubHttpClient({
       token: 't',
-      fetchImpl: () => Promise.resolve(new Response('{oops', { status: 200 })),
+      fetchImpl: once(response(200, '<html>')),
     });
-    await expect(client.getJson('https://x/a')).rejects.toBeInstanceOf(
-      GitHubValidationError,
+    await expect(client.get(URL)).rejects.toBeInstanceOf(GitHubValidationError);
+  });
+
+  it('never puts the token in an error message', async () => {
+    const client = new GitHubHttpClient({
+      token: 'ghp_secret',
+      fetchImpl: once(response(401, {})),
+    });
+    await expect(client.get(URL)).rejects.toSatisfy(
+      (err: unknown) =>
+        err instanceof Error && !err.message.includes('ghp_secret'),
     );
   });
 });

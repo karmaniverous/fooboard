@@ -13,7 +13,6 @@ import { branchRule } from '@/domain/rules/branch';
 
 import {
   carriesSettings,
-  setRowGroupCredential,
   setRowGroupOverride,
   setRowOverride,
 } from './overrideEdit';
@@ -43,9 +42,15 @@ describe('override editing', () => {
   it("knows when a group's disappearance would lose settings", () => {
     const group = (d: typeof base) => d.rowGroups[0] ?? base.rowGroups[0];
     expect(carriesSettings(group(base))).toBe(false);
-    const withToken = setRowGroupCredential(base, 'g', 'github', 'tok');
-    expect(group(withToken).defaultCredentials.github).toBe('tok');
-    expect(carriesSettings(group(withToken))).toBe(true);
+    expect(
+      carriesSettings({ ...group(base), settings: { githubToken: 'tok' } }),
+    ).toBe(true);
+    expect(
+      carriesSettings({
+        ...group(base),
+        settings: { statusSets: { github: 'github-single-job' } },
+      }),
+    ).toBe(true);
     expect(
       carriesSettings(group(setRowGroupOverride(base, 'g', 'prod', 'x'))),
     ).toBe(true);

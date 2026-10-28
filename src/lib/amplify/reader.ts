@@ -1,10 +1,12 @@
 /**
  * Amplify read port: the read-only calls fooboard makes (spec.md C-6:
- * `ListApps`, `ListBranches`, `ListJobs`, `GetJob`) behind a narrow
- * interface, plus the AWS SDK adapter that implements it. Every call goes
- * through the credential's serial queue (one request in flight per
- * credential, shared with every region it reads) and is mapped to a typed
- * error. Callers depend on `AmplifyReader`, not on the SDK.
+ * `ListApps`, `ListBranches`, `ListJobs`) behind a narrow interface,
+ * plus the AWS SDK adapter that implements it. The SDK client sends each
+ * signed request through the transport's `fetch` (spec.md §3.14), so the
+ * demo's simulator answers it as AWS would. Every call is
+ * mapped to a typed error; the SDK makes one attempt (`maxAttempts: 1`), so
+ * retries and throttling follow the query layer's policy and limiter
+ * (spec.md §3.1). Callers depend on `AmplifyReader`, not on the SDK.
  *
  * @module
  */
@@ -12,21 +14,21 @@ import {
   AmplifyClient,
   type App,
   type Branch,
-  GetJobCommand,
-  type Job,
   type JobSummary,
   ListAppsCommand,
   ListBranchesCommand,
   ListJobsCommand,
 } from '@aws-sdk/client-amplify';
+import { FetchHttpHandler } from '@smithy/fetch-http-handler';
 
-import { SerialQueue } from '@/lib/queue/serialQueue';
+import { browserTransport } from '@/lib/transport';
 
-import { AmplifyThrottledError, toAmplifyError } from './errors';
+import { toAmplifyError } from './errors';
 
 /** Read-only access to one AWS account's Amplify apps in one region. */
 export interface AmplifyReader {
-  listApps(): Promise<App[]>;
+  /** `signal` aborts the request. */
+  listApps(signal?: AbortSignal): Promise<App[]>;
   listBranches(appId: string): Promise<Branch[]>;
   /** Newest jobs first, up to `maxResults`, following pages as needed. */
   listJobs(
@@ -34,11 +36,6 @@ export interface AmplifyReader {
     branchName: string,
     maxResults: number,
   ): Promise<JobSummary[]>;
-  getJob(
-    appId: string,
-    branchName: string,
-    jobId: string,
-  ): Promise<Job | undefined>;
 }
 
 /** The slice of `AmplifyClient` the reader uses (injectable for tests). */
@@ -51,9 +48,10 @@ export interface AmplifyReaderConfig {
   region: string;
   accessKeyId: string;
   secretAccessKey: string;
-  /** The credential's queue; pass the same one for every region. */
-  queue?: SerialQueue;
-  /** Defaults to a real `AmplifyClient`. */
+  /** Sends the SDK's signed requests (the transport's, spec.md §3.14);
+   * the browser's `fetch` unless given. */
+  fetch?: typeof fetch;
+  /** Defaults to a real `AmplifyClient` sending through `fetch`. */
   client?: AmplifySender;
 }
 
@@ -61,29 +59,34 @@ export interface AmplifyReaderConfig {
  * accept at most 50 (`ListApps` allows 100). */
 const PAGE_SIZE = 50;
 
+/** The SDK's attempts per call (spec.md §3.1): one, so its own retries
+ * (up to 3 by default, with their own back-off) never hold a limiter slot
+ * or bypass the query layer's retry policy. */
+const AMPLIFY_MAX_ATTEMPTS = 1;
+
 /** Create an `AmplifyReader` backed by the AWS SDK (SigV4, browser-safe). */
 export function createAmplifyReader({
   region,
   accessKeyId,
   secretAccessKey,
-  queue = new SerialQueue(),
+  fetch = browserTransport.fetch,
   client = new AmplifyClient({
     region,
     credentials: { accessKeyId, secretAccessKey },
+    maxAttempts: AMPLIFY_MAX_ATTEMPTS,
+    requestHandler: new FetchHttpHandler({ customFetch: fetch }),
   }),
 }: AmplifyReaderConfig): AmplifyReader {
-  const call = <T>(operation: string, task: () => Promise<T>): Promise<T> =>
-    queue.enqueue(async () => {
-      try {
-        return await task();
-      } catch (err) {
-        const mapped = toAmplifyError(err, operation);
-        if (mapped instanceof AmplifyThrottledError) {
-          queue.pauseUntil(Date.now() + mapped.retryAfterMs);
-        }
-        throw mapped;
-      }
-    });
+  const call = async <T>(
+    operation: string,
+    task: () => Promise<T>,
+  ): Promise<T> => {
+    try {
+      return await task();
+    } catch (err) {
+      throw toAmplifyError(err, operation);
+    }
+  };
 
   /** Follow `nextToken` until `limit` items or the last page. */
   async function paged<T>(
@@ -103,10 +106,11 @@ export function createAmplifyReader({
   }
 
   return {
-    listApps: () =>
+    listApps: (signal) =>
       paged('ListApps', async (nextToken) => {
         const res = await client.send(
           new ListAppsCommand({ maxResults: PAGE_SIZE, nextToken }),
+          { abortSignal: signal },
         );
         return { items: res.apps, next: res.nextToken };
       }),
@@ -133,12 +137,5 @@ export function createAmplifyReader({
         },
         maxResults,
       ),
-    getJob: (appId, branchName, jobId) =>
-      call('GetJob', async () => {
-        const res = await client.send(
-          new GetJobCommand({ appId, branchName, jobId }),
-        );
-        return res.job;
-      }),
   };
 }

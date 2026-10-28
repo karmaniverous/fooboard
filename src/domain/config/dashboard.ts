@@ -1,9 +1,10 @@
 /**
  * Zod schema for a dashboard (spec.md §3, §4.2): rows, stages, mapping
  * settings, status colors, row and column groups and credential
- * references. Rejects, as defensive integrity checks, a source-stage
- * cycle, duplicate group ids, and group members that are unknown, in two
- * groups or split apart (the editors prevent all of these before saving).
+ * references. Rejects, as defensive integrity checks, duplicate row,
+ * stage and group ids, a source-stage cycle, and group members that are
+ * unknown, in two groups or split apart (the editors prevent all of these
+ * before saving).
  *
  * @module
  */
@@ -15,23 +16,37 @@ import {
   SourceRefsSchema,
   sourceRuleReferenceIssues,
 } from '@/domain/model/sources';
+import { rowSettingsIssues } from '@/domain/settings/integrity';
 import { statusSetReferenceIssues } from '@/domain/statuses/resolve';
 
-import {
-  credentialReferenceIssues,
-  DefaultCredentialsSchema,
-} from './credentialRefs';
+import { credentialReferenceIssues } from './credentialRefs';
 import { CredentialRefSchema } from './credentials';
 import { findAnyCycle } from './cycle';
 import { ColumnGroupSchema, type Group, RowGroupSchema } from './groups';
 import { ProviderRowRulesSchema, ProviderRulesSchema } from './placement';
 import { RowSchema } from './row';
+import { DashboardSettingsSchema, defaultSettings } from './settings';
 import { StageSchema } from './stage';
-import {
-  DashboardStatusSetsSchema,
-  DEFAULT_STATUS_SET_IDS,
-  StatusSetSchema,
-} from './statusSets';
+import { StatusSetSchema } from './statusSets';
+
+type Issue = { message: string; path: (string | number)[] };
+
+/** Every row or stage whose id an earlier one already has: ids key cells,
+ * group members, overrides and source stages, so a repeat is ambiguous. */
+function duplicateIdIssues(
+  items: readonly { id: string }[],
+  key: 'rows' | 'stages',
+  noun: string,
+): Issue[] {
+  const seen = new Set<string>();
+  return items.flatMap(({ id }, index) => {
+    const repeated = seen.has(id);
+    seen.add(id);
+    return repeated
+      ? [{ message: `duplicate ${noun} id: ${id}`, path: [key, index, 'id'] }]
+      : [];
+  });
+}
 
 /** Groups on one axis must have distinct ids, and name existing items,
  * each in at most one group, in one unbroken run, so overrides and labels
@@ -41,12 +56,12 @@ function groupIssues(
   items: readonly { id: string }[],
   key: 'rowGroups' | 'columnGroups',
   noun: string,
-): { message: string; path: (string | number)[] }[] {
+): Issue[] {
   const position = new Map(items.map((item, i) => [item.id, i]));
   const owner = new Map<string, string>();
   const groupIds = new Set<string>();
   return groups.flatMap((g, gi) => {
-    const issues: { message: string; path: (string | number)[] }[] = [];
+    const issues: Issue[] = [];
     if (groupIds.has(g.id))
       issues.push({
         message: `duplicate group id: ${g.id}`,
@@ -97,12 +112,6 @@ export const DashboardSchema = z
     /** Column groups replacing dividers (spec.md C-14b). */
     columnGroups: z.array(ColumnGroupSchema).default(() => []),
     credentials: z.array(CredentialRefSchema).default(() => []),
-    /** Default GitHub token and AWS key; rows and sources may override. */
-    defaultCredentials: DefaultCredentialsSchema.default(() => ({})),
-    /** The status set per provider (A§4.3.6); levels below may override. */
-    statusSets: DashboardStatusSetsSchema.default(() => ({
-      ...DEFAULT_STATUS_SET_IDS,
-    })),
     /** The dashboard's own status sets (customised presets), so it stays
      * self-contained for sharing and export. */
     customStatusSets: z.array(StatusSetSchema).default(() => []),
@@ -113,10 +122,23 @@ export const DashboardSchema = z
     })),
     /** The dashboard's own source rules (customised built-ins). */
     customSourceRules: z.array(SourceRuleSchema).default(() => []),
+    /** The dashboard's settings (spec.md §3.11), beside requests in
+     * flight per credential, per platform (spec.md §3.2). */
+    settings: DashboardSettingsSchema.default(() => defaultSettings()),
   })
   .superRefine((dashboard, ctx) => {
+    // Duplicate stage ids would also let a cycle hide behind a later stage
+    // with the same id, so the cycle check runs only without them.
+    const duplicateStages = duplicateIdIssues(
+      dashboard.stages,
+      'stages',
+      'stage',
+    );
     for (const issue of [
+      ...duplicateIdIssues(dashboard.rows, 'rows', 'row'),
+      ...duplicateStages,
       ...credentialReferenceIssues(dashboard),
+      ...dashboard.rows.flatMap((row, index) => rowSettingsIssues(row, index)),
       ...statusSetReferenceIssues(dashboard),
       ...sourceRuleReferenceIssues(dashboard),
       ...groupIssues(dashboard.rowGroups, dashboard.rows, 'rowGroups', 'row'),
@@ -130,22 +152,7 @@ export const DashboardSchema = z
       ctx.addIssue({ code: 'custom', ...issue });
     }
 
-    // Duplicate ids make source references ambiguous and would let a cycle
-    // hide behind a later stage with the same id, so reject them first.
-    const seen = new Set<string>();
-    const duplicates = dashboard.stages.flatMap((stage, index) => {
-      const isDuplicate = seen.has(stage.id);
-      seen.add(stage.id);
-      return isDuplicate ? [{ id: stage.id, index }] : [];
-    });
-    for (const { id, index } of duplicates) {
-      ctx.addIssue({
-        code: 'custom',
-        message: `duplicate stage id: ${id}`,
-        path: ['stages', index, 'id'],
-      });
-    }
-    if (duplicates.length > 0) return;
+    if (duplicateStages.length > 0) return;
 
     const cycle = findAnyCycle(dashboard.stages);
     if (cycle) {

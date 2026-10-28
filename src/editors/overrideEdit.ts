@@ -7,7 +7,6 @@
  */
 import { omit } from 'radash';
 
-import type { CredentialKind } from '@/domain/config/credentials';
 import type { Dashboard } from '@/domain/config/dashboard';
 import type { RowGroup } from '@/domain/config/groups';
 import { ownOverride } from '@/domain/config/ownOverride';
@@ -16,6 +15,7 @@ import type { Provider } from '@/domain/config/providers';
 import { unlessAlways } from '@/domain/rules/always';
 import { branchOf, branchRule } from '@/domain/rules/branch';
 import type { Rule } from '@/domain/rules/schema';
+import { countSet } from '@/domain/settings/schema';
 
 /** `overrides` with `stageId` set to `value`, or cleared by `undefined`. */
 function withOverride<T>(
@@ -154,20 +154,11 @@ export const groupOverridePattern = (
     : undefined;
 };
 
-/** A row group's default credential of one kind (unset with `undefined`). */
-export const setRowGroupCredential = (
-  d: Dashboard,
-  groupId: string,
-  kind: CredentialKind,
-  credentialId: string | undefined,
-): Dashboard =>
-  updateRowGroup(d, groupId, (g) => ({
-    ...g,
-    defaultCredentials: { ...g.defaultCredentials, [kind]: credentialId },
-  }));
-
-/** Does a row group carry settings that are lost when it disappears? */
-export const carriesSettings = (g: RowGroup): boolean =>
+/** Does a group of either kind carry settings that are lost when it
+ * disappears: its settings, stage rules or (a row group's) row rules? */
+export const carriesSettings = (
+  g: Pick<RowGroup, 'settings'> & { stageRules: object; rowRules?: object },
+): boolean =>
   Object.keys(g.stageRules).length > 0 ||
-  Object.keys(g.rowRules).length > 0 ||
-  Boolean(g.defaultCredentials.github ?? g.defaultCredentials.aws);
+  Object.keys(g.rowRules ?? {}).length > 0 ||
+  countSet(g.settings) > 0;

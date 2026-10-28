@@ -11,8 +11,11 @@
  */
 import { createContext, useContext } from 'react';
 
+import type { Provider } from '@/domain/config/providers';
 import type { EditTarget } from '@/domain/problems/problem';
 import type { Check } from '@/domain/rules/schema';
+import type { SettingsPlace } from '@/domain/settings/places';
+import type { SettingField } from '@/domain/settings/schema';
 
 export const EDITOR_TABS = [
   'General',
@@ -22,6 +25,60 @@ export const EDITOR_TABS = [
   'Statuses',
 ] as const;
 export type EditorTab = (typeof EDITOR_TABS)[number];
+
+/** The editor item of a settings place: the dashboard's General tab, a
+ * group's or row's or stage's item, or a cell under its row's *Cell
+ * settings*. */
+export function placeKey(place: SettingsPlace): string {
+  switch (place.level) {
+    case 'dashboard':
+      return 'dashboard';
+    case 'rowGroup':
+    case 'columnGroup':
+      return `${place.level}:${place.groupId}`;
+    case 'row':
+      return `row:${place.rowId}`;
+    case 'column':
+      return `stage:${place.stageId}`;
+    case 'cell':
+      return `row:${place.rowId}:cells:${place.stageId}`;
+  }
+}
+
+/** The key of a place's settings editor. */
+export const settingsKey = (place: SettingsPlace): string =>
+  `${placeKey(place)}:settings`;
+
+/** The key of one entry of a place's settings editor. */
+export const settingKey = (
+  place: SettingsPlace,
+  field: SettingField,
+  source?: Provider,
+): string =>
+  `${settingsKey(place)}:${field}${source === undefined ? '' : `:${source}`}`;
+
+/** The editor items to open at a place's settings, most specific first:
+ * its settings editor, then the item holding it. */
+export const placeFocusKeys = (place: SettingsPlace): string[] => [
+  settingsKey(place),
+  ...(place.level === 'dashboard' ? [] : [placeKey(place)]),
+];
+
+/** The tab a place's settings are edited on (spec.md §3.11 *Where each
+ * level is edited*). */
+export function placeTab(place: SettingsPlace): EditorTab {
+  switch (place.level) {
+    case 'dashboard':
+      return 'General';
+    case 'column':
+    case 'columnGroup':
+      return 'Stages';
+    case 'rowGroup':
+    case 'row':
+    case 'cell':
+      return 'Rows';
+  }
+}
 
 /** The editor items to open, most specific first. */
 export function focusKeys(t: EditTarget): string[] {
@@ -48,6 +105,11 @@ export function focusKeys(t: EditTarget): string[] {
       return [`${t.kind}:${t.id}:rules`, `${t.kind}:${t.id}`];
     case 'dashboard':
       return [`dashboard:${t.part}`];
+    case 'settings':
+      return [
+        settingKey(t.place, t.field, t.source),
+        ...placeFocusKeys(t.place),
+      ];
   }
 }
 
@@ -78,11 +140,9 @@ export function tabFor(t: EditTarget): EditorTab {
     case 'columnGroup':
       return 'Stages';
     case 'dashboard':
-      return t.part === 'stageRules'
-        ? 'Stages'
-        : t.part === 'statusSets'
-          ? 'Statuses'
-          : 'General';
+      return t.part === 'stageRules' ? 'Stages' : 'General';
+    case 'settings':
+      return placeTab(t.place);
   }
 }
 

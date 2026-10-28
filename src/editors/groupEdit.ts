@@ -8,7 +8,7 @@
  * @module
  */
 import type { Dashboard } from '@/domain/config/dashboard';
-import type { Group } from '@/domain/config/groups';
+import type { GroupShape } from '@/domain/config/groups';
 import {
   type Arranged,
   assign,
@@ -22,7 +22,7 @@ import {
 export type GroupAxis = 'rows' | 'stages';
 
 /** A change to one axis; `create` makes an empty group of its kind. */
-type Change = <T extends { id: string }, G extends Group>(
+type Change = <T extends { id: string }, G extends GroupShape>(
   arranged: Arranged<T, G>,
   create: (id: string) => G,
 ) => Arranged<T, G> | undefined;
@@ -37,16 +37,16 @@ function onAxis(
     const next = change({ items: d.rows, groups: d.rowGroups }, (id) => ({
       id,
       memberIds: [],
+      settings: {},
       stageRules: {},
       rowRules: {},
-      defaultCredentials: {},
-      statusSets: {},
     }));
     return next && { ...d, rows: next.items, rowGroups: next.groups };
   }
   const next = change({ items: d.stages, groups: d.columnGroups }, (id) => ({
     id,
     memberIds: [],
+    settings: {},
     stageRules: {},
   }));
   return next && { ...d, stages: next.items, columnGroups: next.groups };
@@ -57,8 +57,10 @@ const always = (d: Dashboard, axis: GroupAxis, change: Change): Dashboard =>
   onAxis(d, axis, change) ?? d;
 
 /** The groups on one axis. */
-export const groupsOn = (d: Dashboard, axis: GroupAxis): readonly Group[] =>
-  axis === 'rows' ? d.rowGroups : d.columnGroups;
+export const groupsOn = (
+  d: Dashboard,
+  axis: GroupAxis,
+): readonly GroupShape[] => (axis === 'rows' ? d.rowGroups : d.columnGroups);
 
 /** Groups synced to the current items (after a removal, say). */
 export const tidyGroups = (d: Dashboard, axis: GroupAxis): Dashboard =>

@@ -1,7 +1,9 @@
 /**
- * *Copy AWS policy* on the AWS key form (spec.md C-3a): copies the
- * read-only IAM policy for the dashboard's Amplify apps (account-wide
- * while it has none), and says what it copied.
+ * *Copy AWS policy* for one AWS key (spec.md C-3a, §3.12 *IAM*): once the
+ * board has read with the key, the read-only IAM policy narrowed to the
+ * apps the board reads with it (its pins and the apps its search finds);
+ * until then (a key just created for its IAM user), the account-wide
+ * policy. Says what it copied, and when to copy again.
  *
  * @module
  */
@@ -9,30 +11,40 @@ import { Copy } from 'lucide-react';
 import { useState } from 'react';
 
 import { Button } from '@/components/ui/button';
-import type { Dashboard } from '@/domain/config/dashboard';
 import { copyText } from '@/lib/clipboard';
 
-import { amplifyPolicy, dashboardApps } from './iamPolicy';
+import { amplifyPolicy, policyApps } from './iamPolicy';
 
 const nApps = (n: number) => `${String(n)} Amplify ${n === 1 ? 'app' : 'apps'}`;
 
-/** What the button says after copying `count` apps, `skipped` invalid. */
-function copiedMessage(ok: boolean, count: number, skipped: number): string {
+/** What the button says after copying for `name`: `count` apps read
+ * with it (`undefined`: nothing read with it yet), `skipped` invalid. */
+function copiedMessage(
+  ok: boolean,
+  name: string,
+  count: number | undefined,
+  skipped: number,
+): string {
   if (!ok) return "Couldn't copy the policy. The README has it as a template.";
-  const copied = count
-    ? `Copied: read-only access to this dashboard's ${nApps(count)}.`
-    : "Copied: read access to every Amplify app in the AWS account. Copy it again after adding Amplify rows to narrow it to this dashboard's apps.";
+  const copied =
+    count === undefined
+      ? `Nothing has been read with ${name} yet, so this policy covers every Amplify app in the account. Copy again after the board first loads to narrow it.`
+      : `This policy covers the ${String(count)} ${count === 1 ? 'app' : 'apps'} the board reads with ${name}. Copy again after adding Amplify rows or columns that use this key.`;
   return skipped
     ? `${copied} Left out ${nApps(skipped)} with an invalid region or app ID: fix them in the editor.`
     : copied;
 }
 
 export function CopyAwsPolicy({
-  dashboard,
+  name,
+  apps,
 }: {
-  dashboard: Dashboard;
+  /** The key, as the message names it. */
+  name: string;
+  /** The apps the board reads with the key; `undefined` until its app
+   * search has finished. */
+  apps?: readonly { region: string; appId: string }[];
 }): React.JSX.Element {
-  const { apps, skipped } = dashboardApps(dashboard);
   const [said, setSaid] = useState('');
   return (
     <div className="flex flex-wrap items-center gap-2">
@@ -42,9 +54,16 @@ export function CopyAwsPolicy({
         variant="outline"
         className="gap-1.5"
         onClick={() => {
-          const json = JSON.stringify(amplifyPolicy(apps), null, 2);
-          void copyText(json).then((ok) => {
-            setSaid(copiedMessage(ok, apps.length, skipped));
+          const valid = policyApps(apps ?? []);
+          const json = JSON.stringify(
+            amplifyPolicy(valid.apps, apps !== undefined),
+            null,
+            2,
+          );
+          copyText(json, (ok) => {
+            setSaid(
+              copiedMessage(ok, name, apps && valid.apps.length, valid.skipped),
+            );
           });
         }}
       >

@@ -25,6 +25,10 @@ export const site = {
   ownerUrl: 'https://github.com/karmaniverous',
 } as const;
 
+/** This build's version (`package.json`; spec.md §3.10): in the menu and
+ * on the error screen. */
+export const APP_VERSION: string = __APP_VERSION__;
+
 /** README sections the app links to (their GitHub heading anchors). */
 const README_SECTIONS = {
   credentials: 'credentials',

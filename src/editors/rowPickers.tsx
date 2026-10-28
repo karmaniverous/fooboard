@@ -1,47 +1,69 @@
 /**
- * The row editor's Amplify pickers (spec.md C-21): the Amplify app picker
- * (via `ListApps`) and extra Amplify sources. The GitHub repo picker is in
- * `RepoPicker`.
+ * The row editor's Amplify app picker (spec.md C-21, §3.1, §3.12,
+ * Decision 21): an AWS key's apps in every Amplify Hosting region, one
+ * `ListApps` query per region (the board's app search), each app shown
+ * with its region. A picked app with a repo makes a row found by repo
+ * when it is the only app building that repo under the key; otherwise
+ * the app is pinned under the key. A key chosen here rather than
+ * inherited becomes the row's `awsKey`. The GitHub repo picker is
+ * in `RepoPicker`; the listed apps and adding one are in `AmplifyAppList`;
+ * an Amplify row's pinned apps are edited in `PinnedApps`.
  *
  * @module
  */
 import { useState } from 'react';
 
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { resolveCredentialId } from '@/domain/config/credentialRefs';
 import type { Dashboard } from '@/domain/config/dashboard';
 import type { AmplifyRow } from '@/domain/config/row';
-import type { EngineProviders } from '@/engine';
+import { repoFromUrl, sameRepo } from '@/domain/matching';
+import type { RegionApp } from '@/lib/amplify/regions';
+import { fetchAppsAcrossRegions } from '@/query/lookups';
+import { useQueryEnv } from '@/query/queryEnvContext';
 
-import { CredentialSelect, type Inherited } from './CredentialSelect';
-import { repoFromUrl, uniqueId } from './edit';
+import { AmplifyAppList, type ListedApp } from './AmplifyAppList';
+import { CredentialSelect } from './CredentialSelect';
+import { dashboardDefault } from './dashboardDefault';
+import { rowFromApp } from './edit';
 import { LoadStatus } from './LoadStatus';
 import { useLoadFor } from './useLoad';
 
+/** The listed apps that have an id, with the GitHub repo each builds from
+ * (none for an app without a connected GitHub repo). */
+const listedApps = (found: readonly RegionApp[]): ListedApp[] =>
+  found.flatMap(({ region, app }) =>
+    app.appId
+      ? [
+          {
+            appId: app.appId,
+            name: app.name ?? app.appId,
+            region,
+            repo: repoFromUrl(app.repository),
+          },
+        ]
+      : [],
+  );
+
 export function AmplifyPicker({
   dashboard,
-  providers,
   onAdd,
 }: {
   dashboard: Dashboard;
-  providers: EngineProviders;
   onAdd: (row: AmplifyRow) => void;
 }): React.JSX.Element {
   const [credentialId, setCredentialId] = useState<string | undefined>();
-  const [region, setRegion] = useState('us-east-1');
-  // Results and the add action use the key and region they were listed
-  // with; changing either hides them until the list is fetched again.
+  // Results and the add action use the key they were listed with;
+  // changing it hides them until the list is fetched again.
+  const unset = dashboardDefault(dashboard, 'aws');
+  const resolved = credentialId ?? unset.id;
+  // An app is pinned under the key it was listed with (spec.md §3.12).
   const [apps, load] = useLoadFor<
-    { credentialId: string | undefined; region: string },
-    { appId: string; name: string; repo?: string }[]
-  >({ credentialId, region: region.trim() });
-  const resolved = resolveCredentialId(
-    dashboard.defaultCredentials,
-    'aws',
-    credentialId,
-  );
-  const readers = resolved ? providers.amplify(resolved) : undefined;
+    { credentialId: string | undefined; chosen: boolean },
+    ListedApp[]
+  >({ credentialId: resolved, chosen: credentialId !== undefined });
+  const env = useQueryEnv();
+  const key =
+    resolved && env.providers.amplify(resolved) ? resolved : undefined;
   if (!dashboard.credentials.some((c) => c.kind === 'aws')) {
     return (
       <p className="text-xs text-muted-foreground">
@@ -57,151 +79,43 @@ export function AmplifyPicker({
           kind="aws"
           value={credentialId}
           onChange={setCredentialId}
+          unset={unset}
           label="AWS key for the new Amplify row"
-        />
-        <Input
-          aria-label="Region"
-          className="h-8 w-32 text-xs"
-          value={region}
-          onChange={(e) => {
-            setRegion(e.target.value);
-          }}
         />
         <Button
           size="sm"
           variant="outline"
-          disabled={!readers || !resolved || !region.trim()}
+          disabled={!key}
           onClick={() => {
-            if (!readers || !resolved) return;
-            load(async ({ region: listedIn }) =>
-              (
-                await readers({
-                  credentialId: resolved,
-                  region: listedIn,
-                }).listApps()
-              ).flatMap((a) =>
-                a.appId
-                  ? [
-                      {
-                        appId: a.appId,
-                        name: a.name ?? a.appId,
-                        repo: repoFromUrl(a.repository),
-                      },
-                    ]
-                  : [],
-              ),
+            if (!key) return;
+            load(async () =>
+              listedApps(await fetchAppsAcrossRegions(env.client, key)),
             );
           }}
         >
           List Amplify apps
         </Button>
       </div>
-      <LoadStatus state={apps} loading="Loading apps…" />
+      <LoadStatus state={apps} loading="Loading apps in every region…" />
       {apps.kind === 'done' && (
-        <ul className="max-h-48 overflow-y-auto">
-          {apps.value.value.length === 0 && (
-            <li>No apps in {apps.value.context.region}.</li>
-          )}
-          {apps.value.value.map((a) => (
-            <li key={a.appId}>
-              <button
-                type="button"
-                disabled={!a.repo}
-                className="w-full rounded px-2 py-1 text-left hover:bg-muted disabled:opacity-50"
-                onClick={() => {
-                  if (!a.repo) return;
-                  onAdd({
-                    type: 'amplify',
-                    id: uniqueId(
-                      a.name,
-                      dashboard.rows.map((r) => r.id),
-                    ),
-                    repo: a.repo,
-                    displayName: a.name,
-                    sources: [
-                      {
-                        credentialId: apps.value.context.credentialId,
-                        region: apps.value.context.region,
-                        appId: a.appId,
-                      },
-                    ],
-                    stageRules: {},
-                    cellStatusSets: {},
-                  });
-                }}
-              >
-                {a.name}{' '}
-                <span className="text-muted-foreground">
-                  ({a.repo ?? 'no repo'})
-                </span>
-              </button>
-            </li>
-          ))}
-        </ul>
+        <AmplifyAppList
+          apps={apps.value.value}
+          onPick={(app, repo) => {
+            const { context, value: listed } = apps.value;
+            const builders = repo
+              ? listed.filter((a) => a.repo && sameRepo(a.repo, repo))
+              : [];
+            onAdd(
+              rowFromApp(app, dashboard, {
+                credentialId: context.credentialId,
+                repo,
+                pinned: builders.length !== 1,
+                awsKey: context.chosen ? context.credentialId : undefined,
+              }),
+            );
+          }}
+        />
       )}
     </div>
-  );
-}
-
-export function AddSource({
-  dashboard,
-  onAdd,
-  name,
-  inherited,
-}: {
-  dashboard: Dashboard;
-  name: string;
-  /** What an unset key inherits: the row's group's or the dashboard's. */
-  inherited: Inherited;
-  onAdd: (source: AmplifyRow['sources'][number]) => void;
-}): React.JSX.Element {
-  const [credentialId, setCredentialId] = useState<string | undefined>();
-  const [region, setRegion] = useState('');
-  const [appId, setAppId] = useState('');
-  return (
-    <form
-      className="flex flex-wrap items-center gap-1"
-      onSubmit={(e) => {
-        e.preventDefault();
-        onAdd({ credentialId, region: region.trim(), appId: appId.trim() });
-        setRegion('');
-        setAppId('');
-      }}
-    >
-      <CredentialSelect
-        dashboard={dashboard}
-        kind="aws"
-        value={credentialId}
-        onChange={setCredentialId}
-        inherited={inherited}
-        label={`AWS key for a new ${name} source`}
-      />
-      <Input
-        aria-label={`Region for a new ${name} source`}
-        placeholder="Region"
-        className="h-8 text-xs"
-        value={region}
-        onChange={(e) => {
-          setRegion(e.target.value);
-        }}
-      />
-      <Input
-        aria-label={`App ID for a new ${name} source`}
-        placeholder="App ID"
-        className="h-8 text-xs"
-        value={appId}
-        onChange={(e) => {
-          setAppId(e.target.value);
-        }}
-      />
-      <Button
-        type="submit"
-        size="sm"
-        variant="outline"
-        disabled={!region.trim() || !appId.trim()}
-      >
-        Add source
-      </Button>
-    </form>
   );
 }

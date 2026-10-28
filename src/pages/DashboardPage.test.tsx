@@ -9,11 +9,23 @@ import { fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { branchRules } from '@/domain/config/placement';
+import { expand } from '@/test/openItem';
 import { renderDashboardPage } from '@/test/renderDashboardPage';
 
 describe('DashboardPage', () => {
-  it('shows the saved board and saves a credential added from it', () => {
-    const stores = renderDashboardPage({ id: 'mine', name: 'My board' });
+  it('wraps the header controls, which sit outside the zoomed board', async () => {
+    await renderDashboardPage({ id: 'mine', name: 'My board' });
+    // On a phone, zooming the board out can't reach a control past the
+    // screen's edge, so the row of controls wraps instead (C-13).
+    const actions = screen.getByTestId('board-actions');
+    expect(actions).toHaveClass('flex-wrap');
+    expect(
+      within(actions).getByRole('button', { name: 'Add a credential' }),
+    ).toBeVisible();
+  });
+
+  it('shows the saved board and saves a credential added from it', async () => {
+    const stores = await renderDashboardPage({ id: 'mine', name: 'My board' });
     expect(screen.getByRole('heading', { name: 'My board' })).toHaveTextContent(
       'My board',
     );
@@ -55,7 +67,7 @@ describe('DashboardPage credential lifecycle', () => {
         ),
       ),
     );
-    renderDashboardPage({
+    await renderDashboardPage({
       id: 'mine',
       name: 'My board',
       rows: [
@@ -89,6 +101,8 @@ describe('DashboardPage credential lifecycle', () => {
     expect(fetch).toHaveBeenCalled();
 
     fireEvent.click(screen.getByRole('button', { name: 'Credentials' }));
+    // Credentials start closed (Decision 32).
+    expand('GitHub token');
     fireEvent.click(screen.getByRole('button', { name: 'Forget' }));
     close();
     await screen.findByRole('button', { name: /needs credential/ });

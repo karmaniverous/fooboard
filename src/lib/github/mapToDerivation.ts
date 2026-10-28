@@ -15,7 +15,7 @@ import type {
   GithubWorkflowRun,
 } from '@/domain/derivation/types';
 
-import type { Job, WorkflowRun } from './schemas';
+import { attemptOf, type Job, type WorkflowRun } from './schemas';
 
 /** GitHub's job `status` values (spec.md §4.3.3) as the REST API sends them;
  * anything else is defensively treated as `queued` since GitHub has added
@@ -78,7 +78,7 @@ export function mapWorkflowJob(job: Job): GithubWorkflowJob {
   return {
     id: job.id,
     runId: job.run_id,
-    runAttempt: job.run_attempt ?? 1,
+    runAttempt: attemptOf(job),
     name: job.name,
     status: mapJobStatus(job.status),
     conclusion: mapJobConclusion(job.conclusion),

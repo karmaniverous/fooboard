@@ -2,24 +2,24 @@
  * Tests for the dashboard editor: renaming, adding a row from the repo
  * picker (display name without the owner), keyboard reordering, confirmed
  * removal, adding a stage from discovered branches with a match preview,
- * source choices that exclude cycles, and creating a dashboard from home.
+ * source choices that exclude cycles, and a field saved on changing tab.
  *
  * @module
  */
-import { fireEvent, render, screen, within } from '@testing-library/react';
+import { fireEvent, screen, within } from '@testing-library/react';
 import { useState } from 'react';
-import { MemoryRouter, Route, Routes } from 'react-router-dom';
+import { MemoryRouter } from 'react-router-dom';
 import { describe, expect, it } from 'vitest';
 
 import { type Dashboard, DashboardSchema } from '@/domain/config/dashboard';
 import { branchRules } from '@/domain/config/placement';
-import type { EngineProviders } from '@/engine';
-import { Home } from '@/pages/Home';
 import { createAppStores } from '@/storage';
 import { memoryStorage } from '@/storage/keyValue';
 import { StoresContext } from '@/storage/storesContext';
 import { optionsOf } from '@/test/choose';
-import { fakeGitHubReader, ghBranch, ghRepo } from '@/test/fakeReaders';
+import { envRender } from '@/test/envRender';
+import { fakeGitHubApi, fetched, ghBranch, ghRepo } from '@/test/fakeReaders';
+import { focusElement } from '@/test/focus';
 import { expand } from '@/test/openItem';
 
 import { DashboardEditor } from './DashboardEditor';
@@ -28,24 +28,30 @@ const branches: Record<string, string[]> = {
   api: ['main', 'release/24.3', 'release/24.2'],
   web: ['main', 'release/24.3'],
 };
-const reader = fakeGitHubReader({
-  listRepos: () =>
+const reader = fakeGitHubApi({
+  reposPage: () =>
     Promise.resolve(
-      ['acme/api', 'acme/web', 'acme/docs'].map((fullName) => ghRepo(fullName)),
+      fetched(
+        ['acme/api', 'acme/web', 'acme/docs'].map((fullName) =>
+          ghRepo(fullName),
+        ),
+      ),
     ),
-  listBranches: ({ repo }) =>
-    Promise.resolve((branches[repo] ?? []).map((name) => ghBranch(name, 'x'))),
+  branchesPage: ({ repo }) =>
+    Promise.resolve(
+      fetched((branches[repo] ?? []).map((name) => ghBranch(name, 'x'))),
+    ),
 });
-const providers: EngineProviders = {
+const render = envRender({
   github: () => reader,
   amplify: () => undefined,
-};
+});
 
 const start = DashboardSchema.parse({
   id: 'd',
   name: 'Board',
   credentials: [{ id: 'gh', kind: 'github', label: 'gh' }],
-  defaultCredentials: { github: 'gh' },
+  settings: { githubToken: 'gh' },
   rows: [
     { type: 'github', id: 'api', repo: 'acme/api', displayName: 'api' },
     { type: 'github', id: 'web', repo: 'acme/web', displayName: 'web' },
@@ -68,7 +74,6 @@ function setup() {
     return (
       <DashboardEditor
         dashboard={d}
-        providers={providers}
         onChange={(next) => {
           latest.current = next;
           setD(next);
@@ -152,6 +157,7 @@ describe('DashboardEditor', () => {
       id: 'release',
       name: 'Release',
       rules: branchRules('release/**'),
+      settings: {},
     });
   });
 
@@ -164,35 +170,11 @@ describe('DashboardEditor', () => {
   });
 });
 
-describe('Create a dashboard', () => {
-  it('saves a dashboard from a preset and opens it', () => {
-    const stores = createAppStores(memoryStorage());
-    render(
-      <StoresContext value={stores}>
-        <MemoryRouter>
-          <Routes>
-            <Route path="/" element={<Home />} />
-            <Route path="/d/:id" element={<p>opened</p>} />
-          </Routes>
-        </MemoryRouter>
-      </StoresContext>,
-    );
-    fireEvent.change(screen.getByLabelText('Dashboard name'), {
-      target: { value: 'Acme' },
-    });
-    fireEvent.click(screen.getByRole('button', { name: 'Create a dashboard' }));
-    expect(screen.getByText('opened')).toBeInTheDocument();
-    const loaded = stores.config.load();
-    expect(
-      loaded.kind === 'ok' &&
-        loaded.root.dashboards[0]?.stages.map((s) => s.name),
-    ).toEqual(['dev', 'staging', 'prod']);
-  });
-
+describe('DashboardEditor tabs', () => {
   it('saves a field being edited when another tab is chosen', () => {
     const latest = setup();
     const input = screen.getByLabelText('Dashboard name');
-    input.focus();
+    focusElement(input);
     fireEvent.change(input, { target: { value: 'Platform' } });
     tab('Rows');
     expect(latest.current.name).toBe('Platform');

@@ -23,14 +23,14 @@ const dashboard = DashboardSchema.parse({
       id: 'web',
       repo: 'a/web',
       displayName: 'web',
-      statusSet: PRESET_IDS.githubDeployTest,
+      settings: { statusSets: { github: PRESET_IDS.githubDeployTest } },
     },
   ],
   rowGroups: [
     {
       id: 'g',
       memberIds: ['web'],
-      statusSets: { github: PRESET_IDS.githubDeployTest },
+      settings: { statusSets: { github: PRESET_IDS.githubDeployTest } },
     },
   ],
 });
@@ -66,9 +66,11 @@ describe('customiseFor', () => {
     const copy = fix?.dashboard.customStatusSets[0];
     expect(copy?.id).toEqual(expect.any(String));
     expect(copy?.id).not.toBe(PRESET_IDS.githubDeployTest);
-    expect(fix?.dashboard.statusSets.github).toBe(copy?.id);
-    expect(fix?.dashboard.rowGroups[0]?.statusSets.github).toBe(copy?.id);
-    expect(fix?.dashboard.rows[0]?.statusSet).toBe(copy?.id);
+    expect(fix?.dashboard.settings.statusSets?.github).toBe(copy?.id);
+    expect(fix?.dashboard.rowGroups[0]?.settings.statusSets?.github).toBe(
+      copy?.id,
+    );
+    expect(fix?.dashboard.rows[0]?.settings.statusSets?.github).toBe(copy?.id);
     expect(fix?.draft.focus?.[0]).toBe(`statusSet:${copy?.id ?? ''}`);
   });
 

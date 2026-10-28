@@ -1,9 +1,14 @@
 /**
- * Cell detail (spec.md C-13): status, phase, branch, commit, exact time,
- * and the behind/diverged commit subjects in both directions. Shown in a
- * hover/focus tooltip (informational: the cell and its badge are the
- * links, C-13a) and in a touch detail sheet, which also carries the links.
- * Problems on the cell (a window hint on an empty cell, a status-set
+ * Cell detail (spec.md C-13): status, phase, branch, commit, commit
+ * message, exact time, and the behind/diverged commit subjects in both
+ * directions. Shown in a hover/focus tooltip (informational: the cell and
+ * its badge are the links, C-13a; the short SHA and the message's first
+ * line) and in a detail sheet (a touch tap, or Space on a focused cell),
+ * which also carries the links, the
+ * full SHA with *Copy*, and every line of the message (Decision 21).
+ * The sheet lists the settings the cell reads, each with its origin,
+ * and carries the cell's settings gear, the way in on a touch screen
+ * (spec.md §3.11). Problems on the cell (a window hint on an empty cell, a status-set
  * problem, spec.md A§4.3.7) are listed under it.
  *
  * @module
@@ -11,23 +16,34 @@
 import { useState } from 'react';
 
 import { ExternalLink } from '@/components/ExternalLink';
+import { PanelSheetContent } from '@/components/SidePanel';
 import {
   Popover,
   PopoverAnchor,
   PopoverContent,
 } from '@/components/ui/popover';
-import {
-  Sheet,
-  SheetClose,
-  SheetContent,
-  SheetTitle,
-} from '@/components/ui/sheet';
+import { Sheet } from '@/components/ui/sheet';
 import { EMPTY_STATES } from '@/domain/derivation';
 import type { Problem } from '@/domain/problems/problem';
+import type { CellSettingLine } from '@/editors/settings/origins';
 import type { BoardCell } from '@/engine';
 import { readmeSection } from '@/lib/site';
 
-import { badgeDescription, EMPTY_LABEL, shortSha } from './cellView';
+import {
+  badgeDescription,
+  type CellFocus,
+  cellKeyHint,
+  cellPlace,
+  EMPTY_LABEL,
+  firstLine,
+  shortSha,
+} from './cellView';
+import { CommitSha } from './CommitSha';
+
+/** Secondary text on the detail's dark surface (the sheet and the hover
+ * card are slate in both themes): the theme's muted text is too dim on
+ * it in light (spec.md §3.10, contrast; 4.5:1 or more on slate-900). */
+const SHEET_MUTED = 'text-slate-400';
 
 export function CellDetail({
   cell,
@@ -35,8 +51,14 @@ export function CellDetail({
   stageName,
   interactive,
   problems = [],
+  settings = [],
+  gear,
 }: {
   cell: BoardCell;
+  /** The cell's settings gear (shown in the sheet). */
+  gear?: React.ReactNode;
+  /** The settings the cell reads, with origins (shown in the sheet). */
+  settings?: readonly CellSettingLine[];
   /** Problems marked on this cell. */
   problems?: readonly Problem[];
   rowName: string;
@@ -47,14 +69,15 @@ export function CellDetail({
   const { derivation, badge, compare } = cell;
   return (
     <div className="flex flex-col gap-1 text-xs">
-      <div className="font-semibold">
-        {rowName} &middot; {stageName}
-      </div>
+      {/* The sheet shows the place as its title. */}
+      {!interactive && (
+        <div className="font-semibold">{cellPlace({ rowName, stageName })}</div>
+      )}
       {derivation.kind === 'empty' ? (
         <div>
           {EMPTY_LABEL[derivation.state]}
           {derivation.reason && (
-            <div className="text-muted-foreground">{derivation.reason}</div>
+            <div className={SHEET_MUTED}>{derivation.reason}</div>
           )}
           {interactive && derivation.state === EMPTY_STATES.needsCredential && (
             <ExternalLink
@@ -68,19 +91,41 @@ export function CellDetail({
         </div>
       ) : (
         <dl className="grid grid-cols-[auto_1fr] gap-x-3">
-          <dt className="text-muted-foreground">Status</dt>
+          <dt className={SHEET_MUTED}>Status</dt>
           <dd>{derivation.status.name}</dd>
-          <dt className="text-muted-foreground">Branch</dt>
+          <dt className={SHEET_MUTED}>Branch</dt>
           <dd className="truncate">{derivation.branch}</dd>
           {derivation.commit && (
             <>
-              <dt className="text-muted-foreground">Commit</dt>
-              <dd className="font-mono">{shortSha(derivation.commit)}</dd>
+              <dt className={SHEET_MUTED}>Commit</dt>
+              <dd className={interactive ? undefined : 'font-mono'}>
+                {interactive ? (
+                  // Keyed by SHA: a poll that swaps the commit while the
+                  // sheet is open drops the old commit's copy feedback.
+                  <CommitSha key={derivation.commit} sha={derivation.commit} />
+                ) : (
+                  shortSha(derivation.commit)
+                )}
+              </dd>
+            </>
+          )}
+          {derivation.message && (
+            <>
+              <dt className={SHEET_MUTED}>Message</dt>
+              <dd
+                className={
+                  interactive ? 'whitespace-pre-wrap break-words' : 'truncate'
+                }
+              >
+                {interactive
+                  ? derivation.message
+                  : firstLine(derivation.message)}
+              </dd>
             </>
           )}
           {derivation.time && (
             <>
-              <dt className="text-muted-foreground">Time</dt>
+              <dt className={SHEET_MUTED}>Time</dt>
               <dd>{new Date(derivation.time).toLocaleString()}</dd>
             </>
           )}
@@ -119,6 +164,23 @@ export function CellDetail({
           Open job
         </ExternalLink>
       )}
+      {interactive && gear && (
+        <div className="mt-1 flex items-center gap-2 font-semibold">
+          Settings {gear}
+        </div>
+      )}
+      {interactive && settings.length > 0 && (
+        <dl aria-label="Settings" className="grid grid-cols-[auto_1fr] gap-x-3">
+          {settings.map((s) => (
+            <div key={s.name} className="contents">
+              <dt className={SHEET_MUTED}>{s.name}</dt>
+              <dd>
+                {s.value} <span className={SHEET_MUTED}>({s.origin})</span>
+              </dd>
+            </div>
+          ))}
+        </dl>
+      )}
       {problems.length > 0 && (
         <ul className="mt-1 text-amber-600 dark:text-amber-400">
           {problems.map((p) => (
@@ -140,7 +202,7 @@ function SubjectList({
   if (subjects.length === 0) return null;
   return (
     <div className="mt-1">
-      <div className="text-muted-foreground">{title}</div>
+      <div className={SHEET_MUTED}>{title}</div>
       <ul className="list-disc pl-4">
         {subjects.map((s, i) => (
           <li key={`${String(i)}-${s}`} className="truncate">
@@ -157,12 +219,20 @@ function SubjectList({
  * and never focused (the cell keeps focus); it has the tooltip role. */
 export function CellTooltip({
   rect,
+  focus,
+  settingsHint = false,
   children,
 }: {
   rect: DOMRect;
+  /** Where focus is in the cell: the hint names the keys that work there
+   * (`cellKeyHint`). */
+  focus?: CellFocus;
+  /** The board has a settings popup, which `,` opens. */
+  settingsHint?: boolean;
   children: React.ReactNode;
 }): React.JSX.Element {
   const anchor = { current: { getBoundingClientRect: () => rect } };
+  const hint = cellKeyHint(focus, settingsHint);
   return (
     <Popover open>
       <PopoverAnchor virtualRef={anchor} />
@@ -177,6 +247,7 @@ export function CellTooltip({
         className="pointer-events-none max-h-[var(--radix-popover-content-available-height)] w-80 max-w-[calc(100vw-12px)] overflow-hidden rounded-lg border-0 bg-slate-900 p-3 text-slate-100 shadow-xl"
       >
         {children}
+        {hint && <p className="mt-2 text-xs text-slate-400">{hint}</p>}
       </PopoverContent>
     </Popover>
   );
@@ -184,11 +255,16 @@ export function CellTooltip({
 
 /** Bottom sheet opened from a cell: the library's Sheet, modal (takes
  * focus, traps Tab, closes on Escape, the backdrop or Close) and returning
- * focus to the cell that opened it. */
+ * focus to the cell that opened it. Laid out by `PanelSheetContent` (spec.md
+ * §3.6): its title (the cell's place) and Close stay pinned while a long
+ * commit message scrolls. */
 export function CellSheet({
+  title,
   onClose,
   children,
 }: {
+  /** The cell's place (`cellPlace`). */
+  title: string;
   onClose: () => void;
   children: React.ReactNode;
 }): React.JSX.Element {
@@ -204,21 +280,17 @@ export function CellSheet({
         if (!open) onClose();
       }}
     >
-      <SheetContent
+      <PanelSheetContent
         side="bottom"
-        closeButton={false}
+        title={title}
         onCloseAutoFocus={(e) => {
           e.preventDefault();
           opener?.focus();
         }}
-        className="gap-0 border-0 bg-slate-900 p-4 text-slate-100"
+        className="border-0 bg-slate-900 text-slate-100"
       >
-        <SheetTitle className="sr-only">Cell detail</SheetTitle>
         {children}
-        <SheetClose className="mt-3 self-start text-sm text-sky-400">
-          Close
-        </SheetClose>
-      </SheetContent>
+      </PanelSheetContent>
     </Sheet>
   );
 }

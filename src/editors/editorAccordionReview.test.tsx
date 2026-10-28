@@ -7,24 +7,24 @@
  *
  * @module
  */
-import { fireEvent, render, screen, within } from '@testing-library/react';
+import { fireEvent, screen, within } from '@testing-library/react';
 import { useState } from 'react';
 import { describe, expect, it } from 'vitest';
 
+const render = envRender();
+
 import { type Dashboard, DashboardSchema } from '@/domain/config/dashboard';
 import { branchRules } from '@/domain/config/placement';
+import { DEFAULT_STATUS_SET_IDS } from '@/domain/config/statusSets';
 import type { KeyDef } from '@/domain/model/sourceRule';
-import type { EngineProviders } from '@/engine';
-import { expand, itemTrigger } from '@/test/openItem';
+import { envRender } from '@/test/envRender';
+import { expand, isOpen } from '@/test/openItem';
 
 import { DashboardEditor } from './DashboardEditor';
 import type { EditorDraft } from './draft';
 import { KeysEditor } from './sources/KeysEditor';
 import { customise } from './statuses/customSet';
 import { StatusSetsEditor } from './statuses/StatusSetsEditor';
-
-const isOpen = (name: string) =>
-  itemTrigger(name).getAttribute('aria-expanded') === 'true';
 
 const board = DashboardSchema.parse({
   id: 'd',
@@ -37,14 +37,9 @@ const board = DashboardSchema.parse({
 
 describe('a fix on a row group', () => {
   it('opens its settings in a member row already open', () => {
-    const providers: EngineProviders = {
-      github: () => undefined,
-      amplify: () => undefined,
-    };
     const view = (draft: EditorDraft) => (
       <DashboardEditor
         dashboard={board}
-        providers={providers}
         draft={draft}
         onChange={() => undefined}
       />
@@ -55,7 +50,9 @@ describe('a fix on a row group', () => {
     expect(settings).toHaveAttribute('aria-expanded', 'false');
     rerender(view({ tab: 'Rows', focus: ['rowGroup:g:record', 'rowGroup:g'] }));
     expect(settings).toHaveAttribute('aria-expanded', 'true');
-    expect(screen.getByLabelText('GitHub token for Back')).toBeVisible();
+    expect(
+      screen.getByRole('combobox', { name: 'GitHub token for Row group Back' }),
+    ).toBeVisible();
   });
 });
 
@@ -109,7 +106,7 @@ describe('Add status on a run no status matches', () => {
     within(set).getByRole('region', { name: 'Cell status New status' });
 
   it('opens the new status in a set already owned and closed', () => {
-    render(<Harness start={customise(board, board.statusSets.github)} />);
+    render(<Harness start={customise(board, DEFAULT_STATUS_SET_IDS.github)} />);
     const set = screen.getByRole('region', { name: /^Status set / });
     expect(set).toHaveAttribute('data-state', 'closed');
     addStatus();

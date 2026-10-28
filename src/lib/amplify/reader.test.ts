@@ -1,18 +1,17 @@
 /**
  * Tests for the SDK-backed `AmplifyReader` with a fake `send`: paging with
- * `nextToken` and the `maxResults` cap, error mapping, and the queue pause
- * after throttling.
+ * `nextToken` and the `maxResults` cap, error mapping, and the delay a
+ * throttle suggests.
  *
  * @module
  */
 import { describe, expect, it, vi } from 'vitest';
 
-import { SerialQueue } from '@/lib/queue/serialQueue';
-
 import {
   AmplifyAuthError,
   AmplifyNotFoundError,
   AmplifyThrottledError,
+  DEFAULT_THROTTLE_MS,
 } from './errors';
 import { type AmplifySender, createAmplifyReader } from './reader';
 
@@ -96,19 +95,19 @@ describe('createAmplifyReader', () => {
     ).rejects.toBe(err);
   });
 
-  it('pauses the credential queue after throttling', async () => {
-    const queue = new SerialQueue();
-    const { client } = fakeClient({
-      GetJobCommand: [awsError('ThrottlingException')],
+  it("maps throttling to AWS's suggested delay, else 5 s", async () => {
+    const hinted = Object.assign(awsError('ThrottlingException'), {
+      $response: { headers: { 'retry-after': '12' } },
     });
-    const before = Date.now();
-    await expect(
-      createAmplifyReader({ ...config, client, queue }).getJob(
-        'a',
-        'main',
-        '1',
-      ),
-    ).rejects.toBeInstanceOf(AmplifyThrottledError);
-    expect(queue.getPausedUntil()).toBeGreaterThanOrEqual(before + 5_000);
+    const { client } = fakeClient({
+      ListBranchesCommand: [awsError('ThrottlingException'), hinted],
+    });
+    const reader = createAmplifyReader({ ...config, client });
+    await expect(reader.listBranches('a')).rejects.toMatchObject({
+      retryAfterMs: DEFAULT_THROTTLE_MS,
+    });
+    await expect(reader.listBranches('a')).rejects.toMatchObject({
+      retryAfterMs: 12_000,
+    });
   });
 });

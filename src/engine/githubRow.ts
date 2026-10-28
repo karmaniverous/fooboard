@@ -1,268 +1,257 @@
 /**
- * One GitHub repo's refresh (spec.md A§4.3.7): read its recent runs once,
- * translate each into a record with the GitHub source rule, and place
- * records in every cell of the rows reading it, newest first by the order
- * key. A run's jobs are read only when a cell needs them (its rules test
- * items, or the run passes its record and stage rules), and once per run.
+ * One GitHub row derived from the cache (spec.md §3.1, §2.3): its repo's
+ * runs pages (page 1, then each next page while the window needs it),
+ * then per cell a walk over the candidates newest first. A run that
+ * passes the cell's record and stage rules needs its jobs: the walk asks
+ * for the jobs of up to `COLD_CANDIDATES_PER_STAGE` runs it can't judge
+ * yet, and goes on past them only to find a cached placement. Until the
+ * jobs land, a cell whose rules don't test items shows its run's state
+ * provisionally (Decision 37), or its cached placement marked refreshing.
+ * The whole row is refreshing while its runs have been fetching longer
+ * than the refreshing delay or are older than their poll interval
+ * (Decisions 46, 47). Pure: reads the cache, never fetches.
  *
  * @module
  */
-import type { JSONValue } from 'json-p3';
-import { mapValues, objectify } from 'radash';
+import type { QueryClient } from '@tanstack/query-core';
 
 import type { GithubRow } from '@/domain/config/row';
 import type { Stage } from '@/domain/config/stage';
-import {
-  type CredentialStatus,
-  deriveCell,
-  type GithubWorkflowRun,
-  isExcludedEvent,
-  type ProviderFailure,
-  rowReasons,
-} from '@/domain/derivation';
+import { deriveCell } from '@/domain/derivation';
 import {
   type CellRules,
   needsItems,
   placeCell,
   placed,
-  ruleNeedsItems,
+  type PlacedRecord,
 } from '@/domain/model/cell';
-import { asJson } from '@/domain/model/json';
 import type { SourceRuleOf } from '@/domain/model/sourceRule';
-import {
-  compareOrder,
-  type KeyProblem,
-  type RecordDoc,
-  translate,
-} from '@/domain/model/translate';
+import type { Problem } from '@/domain/problems/problem';
 import { evaluateRule } from '@/domain/rules/check';
+import { type Fetched, pagesFor, type WorkflowRun } from '@/lib/github';
+import { githubSnapshot, type Snapshot } from '@/query/cache';
 import {
-  GITHUB_PER_PAGE,
-  GitHubAuthError,
-  type GitHubReader,
-  mapRunWithJobs,
-  mapWorkflowRun,
-  pagesFor,
-  RateLimitedError,
-  type WorkflowRun,
-} from '@/lib/github';
+  ACTIVE_INTERVAL_MS,
+  pollEvery,
+  rootFreshness,
+  SETTLED,
+} from '@/query/intervals';
+import { githubKey, type GithubRequest } from '@/query/keys';
 
-import { cellView, emptyCells } from './cells';
-import { failureOutcome } from './providerOutcome';
-import type { CellView, UnmappedRun } from './types';
+import { finalView } from './cells';
+import { type Candidate, githubCandidates } from './githubCandidates';
+import { jobsOf } from './githubJobs';
+import type { Need, RowDerivation } from './need';
+import {
+  failedDerivation,
+  failedView,
+  failureOutcome,
+  failureProblem,
+  rowProblem,
+} from './providerOutcome';
+import { provisionalCell } from './provisional';
+import { isRefreshing, markRefreshing, type RefreshClock } from './refreshing';
+import type { CellView } from './types';
 
-/** A branch and when it last ran, for branch suggestions. */
-interface DatedBranch {
-  name: string;
-  updatedAt: string;
-}
+/** Runs per cell whose jobs load at once on a cold cache (Decision 29
+ * item 8), set from measurement on a 16-repo board at 10 requests in
+ * flight: 1 filled it in 27 s with 228 requests, 2 in 37 s (327), 3 in
+ * 47 s (411). Confirmed by Decision 45 item 2 and rechecked in N8.
+ * The stages of a row share candidates, so reading ahead mostly reads
+ * jobs no cell needs and queues them in front of those it does. */
+export const COLD_CANDIDATES_PER_STAGE = 1;
 
-export interface GithubRepoRefresh {
-  kind: 'refreshed';
-  rows: Record<string, Record<string, CellView>>;
-  unmapped: UnmappedRun[];
-  branches: DatedBranch[];
-  /** Keys the source rule couldn't translate cleanly. */
-  keyProblems: KeyProblem[];
-  /** Did the read return as many runs as the source rule reads? */
-  full: boolean;
-}
-
-export interface GithubRepoRateLimited {
-  kind: 'rate-limited';
-}
-
-export const repoRef = (repo: string): { owner: string; repo: string } => {
-  const [owner = '', name = ''] = repo.split('/');
-  return { owner, repo: name };
-};
-
-/** A cell's rules (placement, status set, order key). */
-type RulesFor = (row: GithubRow, stageId: string) => CellRules;
-
-/** What a GitHub refresh needs besides the reader. */
-export interface GithubRepoInput {
-  rows: readonly GithubRow[];
-  /** Every row reading the repo (for Unmapped). */
-  repoRows: readonly GithubRow[];
-  stages: readonly Stage[];
-  rulesFor: RulesFor;
+/** What every GitHub row derivation of one token and repo shares. */
+export interface GithubContext extends RefreshClock {
+  client: QueryClient;
+  credentialId: string;
+  repo: string;
   source: SourceRuleOf<'github'>;
+  stages: readonly Stage[];
+  rulesFor: (row: GithubRow, stageId: string) => CellRules;
+  overBudget: boolean;
 }
 
-function emptyRows(
-  input: GithubRepoInput,
-  credentialStatus: CredentialStatus,
-  providerFailure?: ProviderFailure,
-): GithubRepoRefresh {
-  const cellsOf = (row: GithubRow) =>
-    mapValues(
-      emptyCells(
-        input.stages,
-        (stageId) => input.rulesFor(row, stageId).set,
-        credentialStatus,
-        providerFailure,
-      ),
-      cellView,
+/** A repo's runs as far as they've landed. */
+interface RunsPages {
+  /** The first page's query, landed or not. */
+  first: Snapshot<Fetched<WorkflowRun[]>>;
+  /** The pages that have landed, in order. */
+  pages: Fetched<WorkflowRun[]>[];
+  /** The pages to observe. */
+  requests: Extract<GithubRequest, { call: 'runs' }>[];
+}
+
+/** The repo's runs pages that have landed, and the requests to observe. */
+export function runsPages(ctx: GithubContext): RunsPages {
+  const pages: Fetched<WorkflowRun[]>[] = [];
+  const requests: RunsPages['requests'] = [];
+  const first = githubSnapshot(ctx.client, ctx.credentialId, {
+    call: 'runs',
+    repo: ctx.repo,
+    page: 1,
+  });
+  for (let page = 1; page <= pagesFor(ctx.source.reader.runs); page += 1) {
+    const request = { call: 'runs', repo: ctx.repo, page } as const;
+    requests.push(request);
+    const data =
+      page === 1
+        ? first.data
+        : githubSnapshot(ctx.client, ctx.credentialId, request).data;
+    if (!data) break;
+    pages.push(data);
+    if (!data.hasNext) break;
+  }
+  return { first, pages, requests };
+}
+
+/** The problem for a renamed repo, when its runs say it moved. */
+function renamedProblem(
+  row: GithubRow,
+  first: Fetched<WorkflowRun[]>,
+): Problem | undefined {
+  const now = first.data[0]?.repository?.full_name;
+  const renamed =
+    now !== undefined && now.toLowerCase() !== row.repo.toLowerCase();
+  if (renamed)
+    return rowProblem(
+      row.id,
+      `${row.repo} was renamed to ${now}: re-pick the repo`,
+      false,
     );
-  return {
-    kind: 'refreshed',
-    rows: objectify(input.rows, (r) => r.id, cellsOf),
-    unmapped: [],
-    branches: [],
-    keyProblems: [],
-    full: false,
-  };
+  if (first.redirected && now === undefined)
+    return rowProblem(
+      row.id,
+      `${row.repo} has moved (GitHub redirected): re-pick the repo`,
+      false,
+    );
+  return undefined;
 }
 
-export async function refreshGithubRepo(
-  input: GithubRepoInput,
-  reader: GitHubReader | undefined,
-): Promise<GithubRepoRefresh | GithubRepoRateLimited> {
-  if (!reader) return emptyRows(input, 'missing');
-  try {
-    return await refreshWith(input, reader);
-  } catch (err) {
-    const outcome = failureOutcome(err, {
-      isRateLimit: (e) => e instanceof RateLimitedError,
-      isAuth: (e) => e instanceof GitHubAuthError,
-    });
-    return outcome.kind === 'rate-limited'
-      ? outcome
-      : emptyRows(input, outcome.credentialStatus, outcome.providerFailure);
-  }
-}
-
-interface Candidate {
-  run: WorkflowRun;
-  mapped: GithubWorkflowRun;
-  /** The record without jobs, for rules that don't test items. */
-  shallow: RecordDoc;
-}
-
-async function refreshWith(
-  input: GithubRepoInput,
-  reader: GitHubReader,
-): Promise<GithubRepoRefresh> {
-  const { source } = input;
-  const { runs, excludePullRequests: excludePrs } = source.reader;
-  const repo = input.rows[0]?.repo ?? '';
-  const ref = repoRef(repo);
-  const raw = (
-    await reader.listWorkflowRuns(ref, {
-      perPage: GITHUB_PER_PAGE,
-      pages: pagesFor(runs),
-      excludePullRequests: true,
-    })
-  ).slice(0, runs);
-  const keepDeep = ruleNeedsItems(source.keep);
-  const keyProblems: KeyProblem[] = [];
-  const order = (r: RecordDoc): JSONValue => r[source.order] ?? null;
-  const candidates: Candidate[] = raw
-    .filter((r) => !(excludePrs && isExcludedEvent(r.event)))
-    .map((r) => {
-      const mapped = mapWorkflowRun(r);
-      const translated = translate(source, asJson({ run: mapped, jobs: [] }));
-      keyProblems.push(
-        ...translated.problems.filter((p) => p.scope === 'record'),
-      );
-      const shallow = translated.record;
-      return { run: r, mapped, shallow };
-    })
-    // Keep, when it can judge a run without its jobs; otherwise below.
-    .filter((c) => keepDeep || evaluateRule(source.keep, c.shallow))
-    .sort((a, b) => compareOrder(order(b.shallow), order(a.shallow)));
-  const branchNames = (await reader.listBranches(ref)).map((b) => b.name);
-
-  const fetched = new Map<number, Promise<RecordDoc>>();
-  const full = (run: WorkflowRun): Promise<RecordDoc> => {
-    let pending = fetched.get(run.id);
-    if (!pending) {
-      pending = reader
-        .listRunJobs(ref, run.id, { filter: 'latest' })
-        .then((jobs) => {
-          const t = translate(source, asJson(mapRunWithJobs(run, jobs)));
-          keyProblems.push(...t.problems.filter((p) => p.scope === 'item'));
-          return t.record;
+/** One cell: walk the candidates, asking for the jobs it needs. */
+function deriveStage(
+  ctx: GithubContext,
+  rules: CellRules,
+  candidates: { candidates: Candidate[]; keepDeep: boolean },
+  need: (need: Need) => void,
+  problems: Problem[],
+  rowId: string,
+): CellView | undefined {
+  if (rules.stage === undefined)
+    return finalView(
+      deriveCell({ placed: undefined, set: rules.set, credentialStatus: 'ok' }),
+    );
+  const deep = needsItems(rules);
+  const unknown: Candidate[] = [];
+  let found: PlacedRecord | undefined;
+  for (const candidate of candidates.candidates) {
+    if (!deep && !placed(candidate.shallow, rules)) continue;
+    const jobs = jobsOf(ctx, candidate.run);
+    const freshness =
+      candidate.run.status === 'completed'
+        ? SETTLED
+        : pollEvery(ACTIVE_INTERVAL_MS, ctx.overBudget);
+    const observe = unknown.length < COLD_CANDIDATES_PER_STAGE || jobs.full;
+    if (observe)
+      for (const request of jobs.requests)
+        need({
+          key: githubKey(ctx.credentialId, request),
+          freshness,
+          version: candidate.run.status ?? '',
         });
-      fetched.set(run.id, pending);
+    if (jobs.failure) {
+      const failureNote = failureProblem(
+        jobs.failure,
+        rowId,
+        `${ctx.repo} run ${String(candidate.run.id)}`,
+      );
+      if (failureNote) problems.push(failureNote);
+      return failedView(jobs.failure, rules.set);
     }
-    return pending;
-  };
-
-  const cellFor = async (row: GithubRow, stage: Stage): Promise<CellView> => {
-    const rules = input.rulesFor(row, stage.id);
-    const set = rules.set;
-    let found: ReturnType<typeof placeCell>;
-    if (rules.stage !== undefined) {
-      const deep = needsItems(rules);
-      for (const c of candidates) {
-        if (!deep && !placed(c.shallow, rules)) continue;
-        const record = await full(c.run);
-        if (keepDeep && !evaluateRule(source.keep, record)) continue;
-        found = placeCell([record], rules);
-        if (found) break;
-      }
+    if (!jobs.full) {
+      unknown.push(candidate);
+      continue;
     }
-    return cellView(deriveCell({ placed: found, set, credentialStatus: 'ok' }));
-  };
-
-  const result: Record<string, Record<string, CellView>> = {};
-  for (const row of input.rows) {
-    const cells: Record<string, CellView> = {};
-    for (const stage of input.stages)
-      cells[stage.id] = await cellFor(row, stage);
-    result[row.id] = cells;
+    const record = jobs.full.record;
+    if (candidates.keepDeep && !evaluateRule(ctx.source.keep, record)) continue;
+    found = placeCell([record], rules);
+    if (found) break;
   }
-
-  const rulesByRow = input.repoRows.map((row) => ({
-    rowId: row.id,
-    cells: input.stages.map((s) => input.rulesFor(row, s.id)),
-  }));
-  const unmapped: UnmappedRun[] = [];
-  for (const c of candidates) {
-    const pending = fetched.get(c.run.id);
-    const record = pending ? await pending : c.shallow;
-    const reasons = rowReasons(record, rulesByRow, pending !== undefined);
-    if (!reasons) continue;
-    const [{ reason }] = reasons;
-    unmapped.push({
-      provider: 'github',
-      id: `github:${repo}#${String(c.run.id)}`,
-      where: repo,
-      title: c.mapped.workflowName,
-      branch: c.mapped.headBranch,
-      htmlUrl: c.mapped.htmlUrl,
-      record,
-      reason,
-      rows: reasons,
-    });
-  }
+  const view = finalView(
+    deriveCell({ placed: found, set: rules.set, credentialStatus: 'ok' }),
+  );
+  const first = unknown.at(0);
+  if (!first) return view;
+  if (found) return { ...view, refreshing: true, pending: true };
+  const provisional = deep
+    ? undefined
+    : provisionalCell(rules.set, first.run, first.shallow);
+  if (!provisional) return undefined;
   return {
-    kind: 'refreshed',
-    rows: result,
-    unmapped,
-    branches: datedBranches(
-      branchNames,
-      candidates.map((c) => c.mapped),
-    ),
-    keyProblems,
-    full: raw.length >= runs,
+    derivation: provisional.result,
+    active: provisional.result.status.summary.inProgress,
+    provisional: provisional.look,
+    pending: true,
   };
 }
 
-function datedBranches(
-  names: readonly string[],
-  runs: readonly GithubWorkflowRun[],
-): DatedBranch[] {
-  const newest = new Map<string, string>();
-  for (const run of runs) {
-    if (run.headBranch && !newest.has(run.headBranch)) {
-      newest.set(run.headBranch, run.createdAt);
-    }
+/** `row` derived from the cache. */
+export function deriveGithubRow(
+  ctx: GithubContext,
+  row: GithubRow,
+): RowDerivation {
+  const runs = runsPages(ctx);
+  const setFor = (stageId: string) => ctx.rulesFor(row, stageId).set;
+  const rootNeeds = (active: boolean): Need[] =>
+    runs.requests.map((request) => ({
+      key: githubKey(ctx.credentialId, request),
+      freshness: rootFreshness(active, ctx.overBudget),
+    }));
+  const failure = failureOutcome(runs.first.failed, runs.first.error);
+  if (failure)
+    return failedDerivation(
+      failure,
+      { id: row.id, stages: ctx.stages },
+      setFor,
+      row.repo,
+      rootNeeds(false),
+    );
+  const firstPage = runs.first.data;
+  if (!firstPage) return { cells: {}, needs: rootNeeds(false), problems: [] };
+
+  const candidates = githubCandidates(ctx.source, runs.pages);
+  const needs: Need[] = [];
+  const problems: Problem[] = [];
+  const derived: Record<string, CellView> = {};
+  for (const stage of ctx.stages) {
+    const view = deriveStage(
+      ctx,
+      ctx.rulesFor(row, stage.id),
+      candidates,
+      (n) => needs.push(n),
+      problems,
+      row.id,
+    );
+    if (view) derived[stage.id] = view;
   }
-  return names.map((name) => ({
-    name,
-    updatedAt: newest.get(name) ?? new Date(0).toISOString(),
-  }));
+  const active = Object.values(derived).some((cell) => cell.active);
+  const freshness = rootFreshness(active, ctx.overBudget);
+  const cells = markRefreshing(
+    derived,
+    runs.requests.some((request) =>
+      isRefreshing(
+        githubSnapshot(ctx.client, ctx.credentialId, request),
+        freshness,
+        ctx,
+      ),
+    ),
+  );
+  const renamed = renamedProblem(row, firstPage);
+  if (renamed) problems.push(renamed);
+  return {
+    cells,
+    needs: [...rootNeeds(active), ...needs],
+    problems,
+    refreshedAt: runs.first.updatedAt,
+  };
 }
