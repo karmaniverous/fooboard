@@ -384,10 +384,12 @@ Only the maintainer releases and deploys. Three long-running branches feed the h
 
 All three sites are password-protected for now; production's password comes off once the first production deploy is complete.
 
-**Release.** On an up-to-date `main`, run `npm run release`. release-it runs the quality gate, bumps the version, writes `CHANGELOG.md`, commits, tags, pushes `main`, creates the GitHub release, then:
+**Release.** On an up-to-date `main`, run `npm run release` (the first release names its version: see _The first release_ below). release-it runs the quality gate, bumps the version, writes `CHANGELOG.md`, commits, tags, pushes `main`, creates the GitHub release, then:
 
 1. pushes the numbered branch `release/x.y.z`;
 2. moves `preview/release` to that commit (`git push --force-with-lease`, no merge commit), so release.fooboard.dev always shows the latest release. The move is a fast-forward in the normal case; the force keeps `preview/release` exactly equal to the release if anything else landed there, and the lease (taken just after a fetch) refuses to overwrite a push that races the release.
+
+**The first release** is `npm run release -- 0.1.0`, not a bare `npm run release`. release-it bumps from the version in `package.json`, which stays `0.0.0` until the first release, so the bare command would open its _Select increment_ prompt with `patch (0.0.1)` first and selected (with `--ci`, it would release `0.0.1` without asking). Passing the version makes it release `0.1.0`. Every later release bumps from the last one, so the bare command is right from then on.
 
 **Deploy to production.** Open a PR from `release/x.y.z` into `prod` and merge it. release-it never touches `prod`. The _prod PR from release/x.y.z_ check fails any PR into `prod` whose head isn't a stable `release/x.y.z` branch of this repo. It runs on `pull_request_target`, so its workflow always comes from `prod` and a PR can't edit away the guard that checks it; it never checks out or runs PR code.
 
