@@ -2,7 +2,8 @@
  * The board grid's zoom and pan gestures (spec.md C-13; Decision 76):
  * - desktop: Ctrl/Cmd + wheel or trackpad pinch zooms, `+`, `-`, `0` zoom
  *   while the grid has focus, and a mouse drag pans an overflowing grid;
- * - touch: pinch, or double-tap to zoom in a step. The grid's
+ * - touch: pinch to zoom (no double tap: a tap opens the cell it lands on,
+ *   so a double tap could never reach the board; Decision 78). The grid's
  *   `touch-action: pan-x pan-y` leaves one-finger scrolling to the browser
  *   (native, with momentum); the code pans only for a mouse. Panning the
  *   page from `pointermove` instead made touch scrolling jerk (#47).
@@ -17,8 +18,6 @@ import { useCallback, useEffect, useRef } from 'react';
 
 import { snapZoom, stepZoom, type ZoomRange } from './zoom';
 
-/** Two taps whose releases are closer than this (ms) zoom in a step. */
-const DOUBLE_TAP_MS = 300;
 /** Movement (px) after which a press is a drag, not a tap or click. */
 const DRAG_THRESHOLD = 8;
 /** How long after the last pointer, wheel or hover activity the user
@@ -139,7 +138,6 @@ export function useBoardGestures(
   };
   const pinch = useRef<{ distance: number; zoom: number } | null>(null);
   const press = useRef<(Point & { dragged: boolean }) | null>(null);
-  const lastTap = useRef(0);
   const distance = () => {
     const points = [...pointers.current.values()];
     const a = points.at(0);
@@ -167,19 +165,6 @@ export function useBoardGestures(
       window.removeEventListener('pointercancel', end);
     };
   }, [release]);
-  /** A touch let go where it went down, alone: a tap. Two taps close
-   * together zoom in a step. Counted on release, so a quick run of flicks
-   * (each cancelled by the browser's scroll) never zooms. */
-  const tapped = (e: React.PointerEvent) => {
-    const p = press.current;
-    if (e.pointerType !== 'touch' || !p || p.dragged) return;
-    if (Math.hypot(e.clientX - p.x, e.clientY - p.y) > DRAG_THRESHOLD) return;
-    if (e.timeStamp - lastTap.current < DOUBLE_TAP_MS) {
-      step(1);
-      lastTap.current = 0;
-    } else lastTap.current = e.timeStamp;
-  };
-
   return {
     step,
     props: {
@@ -239,7 +224,6 @@ export function useBoardGestures(
         }
       },
       onPointerUp: (e: React.PointerEvent) => {
-        tapped(e);
         release(e.pointerId);
       },
       onPointerCancel: (e: React.PointerEvent) => {

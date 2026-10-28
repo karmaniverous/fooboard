@@ -6,8 +6,8 @@
  * Zoom is one scale (see `layout.ts`); the gestures that change it, and
  * the mouse drag that pans an overflowing grid, are `useBoardGestures`.
  * The grid's `touch-action: pan-x pan-y` leaves one-finger touch
- * scrolling to the browser, and keeps pinch and double-tap for the code
- * (Decision 76).
+ * scrolling to the browser, and keeps pinch for the code (Decisions 76
+ * and 78).
  *
  * @module
  */
@@ -138,7 +138,7 @@ export function BoardViewport({
           tabIndex={0}
           aria-label="Board: plus and minus zoom, 0 returns to 100%"
           className={cn(
-            // Pan natively; pinch and double-tap are ours (Decision 76).
+            // Pan natively; pinch is ours (Decisions 76 and 78).
             'touch-pan-x touch-pan-y rounded-md outline-none focus-visible:ring-2 focus-visible:ring-ring',
             scrolls && 'select-none',
           )}
