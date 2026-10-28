@@ -13,10 +13,11 @@ import { memoryStorage } from '@/storage/keyValue';
 import { DEVICE_PREFERENCES_KEY } from '@/storage/preferencesStore';
 import { StoresContext } from '@/storage/storesContext';
 import { DEMO_RENDER_TIMEOUT_MS } from '@/test/demoRender';
+import { WAIT } from '@/test/timeouts';
 
 import { DemoPage } from './DemoPage';
 
-const FIND = { timeout: 30_000 };
+const FIND = WAIT;
 
 function renderDemo(storage = memoryStorage()) {
   render(

@@ -17,6 +17,7 @@ import { DEMO_TOKEN, seedDemoRepo } from '@/test/githubCache';
 import { storedKeys } from '@/test/persisted';
 import { dashboardPageAt } from '@/test/renderDashboardPage';
 import { browser, openTab } from '@/test/tabs';
+import { WAIT } from '@/test/timeouts';
 
 const REPO = measureBoard.rows.flatMap((r) =>
   r.type === 'github' ? [r.repo] : [],
@@ -83,14 +84,11 @@ async function readBefore() {
   const runs = JSON.stringify(
     githubKey(DEMO_TOKEN, { call: 'runs', repo: REPO, page: 1 }),
   );
-  await vi.waitFor(
-    () => {
-      expect(
-        storedKeys(shared.idb.entries).map((k) => JSON.stringify(k)),
-      ).toContain(runs);
-    },
-    { timeout: 3000 },
-  );
+  await vi.waitFor(() => {
+    expect(
+      storedKeys(shared.idb.entries).map((k) => JSON.stringify(k)),
+    ).toContain(runs);
+  }, WAIT);
   return shared;
 }
 

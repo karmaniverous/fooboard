@@ -20,6 +20,7 @@ import {
 import { githubKey } from '@/query/keys';
 import { fakeGitHubApi, fetched } from '@/test/fakeReaders';
 import { testQueryEnv } from '@/test/queryEnv';
+import { WAIT } from '@/test/timeouts';
 
 import type { Need } from './need';
 import { createObserverSet, mergeNeeds } from './observers';
@@ -75,7 +76,7 @@ describe('createObserverSet', () => {
     expect(observers.size()).toBe(2);
     await vi.waitFor(() => {
       expect(jobsPage).toHaveBeenCalledTimes(2);
-    });
+    }, WAIT);
     observers.sync(mergeNeeds([['a', [need(2)]]]));
     expect([observersOf(1), observersOf(2)]).toEqual([0, 1]);
     observers.destroy();
@@ -101,17 +102,17 @@ describe('createObserverSet', () => {
     observers.sync(settled('in_progress'));
     await vi.waitFor(() => {
       expect(env.client.getQueryData(key(1))).toBeDefined();
-    });
+    }, WAIT);
     observers.sync(settled('in_progress'));
     expect(invalidated()).toBe(false);
     observers.sync(settled('completed'));
     expect(invalidated()).toBe(true);
     await vi.waitFor(() => {
       expect(jobsPage).toHaveBeenCalledTimes(2);
-    });
+    }, WAIT);
     await vi.waitFor(() => {
       expect(invalidated()).toBe(false);
-    });
+    }, WAIT);
     // A second set on the same client remembers the version seen.
     const again = createObserverSet(env.client);
     again.sync(settled('completed'));
@@ -126,13 +127,13 @@ describe('createObserverSet', () => {
     observers.sync(needs);
     await vi.waitFor(() => {
       expect(env.client.getQueryData(key(1))).toBeDefined();
-    });
+    }, WAIT);
     env.client.removeQueries({ queryKey: key(1) });
     observers.sync(needs);
     expect(observersOf(1)).toBe(1);
     await vi.waitFor(() => {
       expect(jobsPage).toHaveBeenCalledTimes(2);
-    });
+    }, WAIT);
     expect(observers.size()).toBe(1);
     observers.destroy();
   });

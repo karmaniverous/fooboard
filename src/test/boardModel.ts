@@ -19,6 +19,7 @@ import { createQueryEnv, type QueryEnv } from '@/query/client';
 import { BUDGET_BACKOFF, IDLE_INTERVAL_MS } from '@/query/intervals';
 
 import { simProviders, simTransport } from './simDemo';
+import { MIN_TEST_TIMEOUT_MS } from './timeouts';
 
 /** Longer than any root query's poll interval. */
 export const OVERDUE_MS = IDLE_INTERVAL_MS * BUDGET_BACKOFF + 1;
@@ -37,7 +38,7 @@ export function freezeDate(): number {
 const FROZEN_AT = Date.UTC(2026, 0, 1);
 
 /** How long a test waits for a demo board to fill. */
-export const FILL_TIMEOUT_MS = 10_000;
+export const FILL_TIMEOUT_MS = MIN_TEST_TIMEOUT_MS;
 
 /** Retries in tests wait nothing. */
 export function withoutRetryDelay(env: QueryEnv): QueryEnv {

@@ -23,6 +23,7 @@ import {
   ghRepo,
 } from '@/test/fakeReaders';
 import { response } from '@/test/fetchResponse';
+import { WAIT } from '@/test/timeouts';
 
 import { createQueryFn, MissingCredentialError } from './fetchers';
 import { type Around, passThrough, type RequestCall } from './instrument';
@@ -100,7 +101,7 @@ describe('createQueryFn', () => {
     const answer = client.query({ queryKey: runs(1) });
     await vi.waitFor(() => {
       expect(runsPage).toHaveBeenCalledOnce();
-    });
+    }, WAIT);
     secret = 'two';
     land();
     await answer;

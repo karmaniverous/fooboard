@@ -6,9 +6,14 @@
  */
 import '@testing-library/jest-dom/vitest';
 
+import { configure } from '@testing-library/react';
 import { afterAll, afterEach } from 'vitest';
 
 import { assertNoActWarnings, watchActWarnings } from './actGuard';
+import { MIN_TEST_TIMEOUT_MS } from './timeouts';
+
+// Testing Library's find* queries and waitFor wait 1 s by default.
+configure({ asyncUtilTimeout: MIN_TEST_TIMEOUT_MS });
 
 // Registered before Testing Library's own cleanup, so (after hooks run in
 // reverse) this checks once the test's tree has unmounted; afterAll catches

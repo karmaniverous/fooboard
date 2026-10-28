@@ -8,6 +8,8 @@
  */
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
+import { WAIT } from '@/test/timeouts';
+
 import { copyText } from './clipboard';
 
 const setClipboard = (clipboard: unknown) => {
@@ -27,7 +29,7 @@ async function copied(): Promise<boolean> {
   copyText('hello', onCopied);
   await vi.waitFor(() => {
     expect(onCopied).toHaveBeenCalledOnce();
-  });
+  }, WAIT);
   return onCopied.mock.calls[0][0];
 }
 
