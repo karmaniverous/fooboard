@@ -55,9 +55,13 @@ async function boardState(grid: Locator, zoom: Locator) {
   };
 }
 
-/** The board's state once it has stopped changing (rows fill in one by
- * one as the demo loads, and each may widen the board). */
+/** The board's state once every cell has filled in (a cell still loading
+ * is `aria-busy`; rows fill in one by one, and each may widen the board)
+ * and it has stopped changing. */
 async function settledState(page: Page, grid: Locator, zoom: Locator) {
+  await expect(grid.locator('[aria-busy]')).toHaveCount(0, {
+    timeout: SETTLE_MS * SETTLE_TRIES,
+  });
   let last = await boardState(grid, zoom);
   for (let i = 0; i < SETTLE_TRIES; i++) {
     await page.waitForTimeout(SETTLE_MS);
