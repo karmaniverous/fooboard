@@ -11,6 +11,10 @@ const media = (query: string): MediaQueryList | undefined =>
     ? window.matchMedia(query)
     : undefined;
 
+/** Whether `query` matches now (false without `matchMedia`). */
+export const mediaMatches = (query: string): boolean =>
+  media(query)?.matches ?? false;
+
 export function useMediaQuery(query: string): boolean {
   const subscribe = useCallback(
     (onChange: () => void): (() => void) => {
@@ -24,7 +28,7 @@ export function useMediaQuery(query: string): boolean {
   );
   return useSyncExternalStore(
     subscribe,
-    () => media(query)?.matches ?? false,
+    () => mediaMatches(query),
     () => false,
   );
 }

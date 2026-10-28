@@ -2,9 +2,12 @@
  * Tests for the board viewport's gestures (spec.md C-13): Ctrl/Cmd + wheel
  * zooms in steps (small deltas adding up), a plain wheel scrolls; `=` and
  * `-` zoom on the focused board and other keys pass through; a pinch
- * zooms by the change in distance between two pointers; a double tap
- * zooms in a step; a drag pans the page only when the board overflows;
- * and a cancelled press never swallows the next click.
+ * zooms by the change in distance between two pointers, and a two-finger
+ * touch is kept from scrolling; a double tap zooms in a step, and a run of
+ * flicks (touch scrolls, cancelled by the browser) never does; a mouse drag
+ * pans the page only when the board overflows, while a touch drag is left
+ * to the browser (`touch-action: pan-x pan-y`, Decision 76); and a
+ * cancelled press never swallows the next click.
  *
  * @module
  */
@@ -27,6 +30,32 @@ afterEach(() => {
 
 const zoomOf = (stores: ReturnType<typeof renderViewport>) =>
   stores.preferences.getView('demo').zoom;
+
+/** Dispatch a touchmove with `fingers` touches; false if prevented. */
+const touchMove = (target: HTMLElement, fingers: number): boolean => {
+  const move = new Event('touchmove', { bubbles: true, cancelable: true });
+  Object.defineProperty(move, 'touches', { value: { length: fingers } });
+  return target.dispatchEvent(move);
+};
+
+/** A touch pointer event stamped at `timeStamp` (jsdom stamps events with
+ * the real clock). */
+const touchAt = (
+  target: HTMLElement,
+  type: 'pointerDown' | 'pointerUp' | 'pointerCancel',
+  pointerId: number,
+  timeStamp: number,
+  clientX = 20,
+) => {
+  const event = createEvent[type](target, {
+    pointerId,
+    pointerType: 'touch',
+    clientX,
+    clientY: 20,
+  });
+  Object.defineProperty(event, 'timeStamp', { value: timeStamp });
+  fireEvent(target, event);
+};
 
 /** Magnify to the top of the range, so the board overflows the window. */
 const magnify = () => {
@@ -63,11 +92,20 @@ describe('BoardViewport gestures', () => {
     expect(zoomOf(stores)).toBe(0.9);
   });
 
-  it('zooms by the change in distance between two pointers, and not from a pinch of no width', () => {
+  it('zooms by the change in distance between two pointers, keeps two fingers from scrolling, and not from a pinch of no width', () => {
     const stores = renderViewport();
     const board = boardArea();
+    // The browser pans one finger; two it would pan too, cancelling the
+    // pinch, so their moves are prevented.
+    expect(touchMove(board, 1)).toBe(true);
+    expect(touchMove(board, 2)).toBe(false);
     const down = (pointerId: number, clientX: number) => {
-      fireEvent.pointerDown(board, { pointerId, clientX, clientY: 0 });
+      fireEvent.pointerDown(board, {
+        pointerId,
+        pointerType: 'touch',
+        clientX,
+        clientY: 0,
+      });
     };
     down(1, 0);
     down(2, 100);
@@ -82,18 +120,13 @@ describe('BoardViewport gestures', () => {
     expect(zoomOf(stores)).toBe(1.5);
   });
 
-  it('zooms in a step on a double tap, not on two taps further apart', () => {
+  it('zooms in a step on a double tap, not on taps further apart, moved or with two fingers', () => {
     const stores = renderViewport();
     const board = boardArea();
-    // jsdom stamps events with the real clock: set each tap's stamp.
-    const tap = (pointerId: number, timeStamp: number) => {
-      const down = createEvent.pointerDown(board, {
-        pointerId,
-        pointerType: 'touch',
-      });
-      Object.defineProperty(down, 'timeStamp', { value: timeStamp });
-      fireEvent(board, down);
-      fireEvent.pointerUp(board, { pointerId, pointerType: 'touch' });
+    // Taps count when they let go, where they went down.
+    const tap = (pointerId: number, timeStamp: number, upX = 20) => {
+      touchAt(board, 'pointerDown', pointerId, timeStamp - 50);
+      touchAt(board, 'pointerUp', pointerId, timeStamp, upX);
     };
     tap(1, 1000);
     tap(2, 1200);
@@ -101,6 +134,36 @@ describe('BoardViewport gestures', () => {
     tap(3, 5000);
     tap(4, 9000);
     expect(zoomOf(stores)).toBe(1.1);
+    // A touch that moved before letting go is no tap.
+    tap(5, 12_000);
+    tap(6, 12_100, 60);
+    expect(zoomOf(stores)).toBe(1.1);
+    // Nor is a two-finger tap (a pinch that didn't move).
+    touchAt(board, 'pointerDown', 7, 15_000);
+    touchAt(board, 'pointerDown', 8, 15_010, 25);
+    touchAt(board, 'pointerUp', 8, 15_050, 25);
+    touchAt(board, 'pointerUp', 7, 15_060);
+    expect(zoomOf(stores)).toBe(1.1);
+  });
+
+  it('never zooms on a run of flicks, and a tap after a flick is a tap', () => {
+    const stores = renderViewport(model);
+    const cell = screen.getAllByRole('link', { name: /Passed, dev/ })[0];
+    // A flick: the browser takes the touch to scroll and cancels it.
+    const flick = (pointerId: number, timeStamp: number) => {
+      touchAt(cell, 'pointerDown', pointerId, timeStamp);
+      touchAt(cell, 'pointerCancel', pointerId, timeStamp + 30);
+    };
+    flick(1, 1000);
+    flick(2, 1100);
+    flick(3, 1200);
+    expect(zoomOf(stores)).toBe(1);
+    // A tap straight after a flick opens the cell and doesn't zoom.
+    touchAt(cell, 'pointerDown', 4, 1300);
+    touchAt(cell, 'pointerUp', 4, 1350);
+    fireEvent.click(cell);
+    expect(zoomOf(stores)).toBe(1);
+    expect(screen.getByRole('dialog')).toBeInTheDocument();
   });
 
   it('ignores a pointer it never saw go down', () => {
@@ -117,16 +180,22 @@ describe('BoardViewport gestures', () => {
     expect(zoomOf(stores)).toBe(1);
   });
 
-  it('pans the page by the drag only when the board overflows', () => {
+  it('pans the page by a mouse drag only when the board overflows', () => {
     renderViewport(model);
     const scroll = vi
       .spyOn(window, 'scrollBy')
       .mockImplementation(() => undefined);
     const board = boardArea();
-    const drag = (pointerId: number) => {
-      fireEvent.pointerDown(board, { pointerId, clientX: 200, clientY: 200 });
-      fireEvent.pointerMove(board, { pointerId, clientX: 150, clientY: 160 });
-      fireEvent.pointerUp(board, { pointerId });
+    const drag = (pointerId: number, pointerType = 'mouse') => {
+      const at = (clientX: number, clientY: number) => ({
+        pointerId,
+        pointerType,
+        clientX,
+        clientY,
+      });
+      fireEvent.pointerDown(board, at(200, 200));
+      fireEvent.pointerMove(board, at(150, 160));
+      fireEvent.pointerUp(board, at(150, 160));
     };
     // At 100% the demo board fits the test window: nothing to pan.
     drag(1);
@@ -134,6 +203,23 @@ describe('BoardViewport gestures', () => {
     magnify();
     drag(2);
     expect(scroll).toHaveBeenCalledWith(50, 40);
+  });
+
+  it('leaves a touch drag to the browser: the grid pans natively and the code never scrolls', () => {
+    renderViewport(model);
+    const scroll = vi
+      .spyOn(window, 'scrollBy')
+      .mockImplementation(() => undefined);
+    const board = boardArea();
+    expect(board).toHaveClass('touch-pan-x', 'touch-pan-y');
+    expect(board).not.toHaveClass('touch-none');
+    magnify();
+    const touch = { pointerId: 1, pointerType: 'touch' };
+    fireEvent.pointerDown(board, { ...touch, clientX: 200, clientY: 200 });
+    fireEvent.pointerMove(board, { ...touch, clientX: 150, clientY: 160 });
+    fireEvent.pointerMove(board, { ...touch, clientX: 100, clientY: 120 });
+    fireEvent.pointerUp(board, touch);
+    expect(scroll).not.toHaveBeenCalled();
   });
 
   it('swallows the click that ends a drag, but never the one after a cancelled press', () => {

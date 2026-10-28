@@ -24,7 +24,7 @@ npm run e2e          # Playwright smoke tests on the build (run npm run build fi
 npm run knip         # find unused files, dependencies and exports
 ```
 
-The Playwright tests (`e2e/`) run against `vite preview` serving `dist/` with `customHttp.yml`'s headers, so under the CSP that ships. A guard on every page fails a test on any CSP violation and on any request to a host but the app's own. They cover the demo board, every dialog, sheet, popover and drag, What's new, the error screen, the served headers and the automated accessibility checks (axe, WCAG 2.1 A and AA, light and dark; Tab order; reduced motion). CI runs them in Chromium; install it once with `npx playwright install chromium`.
+The Playwright tests (`e2e/`) run against `vite preview` serving `dist/` with `customHttp.yml`'s headers, so under the CSP that ships. A guard on every page fails a test on any CSP violation and on any request to a host but the app's own. They cover the demo board, every dialog, sheet, popover and drag, What's new, the error screen, the served headers, touch scrolling on a phone (390 × 844 with touch, in Chromium and WebKit; Firefox has no mobile emulation) and the automated accessibility checks (axe, WCAG 2.1 A and AA, light and dark; Tab order; reduced motion). CI runs them in Chromium; install it once with `npx playwright install chromium`.
 
 **Browser pass** (before a release): `FOOBOARD_E2E_BROWSERS=all npm run e2e` runs them in Playwright's Chromium, the installed Chrome and Edge, Firefox and WebKit (`npx playwright install chromium firefox webkit`). WebKit stands in for Safari; real Safari on macOS and iOS is checked by hand (the spec's Verification Checklist lists the steps).
 

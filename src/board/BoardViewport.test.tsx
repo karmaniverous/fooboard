@@ -1,6 +1,8 @@
 /**
  * Tests for the board viewport: zoom buttons and keys change and save the
- * zoom, 100% and `0` return to the fitted layout, and density is saved.
+ * zoom, 100% and `0` return to the fitted layout, and density is saved;
+ * on a touch device the board keeps its size when only the window's height
+ * changes (iOS's address bar during a scroll), and a desktop follows it.
  *
  * @module
  */
@@ -11,6 +13,8 @@ import { measureBoard } from '@/demo/scenarios/measure';
 import { type BoardModel, emptyModel } from '@/engine';
 import { fullModel } from '@/test/boardModel';
 import { renderViewport } from '@/test/boardViewport';
+import { fakeMediaQueries } from '@/test/mediaQuery';
+import { fakeWindowSize } from '@/test/windowSize';
 
 let demoModel: BoardModel = emptyModel();
 beforeAll(async () => {
@@ -23,15 +27,10 @@ describe('BoardViewport', () => {
   it('sizes the grid area from the window, never from the grid itself', () => {
     // A wide grid grows the page; if the area followed the grid, each
     // layout would feed the next and narrow screens would never settle.
-    const root = document.documentElement;
-    const width = Object.getOwnPropertyDescriptor(root, 'clientWidth');
-    Object.defineProperty(root, 'clientWidth', {
-      configurable: true,
-      value: 390,
-    });
+    const size = fakeWindowSize();
     try {
       setup(demoModel);
-      fireEvent(window, new Event('resize'));
+      size.resize({ width: 390 });
       const grid = screen.getByRole('grid');
       const rung = grid.dataset.rung;
       expect(rung).toBe('0');
@@ -41,13 +40,38 @@ describe('BoardViewport', () => {
         configurable: true,
         value: 3000,
       });
-      fireEvent(window, new Event('resize'));
+      size.resize({});
       expect(screen.getByRole('grid').dataset.rung).toBe(rung);
     } finally {
-      if (width) Object.defineProperty(root, 'clientWidth', width);
-      else Reflect.deleteProperty(root, 'clientWidth');
+      size.restore();
     }
   });
+
+  it.each([
+    ['keeps its size on a touch device', true, false],
+    ['re-lays out on a desktop', false, true],
+  ])(
+    'when only the window height changes, the board %s',
+    (_, coarse, changes) => {
+      const media = fakeMediaQueries(
+        (q) => coarse && q === '(pointer: coarse)',
+      );
+      const size = fakeWindowSize();
+      try {
+        setup(demoModel);
+        // Tall enough for the richest rung, then too short for it.
+        size.resize({ height: 1400 });
+        const rows = () => screen.getByRole('grid').style.gridTemplateRows;
+        const before = rows();
+        // The address bar shows again: the window is shorter.
+        size.resize({ height: 400 });
+        expect(rows() !== before).toBe(changes);
+      } finally {
+        media.restore();
+        size.restore();
+      }
+    },
+  );
 
   it('fits the board across the width it lays out for, group gutters included', () => {
     setup(demoModel);
