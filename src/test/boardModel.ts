@@ -7,6 +7,8 @@
  *
  * @module
  */
+import { vi } from 'vitest';
+
 import type { DemoScenario } from '@/demo/sim/scenario';
 import type { Wait } from '@/demo/sim/simulator';
 import type { Dashboard } from '@/domain/config/dashboard';
@@ -20,6 +22,19 @@ import { simProviders, simTransport } from './simDemo';
 
 /** Longer than any root query's poll interval. */
 export const OVERDUE_MS = IDLE_INTERVAL_MS * BUDGET_BACKOFF + 1;
+
+/** Freeze the clock (`Date` only; timeouts stay real, so `settle` still
+ * runs) at a fixed instant, and return it. A test that reads the
+ * *refreshing* mark freezes it before filling a board, so the data can't
+ * age while the board fills; it restores real timers afterwards. */
+export function freezeDate(): number {
+  const instant = FROZEN_AT;
+  vi.useFakeTimers({ toFake: ['Date'], now: instant });
+  return instant;
+}
+
+/** The instant `freezeDate` holds the clock at. */
+const FROZEN_AT = Date.UTC(2026, 0, 1);
 
 /** How long a test waits for a demo board to fill. */
 export const FILL_TIMEOUT_MS = 10_000;
