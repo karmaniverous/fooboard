@@ -13,10 +13,11 @@
  *
  * @module
  */
-import { useEffect, useRef } from 'react';
+import { useCallback, useEffect, useRef } from 'react';
 
 import { snapZoom, stepZoom, type ZoomRange } from './zoom';
 
+/** Two taps whose releases are closer than this (ms) zoom in a step. */
 const DOUBLE_TAP_MS = 300;
 /** Movement (px) after which a press is a drag, not a tap or click. */
 const DRAG_THRESHOLD = 8;
@@ -145,10 +146,27 @@ export function useBoardGestures(
     const b = points.at(1);
     return a && b ? Math.hypot(a.x - b.x, a.y - b.y) : 0;
   };
-  const release = (id: number) => {
-    pointers.current.delete(id);
-    if (pointers.current.size < 2) pinch.current = null;
-  };
+  const release = useCallback(
+    (id: number) => {
+      pointers.current.delete(id);
+      if (pointers.current.size < 2) pinch.current = null;
+    },
+    [pointers],
+  );
+  // A pointer let go off the grid (before a drag captures it) ends there:
+  // forget it too, or the board stays "interacting" and the next press
+  // would be taken for a pinch's second finger.
+  useEffect(() => {
+    const end = (e: PointerEvent) => {
+      release(e.pointerId);
+    };
+    window.addEventListener('pointerup', end);
+    window.addEventListener('pointercancel', end);
+    return () => {
+      window.removeEventListener('pointerup', end);
+      window.removeEventListener('pointercancel', end);
+    };
+  }, [release]);
   /** A touch let go where it went down, alone: a tap. Two taps close
    * together zoom in a step. Counted on release, so a quick run of flicks
    * (each cancelled by the browser's scroll) never zooms. */

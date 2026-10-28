@@ -42,6 +42,8 @@ test.skip(
 
 /** How long the board must hold still to count as laid out (ms). */
 const SETTLE_MS = 1_000;
+/** How many `SETTLE_MS` waits the board gets to hold still. */
+const SETTLE_TRIES = 20;
 
 /** What a re-layout would change: the board's box and the zoom. */
 async function boardState(grid: Locator, zoom: Locator) {
@@ -57,12 +59,13 @@ async function boardState(grid: Locator, zoom: Locator) {
  * one as the demo loads, and each may widen the board). */
 async function settledState(page: Page, grid: Locator, zoom: Locator) {
   let last = await boardState(grid, zoom);
-  for (;;) {
+  for (let i = 0; i < SETTLE_TRIES; i++) {
     await page.waitForTimeout(SETTLE_MS);
     const now = await boardState(grid, zoom);
     if (JSON.stringify(now) === JSON.stringify(last)) return now;
     last = now;
   }
+  throw new Error(`the board never held still: last ${JSON.stringify(last)}`);
 }
 
 /** One-finger touch scroll up the page from the board's middle: real
@@ -123,7 +126,10 @@ test('a touch scroll on a phone is the browser’s, and the board keeps its size
     .poll(() => page.evaluate(() => window.scrollY))
     .toBeGreaterThan(0);
   expect(await boardState(grid, zoom)).toEqual(before);
-  expect(await page.evaluate(`window.${SCROLL_BY_CALLS}`)).toBe(0);
+  // Only Chromium's scroll is a touch; elsewhere the test scrolls itself.
+  if (browserName === 'chromium') {
+    expect(await page.evaluate(`window.${SCROLL_BY_CALLS}`)).toBe(0);
+  }
 
   // The address bar expands, then collapses: only the height changes.
   await page.setViewportSize({

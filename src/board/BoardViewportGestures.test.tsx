@@ -6,8 +6,9 @@
  * touch is kept from scrolling; a double tap zooms in a step, and a run of
  * flicks (touch scrolls, cancelled by the browser) never does; a mouse drag
  * pans the page only when the board overflows, while a touch drag is left
- * to the browser (`touch-action: pan-x pan-y`, Decision 76); and a
- * cancelled press never swallows the next click.
+ * to the browser (`touch-action: pan-x pan-y`, Decision 76); a cancelled
+ * press never swallows the next click, nor does a pointer let go off the
+ * grid.
  *
  * @module
  */
@@ -221,6 +222,31 @@ describe('BoardViewport gestures', () => {
     fireEvent.pointerUp(board, touch);
     expect(scroll).not.toHaveBeenCalled();
   });
+
+  it.each(['pointerUp', 'pointerCancel'] as const)(
+    'forgets a pointer that ends off the grid (%s), so the next press is no pinch',
+    (end) => {
+      const stores = renderViewport(model);
+      const cell = screen.getAllByRole('link', { name: /Passed, dev/ })[0];
+      const reached = vi.fn();
+      document.addEventListener('click', reached);
+      try {
+        // A pen pressed on the board, dragged off it and lifted elsewhere.
+        fireEvent.pointerDown(cell, { pointerId: 5, pointerType: 'pen' });
+        fireEvent[end](document.body, { pointerId: 5, pointerType: 'pen' });
+        // Then a mouse click on a cell: one pointer, not a pinch's second.
+        const mouse = { pointerId: 1, pointerType: 'mouse', clientX: 9 };
+        fireEvent.pointerDown(cell, mouse);
+        fireEvent.pointerMove(cell, { ...mouse, clientX: 60 });
+        fireEvent.pointerUp(cell, mouse);
+        fireEvent.click(cell);
+        expect(reached).toHaveBeenCalledTimes(1);
+        expect(zoomOf(stores)).toBe(1);
+      } finally {
+        document.removeEventListener('click', reached);
+      }
+    },
+  );
 
   it('swallows the click that ends a drag, but never the one after a cancelled press', () => {
     renderViewport(model);

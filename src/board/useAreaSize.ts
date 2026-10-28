@@ -13,7 +13,9 @@ import { mediaMatches } from '@/components/useMediaQuery';
 const BOTTOM_MARGIN_PX = 8;
 
 /** A touch-first device, whose browser shows and hides its own toolbars
- * (iOS's address bar) as the page scrolls. */
+ * (iOS's address bar) as the page scrolls. This is the primary pointer: a
+ * touch-first device whose window can be resized (a tablet's split view)
+ * also re-lays out only when the width or the orientation changes. */
 const COARSE_POINTER_QUERY = '(pointer: coarse)';
 
 /** The viewport in landscape. */
