@@ -3,8 +3,9 @@
  * zooms in steps (small deltas adding up), a plain wheel scrolls; `=` and
  * `-` zoom on the focused board and other keys pass through; a pinch
  * zooms by the change in distance between two pointers, and a two-finger
- * touch is kept from scrolling; a double tap zooms in a step, and a run of
- * flicks (touch scrolls, cancelled by the browser) never does; a mouse drag
+ * touch is kept from scrolling; taps never zoom, however close together
+ * (no double-tap zoom, Decision 78), nor does a run of flicks (touch
+ * scrolls, cancelled by the browser); a mouse drag
  * pans the page only when the board overflows, while a touch drag is left
  * to the browser (`touch-action: pan-x pan-y`, Decision 76); a cancelled
  * press never swallows the next click, nor does a pointer let go off the
@@ -121,30 +122,17 @@ describe('BoardViewport gestures', () => {
     expect(zoomOf(stores)).toBe(1.5);
   });
 
-  it('zooms in a step on a double tap, not on taps further apart, moved or with two fingers', () => {
+  it('never zooms on taps, however close together (no double-tap zoom)', () => {
     const stores = renderViewport();
     const board = boardArea();
-    // Taps count when they let go, where they went down.
-    const tap = (pointerId: number, timeStamp: number, upX = 20) => {
+    const tap = (pointerId: number, timeStamp: number) => {
       touchAt(board, 'pointerDown', pointerId, timeStamp - 50);
-      touchAt(board, 'pointerUp', pointerId, timeStamp, upX);
+      touchAt(board, 'pointerUp', pointerId, timeStamp);
     };
     tap(1, 1000);
-    tap(2, 1200);
-    expect(zoomOf(stores)).toBe(1.1);
-    tap(3, 5000);
-    tap(4, 9000);
-    expect(zoomOf(stores)).toBe(1.1);
-    // A touch that moved before letting go is no tap.
-    tap(5, 12_000);
-    tap(6, 12_100, 60);
-    expect(zoomOf(stores)).toBe(1.1);
-    // Nor is a two-finger tap (a pinch that didn't move).
-    touchAt(board, 'pointerDown', 7, 15_000);
-    touchAt(board, 'pointerDown', 8, 15_010, 25);
-    touchAt(board, 'pointerUp', 8, 15_050, 25);
-    touchAt(board, 'pointerUp', 7, 15_060);
-    expect(zoomOf(stores)).toBe(1.1);
+    tap(2, 1100);
+    tap(3, 1150);
+    expect(zoomOf(stores)).toBe(1);
   });
 
   it('never zooms on a run of flicks, and a tap after a flick is a tap', () => {
