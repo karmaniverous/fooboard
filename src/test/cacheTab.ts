@@ -20,7 +20,7 @@ import { createReadWith, type ReadWith } from '@/query/readWith';
 import { storedKeys } from './persisted';
 
 /** The buster the tabs write under unless given another. */
-export const BUSTER = '1.0.0+5';
+const BUSTER = '1.0.0+5';
 
 /** A raw store the tabs share, its entries readable. */
 export type RawStore = ReturnType<typeof memoryCacheStore>;

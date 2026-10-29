@@ -36,7 +36,7 @@ fooboard shows the deployment state of every repo Ã— stage at a glance, live 
 - [Credentials](#credentials)
 - [Sharing, export and import](#sharing-export-and-import)
 - [Header, menu and footer](#header-menu-and-footer)
-  - [What's new](#whats-new)
+  - [Release notes](#release-notes)
   - [When something goes wrong](#when-something-goes-wrong)
 - [Your data](#your-data)
 - [Releasing and deployment](#releasing-and-deployment)
@@ -475,13 +475,13 @@ The header stays at the top of the window. Its buttons, each with a tooltip:
 - **GitHub**: this repo.
 - **Report an issue**: [GitHub Issues](https://github.com/karmaniverous/fooboard/issues).
 
-As the window narrows, buttons move into the menu from the right, then the tagline goes; _README_ and _News & support_ stay longest. [Privacy](./PRIVACY.md) and [Terms](./TERMS.md) are always in the menu, followed by _What's new_ and _Resetâ€¦_; the menu ends with fooboard's version. The footer repeats every item as a link, turning to icons and then dropping out from the left as space runs short; Privacy and Terms always stay.
+As the window narrows, buttons move into the menu from the right, then the tagline goes; _README_ and _News & support_ stay longest. [Privacy](./PRIVACY.md) and [Terms](./TERMS.md) are always in the menu, followed by _Release notes_ and _Resetâ€¦_; the menu ends with fooboard's version. The footer repeats every item as a link, turning to icons and then dropping out from the left as space runs short; Privacy and Terms always stay.
 
-### What's new
+### Release notes
 
-_What's new_, in the menu, lists every release from the [changelog](./CHANGELOG.md) bundled with this version, newest first: each release is a collapsed entry (the newest starts open, and opening one closes the others) listing its features and fixes, with a link to its announcement on X when there is one.
+_Release notes_, in the menu, opens fooboard's [releases page](https://github.com/karmaniverous/fooboard/releases) on GitHub in a new tab: every release, newest first, with its features and fixes.
 
-A dot on the menu button and on the item marks a release this browser hasn't seen; opening _What's new_ clears it. The last version seen is saved on this device, like the theme; it is never exported, and _Reset_ clears it, so the dot comes back.
+A dot on the menu button and on the item marks a version of fooboard newer than the last one this browser has seen; following the link (a click, Enter or a tap) clears it. Your first visit counts as having seen the version you arrive on, so a new browser shows no dot until fooboard updates. The last version seen is saved on this device, like the theme; it is never exported, and _Reset_ clears it, so the next visit counts as a first one.
 
 ### When something goes wrong
 
@@ -494,7 +494,7 @@ Before it goes into the issue, the message is cleaned of anything shaped like a 
 Everything stays in this browser:
 
 - **Dashboards** are saved under a versioned format; older saves are upgraded when they load, and data that can't be read is reported and never overwritten. The first save after an upgrade keeps a copy of the old save (e.g. `fooboard:config.v5`) until the next save succeeds.
-- **Zoom, density, theme and the last version whose _What's new_ you've seen** are saved on each device, and never exported. Deleting a dashboard removes its settings on this device too.
+- **Zoom, density, theme and the last version whose release notes you've seen** are saved on each device, and never exported. Deleting a dashboard removes its settings on this device too.
 - **Tokens and keys** are kept only for the current tab unless you tick _Remember on this device_. Unticking it later removes the stored copy, so a token or key kept for the tab only leaves nothing on the device. _Forget_ removes one.
 - **Answers from GitHub and AWS** (runs, jobs, branches, behind counts, and the app search's lists of each AWS key's Amplify apps, with their names and repository URLs) are kept in this browser's IndexedDB, **unencrypted**, for up to 24 hours, so a reload shows the last known board at once. A new version of fooboard starts the cache afresh.
 - **What's kept and for whom**: only answers read with the token or key remembered on this device are kept, each marked with a fingerprint of that secret (a one-way hash, never the secret itself).

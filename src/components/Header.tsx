@@ -4,9 +4,10 @@
  * icon buttons in the C-19 order, then the menu. As the row narrows,
  * buttons fold into the menu from the right, then the tagline goes, and
  * README and News & support go last; chosen by measuring the content.
- * Privacy and Terms are always in the menu, never buttons; then What's
- * new (spec.md C-20, §3.10), whose dot, on it and on the menu button,
- * marks a release this browser hasn't seen; *Reset* is the menu's last
+ * Privacy and Terms are always in the menu, never buttons; then *Release
+ * notes* (spec 0.2.0 §3.D), a link to the releases page whose dot, on it
+ * and on the menu button, marks a version this browser hasn't seen until
+ * the link is followed; *Reset* is the menu's last
  * item (spec.md §3.9), nowhere else in the header; under it, the app's
  * version (Decision 25).
  *
@@ -34,16 +35,18 @@ import {
 } from '@/lib/useMeasured';
 import { cn, PINNED_FULL } from '@/lib/utils';
 
+import { ExternalLink } from './ExternalLink';
 import { NavControl } from './NavControl';
 import { useNavDialogs, useNavItems } from './navItems';
 import { NavMenuEntry } from './NavMenuEntry';
 
-/** The unseen-release dot (spec.md C-20): decoration; the names say it. */
+/** The unseen-version dot (spec 0.2.0 §3.D): decoration; the names say
+ * it. */
 function NewDot({ className }: { className?: string }): React.JSX.Element {
   return (
     <span
       aria-hidden
-      data-whats-new-dot
+      data-release-notes-dot
       className={cn('size-2 rounded-full bg-status-started', className)}
     />
   );
@@ -66,7 +69,8 @@ function Brand(): React.JSX.Element {
 
 export function Header(): React.JSX.Element {
   const items = useNavItems();
-  const { openReset, openWhatsNew, whatsNewUnseen } = useNavDialogs();
+  const { openReset, markReleaseNotesSeen, releaseNotesUnseen } =
+    useNavDialogs();
   const newReleaseId = useId();
   const buttons = items.filter((i) => !i.legal);
   const legal = items.filter((i) => i.legal);
@@ -150,18 +154,18 @@ export function Header(): React.JSX.Element {
         <DropdownMenu modal={false}>
           <DropdownMenuTrigger
             aria-label="Menu"
-            aria-describedby={whatsNewUnseen ? newReleaseId : undefined}
+            aria-describedby={releaseNotesUnseen ? newReleaseId : undefined}
             data-app-menu-trigger
             className="relative flex size-8 items-center justify-center rounded-md hover:bg-foreground/10"
           >
             <Menu className="size-5" />
-            {whatsNewUnseen && (
+            {releaseNotesUnseen && (
               <NewDot className="absolute right-0.5 top-0.5" />
             )}
           </DropdownMenuTrigger>
-          {whatsNewUnseen && (
+          {releaseNotesUnseen && (
             <span id={newReleaseId} hidden>
-              New release: see What&apos;s new
+              New release: see Release notes
             </span>
           )}
           <DropdownMenuContent align="end">
@@ -173,16 +177,22 @@ export function Header(): React.JSX.Element {
               <NavMenuEntry key={item.id} item={item} />
             ))}
             <DropdownMenuSeparator />
-            <DropdownMenuItem className="gap-2" onSelect={openWhatsNew}>
-              <Sparkles className="size-4" />
-              What&apos;s new
-              {whatsNewUnseen && (
-                <>
-                  {' '}
-                  <span className="sr-only">(new release)</span>
-                  <NewDot className="ml-auto" />
-                </>
-              )}
+            <DropdownMenuItem asChild className="gap-2">
+              <ExternalLink
+                unstyled
+                href={site.releasesUrl}
+                onClick={markReleaseNotesSeen}
+              >
+                <Sparkles className="size-4" />
+                Release notes
+                {releaseNotesUnseen && (
+                  <>
+                    {' '}
+                    <span className="sr-only">(new release)</span>
+                    <NewDot className="ml-auto" />
+                  </>
+                )}
+              </ExternalLink>
             </DropdownMenuItem>
             <DropdownMenuItem className="gap-2" onSelect={openReset}>
               <RotateCcw className="size-4" />

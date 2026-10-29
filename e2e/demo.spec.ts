@@ -118,7 +118,6 @@ test('every dialog, sheet, popover and drag works under the CSP', async ({
   // The header's menu dialogs.
   const menu = page.getByRole('button', { name: 'Menu' });
   for (const [item, dialog, role] of [
-    ["What's new", "What's new", 'dialog'],
     ['Reset…', 'Reset fooboard?', 'alertdialog'],
   ] as const)
     await roundTrip(

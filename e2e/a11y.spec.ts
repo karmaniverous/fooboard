@@ -1,8 +1,8 @@
 /**
  * The accessibility pass's automated part (spec.md §3.10), under the
  * locally served CSP: axe finds no WCAG 2.1 A or AA violation (contrast
- * included) on the home page, the demo board, What's new, the cell
- * detail sheet, the settings popup and the error screen, in light and
+ * included) on the home page, the demo board, the menu, the cell detail
+ * sheet, the settings popup and the error screen, in light and
  * dark; Tab runs header, then body; the dialogs keep Tab inside; group
  * frames and boundary lines are hidden from assistive technology; and
  * with reduced motion nothing on the board animates.
@@ -59,9 +59,6 @@ for (const colorScheme of ['light', 'dark'] as const)
       const menu = page.getByRole('button', { name: 'Menu' });
       await menu.click();
       expect(await violations(page), 'menu').toEqual([]);
-      await page.getByRole('menuitem', { name: /^What's new/ }).click();
-      await expect(page.getByRole('dialog')).toBeVisible();
-      expect(await violations(page), "What's new").toEqual([]);
       await page.keyboard.press('Escape');
 
       await firstCell(page).focus();
@@ -110,10 +107,7 @@ test('Tab runs through the header, then the board', async ({ page }) => {
 test('dialogs keep Tab inside until closed', async ({ page }) => {
   await openDemo(page);
   const menu = page.getByRole('button', { name: 'Menu' });
-  for (const [item, role] of [
-    ["What's new", 'dialog'],
-    ['Reset…', 'alertdialog'],
-  ] as const) {
+  for (const [item, role] of [['Reset…', 'alertdialog']] as const) {
     await menu.click();
     await page.getByRole('menuitem', { name: new RegExp(`^${item}`) }).click();
     const dialog = page.getByRole(role);
