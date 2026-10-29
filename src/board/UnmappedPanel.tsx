@@ -6,7 +6,8 @@
  * pattern saved to the dashboard (validated like every edit; *Not saved*
  * when refused). The heading counts the entries shown and those
  * dismissed; *Show dismissed* (a toggle, for this visit) lists the
- * dismissed ones greyed, each naming its pattern, with *Undo*. A
+ * dismissed ones greyed, each naming its pattern, with *Undo* (focus
+ * goes to the restored entry). A
  * dismissal only hides entries: the board reads and places runs as
  * before.
  *
@@ -47,7 +48,7 @@ function DismissedList({
   onUndo,
 }: {
   dismissed: readonly DismissedRun[];
-  onUndo: (dismissal: UnmappedDismissal) => void;
+  onUndo: (dismissed: DismissedRun) => void;
 }): React.JSX.Element {
   return (
     <ul
@@ -69,7 +70,7 @@ function DismissedList({
             variant="outline"
             className="ml-auto"
             onClick={() => {
-              onUndo(by);
+              onUndo({ run, by });
             }}
           >
             {UNDO}
@@ -114,6 +115,9 @@ export function UnmappedPanel({
   const [formFor, setFormFor] = useState<string | null>(null);
   const heading = useRef<HTMLHeadingElement>(null);
   const buttons = useRef(new Map<string, HTMLButtonElement>());
+  /** The entry *Undo* restored: its *Dismiss…* button takes focus as it
+   * mounts. */
+  const restored = useRef<string | null>(null);
   const base = useId();
 
   const withDismissals = (list: UnmappedDismissal[]): Dashboard => ({
@@ -188,8 +192,14 @@ export function UnmappedPanel({
                   setFormFor(open ? null : run.id);
                 }}
                 dismissButton={(button) => {
-                  if (button) buttons.current.set(run.id, button);
-                  else buttons.current.delete(run.id);
+                  if (!button) {
+                    buttons.current.delete(run.id);
+                    return;
+                  }
+                  buttons.current.set(run.id, button);
+                  if (restored.current !== run.id) return;
+                  restored.current = null;
+                  button.focus();
                 }}
               >
                 {open && (
@@ -213,12 +223,11 @@ export function UnmappedPanel({
       {showDismissed && dismissed.length > 0 && (
         <DismissedList
           dismissed={dismissed}
-          onUndo={(by) => {
-            update(
-              withDismissals(
-                dashboard.unmappedDismissals.filter((d) => d.id !== by.id),
-              ),
+          onUndo={({ run, by }) => {
+            const next = withDismissals(
+              dashboard.unmappedDismissals.filter((d) => d.id !== by.id),
             );
+            if (update(next)) restored.current = run.id;
           }}
         />
       )}

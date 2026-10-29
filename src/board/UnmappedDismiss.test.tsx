@@ -7,7 +7,7 @@
  * or to the board's title when no entry is left; Escape cancels to the
  * *Dismiss…* button without closing the panel; one form is open at a
  * time; *Show dismissed* lists the dismissed entries with the pattern
- * hiding each, and *Undo* removes it; a refused save says *Not saved*.
+ * hiding each, and *Undo* removes it, focusing the restored entry; a refused save says *Not saved*.
  *
  * @module
  */
@@ -232,6 +232,11 @@ describe('dismissing an unmapped run', () => {
     ).toBeVisible();
     fireEvent.click(within(list).getByRole('button', { name: 'Undo' }));
     expect(saved.at(-1)?.unmappedDismissals).toEqual([]);
+    // Focus goes to the restored entry's Dismiss… button.
+    expect(document.activeElement).toHaveAccessibleName('Dismiss…');
+    expect(document.activeElement?.closest('li')?.textContent).toContain(
+      'Nightly',
+    );
     expect(
       within(panel()).getByRole('link', { name: 'Nightly' }),
     ).toBeVisible();
