@@ -8,9 +8,9 @@
  * Amplify headers and SPA rewrite, and a build fails if the rewrite would
  * hide one of its files (`vite/hostingPlugin.ts`). Vendor code is split
  * into cacheable chunks, `src/zodJitless.ts` in zod's (`vite/chunks.ts`).
- * The app's version
- * (`package.json`) is defined as `__APP_VERSION__` (the persisted cache's buster). Vitest
- * extends this config (see `vitest.config.ts`).
+ * The app's version (`package.json`) is defined as `__APP_VERSION__` (the
+ * persisted cache's buster). Vitest extends this config (see
+ * `vitest.config.ts`).
  *
  * @module
  */
