@@ -1,6 +1,7 @@
 /**
  * App shell: router wiring for the home page, the demo, creating a
- * dashboard (the first run's steps) and saved dashboards, and the share
+ * dashboard (the first run's steps), saved dashboards and *Page not found*
+ * for any other address (spec.md §2.16, Scope item 6), and the share
  * link the page was opened with; under the theme, the error boundary
  * (spec.md §3.10), which shows the error screen in place of the whole
  * app if any of it throws while rendering.
@@ -19,6 +20,7 @@ import { ThemeProvider } from '@/components/ThemeProvider';
 import { FIRST_RUN_PATH } from '@/firstRun/paths';
 import { useViewportWidthVar } from '@/lib/useViewportWidthVar';
 import { Home } from '@/pages/Home';
+import { PageNotFound } from '@/pages/PageNotFound';
 import type { LinkPayload } from '@/share/link';
 
 // Board pages load on first visit, so the home page doesn't wait
@@ -90,6 +92,14 @@ export default function App({
                     ),
                   )}
                   <Route path="/d/:id" element={<DashboardPage />} />
+                  <Route
+                    path="*"
+                    element={
+                      <Page>
+                        <PageNotFound />
+                      </Page>
+                    }
+                  />
                 </Routes>
               </Suspense>
             </main>
