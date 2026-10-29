@@ -221,8 +221,13 @@ describe('dismissing an unmapped run', () => {
       name: 'Show dismissed',
     });
     expect(toggle).toHaveAttribute('aria-pressed', 'false');
+    expect(toggle).not.toHaveClass('bg-primary');
+    expect(toggle.querySelector('svg')).toBeNull();
     fireEvent.click(toggle);
     expect(toggle).toHaveAttribute('aria-pressed', 'true');
+    // Pressed is filled and checked, unlike the ghost hover.
+    expect(toggle).toHaveClass('bg-primary');
+    expect(toggle.querySelector('svg')).not.toBeNull();
     const list = within(panel()).getByRole('list', { name: 'Dismissed runs' });
     expect(within(list).getByRole('link', { name: 'Nightly' })).toBeVisible();
     expect(

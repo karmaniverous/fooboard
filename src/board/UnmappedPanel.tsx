@@ -13,6 +13,7 @@
  *
  * @module
  */
+import { Check } from 'lucide-react';
 import { useId, useRef, useState } from 'react';
 
 import { ExternalLink } from '@/components/ExternalLink';
@@ -158,13 +159,16 @@ export function UnmappedPanel({
         {dismissed.length > 0 && (
           <Button
             size="sm"
-            variant="ghost"
-            className="ml-auto aria-pressed:bg-accent aria-pressed:text-accent-foreground"
+            // Pressed: filled, with a check (WCAG 1.4.11: the fill is
+            // well over 3:1 on the panel, and unlike the ghost hover).
+            variant={showDismissed ? 'default' : 'ghost'}
+            className="ml-auto gap-1"
             aria-pressed={showDismissed}
             onClick={() => {
               onShowDismissed(!showDismissed);
             }}
           >
+            {showDismissed && <Check aria-hidden className="size-4" />}
             {SHOW_DISMISSED}
           </Button>
         )}

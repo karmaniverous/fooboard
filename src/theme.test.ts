@@ -3,7 +3,8 @@
  * and dark mode: borders and field outlines at least 3:1 against the
  * surfaces they sit on (WCAG 2.2 SC 1.4.11, non-text contrast), the group
  * frame lines at least 3:1 on the background they are drawn on (spec.md
- * §3.7), and muted text at least 4.5:1 (SC 1.4.3). The tokens are parsed from the CSS, so
+ * §3.7), a pressed button's fill at least 3:1 on the background and on
+ * the hover fill (*Show dismissed*, spec 0.2.0 §3.I), and muted text at least 4.5:1 (SC 1.4.3). The tokens are parsed from the CSS, so
  * a change that fades them fails here.
  *
  * @module
@@ -85,6 +86,13 @@ describe.each(Object.entries(MODES))('%s theme contrast', (_, mode) => {
     expect(
       contrast(token(mode, 'frame'), token(mode, 'background')),
     ).toBeGreaterThanOrEqual(NON_TEXT);
+  });
+
+  it("a pressed button's fill (primary) reaches 3:1 on the background and on the hover fill", () => {
+    for (const under of ['background', 'accent'])
+      expect(
+        contrast(token(mode, 'primary'), token(mode, under)),
+      ).toBeGreaterThanOrEqual(NON_TEXT);
   });
 
   it.each(SURFACES)('muted text reaches 4.5:1 on %s', (surface) => {
