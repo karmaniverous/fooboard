@@ -1,7 +1,8 @@
 /**
  * A dashboard's board with its panels (spec.md §2.4): the live board read
  * through the query env its page provides, its Problems and Unmapped
- * panels, the dashboard editor and the credentials panel, every edit
+ * panels, the dashboard editor and the credentials panel, each opened by
+ * an icon button beside the board's name (spec 0.2.0 §3.A), every edit
  * handed to `onSave`. A saved dashboard saves it to this browser; the
  * demo keeps it in memory for the tab (§3.14). A changed secret removes
  * what was read with the old one and re-derives the board, so entering a
@@ -9,13 +10,27 @@
  *
  * @module
  */
+import {
+  KeyRound,
+  type LucideIcon,
+  MessageSquareText,
+  Pencil,
+  TriangleAlert,
+  Unlink,
+} from 'lucide-react';
 import { useState } from 'react';
 
+import {
+  EDIT_DASHBOARD,
+  UNMAPPED_RUNS,
+  unmappedLabel,
+} from '@/board/actionLabels';
+import { BoardActionButton } from '@/board/BoardActionButton';
 import { BOARD_TITLE_ID, BoardScreen } from '@/board/BoardScreen';
 import { ProblemsPanel } from '@/board/ProblemsPanel';
 import { UnmappedPanel } from '@/board/UnmappedPanel';
 import { SidePanel } from '@/components/SidePanel';
-import { Button } from '@/components/ui/button';
+import type { ButtonVariant } from '@/components/ui/buttonVariants';
 import { CredentialsPanel } from '@/credentials/CredentialsPanel';
 import { useCredentialVersion } from '@/credentials/useCredentialVersion';
 import type { Dashboard } from '@/domain/config/dashboard';
@@ -37,13 +52,35 @@ import { FirstRunNote } from '@/firstRun/FirstRunNote';
 const problemCount = (shown: readonly Problem[]): number =>
   shown.filter((p) => p.severity === 'problem').length;
 
-/** The Problems button: problems counted, or the notes when only notes. */
-function problemsLabel(shown: readonly Problem[]): string {
+/** The Problems panel and its button: problems counted, on a destructive
+ * warning; or, when there are only notes, Notes with the notes counted. */
+function problemsAction(shown: readonly Problem[]): {
+  title: string;
+  label: string;
+  Icon: LucideIcon;
+  variant: ButtonVariant;
+} {
   const problems = problemCount(shown);
   return problems > 0 || shown.length === 0
-    ? `Problems (${String(problems)})`
-    : `Notes (${String(shown.length)})`;
+    ? {
+        title: 'Problems',
+        label: `Problems (${String(problems)})`,
+        Icon: TriangleAlert,
+        variant: 'destructive',
+      }
+    : {
+        title: 'Notes',
+        label: `Notes (${String(shown.length)})`,
+        Icon: MessageSquareText,
+        variant: 'outline',
+      };
 }
+
+/** The Credentials panel's title and button. */
+const CREDENTIALS = 'Credentials';
+
+/** The Credentials button with no credential yet. */
+const ADD_A_CREDENTIAL = 'Add a credential';
 
 export function DashboardView({
   initial,
@@ -114,97 +151,107 @@ export function DashboardView({
             )
           : undefined
       }
-      actions={(model, problems) => (
-        <>
-          {problems.shown.length > 0 && (
-            <SidePanel
-              title="Problems"
-              trigger={
-                <Button size="sm" variant="outline">
-                  {problemsLabel(problems.shown)}
-                </Button>
-              }
-            >
-              <ProblemsPanel
-                dashboard={dashboard}
-                problems={problems.shown}
-                onFix={(p) => {
-                  openEditor(problemDraft(p));
-                }}
-                onCustomise={(p) => {
-                  const fix = customiseFor(dashboard, p);
-                  if (!fix) return;
-                  save(fix.dashboard);
-                  openEditor(fix.draft);
-                }}
-                canCustomise={(p) => offersCustomise(dashboard, p)}
-                onDismiss={problems.dismiss}
-                onChange={save}
-              />
-            </SidePanel>
-          )}
-          {model.unmapped.length > 0 && (
-            <SidePanel
-              title="Unmapped runs"
-              trigger={
-                <Button size="sm" variant="outline">
-                  Unmapped ({model.unmapped.length})
-                </Button>
-              }
-            >
-              <UnmappedPanel
-                runs={model.unmapped}
-                rowNames={Object.fromEntries(
-                  dashboard.rows.map((r) => [r.id, r.displayName]),
-                )}
-                onAddTest={(run) => fixWith(draftFor(run, dashboard))}
-                onAddOverride={(run) =>
-                  fixWith(overrideDraftFor(run, dashboard))
+      actions={(model, problems) => {
+        const problemsButton = problemsAction(problems.shown);
+        return (
+          <>
+            {problems.shown.length > 0 && (
+              <SidePanel
+                title={problemsButton.title}
+                tooltip={problemsButton.label}
+                trigger={
+                  <BoardActionButton
+                    label={problemsButton.label}
+                    Icon={problemsButton.Icon}
+                    variant={problemsButton.variant}
+                  />
                 }
+              >
+                <ProblemsPanel
+                  dashboard={dashboard}
+                  problems={problems.shown}
+                  onFix={(p) => {
+                    openEditor(problemDraft(p));
+                  }}
+                  onCustomise={(p) => {
+                    const fix = customiseFor(dashboard, p);
+                    if (!fix) return;
+                    save(fix.dashboard);
+                    openEditor(fix.draft);
+                  }}
+                  canCustomise={(p) => offersCustomise(dashboard, p)}
+                  onDismiss={problems.dismiss}
+                  onChange={save}
+                />
+              </SidePanel>
+            )}
+            {model.unmapped.length > 0 && (
+              <SidePanel
+                title={UNMAPPED_RUNS}
+                tooltip={unmappedLabel(model.unmapped.length)}
+                trigger={
+                  <BoardActionButton
+                    label={unmappedLabel(model.unmapped.length)}
+                    Icon={Unlink}
+                  />
+                }
+              >
+                <UnmappedPanel
+                  runs={model.unmapped}
+                  rowNames={Object.fromEntries(
+                    dashboard.rows.map((r) => [r.id, r.displayName]),
+                  )}
+                  onAddTest={(run) => fixWith(draftFor(run, dashboard))}
+                  onAddOverride={(run) =>
+                    fixWith(overrideDraftFor(run, dashboard))
+                  }
+                />
+              </SidePanel>
+            )}
+            <SidePanel
+              open={editorOpen}
+              onOpenChange={(open) => {
+                if (open) openEditor();
+                else setEditorOpen(false);
+              }}
+              title={EDIT_DASHBOARD}
+              tooltip={EDIT_DASHBOARD}
+              trigger={
+                <BoardActionButton label={EDIT_DASHBOARD} Icon={Pencil} />
+              }
+            >
+              <DashboardEditor
+                key={draft.n}
+                draft={draft.draft}
+                dashboard={dashboard}
+                onChange={save}
+                unknown={unknownCells(dashboard, model)}
+                samples={ruleSamples(dashboard.rows, model.cells)}
+                branchSamples={model.amplifyBranches}
+                problems={problems.shown}
               />
             </SidePanel>
-          )}
-          <SidePanel
-            open={editorOpen}
-            onOpenChange={(open) => {
-              if (open) openEditor();
-              else setEditorOpen(false);
-            }}
-            title="Edit dashboard"
-            trigger={
-              <Button size="sm" variant="outline">
-                Edit
-              </Button>
-            }
-          >
-            <DashboardEditor
-              key={draft.n}
-              draft={draft.draft}
-              dashboard={dashboard}
-              onChange={save}
-              unknown={unknownCells(dashboard, model)}
-              samples={ruleSamples(dashboard.rows, model.cells)}
-              branchSamples={model.amplifyBranches}
-              problems={problems.shown}
-            />
-          </SidePanel>
-          <SidePanel
-            title="Credentials"
-            trigger={
-              <Button size="sm" variant={missing ? 'default' : 'outline'}>
-                {missing ? 'Add a credential' : 'Credentials'}
-              </Button>
-            }
-          >
-            <CredentialsPanel
-              dashboard={dashboard}
-              otherDashboards={others}
-              onChange={save}
-              keyApps={(id) => model.amplifyKeyApps[id]}
-            />
-          </SidePanel>
-        </>
-      )}
+            <SidePanel
+              title={CREDENTIALS}
+              tooltip={missing ? ADD_A_CREDENTIAL : CREDENTIALS}
+              trigger={
+                <BoardActionButton
+                  label={missing ? ADD_A_CREDENTIAL : CREDENTIALS}
+                  Icon={KeyRound}
+                  variant={missing ? 'default' : 'outline'}
+                />
+              }
+            >
+              <CredentialsPanel
+                dashboard={dashboard}
+                otherDashboards={others}
+                onChange={save}
+                keyApps={(id) => model.amplifyKeyApps[id]}
+              />
+            </SidePanel>
+          </>
+        );
+      }}
     />
   );
 }

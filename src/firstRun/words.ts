@@ -6,6 +6,7 @@
  *
  * @module
  */
+import { UNMAPPED_RUNS } from '@/board/actionLabels';
 import {
   type BranchPresetId,
   BranchPresetIdSchema,
@@ -52,11 +53,18 @@ export const suggestionText = (
 export const PRESET_IDS: readonly BranchPresetId[] =
   BranchPresetIdSchema.options;
 
-/** What the note says of the unmapped runs. */
-export const unmappedText = (unmapped: number): string =>
-  unmapped > 0
-    ? `${plural(unmapped, 'run lands', 'runs land')} in no cell: Unmapped (${String(unmapped)}) lists them, with a fix for each.`
-    : 'Runs that land in no cell will be listed under Unmapped.';
+/** What the note says of the unmapped runs, when there are some: the
+ * words before the button's name (`unmappedLabel`, shown with its icon,
+ * spec 0.2.0 §3.A), and after it. */
+export const unmappedText = (
+  unmapped: number,
+): { before: string; after: string } => ({
+  before: `${plural(unmapped, 'run lands', 'runs land')} in no cell:`,
+  after: 'lists them, with a fix for each.',
+});
+
+/** What the note says while no run is unmapped (there's no button yet). */
+export const NO_UNMAPPED_TEXT = `Runs that land in no cell will be listed under ${UNMAPPED_RUNS}.`;
 
 /** What the note says of the rule problems. */
 export const problemsText = (problems: number): string =>

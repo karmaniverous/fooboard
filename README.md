@@ -52,7 +52,7 @@ The board is shaped like a real pipeline: a _Preview_ group (Alpha, Beta), then 
 
 Within the first ten minutes it shows every status, badge, empty state and unmapped run described below; two minutes in, a new run starts on _accounts_ / _Prod_ whose jobs take a few seconds to load, so that cell shows the **refreshing** dot meanwhile. Every visit plays the same story from the moment you open it.
 
-You can change anything: the gears' popups, _Edit_ (the dashboard editor) and _Credentials_ all work. What you change lasts until you reload or leave the demo; nothing is saved, except zoom and density, which are saved on your device as for any board.
+You can change anything: the gears' popups, _Edit dashboard_ (the dashboard editor) and _Credentials_ all work. What you change lasts until you reload or leave the demo; nothing is saved, except zoom and density, which are saved on your device as for any board.
 
 ### Demo account
 
@@ -80,9 +80,9 @@ _Create a dashboard_ walks you through four steps. Each step's heading takes the
 
    Each `preview/<name>` branch names a preview stage (`preview/bali` gives _bali_, sourced from dev), all ticked; `preview/release` names none, since _release_ is already a stage. Choose another preset, untick previews, or choose _Blank_ to add stages yourself; each stage shows how many of your repos have a branch it matches. _Back to repos_ returns to step 2.
 
-4. **Your board.** The board opens and fills in as GitHub answers. A note above it says how many runs landed in no cell (_Unmapped_ lists them, with a fix for each; [Unmapped runs](#unmapped-runs)) and how many rule problems are marked ! (_Problems_). _Done_ closes the note.
+4. **Your board.** The board opens and fills in as GitHub answers. A note above it says how many runs landed in no cell (_Unmapped runs (N)_ lists them, with a fix for each; [Unmapped runs](#unmapped-runs)) and how many rule problems are marked ! (_Problems_). _Done_ closes the note.
 
-New dashboards use the built-in source rules and status sets. Add Amplify rows, rename or re-pattern stages and tweak rules afterwards with _Edit_ ([Editing a dashboard](#editing-a-dashboard)). A dashboard lives at `/d/<id>` in this browser.
+New dashboards use the built-in source rules and status sets. Add Amplify rows, rename or re-pattern stages and tweak rules afterwards with _Edit dashboard_ ([Editing a dashboard](#editing-a-dashboard)). A dashboard lives at `/d/<id>` in this browser.
 
 ## Reading the board
 
@@ -109,7 +109,7 @@ An **empty cell** says why: _no records_, _needs credential_ (with a link to [Cr
 
 A **warning marker** (!) on a row or stage header, or beside the board's name for board-wide problems, means a rule there has a problem (a group's problems mark its members; a status set's problems mark the rows whose cells use it); hover it to read them, click it to open the editor at the problem. A cell's own problems (such as a hint to read more) are listed in its detail.
 
-_Problems (N)_ in the toolbar lists every problem with _Fix_ to open the editor at the exact item, and notes on what the rule check couldn't decide; when there are only notes it reads _Notes (N)_.
+_Problems (N)_, the red warning-triangle button beside the board's name, lists every problem with _Fix_ to open the editor at the exact item, and notes on what the rule check couldn't decide; when there are only notes it is _Notes (N)_, a speech bubble, and its panel is titled _Notes_.
 
 **Loading.** A board fills as answers arrive: each repo's runs first, then each run's jobs, then the behind counts.
 
@@ -155,6 +155,7 @@ Any other region is waited for, however long it takes, since a partial list coul
 - **Zoom**: Ctrl/âŒ˜ + wheel, a pinch, the toolbar buttons or `+` `-` `0` (a tap on a touch screen opens the cell it lands on, so there is no double-tap zoom); zooming out fits more, zooming in shows more.
 - **Scrolling**: a board larger than the window scrolls with the page: drag it with the mouse, or swipe it on a touch screen like any page. On a phone or tablet the board keeps its size while the browserâ€™s toolbars come and go as you scroll, and fits itself again when you rotate the device.
 - **Density**: _Default_, _Comfortable_ and _Compact_ density change the padding. On a narrow screen the controls beside the board's name wrap onto more lines, so none sits off-screen at any zoom.
+- **Board actions**: beside the board's name sit icon buttons: _Legend_ (an i), each GitHub token's battery, then _Problems_ or _Notes_, _Unmapped runs_ (a broken link), _Edit dashboard_ (a pencil) and _Credentials_ (a key; _Add a credential_, highlighted, while the dashboard has none). A button is named by what it opens, with its count where there is one (_Problems (2)_, _Unmapped runs (12)_), and a tooltip shows that name when you point at it or Tab to it. On a touch screen a tap opens it, and the panel's title says what it is. A button with a count shows only while its count is above zero.
 - **Legend**: _Legend_ shows each status set the boardâ€™s cells use, with its statuses as cells show them.
 - **Summary**: a count for each summary status the cells show (for the built-in sets: _Failing_, _Running_, _Cancelled_, _OK_; _Unknown_ last), then behind and diverged cells; click one to show only those cells, again to clear. A provisional cell (see _Loading_ above) counts toward no chip and matches no filter until its jobs land.
 - **Request budget**: a battery for each GitHub token the board uses shows the requests left this hour; its tooltip names the token and says when the budget resets. It is grey and empty until the board's first GitHub response with that token, and again after you replace or forget the token.
@@ -167,7 +168,7 @@ Any other region is waited for, however long it takes, since a partial list coul
   <img src="docs/screenshots/editor-light.png" alt="The dashboard editor open beside the board, on its General tab." width="960" />
 </picture>
 
-_Edit_ (on the board) opens the editor in a side panel, like _Credentials_, _Problems_ and _Unmapped_. Each panel's title and _Close_ (and the editor's tabs) stay at its top while its content scrolls beneath them, so they are always in reach, and _Fix_ or a drag scrolls only the content. The editor has these tabs:
+_Edit dashboard_ (the pencil on the board) opens the editor in a side panel, like _Credentials_, _Problems_ and _Unmapped runs_. Each panel's title and _Close_ (and the editor's tabs) stay at its top while its content scrolls beneath them, so they are always in reach, and _Fix_ or a drag scrolls only the content. The editor has these tabs:
 
 - **General**: rename, duplicate or delete the dashboard, its default row rules, its [settings](#settings), and its **requests in flight**: how many requests each credential may have running at once in this tab, for GitHub and AWS separately (1 to 100, 10 by default). A change applies at once and reads nothing again.
 - **Requests in flight, in practice**: higher fills the board faster; a burst can trigger GitHub's secondary rate limits or AWS throttling, after which fooboard pauses that credential (see _Polling_). The limit is per credential per tab: two tabs on the same token can each have that many running.
@@ -290,7 +291,7 @@ A board from a newer release asks you to reload. Boards saved by early developme
 
 ## Unmapped runs
 
-_Unmapped (N)_ lists recent GitHub runs and Amplify jobs that have no cell, with the reason for each row that reads their repo or app: no stage rule matches (naming the branch), no row rule matches, no item counts, or no order key (none, or an empty one).
+_Unmapped runs (N)_ (the broken-link button beside the board's name) lists recent GitHub runs and Amplify jobs that have no cell, with the reason for each row that reads their repo or app: no stage rule matches (naming the branch), no row rule matches, no item counts, or no order key (none, or an empty one).
 
 _Add rule_ opens the editor where the fix goes, with a check drafted from the record to add: a new stage pre-filled with the branch; the row rule that missed it; the item rule of the row's status set; or the source rule's order key. _Add override_ opens a stage-rule override for the branch on a row reading the record or its group.
 

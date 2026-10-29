@@ -1,9 +1,13 @@
 /**
- * The demo board, for the smoke tests: opening it and its first cell.
+ * The demo board, for the smoke tests: opening it and its first cell,
+ * and the phone viewport the phone checks use.
  *
  * @module
  */
 import { expect, type Locator, type Page } from '@playwright/test';
+
+/** An iPhone's viewport with its toolbars collapsed (CSS px). */
+export const PHONE = { width: 390, height: 844 };
 
 /** The first status cell's link (one Tab stop per cell). */
 export const firstCell = (page: Page): Locator =>

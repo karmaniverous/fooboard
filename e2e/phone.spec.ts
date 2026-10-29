@@ -21,11 +21,9 @@
 import type { Locator, Page } from '@playwright/test';
 
 import { MIN_TEST_TIMEOUT_MS } from '../src/test/timeouts';
-import { openDemo } from './board';
+import { openDemo, PHONE } from './board';
 import { expect, test } from './guard';
 
-/** An iPhone's viewport with its toolbars collapsed (CSS px). */
-const PHONE = { width: 390, height: 844 };
 /** About what iOS's address bar takes when it expands again (CSS px). */
 const ADDRESS_BAR_PX = 80;
 /** Zoom steps in, so the board is taller than the phone. */

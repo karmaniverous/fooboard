@@ -16,6 +16,11 @@
  * reach the header a render after the panel mounts, so that focus waits
  * for the render after Radix asks for it.
  *
+ * A side panel's trigger may carry a tooltip (the board's icon buttons,
+ * spec 0.2.0 §3.A): focus returns to the trigger on close with the
+ * tooltip after a click or a key press, without it after a touch
+ * (`useTouchFocusReturn`).
+ *
  * @module
  */
 import { createContext, use, useEffect, useRef, useState } from 'react';
@@ -28,8 +33,10 @@ import {
   SheetTitle,
   SheetTrigger,
 } from '@/components/ui/sheet';
+import { WithTooltip } from '@/components/ui/tooltip';
 
 import { firstTabbable } from './tabbable';
+import { useTouchFocusReturn } from './useTouchFocusReturn';
 
 /** The header's tab row: undefined outside a panel, null until mounted. */
 const TabRow = createContext<HTMLElement | null | undefined>(undefined);
@@ -121,6 +128,7 @@ export function PanelTabs({
 export function SidePanel({
   title,
   trigger,
+  tooltip,
   open,
   onOpenChange,
   children,
@@ -128,14 +136,30 @@ export function SidePanel({
   title: string;
   /** The element that opens the panel. */
   trigger: React.ReactNode;
+  /** The trigger's tooltip, if it has one (an icon button's name). */
+  tooltip?: string;
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
   children: React.ReactNode;
 }): React.JSX.Element {
+  const { triggerProps, onCloseAutoFocus } = useTouchFocusReturn();
+  const sheetTrigger = (
+    <SheetTrigger asChild {...triggerProps}>
+      {trigger}
+    </SheetTrigger>
+  );
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetTrigger asChild>{trigger}</SheetTrigger>
-      <PanelSheetContent side="right" title={title}>
+      {tooltip === undefined ? (
+        sheetTrigger
+      ) : (
+        <WithTooltip label={tooltip}>{sheetTrigger}</WithTooltip>
+      )}
+      <PanelSheetContent
+        side="right"
+        title={title}
+        onCloseAutoFocus={onCloseAutoFocus}
+      >
         {children}
       </PanelSheetContent>
     </Sheet>

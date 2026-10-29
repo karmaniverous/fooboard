@@ -36,7 +36,9 @@ const editor = () => screen.getByRole('dialog', { name: 'Edit dashboard' });
 
 /** Open the editor from the board's actions, on `tab`. */
 async function openEditor(tab: string) {
-  fireEvent.click(await screen.findByRole('button', { name: 'Edit' }));
+  fireEvent.click(
+    await screen.findByRole('button', { name: 'Edit dashboard' }),
+  );
   // Radix tabs switch on mouse down.
   fireEvent.mouseDown(within(editor()).getByRole('tab', { name: tab }), {
     button: 0,

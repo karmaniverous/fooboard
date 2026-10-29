@@ -150,13 +150,17 @@ test('every dialog, sheet, popover and drag works under the CSP', async ({
   // here), and would take the next key press with it.
   await expect(legend).toBeFocused();
   // The counts change as the demo's story plays.
-  for (const panel of [/^Problems/, /^Unmapped/, /^Credentials$/]) {
+  for (const panel of [
+    /^Problems \(\d+\)$/,
+    /^Unmapped runs \(\d+\)$/,
+    /^Credentials$/,
+  ]) {
     const opener = page.getByRole('button', { name: panel });
     await roundTrip(page, () => press(page, opener), /./, opener);
   }
 
   // The dashboard editor: a select, a keyboard drag and a pointer drag.
-  await page.getByRole('button', { name: 'Edit', exact: true }).click();
+  await page.getByRole('button', { name: 'Edit dashboard' }).click();
   const editor = page.getByRole('dialog', { name: 'Edit dashboard' });
   // The panel focuses its selected tab once open (late in Firefox here);
   // wait, so it can't take focus from the drag handle.
