@@ -7,9 +7,10 @@
  * `setDefaultNavigationTimeout(`. It is refused unless it is a numeric
  * literal of at least `MIN_TEST_TIMEOUT_MS`, the floor itself, or a
  * multiple of it (`k * MIN_TEST_TIMEOUT_MS` or `MIN_TEST_TIMEOUT_MS * k`,
- * with `k` a name or a literal of at least 1), so a product of local
- * constants or a fraction of the floor can't hide a short one; a
- * shorthand option is always refused, since its value isn't in view.
+ * with `k` a name or a decimal literal of at least 1, and not `.5` or
+ * `0x0`), so a product of local constants or a fraction of the floor
+ * can't hide a short one; a shorthand option is always refused, since
+ * its value isn't in view.
  * Pauses are not timeouts and are never checked: `page.waitForTimeout(…)`
  * and a plain or `window.` `setTimeout(` never fail a test.
  *
@@ -34,8 +35,12 @@ const TIMEOUT_START = new RegExp(
 /** A timeout option written as the shorthand `{ timeout }`. */
 const SHORTHAND = new RegExp(String.raw`[{,]\s*(${OPTION})\s*(?=[,}])`, 'g');
 
-/** A plain numeric literal, digit separators allowed. */
-const NUMERIC_LITERAL = /^\d[\d_.]*$/;
+/** A decimal literal, its leading digits optional (`.5`), digit
+ * separators allowed. */
+const NUMERIC_LITERAL = /^(?:\d[\d_]*(?:\.[\d_]*)?|\.\d[\d_]*)$/;
+
+/** A name, or a path of names (`config.retries`). */
+const NAME = /^[A-Za-z_$][\w$]*(?:\.[A-Za-z_$][\w$]*)*$/;
 
 /** The floor times a factor, either way round. */
 const MULTIPLE = new RegExp(
@@ -65,9 +70,11 @@ function expressionAt(source: string, from: number): string {
 const literalValue = (literal: string): number =>
   Number(literal.replaceAll('_', ''));
 
-/** Is `factor` a name (a count of tries, say) or a literal of at least 1? */
+/** Is `factor` a name (a count of tries, say) or a decimal literal of at
+ * least 1? Anything else (`.5`, `0x0`) is refused. */
 const isMultiplier = (factor: string): boolean =>
-  !NUMERIC_LITERAL.test(factor) || literalValue(factor) >= 1;
+  NAME.test(factor) ||
+  (NUMERIC_LITERAL.test(factor) && literalValue(factor) >= 1);
 
 /** Is `expression` a timeout the floor allows? */
 function allowed(expression: string): boolean {

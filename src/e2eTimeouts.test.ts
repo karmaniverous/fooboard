@@ -56,6 +56,15 @@ describe('the timeout scan', () => {
   });
 
   it.each([
+    ['a fraction without its leading digit', '.5 * MIN_TEST_TIMEOUT_MS'],
+    ['the same, after the floor', 'MIN_TEST_TIMEOUT_MS * .5'],
+    ['a hex literal', '0x0 * MIN_TEST_TIMEOUT_MS'],
+    ['a fraction with digit separators', '0.000_5 * MIN_TEST_TIMEOUT_MS'],
+  ])('refuses a factor that is %s', (_form, expression) => {
+    expect(shortTimeouts(`timeout: ${expression},`)).toEqual([expression]);
+  });
+
+  it.each([
     ['actionTimeout', 'use: { actionTimeout: 5_000 },', '5_000'],
     ['navigationTimeout', 'use: { navigationTimeout: 5_000 },', '5_000'],
     ['setDefaultTimeout', 'page.setDefaultTimeout(5_000);', '5_000'],
@@ -85,6 +94,8 @@ describe('the timeout scan', () => {
           'test.setTimeout(TOUR_TIMEOUTS * MIN_TEST_TIMEOUT_MS);',
           'testInfo.setTimeout(MIN_TEST_TIMEOUT_MS * 2);',
           'timeout: 1 * MIN_TEST_TIMEOUT_MS,',
+          'timeout: MIN_TEST_TIMEOUT_MS * 1.5,',
+          'timeout: config.retries * MIN_TEST_TIMEOUT_MS,',
           'use: { actionTimeout: MIN_TEST_TIMEOUT_MS },',
           'page.setDefaultTimeout(MIN_TEST_TIMEOUT_MS);',
           'timeout: 60_000,',
