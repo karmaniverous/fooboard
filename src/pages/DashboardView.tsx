@@ -24,6 +24,10 @@ import {
   ADD_A_CREDENTIAL,
   CREDENTIALS,
   EDIT_DASHBOARD,
+  NOTES,
+  notesLabel,
+  PROBLEMS,
+  problemsLabel,
   UNMAPPED_RUNS,
   unmappedLabel,
 } from '@/board/actionLabels';
@@ -64,14 +68,14 @@ function problemsAction(shown: readonly Problem[]): {
   const problems = problemCount(shown);
   return problems > 0 || shown.length === 0
     ? {
-        title: 'Problems',
-        label: `Problems (${String(problems)})`,
+        title: PROBLEMS,
+        label: problemsLabel(problems),
         Icon: TriangleAlert,
         variant: 'destructive',
       }
     : {
-        title: 'Notes',
-        label: `Notes (${String(shown.length)})`,
+        title: NOTES,
+        label: notesLabel(shown.length),
         Icon: MessageSquareText,
         variant: 'outline',
       };

@@ -6,7 +6,7 @@
  *
  * @module
  */
-import { UNMAPPED_RUNS } from '@/board/actionLabels';
+import { PROBLEMS, problemsLabel, UNMAPPED_RUNS } from '@/board/actionLabels';
 import {
   type BranchPresetId,
   BranchPresetIdSchema,
@@ -69,5 +69,5 @@ export const NO_UNMAPPED_TEXT = `Runs that land in no cell will be listed under 
 /** What the note says of the rule problems. */
 export const problemsText = (problems: number): string =>
   problems > 0
-    ? `${plural(problems, 'rule problem is', 'rule problems are')} marked ! on the board and listed under Problems (${String(problems)}).`
-    : 'No rule problems so far; any would be marked ! and listed under Problems.';
+    ? `${plural(problems, 'rule problem is', 'rule problems are')} marked ! on the board and listed under ${problemsLabel(problems)}.`
+    : `No rule problems so far; any would be marked ! and listed under ${PROBLEMS}.`;
