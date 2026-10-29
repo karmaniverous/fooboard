@@ -8,7 +8,7 @@
  *
  * @module
  */
-import type { Query } from '@tanstack/query-core';
+import type { Query, QueryClient } from '@tanstack/query-core';
 import { vi } from 'vitest';
 
 import { measureBoard } from '@/demo/scenarios/measure';
@@ -68,6 +68,20 @@ function isRootOf(row: Row, query: Query): boolean {
   );
 }
 
+/** `row`'s root queries in `client`'s cache that are observed. */
+export const rootQueries = (client: QueryClient, row: Row): Query[] =>
+  client
+    .getQueryCache()
+    .getAll()
+    .filter((q) => q.getObserversCount() > 0 && isRootOf(row, q));
+
+/** What an observed query's `refetchInterval` is, unless it is a
+ * function (the board never sets one). */
+export const intervalOf = (query: Query): number | false | undefined => {
+  const interval = query.observers.at(0)?.options.refetchInterval;
+  return typeof interval === 'function' ? undefined : interval;
+};
+
 /** A boost board, read in full under fake timers. */
 export interface BoostBoard {
   env: QueryEnv;
@@ -85,13 +99,6 @@ export interface BoostBoard {
   /** Destroy the board and unmount its client. */
   done: () => void;
 }
-
-/** What an observer's `refetchInterval` is, unless it is a function
- * (the board never sets one). */
-const intervalOf = (query: Query): number | false | undefined => {
-  const interval = query.observers.at(0)?.options.refetchInterval;
-  return typeof interval === 'function' ? undefined : interval;
-};
 
 /** Whether responses are held, and the ones waiting. */
 interface Gate {
@@ -148,11 +155,7 @@ export async function boostBoard(
     list.push(Date.now());
     started.set(event.query.queryHash, list);
   });
-  const roots = (row: Row): Query[] =>
-    env.client
-      .getQueryCache()
-      .getAll()
-      .filter((q) => q.getObserversCount() > 0 && isRootOf(row, q));
+  const roots = (row: Row): Query[] => rootQueries(env.client, row);
   return {
     env,
     board,

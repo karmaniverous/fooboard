@@ -2,7 +2,9 @@
  * The board's row-axis headers (spec.md C-13, C-14b): a labelled row
  * group's label row, and each row's pinned header (its name cut to the
  * column and in full in its tooltip, its problem marker). Each carries its
- * settings gear (spec.md §3.11); clicking a header or label opens nothing.
+ * settings gear (spec.md §3.11); clicking a header or label opens nothing,
+ * but boosts the polling of its row or the group's rows (spec 0.2.0 §3.H:
+ * each is marked for `useAttentionEvents`).
  *
  * @module
  */
@@ -17,6 +19,7 @@ import { ProblemMark } from './ProblemMark';
 import { useProblemMarks } from './problemMarksContext';
 import { rowLabel } from './rowLabel';
 import { SettingsGear } from './SettingsGear';
+import { attendGroupProps, attendRowProps } from './useAttentionEvents';
 
 /** A labelled row group's label, across the grid above its rows: a row
  * of its own whose one header spans every column, so the label and its
@@ -54,6 +57,7 @@ export function RowGroupLabel({
       <div
         role="rowheader"
         aria-colspan={columns}
+        {...attendGroupProps(group.id)}
         className={cn('relative col-span-full flex items-end', GROUP_LABEL)}
         style={{ ...GROUP_LABEL_STYLE, ...style }}
       >
@@ -102,6 +106,7 @@ export function RowHeader({
       <div
         role="rowheader"
         tabIndex={0}
+        {...attendRowProps(row.id)}
         className={cn(
           'flex items-center px-[var(--cell-pad-x)] font-medium',
           PIN_LEFT,
