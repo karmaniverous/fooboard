@@ -6,6 +6,7 @@
 
 **Welcome to DevOps hell. Here's your map.**
 
+[![live demo](https://img.shields.io/badge/live%20demo-fooboard.dev%2Fdemo-brightgreen.svg)](https://fooboard.dev/demo)
 [![CI](https://github.com/karmaniverous/fooboard/actions/workflows/ci.yml/badge.svg)](https://github.com/karmaniverous/fooboard/actions/workflows/ci.yml)
 [![license](https://img.shields.io/badge/license-BSD--3--Clause-blue.svg)](https://github.com/karmaniverous/fooboard/tree/main/LICENSE)
 [![changelog](https://img.shields.io/badge/changelog-latest-blue.svg)](https://github.com/karmaniverous/fooboard/tree/main/CHANGELOG.md)
