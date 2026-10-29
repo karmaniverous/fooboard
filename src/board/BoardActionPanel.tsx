@@ -8,15 +8,14 @@
 import type { LucideIcon } from 'lucide-react';
 
 import { SidePanel } from '@/components/SidePanel';
-import type { ButtonVariant } from '@/components/ui/buttonVariants';
 
-import { BoardActionButton } from './BoardActionButton';
+import { type ActionTone, BoardActionButton } from './BoardActionButton';
 
 export function BoardActionPanel({
   title,
   label,
   Icon,
-  variant,
+  tone,
   open,
   onOpenChange,
   children,
@@ -26,7 +25,8 @@ export function BoardActionPanel({
   /** The button's name and tooltip: `title`, with a count if it has one. */
   label: string;
   Icon: LucideIcon;
-  variant?: ButtonVariant;
+  /** Its icon's emphasis (Decision 104). */
+  tone?: ActionTone;
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
   children: React.ReactNode;
@@ -37,9 +37,7 @@ export function BoardActionPanel({
       tooltip={label}
       open={open}
       onOpenChange={onOpenChange}
-      trigger={
-        <BoardActionButton label={label} Icon={Icon} variant={variant} />
-      }
+      trigger={<BoardActionButton label={label} Icon={Icon} tone={tone} />}
     >
       {children}
     </SidePanel>

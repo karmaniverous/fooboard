@@ -33,11 +33,11 @@ import {
   UNMAPPED_RUNS,
   unmappedLabel,
 } from '@/board/actionLabels';
+import type { ActionTone } from '@/board/BoardActionButton';
 import { BoardActionPanel } from '@/board/BoardActionPanel';
 import { BOARD_TITLE_ID, BoardScreen } from '@/board/BoardScreen';
 import { ProblemsPanel } from '@/board/ProblemsPanel';
 import { UnmappedPanel } from '@/board/UnmappedPanel';
-import type { ButtonVariant } from '@/components/ui/buttonVariants';
 import { CredentialsPanel } from '@/credentials/CredentialsPanel';
 import { useCredentialVersion } from '@/credentials/useCredentialVersion';
 import type { Dashboard } from '@/domain/config/dashboard';
@@ -67,7 +67,7 @@ function problemsAction(shown: readonly Problem[]): {
   title: string;
   label: string;
   Icon: LucideIcon;
-  variant: ButtonVariant;
+  tone: ActionTone;
 } {
   const problems = problemCount(shown);
   return problems > 0 || shown.length === 0
@@ -75,13 +75,13 @@ function problemsAction(shown: readonly Problem[]): {
         title: PROBLEMS,
         label: problemsLabel(problems),
         Icon: PROBLEMS_ICON,
-        variant: 'destructive',
+        tone: 'destructive',
       }
     : {
         title: NOTES,
         label: notesLabel(shown.length),
         Icon: NOTES_ICON,
-        variant: 'outline',
+        tone: 'plain',
       };
 }
 
@@ -230,7 +230,7 @@ export function DashboardView({
               title={CREDENTIALS}
               label={missing ? ADD_A_CREDENTIAL : CREDENTIALS}
               Icon={CREDENTIALS_ICON}
-              variant={missing ? 'default' : 'outline'}
+              tone={missing ? 'primary' : 'plain'}
             >
               <CredentialsPanel
                 dashboard={dashboard}

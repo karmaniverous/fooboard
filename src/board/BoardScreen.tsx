@@ -115,13 +115,15 @@ export function BoardScreen({
           data-testid="board-actions"
           className="flex flex-wrap items-center justify-end gap-x-3 gap-y-1"
         >
-          <StatusLegend dashboard={dashboard} />
+          {/* The batteries first, then Legend and the actions (Decision
+              104). */}
           <BudgetMeter
             model={model}
             labels={Object.fromEntries(
               dashboard.credentials.map((c) => [c.id, c.label]),
             )}
           />
+          <StatusLegend dashboard={dashboard} />
           {typeof actions === 'function' ? actions(model, problems) : actions}
         </div>
       </div>
