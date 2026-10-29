@@ -124,8 +124,8 @@ describe('toV6', () => {
 });
 
 describe('the migrated board', () => {
-  it('validates as v6, with the backup-worthy version bumped', () => {
-    expect(migrate(v5Board).schemaVersion).toBe(6);
+  it('validates through the chain, with the backup-worthy version bumped', () => {
+    expect(migrate(v5Board).schemaVersion).toBe(7);
     expect(DashboardSchema.safeParse(board).success).toBe(true);
   });
 

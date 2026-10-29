@@ -9,6 +9,8 @@
  * dashboard's `settings` (requests in flight) with the v5 defaults, frozen
  * in the step. v5 → v6 moves every value that may differ by row, column
  * or cell into the settings object at its level (`migrateV6.ts`).
+ * v6 → v7 gives each dashboard an empty list of dismissed unmapped-run
+ * patterns (`migrateV7.ts`, spec 0.2.0 §3.I).
  * Steps are pure and idempotent.
  *
  * @module
@@ -16,6 +18,7 @@
 import { z } from 'zod';
 
 import { toV6 } from './migrateV6';
+import { toV7 } from './migrateV7';
 import type { ConfigRoot } from './root';
 import { ConfigRootSchema, CURRENT_SCHEMA_VERSION } from './root';
 
@@ -68,6 +71,7 @@ export const addSettings: Migration = (input) => {
 const migrations: Partial<Record<number, Migration>> = {
   [FIRST_VERSION]: addSettings,
   5: toV6,
+  6: toV7,
 };
 
 /** The data model version `input` says it was written with (0: none). */

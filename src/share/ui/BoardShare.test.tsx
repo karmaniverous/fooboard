@@ -20,6 +20,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { ShareDialog } from '@/components/ShareDialog';
 import type { Dashboard } from '@/domain/config/dashboard';
+import { CURRENT_SCHEMA_VERSION } from '@/domain/config/root';
 import { createAppStores } from '@/storage';
 import { memoryStorage } from '@/storage/keyValue';
 import { windowAt } from '@/test/linkWindow';
@@ -69,7 +70,7 @@ function show(dashboards: Dashboard[] = [board]) {
     },
   });
   const stores = createAppStores(memoryStorage());
-  stores.config.save({ schemaVersion: 6, dashboards });
+  stores.config.save({ schemaVersion: CURRENT_SCHEMA_VERSION, dashboards });
   stores.credentials.set('gh-org', gh, true);
   renderShell(
     <ShareDialog open onOpenChange={() => undefined} />,
