@@ -92,13 +92,14 @@ describe('the poll boost, at its limits', () => {
     done();
   });
 
-  it('boosts nothing for a row the dashboard lacks, or once destroyed', async () => {
-    const { board, intervals, done } = await boostBoard();
+  it('polls nothing for a row the dashboard lacks, or once destroyed', async () => {
+    const { env, board, intervals, done } = await boostBoard();
     board.attend(['no-such-row'], 'click');
+    expect(env.client.isFetching()).toBe(0);
     expect(intervals(row)).toEqual([IDLE_INTERVAL_MS]);
     board.destroy();
     board.attend([row.id], 'click');
-    expect(intervals(row)).toEqual([]);
+    expect(env.client.isFetching()).toBe(0);
     done();
   });
 });

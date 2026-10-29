@@ -249,17 +249,16 @@ export function createBoardModel({
     },
     attend(rowIds, kind) {
       if (destroyed) return;
-      const known = new Set(dashboard.rows.map((row) => row.id));
+      // A row the board doesn't have (yet) has no root needs to poll; its
+      // boost is dropped at the flush.
       const roots = rowIds.flatMap((rowId) => {
         const needs = rows.get(rowId)?.needs ?? [];
-        const started =
-          known.has(rowId) &&
-          attention.attend(
-            rowId,
-            kind,
-            now(),
-            rootCompletions(env.client, needs),
-          );
+        const started = attention.attend(
+          rowId,
+          kind,
+          now(),
+          rootCompletions(env.client, needs),
+        );
         if (started) dirty.add(rowId);
         return started ? needs.filter((need) => need.root) : [];
       });
