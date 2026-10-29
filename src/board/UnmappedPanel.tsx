@@ -155,7 +155,7 @@ export function UnmappedPanel({
           <Button
             size="sm"
             variant="ghost"
-            className="ml-auto"
+            className="ml-auto aria-pressed:bg-accent aria-pressed:text-accent-foreground"
             aria-pressed={showDismissed}
             onClick={() => {
               onShowDismissed(!showDismissed);
