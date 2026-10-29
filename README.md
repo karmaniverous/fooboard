@@ -16,7 +16,7 @@
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/demo-dark.png" />
-  <img src="docs/screenshots/demo-light.png" alt="The fooboard demo board: rows of repos grouped by team, columns of stages, each cell coloured by its latest deployment's status, with drift and pipeline badges." width="960" />
+  <img src="docs/screenshots/demo-light.png" alt="The fooboard demo board: rows of repos in Frontend and Services groups, columns of stages from the Alpha and Beta previews to Dev, Staging and Prod, each cell coloured by its latest deployment's status, some with behind or diverged badges." width="960" />
 </picture>
 
 fooboard shows the deployment state of every repo × stage at a glance, live at [fooboard.dev](https://fooboard.dev). Paste a GitHub token, pick your repos and a branch preset, and the board fills itself in from your GitHub Actions runs (and, if you use them, AWS Amplify builds). No workflow changes, no account, no server: it is a free, open-source, static web app, and nothing leaves your browser except the calls it makes directly to GitHub and AWS.
@@ -198,7 +198,7 @@ From the keyboard, focus the handle, press Space, move with the arrow keys (the 
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/settings-editor-dark.png" />
-  <img src="docs/screenshots/settings-editor-light.png" alt="The settings editor for the storefront row: its GitHub token, AWS key and Amplify status set, each inherited from the dashboard." width="960" />
+  <img src="docs/screenshots/settings-editor-light.png" alt="The dashboard editor's Rows tab with the storefront row open: its settings, a GitHub token and an AWS key inherited from the dashboard, and the built-in Amplify status set." width="960" />
 </picture>
 
 A few values may differ by row, by column or by cell: the **GitHub token** a cell reads its repo with, the **AWS key** an Amplify cell reads its apps with, and for each source the **status set** and the **item rule**. They are **settings**, one object with the same fields at six levels: the dashboard, a row group, a column group, a row, a column (a stage) and a cell. Every field is optional; an unset field inherits.
