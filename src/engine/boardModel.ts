@@ -7,6 +7,8 @@
  * the cache at once, so the board never blanks; a token passing half its
  * budget slows its polling. A fetch that runs longer than the
  * refreshing delay re-derives the rows it feeds once the delay passes.
+ * The user's interest in a row (`attend`) boosts its polling, stepping on
+ * as its root queries' polls complete (spec 0.2.0 §3.H; `attention.ts`).
  * React only subscribes to it.
  *
  * @module
@@ -16,7 +18,9 @@ import { unique } from 'radash';
 import type { Dashboard } from '@/domain/config/dashboard';
 import { rowCredentials } from '@/domain/settings/credentials';
 import type { QueryEnv } from '@/query/client';
+import type { BoostKind } from '@/query/intervals';
 
+import { createAttention, rootCompletions } from './attention';
 import { createFetchStarts } from './fetchStarts';
 import { computeGroup, type GroupEntry, planGroups } from './groups';
 import { keyApps } from './keyApps';
@@ -51,6 +55,9 @@ export interface BoardModelHandle {
   setDashboard(dashboard: Dashboard): void;
   /** Re-derive every row (a secret was entered or changed). */
   refresh(): void;
+  /** Boost `rowIds`' polling for the user's `kind` of interest (spec
+   * 0.2.0 §3.H); a click also polls their root queries at once. */
+  attend(rowIds: readonly string[], kind: BoostKind): void;
   destroy(): void;
 }
 
@@ -67,6 +74,7 @@ export function createBoardModel({
   let destroyed = false;
   let scheduled = false;
   let model = emptyModel(githubCredentialIds(dashboard));
+  const attention = createAttention();
   const fetches = createFetchStarts({
     cache: env.client.getQueryCache(),
     now,
@@ -80,6 +88,7 @@ export function createBoardModel({
     budgets: env.budgets,
     now,
     fetchStartedAt: fetches.startedAt,
+    boostOf: (rowId) => attention.intervalOf(rowId),
   };
   const rows = new Map<string, RowEntry>();
   const groups = new Map<string, GroupEntry>();
@@ -140,13 +149,22 @@ export function createBoardModel({
     if (destroyed) return;
     const byId = new Map(dashboard.rows.map((row) => [row.id, row]));
     const touched = new Set<string>();
+    attention.keep(new Set(byId.keys()));
     for (const rowId of dirty) {
-      for (const group of rows.get(rowId)?.groups ?? []) touched.add(group);
+      const before = rows.get(rowId);
+      for (const group of before?.groups ?? []) touched.add(group);
       const row = byId.get(rowId);
       if (!row) {
         rows.delete(rowId);
         continue;
       }
+      // A boost steps on once its row's root queries have polled.
+      if (before)
+        attention.advance(
+          rowId,
+          rootCompletions(env.client, before.needs),
+          now(),
+        );
       const entry = deriveSafely(row);
       rows.set(rowId, entry);
       for (const group of entry.groups) touched.add(group);
@@ -229,8 +247,34 @@ export function createBoardModel({
       markAll();
       flush();
     },
+    attend(rowIds, kind) {
+      if (destroyed) return;
+      const known = new Set(dashboard.rows.map((row) => row.id));
+      const roots = rowIds.flatMap((rowId) => {
+        const needs = rows.get(rowId)?.needs ?? [];
+        const started =
+          known.has(rowId) &&
+          attention.attend(
+            rowId,
+            kind,
+            now(),
+            rootCompletions(env.client, needs),
+          );
+        if (started) dirty.add(rowId);
+        return started ? needs.filter((need) => need.root) : [];
+      });
+      flush();
+      if (kind !== 'click') return;
+      // A fetch already running counts as the poll at once.
+      for (const { key } of roots)
+        env.client.refetchQueries(
+          { queryKey: key, exact: true },
+          { cancelRefetch: false },
+        );
+    },
     destroy() {
       destroyed = true;
+      attention.clear();
       unsubscribeCache();
       unsubscribeBudgets();
       fetches.destroy();

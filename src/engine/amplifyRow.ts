@@ -27,7 +27,7 @@ import { type CellRules, placeCell } from '@/domain/model/cell';
 import type { SourceRuleOf } from '@/domain/model/sourceRule';
 import type { ResolvedAmplifySource } from '@/lib/amplify/rowJobs';
 import { amplifySnapshot } from '@/query/cache';
-import { rootFreshness } from '@/query/intervals';
+import { boostedRootFreshness, rootFreshness } from '@/query/intervals';
 import { amplifyKey } from '@/query/keys';
 
 import {
@@ -65,6 +65,8 @@ export interface AmplifyContext extends RefreshClock, AccessContext {
   source: SourceRuleOf<'amplify'>;
   /** Names a key in problems. */
   keyLabel: KeyLabel;
+  /** A row's boost interval, if it is boosted (spec 0.2.0 §3.H). */
+  boostOf: (rowId: string) => number | undefined;
 }
 
 /** The problem naming the columns of row `rowId` whose cells can't read
@@ -88,12 +90,18 @@ const unresolvedProblem = (
     { kind: 'settings', place: { level: 'row', rowId }, field: 'awsKey' },
   );
 
-/** The queries the apps need, polling fast while the row is `active`. */
-const appNeeds = (states: readonly AppState[], active: boolean): Need[] =>
+/** The queries the apps need, polling fast while the row is `active`
+ * or boosted (`boost`). */
+const appNeeds = (
+  states: readonly AppState[],
+  active: boolean,
+  boost: number | undefined,
+): Need[] =>
   states.flatMap((state) =>
     state.requests.map((request) => ({
       key: amplifyKey(state.credentialId, request),
-      freshness: rootFreshness(active, false),
+      freshness: boostedRootFreshness(active, false, boost),
+      root: true,
     })),
   );
 
@@ -105,6 +113,7 @@ function deriveApps(
   stages: readonly Stage[],
 ): RowDerivation {
   const setFor = (stageId: string) => ctx.rulesFor(row, stageId).set;
+  const boost = ctx.boostOf(row.id);
   const states = apps.map((app) => appState(ctx.client, app, ctx.source));
   const failedAt = states.findIndex((s) => s.failure);
   const failure = states[failedAt]?.failure;
@@ -114,7 +123,7 @@ function deriveApps(
       { id: row.id, stages },
       setFor,
       `Amplify app ${apps[failedAt]?.appId ?? ''}`,
-      appNeeds(states, false),
+      appNeeds(states, false, boost),
     );
   const records = states.flatMap((s) => s.records);
   const complete = states.every((s) => s.complete);
@@ -147,7 +156,7 @@ function deriveApps(
   );
   return {
     cells,
-    needs: appNeeds(states, active),
+    needs: appNeeds(states, active, boost),
     problems: [],
     ...(updatedAt > 0 ? { refreshedAt: updatedAt } : {}),
   };

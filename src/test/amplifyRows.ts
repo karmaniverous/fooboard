@@ -55,6 +55,7 @@ export const amplifyCtx = (
   source: amplifySource,
   now: 0,
   fetchStartedAt: () => undefined,
+  boostOf: () => undefined,
 });
 
 /** Seed one demo app's branch list and, unless `branchesOnly`, its jobs,

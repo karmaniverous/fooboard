@@ -77,7 +77,13 @@ function seededEnv(max: number): DeriveEnv {
         measureScenario,
       ),
   });
-  return { ...query, client, now: () => 0, fetchStartedAt: () => undefined };
+  return {
+    ...query,
+    client,
+    now: () => 0,
+    fetchStartedAt: () => undefined,
+    boostOf: () => undefined,
+  };
 }
 
 /** The marketing site's row with every cell showing *No records*, so

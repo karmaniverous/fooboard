@@ -18,6 +18,10 @@ export interface Need {
   /** When this differs from the version last seen for the key, the
    * query is invalidated (never on first sight). */
   version?: string;
+  /** A root query of its row (a GitHub row's runs pages, an Amplify
+   * row's app reads): the queries a row's boost polls and steps on
+   * (spec 0.2.0 §3.H). */
+  root?: boolean;
 }
 
 /** One row's derivation from the cache. */
