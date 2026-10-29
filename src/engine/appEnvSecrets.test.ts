@@ -4,15 +4,17 @@
  * secret's data isn't written even when another tab remembers a different
  * secret under the same id; a secret replaced just before a reload, ahead
  * of the next write, brings none of the old data back; and a removal
- * heard while the cache is being restored still holds once it is.
+ * heard while the cache is being restored still holds once it is, and is
+ * written as soon as the tab takes the persisting lock.
  *
  * @module
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { PERSIST_THROTTLE_MS } from '@/persist/persistence';
+import type { Locks } from '@/persist/persistLock';
 import { runsKey, seedRuns, storedCredentials } from '@/test/persisted';
-import { type Browser, browser, openTab } from '@/test/tabs';
+import { type Browser, browser, fakeLocks, openTab, tabHub } from '@/test/tabs';
 
 import { appQueryEnv } from './appEnv';
 
@@ -41,6 +43,17 @@ async function cachedBrowser() {
   await written();
   expect(storedCredentials(shared.idb.entries)).toEqual(['gh', 'other']);
   return { shared, writer };
+}
+
+/** Web Locks granted a task after the request, as a browser grants them. */
+function laterLocks(): Locks {
+  const locks = fakeLocks();
+  return {
+    request: (name, callback) =>
+      new Promise((resolve) => setTimeout(resolve, 0)).then(() =>
+        locks.request(name, callback),
+      ),
+  };
 }
 
 /** A new tab of `shared` whose stored copy is read only on `restore()`. */
@@ -115,5 +128,34 @@ describe('the persisted cache and a credential’s secrets', () => {
     await reloading.env.restored;
     expect(reloading.env.client.getQueryData(runsKey('gh'))).toBeUndefined();
     expect(reloading.env.client.getQueryData(runsKey('other'))).toBeDefined();
+  });
+
+  it('writes a secret replaced while the copy was read at once, when the lock comes after the restore', async () => {
+    const { shared } = await cachedBrowser();
+    // The writing tab has closed; the lock is granted a task later, as a
+    // browser's is, after the restore has settled.
+    const reloading = slowTab({
+      ...shared,
+      locks: laterLocks(),
+      hub: tabHub(),
+    });
+    reloading.stores.credentials.set('gh', github('two'), true);
+    reloading.restore();
+    await reloading.env.restored;
+    await vi.advanceTimersByTimeAsync(0);
+    expect(storedCredentials(shared.idb.entries)).toEqual(['other']);
+  });
+
+  it('writes a removal another tab sent while the copy was read at once, when the lock comes after the restore', async () => {
+    const { shared } = await cachedBrowser();
+    // The writing tab has closed; the reloading tab takes the lock after
+    // the restore, and hears a removal from another tab meanwhile.
+    const hub = tabHub();
+    const reloading = slowTab({ ...shared, locks: laterLocks(), hub });
+    hub.channel().post({ type: 'remove', credentialIds: ['gh'] });
+    reloading.restore();
+    await reloading.env.restored;
+    await vi.advanceTimersByTimeAsync(0);
+    expect(storedCredentials(shared.idb.entries)).toEqual(['other']);
   });
 });

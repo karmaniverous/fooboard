@@ -18,7 +18,9 @@
  * same persister (same storage, key, wrapping and buster), so the removed
  * answers are gone from IndexedDB before a quick close (spec 0.2.0 §3.C,
  * #33). The throttled writer stays subscribed: a write it has queued runs
- * with the post-removal state the removal's own cache events gave it.
+ * with the post-removal state the removal's own cache events gave it. A
+ * `saveNow` before this tab holds the lock (a removal heard while the
+ * cache is restored) is owed, and written as soon as the lock is held.
  *
  * @module
  */
@@ -74,8 +76,8 @@ export interface CachePersistence {
    * unreadable); boards wait for it. */
   restored: Promise<void>;
   /** Write the cache now, outside the throttle (after a removal), if this
-   * tab is the one persisting (a failed or stopped storage writes
-   * nothing). */
+   * tab is the one persisting, or as soon as it takes the persisting lock
+   * (a failed or stopped storage writes nothing). */
   saveNow(): void;
   /** Stop persisting and let another tab take over. */
   stop(): void;
@@ -150,8 +152,21 @@ export function persistQueryCache({
   let stopped = false;
   /** This tab holds the persisting lock and writes. */
   let held = false;
+  /** A `saveNow` came before the lock: write once it is held. */
+  let owed = false;
   let unsubscribe = (): void => undefined;
   let release = (): void => undefined;
+  /** Write the cache at once, outside the throttle. As for the throttled
+   * writer, a failed or stopped storage writes nothing, and a failed
+   * write fails the storage, which reports it. */
+  const save = (): void => {
+    persistQueryClientSave({
+      queryClient: client,
+      persister: immediate,
+      buster,
+      dehydrateOptions,
+    }).catch(() => undefined);
+  };
   const restored = persistQueryClientRestore({
     queryClient: client,
     persister,
@@ -180,6 +195,7 @@ export function persistQueryCache({
             buster,
             dehydrateOptions,
           });
+          if (owed) save();
         },
         until: storage.stopped,
         onRefused: () => {
@@ -190,15 +206,8 @@ export function persistQueryCache({
   return {
     restored,
     saveNow() {
-      if (!held) return;
-      // As for the throttled writer, a failed or stopped storage writes
-      // nothing, and a failed write fails the storage, which reports it.
-      persistQueryClientSave({
-        queryClient: client,
-        persister: immediate,
-        buster,
-        dehydrateOptions,
-      }).catch(() => undefined);
+      if (held) save();
+      else owed = true;
     },
     stop() {
       stopped = true;
