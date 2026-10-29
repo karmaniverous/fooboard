@@ -14,6 +14,7 @@ import type { Dashboard } from '@/domain/config/dashboard';
 import type { Provider } from '@/domain/config/providers';
 import type { Row } from '@/domain/config/row';
 import { EMPTY_STATES } from '@/domain/derivation';
+import { never } from '@/domain/model/ruleBuilders';
 import { sourceRuleFor } from '@/domain/model/sources';
 import type { Problem } from '@/domain/problems/problem';
 import { rowSetting } from '@/domain/settings/resolve';
@@ -22,7 +23,12 @@ import { fullModel } from '@/test/boardModel';
 
 import { cellKey } from './types';
 
-/** The demo with `provider`'s source reading a single record. */
+/** The demo with `provider`'s source reading a single record. Amplify's
+ * keeps none of the jobs it reads, so a cell whose branch was read full
+ * (one job) still shows *No records*: Amplify hints only where a matching
+ * branch's own read came back full (spec 0.2.0 §3.B), and a custom rule
+ * changing only the reader and `keep` is judged per branch (Decision
+ * 103). */
 function readingOne(provider: Provider): Dashboard {
   const custom = customiseSource(
     measureBoard,
@@ -33,7 +39,11 @@ function readingOne(provider: Provider): Dashboard {
     customSourceRules: custom.customSourceRules.map((rule) =>
       rule.provider === 'github'
         ? { ...rule, reader: { ...rule.reader, runs: 1 } }
-        : { ...rule, reader: { ...rule.reader, jobsPerBranch: 1 } },
+        : {
+            ...rule,
+            keep: never,
+            reader: { ...rule.reader, jobsPerBranch: 1 },
+          },
     ),
   };
 }

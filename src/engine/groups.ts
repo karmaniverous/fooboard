@@ -13,7 +13,7 @@ import type { JSONValue } from 'json-p3';
 
 import type { Dashboard } from '@/domain/config/dashboard';
 import type { AmplifyRow } from '@/domain/config/row';
-import { isBuiltinSourceId } from '@/domain/model/builtinSources';
+import { keepsBuiltinBranch } from '@/domain/model/builtinSources';
 import type { Problem } from '@/domain/problems/problem';
 import { translationProblems } from '@/domain/problems/runtime';
 import { appKey, type ResolvedAmplifySource } from '@/lib/amplify/rowJobs';
@@ -122,13 +122,13 @@ export function computeGroup(
     appKey(plan.app),
     app.records,
   );
-  const customSource = !isBuiltinSourceId(ctx.source.id);
+  const appWide = !keepsBuiltinBranch(ctx.source);
   const readers = new Map(plan.readers.map((r) => [r.row.id, r.row]));
   const hints = fullReadHints(
     (rowId, stageId) => {
       const row = readers.get(rowId);
       const stageRule = row && ctx.rulesFor(row, stageId).stage;
-      return amplifyCellFull(app, stageRule, customSource);
+      return amplifyCellFull(app, stageRule, appWide);
     },
     servedBy(plan.readers),
     cells,

@@ -4,8 +4,10 @@
  * branch pattern is hinted only when the read of some branch its pattern
  * matches came back full itself, while a cell whose rule isn't exactly a
  * branch pattern, a cell with no Amplify stage rule and every cell under a
- * custom Amplify source rule keep the app-wide judgement; and `appState`
- * records each branch's own read beside the app-wide flag.
+ * custom Amplify source rule that maps the branch differently keep the
+ * app-wide judgement, while a custom rule keeping the built-in branch
+ * mapping is judged per branch (Decision 103); and `appState` records
+ * each branch's own read beside the app-wide flag.
  *
  * @module
  */
@@ -17,9 +19,12 @@ import { MEASURE_AMPLIFY_APPS } from '@/demo/scenarios/measureBoard';
 import type { Dashboard } from '@/domain/config/dashboard';
 import { branchRules } from '@/domain/config/placement';
 import { EMPTY_STATES } from '@/domain/derivation';
+import { RESERVED_KEYS } from '@/domain/model/keys';
+import { give } from '@/domain/model/ruleBuilders';
+import type { SourceRule, SourceRuleOf } from '@/domain/model/sourceRule';
 import { sourceRuleFor } from '@/domain/model/sources';
 import { branchRule } from '@/domain/rules/branch';
-import { customiseSource } from '@/editors/sources/customSource';
+import { customiseSource, updateSource } from '@/editors/sources/customSource';
 import { amplifyBranch, amplifyJobSummary } from '@/lib/amplify/sdkShapes';
 import { createQueryEnv } from '@/query/client';
 import { amplifyKey } from '@/query/keys';
@@ -35,29 +40,31 @@ const [APP] = MEASURE_AMPLIFY_APPS['marketing-site'];
 const ROW = 'marketing-site';
 const MAX = sourceRuleFor(measureBoard, 'amplify').reader.jobsPerBranch;
 
-/** The app's branches: how many jobs each one's read returns. `main` and
- * `preview/bali` come back full; the rest don't. */
-const JOBS: Record<string, number> = {
-  main: MAX,
-  dev: 1,
-  'preview/bali': MAX,
-  'preview/spokane': 1,
+/** The app's branches, and whether each one's read comes back full (as
+ * many jobs as the reader asks for) or short (one job). */
+const FULL: Record<string, boolean> = {
+  main: true,
+  dev: false,
+  'preview/bali': true,
+  'preview/spokane': false,
 };
 
-function seededEnv(): DeriveEnv {
+/** A cache holding the app's branches and each branch's jobs, read
+ * `max` per branch. */
+function seededEnv(max: number): DeriveEnv {
   const client = new QueryClient();
   const { region, appId } = APP;
   client.setQueryData(
     amplifyKey(AWS, { call: 'branches', region, appId }),
     fetched(
-      Object.keys(JOBS).map((branchName) => amplifyBranch({ branchName })),
+      Object.keys(FULL).map((branchName) => amplifyBranch({ branchName })),
     ),
   );
-  for (const [branch, count] of Object.entries(JOBS))
+  for (const [branch, full] of Object.entries(FULL))
     client.setQueryData(
-      amplifyKey(AWS, { call: 'jobs', region, appId, branch, max: MAX }),
+      amplifyKey(AWS, { call: 'jobs', region, appId, branch, max }),
       fetched(
-        Array.from({ length: count }, (_, i) =>
+        Array.from({ length: full ? max : 1 }, (_, i) =>
           amplifyJobSummary({ jobId: String(i + 1), status: 'SUCCEED' }),
         ),
       ),
@@ -97,7 +104,9 @@ const emptyRow = (dashboard: Dashboard): RowEntry => ({
 
 /** The stages of the marketing site's row that get a window hint. */
 function hintedStages(dashboard: Dashboard): string[] {
-  const env = seededEnv();
+  const env = seededEnv(
+    sourceRuleFor(dashboard, 'amplify').reader.jobsPerBranch,
+  );
   const rows = new Map([[ROW, emptyRow(dashboard)]]);
   return [...planGroups(env, dashboard).values()]
     .filter((plan) => plan.kind === 'amplify' && plan.app.appId === APP.appId)
@@ -119,9 +128,21 @@ const withStageRules = (
   ),
 });
 
+/** The demo board under a custom copy of its Amplify source rule, changed
+ * by `change`. */
+function withCustomAmplify(
+  change: (rule: SourceRuleOf<'amplify'>) => SourceRule,
+): Dashboard {
+  const board = customiseSource(
+    measureBoard,
+    sourceRuleFor(measureBoard, 'amplify').id,
+  );
+  return updateSource(board, change(sourceRuleFor(board, 'amplify')));
+}
+
 describe('appState', () => {
   it("records each branch's own read beside the app-wide flag", () => {
-    const env = seededEnv();
+    const env = seededEnv(MAX);
     const state = appState(
       env.client,
       { credentialId: AWS, ...APP },
@@ -129,10 +150,7 @@ describe('appState', () => {
     );
     expect(state.full).toBe(true);
     expect(state.readBranches).toEqual(
-      Object.entries(JOBS).map(([name, count]) => ({
-        name,
-        full: count >= MAX,
-      })),
+      Object.entries(FULL).map(([name, full]) => ({ name, full })),
     );
   });
 });
@@ -154,6 +172,17 @@ describe('Amplify window hints, per branch', () => {
   it('hints a cell whose pattern matches a full branch and a short one', () => {
     const board = withStageRules({ texas: branchRules('preview/*') });
     expect(hintedStages(board)).toContain('texas');
+  });
+
+  it('judges per branch under a custom rule changing only Jobs per branch', () => {
+    const board = withCustomAmplify((rule) => ({
+      ...rule,
+      reader: { ...rule.reader, jobsPerBranch: MAX + 1 },
+    }));
+    const hinted = hintedStages(board);
+    expect(hinted).toContain('prod');
+    expect(hinted).not.toContain('dev');
+    expect(hinted).not.toContain('texas');
   });
 });
 
@@ -178,11 +207,25 @@ describe('Amplify window hints that keep the app-wide judgement', () => {
     expect(hintedStages(board)).toContain('dev');
   });
 
-  it('hints every empty cell under a custom Amplify source rule', () => {
-    const board = customiseSource(
-      measureBoard,
-      sourceRuleFor(measureBoard, 'amplify').id,
+  it('hints every empty cell under a custom rule remapping the branch', () => {
+    const board = withCustomAmplify((rule) => ({
+      ...rule,
+      keys: rule.keys.map((key) =>
+        key.name === RESERVED_KEYS.branch
+          ? { ...key, translations: [give('main')] }
+          : key,
+      ),
+    }));
+    expect(hintedStages(board)).toEqual(
+      expect.arrayContaining(['dev', 'texas', 'prod']),
     );
+  });
+
+  it('hints every empty cell under a custom rule reading items', () => {
+    const board = withCustomAmplify((rule) => ({
+      ...rule,
+      items: { path: '$.job', keys: [] },
+    }));
     expect(hintedStages(board)).toEqual(
       expect.arrayContaining(['dev', 'texas', 'prod']),
     );

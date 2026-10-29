@@ -94,19 +94,19 @@ describe('amplifyCellFull', () => {
     expect(amplifyCellFull(read, branchRule('dev'), false)).toBe(false);
   });
 
-  it('follows the app-wide read without a branch pattern or under a custom source', () => {
+  it('follows the app-wide read without a branch pattern or when judged app-wide', () => {
     const negated = branchRule('release/1');
     const notPattern = {
       ...negated,
       checks: negated.checks.map((c) => ({ ...c, not: true })),
     };
-    for (const [rule, custom] of [
+    for (const [rule, appWide] of [
       [notPattern, false],
       [undefined, false],
       [branchRule('release/1'), true],
     ] as const) {
-      expect(amplifyCellFull(read, rule, custom)).toBe(true);
-      expect(amplifyCellFull({ ...read, full: false }, rule, custom)).toBe(
+      expect(amplifyCellFull(read, rule, appWide)).toBe(true);
+      expect(amplifyCellFull({ ...read, full: false }, rule, appWide)).toBe(
         false,
       );
     }

@@ -50,15 +50,15 @@ export interface ReadBranch {
  * stage rule `stageRule`, given what its app's read found (spec 0.2.0
  * §3.B): when the rule is exactly a branch pattern, only if some branch
  * it matches was read full itself; when it isn't (or there is none), or
- * the dashboard's Amplify source rule is a custom one (`customSource`:
- * its branch key may not be the branch Amplify lists), when any branch
- * was. */
+ * the dashboard's Amplify source rule maps the branch differently from
+ * the built-in rule (`appWide`: a record's branch may not be the branch
+ * Amplify lists; Decision 103), when any branch was. */
 export function amplifyCellFull(
   read: { full: boolean; readBranches: readonly ReadBranch[] },
   stageRule: Rule | undefined,
-  customSource: boolean,
+  appWide: boolean,
 ): boolean {
-  const pattern = customSource ? undefined : branchOf(stageRule);
+  const pattern = appWide ? undefined : branchOf(stageRule);
   if (pattern === undefined) return read.full;
   return read.readBranches.some(
     (branch) => branch.full && matchesBranchPattern(pattern, branch.name),
