@@ -86,7 +86,6 @@ describe('Release notes', () => {
   it('carries over the value 0.1.0 stored when its notes were seen', () => {
     // 0.1.0 kept the same preference, so 0.2.0's dot shows once.
     const stores = shell('0.1.0');
-    expect(APP_VERSION).toBe(BUILD_VERSION);
     expect(dotShown()).toBe(true);
     expect(stores.preferences.getLastSeenVersion()).toBe('0.1.0');
   });

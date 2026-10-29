@@ -3,12 +3,10 @@
  * (spec.md C-19, §3.8), which a header button, a menu item or a footer
  * link can open; the *Import* dialog (§3.8), opened the same ways, from
  * the home page, or by a share link; the *Reset* confirmation (§3.9),
- * opened from the menu or the home page's error state; and the dot on
- * the menu's *Release notes* (spec 0.2.0 §3.D), shown while this build's
- * version is newer than the last one this browser has seen (a device
- * preference), until the link is followed. A first visit takes this
- * build's version as seen, so it shows no dot. Each dialog returns focus
- * to what opened it, or to the menu button when that has gone.
+ * opened from the menu or the home page's error state; and, beside them,
+ * whether the menu's *Release notes* shows its dot (spec 0.2.0 §3.D,
+ * `useReleaseNotesSeen`). Each dialog returns focus to what opened it,
+ * or to the menu button when that has gone.
  *
  * A share link opened in a new page arrives as `link`, its fragment
  * already cleared before routing (`takeShareLink` in `main.tsx`); one
@@ -18,10 +16,8 @@
  *
  * @module
  */
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useMemo, useRef, useState } from 'react';
 
-import { APP_VERSION } from '@/lib/site';
-import { isUnseen } from '@/lib/versions';
 import type { LinkPayload } from '@/share/link';
 import { ImportDialog } from '@/share/ui/ImportDialog';
 import { useShareLinkArrivals } from '@/share/useShareLinkArrivals';
@@ -30,6 +26,7 @@ import { useStores } from '@/storage/storesContext';
 import { NavContext } from './navItems';
 import { ResetDialog } from './ResetDialog';
 import { ShareDialog } from './ShareDialog';
+import { useReleaseNotesSeen } from './useReleaseNotesSeen';
 
 type Opened = 'share' | 'import' | 'reset' | null;
 
@@ -42,14 +39,7 @@ export function AppNavProvider({
   link?: LinkPayload | null;
 }): React.JSX.Element {
   const { preferences } = useStores();
-  // A first visit (nothing stored) has seen this build: no dot, ever.
-  const [lastSeen, setLastSeen] = useState(
-    () => preferences.getLastSeenVersion() ?? APP_VERSION,
-  );
-  useEffect(() => {
-    if (preferences.getLastSeenVersion() === undefined)
-      preferences.setLastSeenVersion(APP_VERSION);
-  }, [preferences]);
+  const releaseNotes = useReleaseNotesSeen(preferences);
   const [link, setLink] = useState(initialLink);
   // Each link that arrives gets a fresh import dialog, so no choice made
   // for one share carries over to the next.
@@ -76,13 +66,9 @@ export function AppNavProvider({
       openShare: open('share'),
       openImport: open('import'),
       openReset: open('reset'),
-      markReleaseNotesSeen: () => {
-        preferences.setLastSeenVersion(APP_VERSION);
-        setLastSeen(APP_VERSION);
-      },
-      releaseNotesUnseen: isUnseen(APP_VERSION, lastSeen),
+      ...releaseNotes,
     };
-  }, [lastSeen, preferences]);
+  }, [releaseNotes]);
   const returnFocus = useCallback((e: Event) => {
     // Opened without a trigger, so Radix has nowhere to return to.
     e.preventDefault();

@@ -45,8 +45,8 @@ Anyone with access to your browser profile can read what is stored in it, includ
 ## Removing your data
 
 - _Forget_ removes one credential from this browser.
-- Unticking _Remember on this device_ on a credential removes its stored copy and what was read with it, in every open fooboard tab: a token or key kept for the tab only leaves nothing on the device, neither the secret nor the answers read with it. If the browser won't let fooboard remove the copy, fooboard says so and asks you to use _Reset_.
-- Deleting a dashboard removes it, its view settings and its credentials from this browser.
+- Unticking _Remember on this device_ on a credential removes its stored copy and, at once, what was read with it, in every open fooboard tab: a token or key kept for the tab only leaves nothing on the device, neither the secret nor the answers read with it. If the browser won't let fooboard remove the copy, fooboard says so and asks you to use _Reset_.
+- Deleting a dashboard removes it, its view settings and its credentials from this browser, and at once what was read with those credentials, in every open fooboard tab.
 - _Reset_ (in the menu) removes all of fooboard's data from this browser, and nothing else, in every open fooboard tab: dashboards, settings, credentials and the answers kept from GitHub and AWS. If the browser won't let it clear them, it says so, and no other tab reloads.
 - Clearing this site's data in your browser's settings removes what is stored; credentials held in an open tab's memory go when the tab closes.
 

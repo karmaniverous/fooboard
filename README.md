@@ -123,7 +123,7 @@ Answers are kept, so an edit, opening a board again, or reloading the page shows
 
 **Polling.** A row polls every 5 s while one of its cells is in progress (a provisional _Running_ included) and every 60 s otherwise, four times slower for a token past half its budget, and nothing polls while the tab is hidden; coming back reads only what fell due. A finished run's jobs are never read again.
 
-When GitHub says a token is rate-limited, or AWS throttles a key, fooboard pauses that credential until the provider says to retry (a throttled AWS key pauses a fixed 5 s, since Amplify doesn't let the browser read its suggested delay). Each credential's requests wait in one queue: the editors' lookups and a row's first read go to its front, while polls wait their turn with run jobs and behind counts.
+When GitHub says a token is rate-limited, or AWS throttles a key, fooboard pauses that credential until the provider says to retry (a throttled AWS key pauses 5 s, since Amplify doesn't let the browser read its suggested delay; fooboard would use that delay if it could). Each credential's requests wait in one queue: the editors' lookups and a row's first read go to its front, while polls wait their turn with run jobs and behind counts.
 
 **Errors.** A repo GitHub can't find (or an Amplify app that's gone) shows _error_ with a problem on its row; an expired or revoked token shows _needs credential_; either way, nothing cached is shown in its place.
 
@@ -308,7 +308,7 @@ fooboard reads GitHub and AWS with credentials **you** create, kept only in this
 
 An open credential lets you enter its secret, tick or untick _Remember on this device_, _Forget_ it, _Make dashboard default_, _Remove_ it and, for an AWS key, _Copy AWS policy_.
 
-Unticking _Remember_ keeps the secret for this tab only: its stored copy is removed from this browser, and what was read with it is dropped from memory and the [kept answers](#your-data) in every open fooboard tab. If the browser won't let fooboard remove a stored copy, the panel says so, shows the secret as kept for this tab only, and tells you to use **Reset** to clear what was left.
+Unticking _Remember_ keeps the secret for this tab only: its stored copy is removed from this browser, and what was read with it is dropped at once from memory and the [kept answers](#your-data) in every open fooboard tab. If the browser won't let fooboard remove a stored copy, the panel says so, shows the secret as kept for this tab only, and tells you to use **Reset** to clear what was left.
 
 Below the list, _Add a credential_ adds a GitHub token or AWS key, and _Copy from another dashboard_ makes an independent copy of one of yours.
 

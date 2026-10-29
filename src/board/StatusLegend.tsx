@@ -23,12 +23,10 @@ import {
 } from '@/domain/statuses/resolved';
 import { cn } from '@/lib/utils';
 
+import { LEGEND } from './actionLabels';
 import { BoardActionButton } from './BoardActionButton';
 import { STATUS_GLYPH, statusLook } from './cellView';
 import { legendSets } from './legendSets';
-
-/** The legend's name: its button's, its tooltip's and its popover's. */
-const LEGEND = 'Legend';
 
 function Swatch({ status }: { status: ResolvedStatus }): React.JSX.Element {
   const look = statusLook(status);

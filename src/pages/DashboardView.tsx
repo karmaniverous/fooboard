@@ -21,15 +21,16 @@ import {
 import { useState } from 'react';
 
 import {
+  ADD_A_CREDENTIAL,
+  CREDENTIALS,
   EDIT_DASHBOARD,
   UNMAPPED_RUNS,
   unmappedLabel,
 } from '@/board/actionLabels';
-import { BoardActionButton } from '@/board/BoardActionButton';
+import { BoardActionPanel } from '@/board/BoardActionPanel';
 import { BOARD_TITLE_ID, BoardScreen } from '@/board/BoardScreen';
 import { ProblemsPanel } from '@/board/ProblemsPanel';
 import { UnmappedPanel } from '@/board/UnmappedPanel';
-import { SidePanel } from '@/components/SidePanel';
 import type { ButtonVariant } from '@/components/ui/buttonVariants';
 import { CredentialsPanel } from '@/credentials/CredentialsPanel';
 import { useCredentialVersion } from '@/credentials/useCredentialVersion';
@@ -75,12 +76,6 @@ function problemsAction(shown: readonly Problem[]): {
         variant: 'outline',
       };
 }
-
-/** The Credentials panel's title and button. */
-const CREDENTIALS = 'Credentials';
-
-/** The Credentials button with no credential yet. */
-const ADD_A_CREDENTIAL = 'Add a credential';
 
 export function DashboardView({
   initial,
@@ -156,17 +151,7 @@ export function DashboardView({
         return (
           <>
             {problems.shown.length > 0 && (
-              <SidePanel
-                title={problemsButton.title}
-                tooltip={problemsButton.label}
-                trigger={
-                  <BoardActionButton
-                    label={problemsButton.label}
-                    Icon={problemsButton.Icon}
-                    variant={problemsButton.variant}
-                  />
-                }
-              >
+              <BoardActionPanel {...problemsButton}>
                 <ProblemsPanel
                   dashboard={dashboard}
                   problems={problems.shown}
@@ -183,18 +168,13 @@ export function DashboardView({
                   onDismiss={problems.dismiss}
                   onChange={save}
                 />
-              </SidePanel>
+              </BoardActionPanel>
             )}
             {model.unmapped.length > 0 && (
-              <SidePanel
+              <BoardActionPanel
                 title={UNMAPPED_RUNS}
-                tooltip={unmappedLabel(model.unmapped.length)}
-                trigger={
-                  <BoardActionButton
-                    label={unmappedLabel(model.unmapped.length)}
-                    Icon={Unlink}
-                  />
-                }
+                label={unmappedLabel(model.unmapped.length)}
+                Icon={Unlink}
               >
                 <UnmappedPanel
                   runs={model.unmapped}
@@ -206,19 +186,17 @@ export function DashboardView({
                     fixWith(overrideDraftFor(run, dashboard))
                   }
                 />
-              </SidePanel>
+              </BoardActionPanel>
             )}
-            <SidePanel
+            <BoardActionPanel
               open={editorOpen}
               onOpenChange={(open) => {
                 if (open) openEditor();
                 else setEditorOpen(false);
               }}
               title={EDIT_DASHBOARD}
-              tooltip={EDIT_DASHBOARD}
-              trigger={
-                <BoardActionButton label={EDIT_DASHBOARD} Icon={Pencil} />
-              }
+              label={EDIT_DASHBOARD}
+              Icon={Pencil}
             >
               <DashboardEditor
                 key={draft.n}
@@ -230,17 +208,12 @@ export function DashboardView({
                 branchSamples={model.amplifyBranches}
                 problems={problems.shown}
               />
-            </SidePanel>
-            <SidePanel
+            </BoardActionPanel>
+            <BoardActionPanel
               title={CREDENTIALS}
-              tooltip={missing ? ADD_A_CREDENTIAL : CREDENTIALS}
-              trigger={
-                <BoardActionButton
-                  label={missing ? ADD_A_CREDENTIAL : CREDENTIALS}
-                  Icon={KeyRound}
-                  variant={missing ? 'default' : 'outline'}
-                />
-              }
+              label={missing ? ADD_A_CREDENTIAL : CREDENTIALS}
+              Icon={KeyRound}
+              variant={missing ? 'default' : 'outline'}
             >
               <CredentialsPanel
                 dashboard={dashboard}
@@ -248,7 +221,7 @@ export function DashboardView({
                 onChange={save}
                 keyApps={(id) => model.amplifyKeyApps[id]}
               />
-            </SidePanel>
+            </BoardActionPanel>
           </>
         );
       }}

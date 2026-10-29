@@ -3,7 +3,8 @@
  * icon buttons named by the title of what each opens, with its count;
  * *Problems* destructive and *Add a credential* primary, the rest
  * outlined; a button with a count only while its count is above zero;
- * the panel *Notes (N)* opens is titled *Notes*. (The demo's actions,
+ * the panel *Notes (N)* opens is titled *Notes*; a counted button's
+ * tooltip is its name, count included. (The demo's actions,
  * *Unmapped runs (N)* among them, are found by name in
  * `DashboardViewFixes.test.tsx`.)
  *
@@ -13,6 +14,7 @@ import { fireEvent, screen, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
 import { branchRules } from '@/domain/config/placement';
+import { focusElement } from '@/test/focus';
 import { renderDashboardPage } from '@/test/renderDashboardPage';
 
 const githubRow = {
@@ -76,6 +78,11 @@ describe('the board actions', () => {
     await settled();
     const problems = action(/^Problems \(\d+\)$/);
     expect(problems).toHaveClass('bg-destructive');
+    // Its tooltip is its name, count included.
+    focusElement(problems);
+    expect(await screen.findByRole('tooltip')).toHaveTextContent(
+      problems.getAttribute('aria-label') ?? '',
+    );
     fireEvent.click(problems);
     expect(screen.getByRole('dialog', { name: 'Problems' })).toBeVisible();
   });
