@@ -19,7 +19,7 @@
   <img src="docs/screenshots/demo-light.png" alt="The fooboard demo board: rows of repos grouped by team, columns of stages, each cell coloured by its latest deployment's status, with drift and pipeline badges." width="960" />
 </picture>
 
-fooboard shows the deployment state of every repo Ã— stage at a glance, live at [fooboard.dev](https://fooboard.dev). Paste a GitHub token, pick your repos and a branch preset, and the board fills itself in from your GitHub Actions runs (and, if you use them, AWS Amplify builds). No workflow changes, no account, no server: it is a free, open-source, static web app, and nothing leaves your browser except the calls it makes directly to GitHub and AWS.
+fooboard shows the deployment state of every repo × stage at a glance, live at [fooboard.dev](https://fooboard.dev). Paste a GitHub token, pick your repos and a branch preset, and the board fills itself in from your GitHub Actions runs (and, if you use them, AWS Amplify builds). No workflow changes, no account, no server: it is a free, open-source, static web app, and nothing leaves your browser except the calls it makes directly to GitHub and AWS.
 
 **Try it now:** open [fooboard.dev](https://fooboard.dev), or try the demo first at [fooboard.dev/demo](https://fooboard.dev/demo) (no account or token needed). Running fooboard locally is for contributors; see [CONTRIBUTING](./CONTRIBUTING.md).
 
@@ -70,13 +70,13 @@ Its tokens and keys are demo values the simulator alone accepts; they mean nothi
 
 ## Getting started
 
-The home page offers three ways in: _Create a dashboard_, _Import from link or fileâ€¦_ (a board someone shared: choose its file, or paste its link; see [Sharing, export and import](#sharing-export-and-import)) and _Try the demo_.
+The home page offers three ways in: _Create a dashboard_, _Import from link or file…_ (a board someone shared: choose its file, or paste its link; see [Sharing, export and import](#sharing-export-and-import)) and _Try the demo_.
 
 _Create a dashboard_ walks you through four steps. Each step's heading takes the keyboard focus as it opens, so a screen reader announces it.
 
 1. **Add a GitHub token.** Name the dashboard (it is _My dashboard_ if you don't) and paste a read-only token; _How to create a read-only token_ opens the guide ([GitHub token](#github-token)). The token is kept for this tab unless you tick _Remember on this device_. It becomes the dashboard's own GitHub token (its _GitHub token_ setting, [Settings](#settings)), which every row reads with unless you set another. Every dashboard starts from a GitHub token, so there's no skip.
 2. **Pick your repos.** The repos the token can see are listed (search to narrow them); each one you tick becomes a row.
-3. **Set up your stages.** fooboard reads the branches in those repos and suggests the branch preset that fits them best: _Environment branches_ (dev, staging, prod â† `main`), _Gitflow_ (dev â† `develop`, test â† `release/**`, prod â† `main`) or _Release train_ (dev, release â† `release/**`, prod â† `main`, with preview stages). The best fit is the preset whose stages match a branch in the most repos; with the release train, repos with preview branches count too.
+3. **Set up your stages.** fooboard reads the branches in those repos and suggests the branch preset that fits them best: _Environment branches_ (dev, staging, prod ← `main`), _Gitflow_ (dev ← `develop`, test ← `release/**`, prod ← `main`) or _Release train_ (dev, release ← `release/**`, prod ← `main`, with preview stages). The best fit is the preset whose stages match a branch in the most repos; with the release train, repos with preview branches count too.
 
    Each `preview/<name>` branch names a preview stage (`preview/bali` gives _bali_, sourced from dev), all ticked; `preview/release` names none, since _release_ is already a stage. Choose another preset, untick previews, or choose _Blank_ to add stages yourself; each stage shows how many of your repos have a branch it matches. _Back to repos_ returns to step 2.
 
@@ -99,7 +99,7 @@ Each **row** is a repo (or an Amplify app, or one deployable unit in a repo), an
 | _GitHub single job_                                | Failed, Cancelled, Running, Queued, Succeeded                                                                           |
 | _Amplify_ (default for Amplify rows)               | Failed, Cancelled, Running, Queued, Deployed                                                                            |
 
-Each status has a name, a colour, an icon (âœ“ success, âœ• failure, â—” running, â—‘ partial, â—‹ queued, âŠ˜ cancelled) and can be outlined, as Queued is. A status in progress pulses. Text on a cell is white or near-black, whichever reads better on its colour.
+Each status has a name, a colour, an icon (✓ success, ✕ failure, ◔ running, ◑ partial, ○ queued, ⊘ cancelled) and can be outlined, as Queued is. A status in progress pulses. Text on a cell is white or near-black, whichever reads better on its colour.
 
 A record that matches no status shows **Unknown** (purple, ?), so a gap in the rules is visible; see [Rules](#rules).
 
@@ -150,13 +150,13 @@ Any other region is waited for, however long it takes, since a partial list coul
 - The sheet is titled with the cell's row and stage, which stay at its top with _Close_ while a long message scrolls; Escape or _Close_ returns to the cell. (The message and SHA are the record's `message` and `commit` keys: a GitHub run's head commit, an Amplify job's commit.)
 - **Opening the job**: clicking a cell, or pressing Enter on it, opens the job on GitHub (or the Amplify console). An empty cell has no job, so a click, a tap, Enter or Space opens its sheet; so does a cell whose record has no link (possible only with a custom source rule), which Tab reaches like any other cell and whose tooltip also says Space opens its details.
 - **Groups**: rows and stages can be grouped. Groups stand apart: a wider gap separates a group from its neighbours, and one unbroken line runs down the middle of it, never touching a cell. A column group is framed from its name to the bottom of the board. A row group's line runs across the whole board, above its name when it has one. Group names, and their gears, sit inside their groups and stay in view as the board scrolls.
-- **Settings gears**: every row header, stage header and group label has a âš™ that opens its [settings](#settings-on-the-board) where you are (not on a phone), and a âš™ follows the cell you point at or focus.
+- **Settings gears**: every row header, stage header and group label has a ⚙ that opens its [settings](#settings-on-the-board) where you are (not on a phone), and a ⚙ follows the cell you point at or focus.
 - **Fitting the screen**: columns share the window's width, and each cell shows as much detail as fits.
-- **Zoom**: Ctrl/âŒ˜ + wheel, a pinch, the toolbar buttons or `+` `-` `0` (a tap on a touch screen opens the cell it lands on, so there is no double-tap zoom); zooming out fits more, zooming in shows more.
-- **Scrolling**: a board larger than the window scrolls with the page: drag it with the mouse, or swipe it on a touch screen like any page. On a phone or tablet the board keeps its size while the browserâ€™s toolbars come and go as you scroll, and fits itself again when you rotate the device.
+- **Zoom**: Ctrl/⌘ + wheel, a pinch, the toolbar buttons or `+` `-` `0` (a tap on a touch screen opens the cell it lands on, so there is no double-tap zoom); zooming out fits more, zooming in shows more.
+- **Scrolling**: a board larger than the window scrolls with the page: drag it with the mouse, or swipe it on a touch screen like any page. On a phone or tablet the board keeps its size while the browser’s toolbars come and go as you scroll, and fits itself again when you rotate the device.
 - **Density**: _Default_, _Comfortable_ and _Compact_ density change the padding. On a narrow screen the controls beside the board's name wrap onto more lines, so none sits off-screen at any zoom.
 - **Board actions**: beside the board's name sit icon buttons: _Legend_ (an i), each GitHub token's battery, then _Problems_ or _Notes_, _Unmapped runs_ (a broken link), _Edit dashboard_ (a pencil) and _Credentials_ (a key; _Add a credential_, highlighted, while the dashboard has none). A button is named by what it opens, with its count where there is one (_Problems (2)_, _Unmapped runs (12)_), and a tooltip shows that name when you point at it or Tab to it. On a touch screen a tap opens it, and the panel's title says what it is. A button with a count shows only while its count is above zero.
-- **Legend**: _Legend_ shows each status set the boardâ€™s cells use, with its statuses as cells show them.
+- **Legend**: _Legend_ shows each status set the board’s cells use, with its statuses as cells show them.
 - **Summary**: a count for each summary status the cells show (for the built-in sets: _Failing_, _Running_, _Cancelled_, _OK_; _Unknown_ last), then behind and diverged cells; click one to show only those cells, again to clear. A provisional cell (see _Loading_ above) counts toward no chip and matches no filter until its jobs land.
 - **Request budget**: a battery for each GitHub token the board uses shows the requests left this hour; its tooltip names the token and says when the budget resets. It is grey and empty until the board's first GitHub response with that token, and again after you replace or forget the token.
 - **Budget source**: fooboard reads the budget from the headers of answers it already gets and never asks for it separately, so it costs nothing. It polls four times slower for a token past half its hourly budget; a replaced token starts without that slowdown until its own first response.
@@ -224,13 +224,13 @@ Under a set field, the more specific places that win over it are named ("_stagin
   <img src="docs/screenshots/row-popup-light.png" alt="A row's settings popup, opened from the gear beside its name." width="414" />
 </picture>
 
-You can change a place's settings without leaving the board. Every row header, stage header and labelled group label has a gear (âš™) after its name, always shown and in the Tab order after the header; its room is kept in the layout, so the board never shifts. On a screen narrower than 640 px headers and labels have no gear, so row names get the room: set those places in _Edit dashboard_.
+You can change a place's settings without leaving the board. Every row header, stage header and labelled group label has a gear (⚙) after its name, always shown and in the Tab order after the header; its room is kept in the layout, so the board never shifts. On a screen narrower than 640 px headers and labels have no gear, so row names get the room: set those places in _Edit dashboard_.
 
 One gear follows the cell under the pointer or with keyboard focus, in its top-right corner, and stays while you move onto it. The cell's gear isn't a Tab stop of its own: press `,` (comma) on a focused cell instead (its tooltip says so, beside Space for details). Comma works from a cell's behind or diverged badge too, and with focus there the tooltip names only comma, since Space would follow the badge's link.
 
 On a touch screen, tap the cell for its detail sheet, which has the cell's gear. Clicking a header or a label still opens nothing, and clicking a cell still opens its job.
 
-A gear opens its **settings popup**: next to the gear, or as a sheet from the bottom of the screen on a phone. Its title names the place ("Row settings: api-core", "Cell settings: api-core Ã— prod"), and it holds the same [settings editor](#settings) as _Edit dashboard_, for that place only: every field, its origin, _Set here_, _Reset to inherited_ and _nothing here reads it yet_.
+A gear opens its **settings popup**: next to the gear, or as a sheet from the bottom of the screen on a phone. Its title names the place ("Row settings: api-core", "Cell settings: api-core × prod"), and it holds the same [settings editor](#settings) as _Edit dashboard_, for that place only: every field, its origin, _Set here_, _Reset to inherited_ and _nothing here reads it yet_.
 
 A change is saved at once (or refused with _Not saved_), and the board updates under it. _Open in dashboard settings_ opens the editor at that place. An unlabelled group has no gear; where a row's or stage's popup names one as an origin, that origin opens the editor at the group's settings.
 
@@ -329,7 +329,7 @@ Use a **fine-grained personal access token**:
    | Actions    | Read-only |
 
 5. Set a short **expiration** (30 to 90 days).
-6. Generate the token and paste it into _Credentials_ â†’ _Add a credential_. Tick _Remember on this device_ to keep it after the browser closes.
+6. Generate the token and paste it into _Credentials_ → _Add a credential_. Tick _Remember on this device_ to keep it after the browser closes.
 
 ### Classic tokens
 
@@ -350,7 +350,7 @@ Amplify rows need an AWS access key for an IAM user that can only read Amplify:
 
    Or attach a policy below yourself: in the template, replace `REGION`, `ACCOUNT_ID` and `APP_ID`, adding a line to each of the last two statements for each app.
 
-3. Create an access key for the user, and paste its ID and secret into _Credentials_ â†’ _Add a credential_ â†’ _AWS key_.
+3. Create an access key for the user, and paste its ID and secret into _Credentials_ → _Add a credential_ → _AWS key_.
 
 Use one key per AWS account. The first key you add becomes the dashboard's AWS key (_Make default_ changes it); a key for another account is set where it applies, in that level's [settings](#settings): usually on the columns (stages) whose apps live in that account, else on a row group, a row or a single cell. A GitHub token is set the same way, usually on the dashboard or a row group.
 
@@ -434,14 +434,14 @@ The copied policy uses `*` for the account, because fooboard doesn't know it: th
 ### Revoking a credential
 
 - **GitHub**: [github.com/settings/personal-access-tokens](https://github.com/settings/personal-access-tokens) (or your organization's token page): delete the token. It stops working at once.
-- **AWS**: IAM console â†’ Users â†’ the fooboard user â†’ Security credentials: deactivate or delete the access key; delete the user if it exists only for fooboard.
+- **AWS**: IAM console → Users → the fooboard user → Security credentials: deactivate or delete the access key; delete the user if it exists only for fooboard.
 - **In fooboard**, _Forget_ removes a credential from this browser. It does not revoke it at GitHub or AWS: do that too.
 
 ## Sharing, export and import
 
-_Share / Export_ in the header (or the menu) shares your saved dashboards; _Import_ (in the header, and _Import from link or fileâ€¦_ on the home page) brings them in: choose a file, or paste a link into _Or a fooboard link_.
+_Share / Export_ in the header (or the menu) shares your saved dashboards; _Import_ (in the header, and _Import from link or file…_ on the home page) brings them in: choose a file, or paste a link into _Or a fooboard link_.
 
-Opening the link in your browser does the same: the same dashboards listed, the same passphrase step, the same import. Pasting tolerates spaces around the link, and takes the link at any path or its `#b=â€¦` part alone; text with no `#b=` in it is refused as a damaged link.
+Opening the link in your browser does the same: the same dashboards listed, the same passphrase step, the same import. Pasting tolerates spaces around the link, and takes the link at any path or its `#b=…` part alone; text with no `#b=` in it is refused as a damaged link.
 
 - **Choose dashboards**: one, some or all (every one is ticked at first; _Select all_ toggles them). Each carries its groups, overrides, rules, custom status sets, settings at every level and pinned apps. Zoom, density, theme, the kept answers and anything held for a tab are never shared.
 - **Copy board link**: everything goes into the part of the link after `#b=`, compressed. Browsers never send that part to a server (nor in a `Referer` header), and fooboard removes it from the address bar and history the moment the link opens, so a reload can't import it twice. A link longer than 32,000 characters isn't offered (chat apps cut long messages): download a file instead. The demo board's link is about 4,000 characters.
@@ -461,7 +461,7 @@ Opening the link in your browser does the same: the same dashboards listed, the 
   The dialog asks for the passphrase there, after you choose the dashboards; a wrong one says "That passphrase doesn't open these credentials", and you can still import without them.
 - **Older and newer**: a link or file from an older fooboard opens and is upgraded; one from a newer fooboard is refused ("reload to update"), and anything else that isn't a fooboard share, or is damaged, says so ("This link isn't a fooboard board, or it's damaged").
 
-The format is public and versioned: `{ "format": "fooboard-share", "formatVersion": 1, "schemaVersion": 6, "dashboards": [ â€¦ ], "credentials": null }`, where `credentials` holds the secrets by credential id, plain or encrypted, beside the dashboards and never inside them.
+The format is public and versioned: `{ "format": "fooboard-share", "formatVersion": 1, "schemaVersion": 6, "dashboards": [ … ], "credentials": null }`, where `credentials` holds the secrets by credential id, plain or encrypted, beside the dashboards and never inside them.
 
 ## Header, menu and footer
 
@@ -476,7 +476,7 @@ The header stays at the top of the window. Its buttons, each with a tooltip:
 - **GitHub**: this repo.
 - **Report an issue**: [GitHub Issues](https://github.com/karmaniverous/fooboard/issues).
 
-As the window narrows, buttons move into the menu from the right, then the tagline goes; _README_ and _News & support_ stay longest. [Privacy](./PRIVACY.md) and [Terms](./TERMS.md) are always in the menu, followed by _Release notes_ and _Resetâ€¦_; the menu ends with fooboard's version. The footer repeats every item as a link, turning to icons and then dropping out from the left as space runs short; Privacy and Terms always stay.
+As the window narrows, buttons move into the menu from the right, then the tagline goes; _README_ and _News & support_ stay longest. [Privacy](./PRIVACY.md) and [Terms](./TERMS.md) are always in the menu, followed by _Release notes_ and _Reset…_; the menu ends with fooboard's version. The footer repeats every item as a link, turning to icons and then dropping out from the left as space runs short; Privacy and Terms always stay.
 
 ### Release notes
 
@@ -565,7 +565,7 @@ The build reads nothing about its branch or host, so all three sites build the s
 
 ## Contributing
 
-Development setup, commands and standards are in [CONTRIBUTING.md](./CONTRIBUTING.md). In the dev server, the TanStack Query Devtools show every query, boards are timed and a summary is printed to the browser console; `/demo?latency=300` delays every simulated answer by 300 ms and `/demo?scenario=measure` plays the 19 Ã— 6 measurement scenario; production builds contain none of it. See [Timing (development builds)](./CONTRIBUTING.md#timing-development-builds).
+Development setup, commands and standards are in [CONTRIBUTING.md](./CONTRIBUTING.md). In the dev server, the TanStack Query Devtools show every query, boards are timed and a summary is printed to the browser console; `/demo?latency=300` delays every simulated answer by 300 ms and `/demo?scenario=measure` plays the 19 × 6 measurement scenario; production builds contain none of it. See [Timing (development builds)](./CONTRIBUTING.md#timing-development-builds).
 
 ## License
 
