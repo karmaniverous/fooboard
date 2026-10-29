@@ -2,7 +2,8 @@
  * Tests for the first run's steps off the main path (spec.md §3.9): a
  * refused save, a tab without the token, a failed read tried again, a
  * token that sees no repos, repos that fit no preset, going back to the
- * repos, and a step or dashboard that doesn't exist.
+ * repos, a step that doesn't exist (*Page not found*) and a dashboard
+ * that doesn't (*Dashboard not found*).
  *
  * @module
  */
@@ -184,14 +185,17 @@ describe('first run steps', () => {
 
   it.each([
     [
-      'an unknown step',
-      firstRunPath('acme', 'repos').replace('repos', 'board'),
+      'a saved dashboard at an unknown step',
+      firstRunPath('acme', 'repos').replace('repos', 'nope'),
+      'Page not found',
     ],
-    ['an unknown dashboard', firstRunPath('other', 'repos')],
-  ])('shows not found for %s', async (_, path) => {
+    [
+      'an unknown dashboard',
+      firstRunPath('other', 'repos'),
+      'Dashboard not found',
+    ],
+  ])('shows the not-found page for %s (%s): %s', async (_, path, heading) => {
     await renderFirstRun(path, savedWith());
-    expect(
-      screen.getByRole('heading', { name: 'Dashboard not found' }),
-    ).toBeVisible();
+    expect(screen.getByRole('heading', { name: heading })).toBeVisible();
   });
 });
