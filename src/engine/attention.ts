@@ -44,16 +44,19 @@ interface Boost {
 
 export interface Attention {
   /** Start (or restart) `rowId`'s `kind` boost at `at`, its root queries
-   * having completed as `completions` say. A dwell doesn't restart a
-   * boost already at a shorter interval than a dwell's first, and
-   * restarts one whose running poll is due sooner than its first interval
-   * from now only once that poll completes; a click always restarts at
-   * once. Returns whether it (re)started now. */
+   * having completed as `completions` say and polling `backoff` times
+   * slower than a boost's intervals (`BUDGET_BACKOFF` past half a token's
+   * budget). A dwell doesn't restart a boost already at a shorter
+   * interval than a dwell's first, and restarts one whose running poll is
+   * due sooner than its first interval from now only once that poll
+   * completes; a click always restarts at once. Returns whether it
+   * (re)started now. */
   attend(
     rowId: string,
     kind: BoostKind,
     at: number,
     completions: Completions,
+    backoff: number,
   ): boolean;
   /** Step `rowId`'s boost on if every root query in `completions` has
    * completed a fetch since its step began (or begin the restart waiting
@@ -92,18 +95,16 @@ export function createAttention(): Attention {
   const boosts = new Map<string, Boost>();
   const current = (boost: Boost) => boostInterval(boost.kind, boost.polls);
   return {
-    attend(rowId, kind, at, completions) {
+    attend(rowId, kind, at, completions, backoff) {
       const running = boosts.get(rowId);
       const first = boostInterval(kind, 0);
       const interval = running && current(running);
       if (kind === 'dwell' && running && first !== undefined) {
         if ((interval ?? Infinity) < first) return false;
-        // Judged in unbacked-off time. Past half a budget both intervals
-        // are four times longer: a restart judged so still never postpones
-        // the poll, though it may keep one a restart would bring forward.
+        // Judged in real time: both intervals are `backoff` times longer.
         if (
           interval !== undefined &&
-          running.stepStartedAt + interval - at < first
+          running.stepStartedAt + interval * backoff - at < first * backoff
         ) {
           boosts.set(rowId, { ...running, restart: { kind, startedAt: at } });
           return false;

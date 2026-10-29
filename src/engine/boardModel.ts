@@ -18,13 +18,14 @@ import { unique } from 'radash';
 import type { Dashboard } from '@/domain/config/dashboard';
 import { rowCredentials } from '@/domain/settings/credentials';
 import type { QueryEnv } from '@/query/client';
-import type { BoostKind } from '@/query/intervals';
+import { type BoostKind, BUDGET_BACKOFF } from '@/query/intervals';
 
 import { createAttention, rootCompletions } from './attention';
 import { createFetchStarts } from './fetchStarts';
 import { computeGroup, type GroupEntry, planGroups } from './groups';
 import { keyApps } from './keyApps';
 import { emptyModel, githubCredentialIds } from './model';
+import type { Need } from './need';
 import { createObserverSet, mergeNeeds } from './observers';
 import {
   type DeriveEnv,
@@ -46,6 +47,18 @@ const DERIVING_ACTIONS = new Set([
   'pause',
   'continue',
 ]);
+
+/** How many times slower than a boost's intervals `needs`' root queries
+ * poll: `BUDGET_BACKOFF` when each is a GitHub read with a token past half
+ * its budget, else 1. A row's fastest root decides, so a dwell's restart
+ * never postpones any of its polls. */
+const backoffOf = (env: QueryEnv, needs: readonly Need[]): number => {
+  const roots = needs.filter((need) => need.root);
+  return roots.length > 0 &&
+    roots.every(({ key }) => key[0] === 'github' && overBudget(env, key[1]))
+    ? BUDGET_BACKOFF
+    : 1;
+};
 
 export interface BoardModelHandle {
   getModel(): BoardModel;
@@ -258,6 +271,7 @@ export function createBoardModel({
           kind,
           now(),
           rootCompletions(env.client, needs),
+          backoffOf(env, needs),
         );
         if (started) dirty.add(rowId);
         return started ? needs.filter((need) => need.root) : [];

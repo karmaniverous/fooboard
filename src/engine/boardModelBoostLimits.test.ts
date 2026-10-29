@@ -4,7 +4,7 @@
  * a query two rows share polls at the boosted row's interval; a boost never
  * marks a row refreshing by itself; the root needs of a GitHub and an
  * Amplify row take the boost, backed off four times past half a token's
- * budget; rows the dashboard doesn't have, or a destroyed board, boost
+ * budget, where a dwell's restart is judged at that pace; rows the dashboard doesn't have, or a destroyed board, boost
  * nothing.
  *
  * @module
@@ -35,6 +35,14 @@ import { deriveGithubRow } from './githubRow';
 import { cellKey } from './types';
 
 const SECOND = 1_000;
+/** A budget past half its limit: its token polls four times slower. */
+const OVER_SHARE = {
+  limit: 5000,
+  remaining: 1000,
+  reset: 1,
+  used: 4000,
+  status: 'ok' as const,
+};
 const at = (...seconds: number[]) => seconds.map((s) => s * SECOND);
 /** Long enough for a click's first three polls. */
 const THREE_POLLS_MS = 20 * SECOND;
@@ -89,6 +97,21 @@ describe('the poll boost, at its limits', () => {
     );
     expect(cells.some((c) => c !== undefined)).toBe(true);
     expect(cells.some((c) => c?.refreshing)).toBe(false);
+    done();
+  });
+
+  it("judges a dwell's restart in real time past half the budget", async () => {
+    const { env, board, polls, done } = await boostBoard();
+    vi.spyOn(env.budgets, 'get').mockReturnValue(OVER_SHARE);
+    board.refresh();
+    const since = Date.now();
+    board.attend([row.id], 'dwell');
+    // Four times slower: the 20 s step began at 40 s, its poll due at
+    // 120 s; a restart at 60 s brings it to 100 s.
+    await vi.advanceTimersByTimeAsync(60 * SECOND);
+    board.attend([row.id], 'dwell');
+    await vi.advanceTimersByTimeAsync(50 * SECOND);
+    expect(polls(row, since)).toEqual(at(40, 100));
     done();
   });
 
