@@ -1,10 +1,10 @@
 /**
  * Zod schema for a dashboard (spec.md §3, §4.2): rows, stages, mapping
- * settings, status colors, row and column groups and credential
- * references. Rejects, as defensive integrity checks, duplicate row,
- * stage and group ids, a source-stage cycle, and group members that are
- * unknown, in two groups or split apart (the editors prevent all of these
- * before saving).
+ * rules, row and column groups, credential references, custom status
+ * sets, source rules and settings. Rejects, as defensive integrity
+ * checks, duplicate row, stage and group ids, a source-stage cycle, and
+ * group members that are unknown, in two groups or split apart (the
+ * editors prevent all of these before saving).
  *
  * @module
  */

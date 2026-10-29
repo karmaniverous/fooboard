@@ -20,17 +20,3 @@ export function matchesBranchPattern(pattern: string, branch: string): boolean {
   if (isLiteralPattern(pattern)) return pattern === branch;
   return new RegExp(branchRegex(pattern)).test(branch);
 }
-
-/**
- * The literal prefix of a branch pattern, for the
- * `git/matching-refs/heads/{prefix}` lookup (spec.md A§4.3.5): the complete
- * path segments before the first wildcard. A literal pattern's prefix is
- * the whole pattern.
- */
-export function branchPatternPrefix(pattern: string): string {
-  const starIndex = pattern.indexOf(STAR);
-  if (starIndex === -1) return pattern;
-  const beforeStar = pattern.slice(0, starIndex);
-  const lastSlash = beforeStar.lastIndexOf('/');
-  return lastSlash === -1 ? '' : beforeStar.slice(0, lastSlash + 1);
-}

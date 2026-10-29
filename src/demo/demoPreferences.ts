@@ -1,6 +1,6 @@
 /**
  * The demo's preferences (spec.md §3.14 *Board and edits*): the device's
- * store for the view settings (zoom, row height and the rest of a
+ * store for the view settings (zoom, density and the rest of a
  * dashboard's view), which the demo saves like any board, but problem
  * dismissals kept in memory for the visit, since a dismissal is an edit
  * and nothing edited in the demo outlives it.
