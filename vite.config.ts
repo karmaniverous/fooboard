@@ -32,7 +32,13 @@ const VENDOR_CHUNKS: readonly [RegExp, string][] = [
   ],
   [/node_modules[\\/]@aws-sdk[\\/]/, 'aws-amplify'],
   [/node_modules[\\/](@radix-ui|@dnd-kit|lucide-react)[\\/]/, 'ui-vendor'],
-  [/node_modules[\\/](zod|json-p3|radash)[\\/]/, 'data-vendor'],
+  // `src/zodJitless.ts` goes with zod: it must run before any module builds
+  // a schema, and a chunk the entry imports (shared app code, built-in
+  // rules included) runs before the entry's own code, but after zod's.
+  [
+    /node_modules[\\/](zod|json-p3|radash)[\\/]|src[\\/]zodJitless\.ts$/,
+    'data-vendor',
+  ],
 ];
 
 /** Split vendor code into {@link VENDOR_CHUNKS}. */
