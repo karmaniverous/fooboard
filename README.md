@@ -127,7 +127,7 @@ A row you show interest in polls faster for a while (its runs, or its Amplify ap
 
 - **A click** on one of its cells (a tap included), its row header, or the label of a row group it is in (which boosts every row of the group), and opening the settings of its cell, its row or its group, reads it at once, then 5, 10, 20 and 40 s apart. Space on a cell that opens its details, and Enter on a focused row header, count as clicks.
 - **Resting** the mouse or keyboard focus on one of its cells for 1.5 s polls it 10, 20 and 40 s apart, once each time you come to the cell.
-- **Each step** starts when the row's previous poll completes, so a slow answer delays the next poll rather than overlapping it, and no step starts 75 s or more after the boost did; then the row is back at 60 s. A new click starts it again; resting on a cell never slows a click's boost.
+- **Each step** starts when the row's previous poll completes, so a slow answer delays the next poll rather than overlapping it, and no step starts 75 s or more after the boost did; then the row is back at 60 s. A new click starts it again; resting on a cell never slows a click's boost, and when it starts a boost again, a poll already due sooner keeps its time, the new boost's steps following it.
 - **What doesn't**: a stage header, a column group's label, a column's settings, the middle or right mouse button, passing over a cell and touch without a tap. A boost never marks a cell refreshing by itself.
 
 A row already in progress stays at 5 s (a click still reads it at once), a token past half its budget polls four times slower here too, and nothing polls while the tab is hidden: coming back within 75 s carries a boost on from where it was. Boosts are for this tab only, and are never saved or shared.
