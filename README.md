@@ -80,7 +80,7 @@ _Create a dashboard_ walks you through four steps. Each step's heading takes the
 
    Each `preview/<name>` branch names a preview stage (`preview/bali` gives _bali_, sourced from dev), all ticked; `preview/release` names none, since _release_ is already a stage. Choose another preset, untick previews, or choose _Blank_ to add stages yourself; each stage shows how many of your repos have a branch it matches. _Back to repos_ returns to step 2.
 
-4. **Your board.** The board opens and fills in as GitHub answers. A note above it says how many runs landed in no cell (_Unmapped runs (N)_ lists them, with a fix for each; [Unmapped runs](#unmapped-runs)) and how many rule problems are marked ! (_Problems_). _Done_ closes the note.
+4. **Your board.** The board opens and fills in as GitHub answers. A note above it says how many runs landed in no cell (_Unmapped runs (N)_ lists them, with a fix for each; [Unmapped runs](#unmapped-runs)) and how many rule problems are marked ! (_Problems (N)_), and names _Edit dashboard_ for changes, each button shown with its icon as on the board. _Done_ closes the note.
 
 New dashboards use the built-in source rules and status sets. Add Amplify rows, rename or re-pattern stages and tweak rules afterwards with _Edit dashboard_ ([Editing a dashboard](#editing-a-dashboard)). A dashboard lives at `/d/<id>` in this browser.
 

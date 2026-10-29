@@ -10,16 +10,16 @@
  *
  * @module
  */
-import {
-  KeyRound,
-  type LucideIcon,
-  MessageSquareText,
-  Pencil,
-  TriangleAlert,
-  Unlink,
-} from 'lucide-react';
+import type { LucideIcon } from 'lucide-react';
 import { useState } from 'react';
 
+import {
+  CREDENTIALS_ICON,
+  EDIT_DASHBOARD_ICON,
+  NOTES_ICON,
+  PROBLEMS_ICON,
+  UNMAPPED_RUNS_ICON,
+} from '@/board/actionIcons';
 import {
   ADD_A_CREDENTIAL,
   CREDENTIALS,
@@ -70,13 +70,13 @@ function problemsAction(shown: readonly Problem[]): {
     ? {
         title: PROBLEMS,
         label: problemsLabel(problems),
-        Icon: TriangleAlert,
+        Icon: PROBLEMS_ICON,
         variant: 'destructive',
       }
     : {
         title: NOTES,
         label: notesLabel(shown.length),
-        Icon: MessageSquareText,
+        Icon: NOTES_ICON,
         variant: 'outline',
       };
 }
@@ -178,7 +178,7 @@ export function DashboardView({
               <BoardActionPanel
                 title={UNMAPPED_RUNS}
                 label={unmappedLabel(model.unmapped.length)}
-                Icon={Unlink}
+                Icon={UNMAPPED_RUNS_ICON}
               >
                 <UnmappedPanel
                   runs={model.unmapped}
@@ -200,7 +200,7 @@ export function DashboardView({
               }}
               title={EDIT_DASHBOARD}
               label={EDIT_DASHBOARD}
-              Icon={Pencil}
+              Icon={EDIT_DASHBOARD_ICON}
             >
               <DashboardEditor
                 key={draft.n}
@@ -216,7 +216,7 @@ export function DashboardView({
             <BoardActionPanel
               title={CREDENTIALS}
               label={missing ? ADD_A_CREDENTIAL : CREDENTIALS}
-              Icon={KeyRound}
+              Icon={CREDENTIALS_ICON}
               variant={missing ? 'default' : 'outline'}
             >
               <CredentialsPanel
