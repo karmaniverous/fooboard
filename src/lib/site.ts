@@ -17,6 +17,8 @@ export const site = {
   repoUrl: 'https://github.com/karmaniverous/fooboard',
   issuesUrl: 'https://github.com/karmaniverous/fooboard/issues',
   readmeUrl: 'https://github.com/karmaniverous/fooboard#readme',
+  /** The menu's *Release notes* (spec 0.2.0 §3.D). */
+  releasesUrl: 'https://github.com/karmaniverous/fooboard/releases',
   privacyUrl: 'https://github.com/karmaniverous/fooboard/blob/main/PRIVACY.md',
   termsUrl: 'https://github.com/karmaniverous/fooboard/blob/main/TERMS.md',
   /** The app logo, served with the site. */

@@ -12,6 +12,7 @@ import type { z } from 'zod';
 import { DashboardSchema } from '@/domain/config/dashboard';
 import { appQueryEnv } from '@/engine/appEnv';
 import { DashboardPage } from '@/pages/DashboardPage';
+import { DASHBOARD_ROUTE, dashboardPath, HOME_PATH } from '@/pages/paths';
 import { type AppStores, createAppStores } from '@/storage';
 import { type KeyValueStore, memoryStorage } from '@/storage/keyValue';
 import { StoresContext } from '@/storage/storesContext';
@@ -26,10 +27,10 @@ export function dashboardPageAt(
 ): React.JSX.Element {
   return (
     <StoresContext value={stores}>
-      <MemoryRouter initialEntries={[`/d/${id}`]}>
+      <MemoryRouter initialEntries={[dashboardPath(id)]}>
         <Routes>
-          <Route path="/" element={<p>{HOME_TEXT}</p>} />
-          <Route path="/d/:id" element={<DashboardPage />} />
+          <Route path={HOME_PATH} element={<p>{HOME_TEXT}</p>} />
+          <Route path={DASHBOARD_ROUTE} element={<DashboardPage />} />
         </Routes>
       </MemoryRouter>
     </StoresContext>

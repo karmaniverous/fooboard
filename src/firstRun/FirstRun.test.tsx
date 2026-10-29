@@ -192,12 +192,15 @@ describe('first run: stages', () => {
     );
     // Runs on feature/login and preview/texas land in no cell.
     const unmapped = await screen.findByRole('button', {
-      name: /^Unmapped \(\d+\)$/,
+      name: /^Unmapped runs \(\d+\)$/,
     });
-    const count = /\d+/.exec(unmapped.textContent)?.[0] ?? '';
+    const count =
+      /\d+/.exec(unmapped.getAttribute('aria-label') ?? '')?.[0] ?? '';
     expect(
       screen.getByText(
-        new RegExp(`${count} runs land in no cell: Unmapped \\(${count}\\)`),
+        new RegExp(
+          `${count} runs land in no cell: Unmapped runs \\(${count}\\) lists them`,
+        ),
       ),
     ).toBeVisible();
   });

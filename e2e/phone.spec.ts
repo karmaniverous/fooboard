@@ -20,11 +20,10 @@
  */
 import type { Locator, Page } from '@playwright/test';
 
-import { openDemo } from './board';
+import { MIN_TEST_TIMEOUT_MS } from '../src/test/timeouts';
+import { openDemo, PHONE } from './board';
 import { expect, test } from './guard';
 
-/** An iPhone's viewport with its toolbars collapsed (CSS px). */
-const PHONE = { width: 390, height: 844 };
 /** About what iOS's address bar takes when it expands again (CSS px). */
 const ADDRESS_BAR_PX = 80;
 /** Zoom steps in, so the board is taller than the phone. */
@@ -42,8 +41,9 @@ test.skip(
 
 /** How long the board must hold still to count as laid out (ms). */
 const SETTLE_MS = 1_000;
-/** How many `SETTLE_MS` waits the board gets to hold still. */
-const SETTLE_TRIES = 20;
+/** How many `SETTLE_MS` waits the board gets to hold still: it gives up
+ * only after the suite's shortest timeout. */
+const SETTLE_TRIES = MIN_TEST_TIMEOUT_MS / SETTLE_MS;
 
 /** What a re-layout would change: the board's box and the zoom. */
 async function boardState(grid: Locator, zoom: Locator) {
@@ -60,7 +60,7 @@ async function boardState(grid: Locator, zoom: Locator) {
  * and it has stopped changing. */
 async function settledState(page: Page, grid: Locator, zoom: Locator) {
   await expect(grid.locator('[aria-busy]')).toHaveCount(0, {
-    timeout: SETTLE_MS * SETTLE_TRIES,
+    timeout: MIN_TEST_TIMEOUT_MS,
   });
   let last = await boardState(grid, zoom);
   for (let i = 0; i < SETTLE_TRIES; i++) {

@@ -7,8 +7,7 @@
  */
 import { Link } from 'react-router-dom';
 
-/** Where the link back leads: the home page, which lists the dashboards. */
-const HOME_PATH = '/';
+import { HOME_PATH } from './paths';
 
 export function NotFound({
   title,

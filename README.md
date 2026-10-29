@@ -6,6 +6,7 @@
 
 **Welcome to DevOps hell. Here's your map.**
 
+[![live demo](https://img.shields.io/badge/live%20demo-fooboard.dev%2Fdemo-brightgreen.svg)](https://fooboard.dev/demo)
 [![CI](https://github.com/karmaniverous/fooboard/actions/workflows/ci.yml/badge.svg)](https://github.com/karmaniverous/fooboard/actions/workflows/ci.yml)
 [![license](https://img.shields.io/badge/license-BSD--3--Clause-blue.svg)](https://github.com/karmaniverous/fooboard/tree/main/LICENSE)
 [![changelog](https://img.shields.io/badge/changelog-latest-blue.svg)](https://github.com/karmaniverous/fooboard/tree/main/CHANGELOG.md)
@@ -15,10 +16,10 @@
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/demo-dark.png" />
-  <img src="docs/screenshots/demo-light.png" alt="The fooboard demo board: rows of repos grouped by team, columns of stages, each cell coloured by its latest deployment's status, with drift and pipeline badges." width="960" />
+  <img src="docs/screenshots/demo-light.png" alt="The fooboard demo board: rows of repos in Frontend and Services groups, columns of stages from the Alpha and Beta previews to Dev, Staging and Prod, each cell coloured by its latest deployment's status, some with behind or diverged badges." width="960" />
 </picture>
 
-fooboard shows the deployment state of every repo Ã— stage at a glance, live at [fooboard.dev](https://fooboard.dev). Paste a GitHub token, pick your repos and a branch preset, and the board fills itself in from your GitHub Actions runs (and, if you use them, AWS Amplify builds). No workflow changes, no account, no server: it is a free, open-source, static web app, and nothing leaves your browser except the calls it makes directly to GitHub and AWS.
+fooboard shows the deployment state of every repo × stage at a glance, live at [fooboard.dev](https://fooboard.dev). Paste a GitHub token, pick your repos and a branch preset, and the board fills itself in from your GitHub Actions runs (and, if you use them, AWS Amplify builds). No workflow changes, no account, no server: it is a free, open-source, static web app, and nothing leaves your browser except the calls it makes directly to GitHub and AWS.
 
 **Try it now:** open [fooboard.dev](https://fooboard.dev), or try the demo first at [fooboard.dev/demo](https://fooboard.dev/demo) (no account or token needed). Running fooboard locally is for contributors; see [CONTRIBUTING](./CONTRIBUTING.md).
 
@@ -35,7 +36,7 @@ fooboard shows the deployment state of every repo Ã— stage at a glance, live 
 - [Credentials](#credentials)
 - [Sharing, export and import](#sharing-export-and-import)
 - [Header, menu and footer](#header-menu-and-footer)
-  - [What's new](#whats-new)
+  - [Release notes](#release-notes)
   - [When something goes wrong](#when-something-goes-wrong)
 - [Your data](#your-data)
 - [Releasing and deployment](#releasing-and-deployment)
@@ -51,7 +52,7 @@ The board is shaped like a real pipeline: a _Preview_ group (Alpha, Beta), then 
 
 Within the first ten minutes it shows every status, badge, empty state and unmapped run described below; two minutes in, a new run starts on _accounts_ / _Prod_ whose jobs take a few seconds to load, so that cell shows the **refreshing** dot meanwhile. Every visit plays the same story from the moment you open it.
 
-You can change anything: the gears' popups, _Edit_ (the dashboard editor) and _Credentials_ all work. What you change lasts until you reload or leave the demo; nothing is saved, except zoom and density, which are saved on your device as for any board.
+You can change anything: the gears' popups, _Edit dashboard_ (the dashboard editor) and _Credentials_ all work. What you change lasts until you reload or leave the demo; nothing is saved, except zoom and density, which are saved on your device as for any board.
 
 ### Demo account
 
@@ -69,19 +70,19 @@ Its tokens and keys are demo values the simulator alone accepts; they mean nothi
 
 ## Getting started
 
-The home page offers three ways in: _Create a dashboard_, _Import from link or fileâ€¦_ (a board someone shared: choose its file, or paste its link; see [Sharing, export and import](#sharing-export-and-import)) and _Try the demo_.
+The home page offers three ways in: _Create a dashboard_, _Import from link or file…_ (a board someone shared: choose its file, or paste its link; see [Sharing, export and import](#sharing-export-and-import)) and _Try the demo_.
 
 _Create a dashboard_ walks you through four steps. Each step's heading takes the keyboard focus as it opens, so a screen reader announces it.
 
 1. **Add a GitHub token.** Name the dashboard (it is _My dashboard_ if you don't) and paste a read-only token; _How to create a read-only token_ opens the guide ([GitHub token](#github-token)). The token is kept for this tab unless you tick _Remember on this device_. It becomes the dashboard's own GitHub token (its _GitHub token_ setting, [Settings](#settings)), which every row reads with unless you set another. Every dashboard starts from a GitHub token, so there's no skip.
 2. **Pick your repos.** The repos the token can see are listed (search to narrow them); each one you tick becomes a row.
-3. **Set up your stages.** fooboard reads the branches in those repos and suggests the branch preset that fits them best: _Environment branches_ (dev, staging, prod â† `main`), _Gitflow_ (dev â† `develop`, test â† `release/**`, prod â† `main`) or _Release train_ (dev, release â† `release/**`, prod â† `main`, with preview stages). The best fit is the preset whose stages match a branch in the most repos; with the release train, repos with preview branches count too.
+3. **Set up your stages.** fooboard reads the branches in those repos and suggests the branch preset that fits them best: _Environment branches_ (dev, staging, prod ← `main`), _Gitflow_ (dev ← `develop`, test ← `release/**`, prod ← `main`) or _Release train_ (dev, release ← `release/**`, prod ← `main`, with preview stages). The best fit is the preset whose stages match a branch in the most repos; with the release train, repos with preview branches count too.
 
    Each `preview/<name>` branch names a preview stage (`preview/bali` gives _bali_, sourced from dev), all ticked; `preview/release` names none, since _release_ is already a stage. Choose another preset, untick previews, or choose _Blank_ to add stages yourself; each stage shows how many of your repos have a branch it matches. _Back to repos_ returns to step 2.
 
-4. **Your board.** The board opens and fills in as GitHub answers. A note above it says how many runs landed in no cell (_Unmapped_ lists them, with a fix for each; [Unmapped runs](#unmapped-runs)) and how many rule problems are marked ! (_Problems_). _Done_ closes the note.
+4. **Your board.** The board opens and fills in as GitHub answers. A note above it says how many runs landed in no cell (_Unmapped runs (N)_ lists them, with a fix for each; [Unmapped runs](#unmapped-runs)) and how many rule problems are marked ! (_Problems (N)_), and names _Edit dashboard_ for changes, each button shown with its icon as on the board. _Done_ closes the note.
 
-New dashboards use the built-in source rules and status sets. Add Amplify rows, rename or re-pattern stages and tweak rules afterwards with _Edit_ ([Editing a dashboard](#editing-a-dashboard)). A dashboard lives at `/d/<id>` in this browser.
+New dashboards use the built-in source rules and status sets. Add Amplify rows, rename or re-pattern stages and tweak rules afterwards with _Edit dashboard_ ([Editing a dashboard](#editing-a-dashboard)). A dashboard lives at `/d/<id>` in this browser.
 
 ## Reading the board
 
@@ -98,7 +99,7 @@ Each **row** is a repo (or an Amplify app, or one deployable unit in a repo), an
 | _GitHub single job_                                | Failed, Cancelled, Running, Queued, Succeeded                                                                           |
 | _Amplify_ (default for Amplify rows)               | Failed, Cancelled, Running, Queued, Deployed                                                                            |
 
-Each status has a name, a colour, an icon (âœ“ success, âœ• failure, â—” running, â—‘ partial, â—‹ queued, âŠ˜ cancelled) and can be outlined, as Queued is. A status in progress pulses. Text on a cell is white or near-black, whichever reads better on its colour.
+Each status has a name, a colour, an icon (✓ success, ✕ failure, ◔ running, ◑ partial, ○ queued, ⊘ cancelled) and can be outlined, as Queued is. A status in progress pulses. Text on a cell is white or near-black, whichever reads better on its colour.
 
 A record that matches no status shows **Unknown** (purple, ?), so a gap in the rules is visible; see [Rules](#rules).
 
@@ -108,7 +109,7 @@ An **empty cell** says why: _no records_, _needs credential_ (with a link to [Cr
 
 A **warning marker** (!) on a row or stage header, or beside the board's name for board-wide problems, means a rule there has a problem (a group's problems mark its members; a status set's problems mark the rows whose cells use it); hover it to read them, click it to open the editor at the problem. A cell's own problems (such as a hint to read more) are listed in its detail.
 
-_Problems (N)_ in the toolbar lists every problem with _Fix_ to open the editor at the exact item, and notes on what the rule check couldn't decide; when there are only notes it reads _Notes (N)_.
+_Problems (N)_, the red warning-triangle button beside the board's name, lists every problem with _Fix_ to open the editor at the exact item, and notes on what the rule check couldn't decide; when there are only notes it is _Notes (N)_, a speech bubble, and its panel is titled _Notes_.
 
 **Loading.** A board fills as answers arrive: each repo's runs first, then each run's jobs, then the behind counts.
 
@@ -122,13 +123,13 @@ Answers are kept, so an edit, opening a board again, or reloading the page shows
 
 **Polling.** A row polls every 5 s while one of its cells is in progress (a provisional _Running_ included) and every 60 s otherwise, four times slower for a token past half its budget, and nothing polls while the tab is hidden; coming back reads only what fell due. A finished run's jobs are never read again.
 
-When GitHub says a token is rate-limited, or AWS throttles a key, fooboard pauses that credential until the provider says to retry (AWS's suggested delay, else 5 s). Each credential's requests wait in one queue: the editors' lookups and a row's first read go to its front, while polls wait their turn with run jobs and behind counts.
+When GitHub says a token is rate-limited, or AWS throttles a key, fooboard pauses that credential until the provider says to retry (a throttled AWS key pauses 5 s, since Amplify doesn't let the browser read its suggested delay; fooboard would use that delay if it could). Each credential's requests wait in one queue: the editors' lookups and a row's first read go to its front, while polls wait their turn with run jobs and behind counts.
 
 **Errors.** A repo GitHub can't find (or an Amplify app that's gone) shows _error_ with a problem on its row; an expired or revoked token shows _needs credential_; either way, nothing cached is shown in its place.
 
-An Amplify row with a source whose AWS key can't be resolved (none chosen or inherited, or its secret not entered) shows _needs credential_ in every cell, with a problem naming that source. You can dismiss that problem (handy when the secret is kept for the session only and asked for again after a reload); the cells still show _needs credential_. A renamed repo keeps its data and gets a "renamed to" problem.
+An Amplify cell whose AWS key can't be resolved (none chosen or inherited, or its secret not entered) shows _needs credential_ on its own, with a problem naming the row's columns that lack a key or a secret. You can dismiss that problem (handy when the secret is kept for the session only and asked for again after a reload); the cells still show _needs credential_. A renamed repo keeps its data and gets a "renamed to" problem.
 
-Any other failed read puts _error_ with the message on the cells it feeds (the message alone, such as _GitHub request to runs failed with status 502_), and a problem you can dismiss; so does a failure in working out what a row shows, on every cell of that row. One failing Amplify app affects only the rows that read it.
+Any other failed read puts _error_ with the message on the cells it feeds (the message alone, such as _GitHub request to runs failed with status 502_), and a problem you can dismiss; so does a failure in working out what a row shows, on every cell of that row. One failing Amplify app affects only the cells that read it.
 
 **Amplify apps found by repo.** An Amplify row with a GitHub repo needs no pinned app: each of its cells reads the Amplify apps that build that repo in the account of the cell's AWS key.
 
@@ -146,15 +147,16 @@ Any other region is waited for, however long it takes, since a partial list coul
 
 - **Details**: hover a cell (or focus it from the keyboard) for its status, branch, short commit SHA, the first line of the commit message, and time.
 - **Detail sheet**: tap the cell on a touch screen, or press Space on a focused cell (its tooltip says so, and that `,` opens its [settings](#settings-on-the-board)), for a sheet showing every line of the commit message and the full SHA, with _Copy_ to copy it.
-- The sheet is titled with the cell's row and stage, which stay at its top with _Close_ while a long message scrolls; Escape or _Close_ returns to the cell. (The message and SHA are the record's `message` and `commit` keys: a GitHub run's head commit, an Amplify job's commit.)
+  - The sheet is titled with the cell's row and stage, which stay at its top with _Close_ while a long message scrolls; Escape or _Close_ returns to the cell. (The message and SHA are the record's `message` and `commit` keys: a GitHub run's head commit, an Amplify job's commit.)
 - **Opening the job**: clicking a cell, or pressing Enter on it, opens the job on GitHub (or the Amplify console). An empty cell has no job, so a click, a tap, Enter or Space opens its sheet; so does a cell whose record has no link (possible only with a custom source rule), which Tab reaches like any other cell and whose tooltip also says Space opens its details.
 - **Groups**: rows and stages can be grouped. Groups stand apart: a wider gap separates a group from its neighbours, and one unbroken line runs down the middle of it, never touching a cell. A column group is framed from its name to the bottom of the board. A row group's line runs across the whole board, above its name when it has one. Group names, and their gears, sit inside their groups and stay in view as the board scrolls.
-- **Settings gears**: every row header, stage header and group label has a âš™ that opens its [settings](#settings-on-the-board) where you are (not on a phone), and a âš™ follows the cell you point at or focus.
+- **Settings gears**: every row header, stage header and group label has a ⚙ that opens its [settings](#settings-on-the-board) where you are (not on a phone), and a ⚙ follows the cell you point at or focus.
 - **Fitting the screen**: columns share the window's width, and each cell shows as much detail as fits.
-- **Zoom**: Ctrl/âŒ˜ + wheel, a pinch, the toolbar buttons or `+` `-` `0` (a tap on a touch screen opens the cell it lands on, so there is no double-tap zoom); zooming out fits more, zooming in shows more.
-- **Scrolling**: a board larger than the window scrolls with the page: drag it with the mouse, or swipe it on a touch screen like any page. On a phone or tablet the board keeps its size while the browserâ€™s toolbars come and go as you scroll, and fits itself again when you rotate the device.
+- **Zoom**: Ctrl/⌘ + wheel, a pinch, the toolbar buttons or `+` `-` `0` (a tap on a touch screen opens the cell it lands on, so there is no double-tap zoom); zooming out fits more, zooming in shows more.
+- **Scrolling**: a board larger than the window scrolls with the page: drag it with the mouse, or swipe it on a touch screen like any page. On a phone or tablet the board keeps its size while the browser’s toolbars come and go as you scroll, and fits itself again when you rotate the device.
 - **Density**: _Default_, _Comfortable_ and _Compact_ density change the padding. On a narrow screen the controls beside the board's name wrap onto more lines, so none sits off-screen at any zoom.
-- **Legend**: _Legend_ shows each status set the boardâ€™s cells use, with its statuses as cells show them.
+- **Board actions**: beside the board's name sit icon buttons: _Legend_ (an i), each GitHub token's battery, then _Problems_ or _Notes_, _Unmapped runs_ (a broken link), _Edit dashboard_ (a pencil) and _Credentials_ (a key; _Add a credential_, highlighted, while the dashboard has none). A button is named by what it opens, with its count where there is one (_Problems (2)_, _Unmapped runs (12)_), and a tooltip shows that name when you point at it or Tab to it. On a touch screen a tap opens it, and the panel's title says what it is. A button with a count shows only while its count is above zero.
+- **Legend**: _Legend_ shows each status set the board’s cells use, with its statuses as cells show them.
 - **Summary**: a count for each summary status the cells show (for the built-in sets: _Failing_, _Running_, _Cancelled_, _OK_; _Unknown_ last), then behind and diverged cells; click one to show only those cells, again to clear. A provisional cell (see _Loading_ above) counts toward no chip and matches no filter until its jobs land.
 - **Request budget**: a battery for each GitHub token the board uses shows the requests left this hour; its tooltip names the token and says when the budget resets. It is grey and empty until the board's first GitHub response with that token, and again after you replace or forget the token.
 - **Budget source**: fooboard reads the budget from the headers of answers it already gets and never asks for it separately, so it costs nothing. It polls four times slower for a token past half its hourly budget; a replaced token starts without that slowdown until its own first response.
@@ -166,20 +168,20 @@ Any other region is waited for, however long it takes, since a partial list coul
   <img src="docs/screenshots/editor-light.png" alt="The dashboard editor open beside the board, on its General tab." width="960" />
 </picture>
 
-_Edit_ (on the board) opens the editor in a side panel, like _Credentials_, _Problems_ and _Unmapped_. Each panel's title and _Close_ (and the editor's tabs) stay at its top while its content scrolls beneath them, so they are always in reach, and _Fix_ or a drag scrolls only the content. The editor has these tabs:
+_Edit dashboard_ (the pencil on the board) opens the editor in a side panel, like _Credentials_, _Problems_ and _Unmapped runs_. Each panel's title and _Close_ (and the editor's tabs) stay at its top while its content scrolls beneath them, so they are always in reach, and _Fix_ or a drag scrolls only the content. The editor has these tabs:
 
 - **General**: rename, duplicate or delete the dashboard, its default row rules, its [settings](#settings), and its **requests in flight**: how many requests each credential may have running at once in this tab, for GitHub and AWS separately (1 to 100, 10 by default). A change applies at once and reads nothing again.
-- **Requests in flight, in practice**: higher fills the board faster; a burst can trigger GitHub's secondary rate limits or AWS throttling, after which fooboard pauses that credential (see _Polling_). The limit is per credential per tab: two tabs on the same token can each have that many running.
+  - **Requests in flight, in practice**: higher fills the board faster; a burst can trigger GitHub's secondary rate limits or AWS throttling, after which fooboard pauses that credential (see _Polling_). The limit is per credential per tab: two tabs on the same token can each have that many running.
 - **Rows**: add GitHub rows from the repos a token can see (the dashboard's default token unless you choose another; the row keeps the one you chose), or Amplify rows from the apps your AWS key can see.
-- _List Amplify apps_ lists the key's apps in every region that has Amplify Hosting, each with its region, from the same requests as the board's [search](#reading-the-board) (one per region; a list less than 5 minutes old isn't read again).
-- It skips the regions the search skips: one where the account has no Amplify, one an AWS organisation's policy denies, and in the three regions an account must opt in to (`ap-east-1`, `eu-south-1`, `me-south-1`) a rejected key, a network failure, a server error or no answer within 5 seconds; anywhere else any of those fails the list.
-- **An app without a connected GitHub repo** can be added too: type the repo it builds from (`owner/name`), or leave it empty, and its row shows no behind or diverged badges (with a dismissable problem saying so) and has no GitHub token.
-- **Pinning**: a picked app that is the only app building its repo under the key adds a row found by repo, with no pin; otherwise the app is **pinned** to its row under the AWS key it was listed with. A key you choose in the picker, rather than the inherited one, becomes the row's own AWS key. A picker's credential choice offers the dashboard's own first, as _Dashboard default (name)_, then the other credentials of that kind.
-- **A row's own settings**: its own record rule (e.g. one deployable unit in a repo), its own rule for any stage (an **override**), its _Settings_ and its _Cell settings_ (one per stage, one open at a time; see [Settings](#settings)).
-- **An Amplify row's pinned apps**: each pin's AWS key is edited in place (a pin with a key serves the cells reading with that key; one without serves any cell whose key has no keyed pin), _Unpin_ removes one (never the last pin of a row without a repo), and _Pin_ adds another, say for an app in another AWS account.
+  - _List Amplify apps_ lists the key's apps in every region that has Amplify Hosting, each with its region, from the same requests as the board's [search](#reading-the-board) (one per region; a list less than 5 minutes old isn't read again).
+    - It skips the regions the search skips: one where the account has no Amplify, one an AWS organisation's policy denies, and in the three regions an account must opt in to (`ap-east-1`, `eu-south-1`, `me-south-1`) a rejected key, a network failure, a server error or no answer within 5 seconds; anywhere else any of those fails the list.
+  - **An app without a connected GitHub repo** can be added too: type the repo it builds from (`owner/name`), or leave it empty, and its row shows no behind or diverged badges (with a dismissable problem saying so) and has no GitHub token.
+  - **Pinning**: a picked app that is the only app building its repo under the key adds a row found by repo, with no pin; otherwise the app is **pinned** to its row under the AWS key it was listed with. A key you choose in the picker, rather than the inherited one, becomes the row's own AWS key. A picker's credential choice offers the dashboard's own first, as _Dashboard default (name)_, then the other credentials of that kind.
+  - **A row's own settings**: its own record rule (e.g. one deployable unit in a repo), its own rule for any stage (an **override**), its _Settings_ and its _Cell settings_ (one per stage, one open at a time; see [Settings](#settings)).
+  - **An Amplify row's pinned apps**: each pin's AWS key is edited in place (a pin with a key serves the cells reading with that key; one without serves any cell whose key has no keyed pin), _Unpin_ removes one (never the last pin of a row without a repo), and _Pin_ adds another, say for an app in another AWS account.
 - **Stages**: add stages, each with a rule saying which records belong in it (the presets test the branch); set each stage's source (for the behind/diverged badges) and its _Settings_ (a column's: say the AWS key its cells read with). A column group's item holds its stage rules and settings.
 - **Sources**: the source rules for GitHub and Amplify, including what to read (GitHub: skip pull-request runs, which still count toward what is read, and runs per repo, 100 by default and up to 500, each 100 one request per repo per poll; Amplify: jobs per branch, 20 by default and up to 100, and which branches).
-- **When a read comes back full**, each of its rows' cells showing _no records_ gets a hint to read more, since the stage's last run or job may be older than what was read. Amplify reads every branch by default, which makes more AWS calls than reading only stage branches; narrow it with the branch rule; see [Rules](#rules).
+  - **When a read comes back full**, each of its rows' cells showing _no records_ gets a hint to read more, since the stage's last run or job may be older than what was read. Amplify reads each branch's jobs on their own, so an Amplify cell whose stage rule is a branch pattern gets the hint only when a branch it matches was read full: not when its branches' reads all came back short, nor when it matches none of the app's branches, since reading more can't find a job for it there. (Under a custom Amplify source rule that changes the `branch` key or the items, a record's branch may not be the branch Amplify lists, so a full read of any of the app's branches hints every one of its _no records_ cells.) Amplify reads every branch by default, which makes more AWS calls than reading only stage branches; narrow it with the branch rule; see [Rules](#rules).
 - **Statuses**: which status set GitHub and Amplify cells use by default and where that is chosen (the dashboard's _Settings_), _Customise_ to copy it into a set of your own, your own sets, and the runs no status matches; see [Rules](#rules).
 
 **Groups**: start a group from any row or stage, add others to it, label it, or delete it (its members stay). A row group has its own [settings](#settings), row rule and stage overrides; a row's own override beats its group's, which beats the stage's rule, and each choice names what it inherits.
@@ -196,7 +198,7 @@ From the keyboard, focus the handle, press Space, move with the arrow keys (the 
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/settings-editor-dark.png" />
-  <img src="docs/screenshots/settings-editor-light.png" alt="The settings editor for the storefront row: its GitHub token, AWS key and Amplify status set, each inherited from the dashboard." width="960" />
+  <img src="docs/screenshots/settings-editor-light.png" alt="The dashboard editor's Rows tab with the storefront row open: its settings, a GitHub token and an AWS key inherited from the dashboard, and the built-in Amplify status set." width="960" />
 </picture>
 
 A few values may differ by row, by column or by cell: the **GitHub token** a cell reads its repo with, the **AWS key** an Amplify cell reads its apps with, and for each source the **status set** and the **item rule**. They are **settings**, one object with the same fields at six levels: the dashboard, a row group, a column group, a row, a column (a stage) and a cell. Every field is optional; an unset field inherits.
@@ -222,13 +224,13 @@ Under a set field, the more specific places that win over it are named ("_stagin
   <img src="docs/screenshots/row-popup-light.png" alt="A row's settings popup, opened from the gear beside its name." width="414" />
 </picture>
 
-You can change a place's settings without leaving the board. Every row header, stage header and labelled group label has a gear (âš™) after its name, always shown and in the Tab order after the header; its room is kept in the layout, so the board never shifts. On a screen narrower than 640 px headers and labels have no gear, so row names get the room: set those places in _Edit dashboard_.
+You can change a place's settings without leaving the board. Every row header, stage header and labelled group label has a gear (⚙) after its name, always shown and in the Tab order after the header; its room is kept in the layout, so the board never shifts. On a screen narrower than 640 px headers and labels have no gear, so row names get the room: set those places in _Edit dashboard_.
 
 One gear follows the cell under the pointer or with keyboard focus, in its top-right corner, and stays while you move onto it. The cell's gear isn't a Tab stop of its own: press `,` (comma) on a focused cell instead (its tooltip says so, beside Space for details). Comma works from a cell's behind or diverged badge too, and with focus there the tooltip names only comma, since Space would follow the badge's link.
 
 On a touch screen, tap the cell for its detail sheet, which has the cell's gear. Clicking a header or a label still opens nothing, and clicking a cell still opens its job.
 
-A gear opens its **settings popup**: next to the gear, or as a sheet from the bottom of the screen on a phone. Its title names the place ("Row settings: api-core", "Cell settings: api-core Ã— prod"), and it holds the same [settings editor](#settings) as _Edit dashboard_, for that place only: every field, its origin, _Set here_, _Reset to inherited_ and _nothing here reads it yet_.
+A gear opens its **settings popup**: next to the gear, or as a sheet from the bottom of the screen on a phone. Its title names the place ("Row settings: api-core", "Cell settings: api-core × prod"), and it holds the same [settings editor](#settings) as _Edit dashboard_, for that place only: every field, its origin, _Set here_, _Reset to inherited_ and _nothing here reads it yet_.
 
 A change is saved at once (or refused with _Not saved_), and the board updates under it. _Open in dashboard settings_ opens the editor at that place. An unlabelled group has no gear; where a row's or stage's popup names one as an origin, that origin opens the editor at the group's settings.
 
@@ -252,11 +254,11 @@ A **rule** is one or more checks joined by **AND** (default) or **OR**. Null cou
 **Three kinds of rule.**
 
 - **Source rules** (the _Sources_ tab, one per source) turn each source's raw data into **records** with keys you name: each key is an ordered list of translations (the first whose rule matches gives the value), so GitHub's `failure` and Amplify's `FAILED` can both become `status: failed`.
-- A source rule also says where the items are (GitHub: the run's jobs) and their keys (item rules are offered only for a source whose rule has items), which records to keep (default: all), which key orders records (required), and, for Amplify, which branches to read (default: all).
-- Every record keeps its raw data under `_raw`. The board shows `time`, `link`, `message`, `commit` and `branch` when a record has them.
+  - A source rule also says where the items are (GitHub: the run's jobs) and their keys (item rules are offered only for a source whose rule has items), which records to keep (default: all), which key orders records (required), and, for Amplify, which branches to read (default: all).
+  - Every record keeps its raw data under `_raw`. The board shows `time`, `link`, `message`, `commit` and `branch` when a record has them.
 - **Placement rules**, one per source, say which records belong where: on the dashboard, a row group or a row, a **row rule** for the record; at any [settings](#settings) level, an **item rule** for its items (e.g. only the `deploy (billing)` job on a billing row).
-- Also: on the dashboard, a column group or a stage, a **stage rule**, overridable for a row group or a row. The most specific level wins; a stage without its own rule uses its column group's, then the dashboard's.
-- With no stage rule at all a stage matches nothing (and says so); with no row rule a row takes everything from its repo or app. A record belongs in a cell when it passes the row and stage rules; the cell shows the newest by the order key.
+  - Also: on the dashboard, a column group or a stage, a **stage rule**, overridable for a row group or a row. The most specific level wins; a stage without its own rule uses its column group's, then the dashboard's.
+  - With no stage rule at all a stage matches nothing (and says so); with no row rule a row takes everything from its repo or app. A record belongs in a cell when it passes the row and stage rules; the cell shows the newest by the order key.
 - **Status sets** decide what a cell shows: an **item rule** (an item counts when it passes this and the cell's item rule; a record with items but none that count isn't the cell's), **summary statuses** (the summary chips: name, colour, icon, in progress) and **cell statuses** in order, each with a rule: a cell shows the first whose rule its record matches, or Unknown.
 
 **Which set a cell uses** is a [setting](#settings): the most specific level that chooses one, at any of the six levels. **Built-in rules** (source rules and status sets) are referenced by id, so a board picks up fixes in new releases. The branch presets instead write ordinary stage rules into each stage, which you edit directly. **Customise** copies one into the dashboard to edit; built-ins can't be edited in place, and a rule still in use can't be removed.
@@ -289,7 +291,7 @@ A board from a newer release asks you to reload. Boards saved by early developme
 
 ## Unmapped runs
 
-_Unmapped (N)_ lists recent GitHub runs and Amplify jobs that have no cell, with the reason for each row that reads their repo or app: no stage rule matches (naming the branch), no row rule matches, no item counts, or no order key (none, or an empty one).
+_Unmapped runs (N)_ (the broken-link button beside the board's name) lists recent GitHub runs and Amplify jobs that have no cell, with the reason for each row that reads their repo or app: no stage rule matches (naming the branch), no row rule matches, no item counts, or no order key (none, or an empty one).
 
 _Add rule_ opens the editor where the fix goes, with a check drafted from the record to add: a new stage pre-filled with the branch; the row rule that missed it; the item rule of the row's status set; or the source rule's order key. _Add override_ opens a stage-rule override for the branch on a row reading the record or its group.
 
@@ -306,7 +308,7 @@ fooboard reads GitHub and AWS with credentials **you** create, kept only in this
 
 An open credential lets you enter its secret, tick or untick _Remember on this device_, _Forget_ it, _Make dashboard default_, _Remove_ it and, for an AWS key, _Copy AWS policy_.
 
-Unticking _Remember_ keeps the secret for this tab only: its stored copy is removed from this browser, and what was read with it is dropped from memory and the [kept answers](#your-data) in every open fooboard tab. If the browser won't let fooboard remove a stored copy, the panel says so, shows the secret as kept for this tab only, and tells you to use **Reset** to clear what was left.
+Unticking _Remember_ keeps the secret for this tab only: its stored copy is removed from this browser, and what was read with it is dropped at once from memory and the [kept answers](#your-data) in every open fooboard tab. If the browser won't let fooboard remove a stored copy, the panel says so, shows the secret as kept for this tab only, and tells you to use **Reset** to clear what was left.
 
 Below the list, _Add a credential_ adds a GitHub token or AWS key, and _Copy from another dashboard_ makes an independent copy of one of yours.
 
@@ -327,7 +329,7 @@ Use a **fine-grained personal access token**:
    | Actions    | Read-only |
 
 5. Set a short **expiration** (30 to 90 days).
-6. Generate the token and paste it into _Credentials_ â†’ _Add a credential_. Tick _Remember on this device_ to keep it after the browser closes.
+6. Generate the token and paste it into _Credentials_ → _Add a credential_. Tick _Remember on this device_ to keep it after the browser closes.
 
 ### Classic tokens
 
@@ -348,7 +350,7 @@ Amplify rows need an AWS access key for an IAM user that can only read Amplify:
 
    Or attach a policy below yourself: in the template, replace `REGION`, `ACCOUNT_ID` and `APP_ID`, adding a line to each of the last two statements for each app.
 
-3. Create an access key for the user, and paste its ID and secret into _Credentials_ â†’ _Add a credential_ â†’ _AWS key_.
+3. Create an access key for the user, and paste its ID and secret into _Credentials_ → _Add a credential_ → _AWS key_.
 
 Use one key per AWS account. The first key you add becomes the dashboard's AWS key (_Make default_ changes it); a key for another account is set where it applies, in that level's [settings](#settings): usually on the columns (stages) whose apps live in that account, else on a row group, a row or a single cell. A GitHub token is set the same way, usually on the dashboard or a row group.
 
@@ -432,14 +434,14 @@ The copied policy uses `*` for the account, because fooboard doesn't know it: th
 ### Revoking a credential
 
 - **GitHub**: [github.com/settings/personal-access-tokens](https://github.com/settings/personal-access-tokens) (or your organization's token page): delete the token. It stops working at once.
-- **AWS**: IAM console â†’ Users â†’ the fooboard user â†’ Security credentials: deactivate or delete the access key; delete the user if it exists only for fooboard.
+- **AWS**: IAM console → Users → the fooboard user → Security credentials: deactivate or delete the access key; delete the user if it exists only for fooboard.
 - **In fooboard**, _Forget_ removes a credential from this browser. It does not revoke it at GitHub or AWS: do that too.
 
 ## Sharing, export and import
 
-_Share / Export_ in the header (or the menu) shares your saved dashboards; _Import_ (in the header, and _Import from link or fileâ€¦_ on the home page) brings them in: choose a file, or paste a link into _Or a fooboard link_.
+_Share / Export_ in the header (or the menu) shares your saved dashboards; _Import_ (in the header, and _Import from link or file…_ on the home page) brings them in: choose a file, or paste a link into _Or a fooboard link_.
 
-Opening the link in your browser does the same: the same dashboards listed, the same passphrase step, the same import. Pasting tolerates spaces around the link, and takes the link at any path or its `#b=â€¦` part alone; text with no `#b=` in it is refused as a damaged link.
+Opening the link in your browser does the same: the same dashboards listed, the same passphrase step, the same import. Pasting tolerates spaces around the link, and takes the link at any path or its `#b=…` part alone; text with no `#b=` in it is refused as a damaged link.
 
 - **Choose dashboards**: one, some or all (every one is ticked at first; _Select all_ toggles them). Each carries its groups, overrides, rules, custom status sets, settings at every level and pinned apps. Zoom, density, theme, the kept answers and anything held for a tab are never shared.
 - **Copy board link**: everything goes into the part of the link after `#b=`, compressed. Browsers never send that part to a server (nor in a `Referer` header), and fooboard removes it from the address bar and history the moment the link opens, so a reload can't import it twice. A link longer than 32,000 characters isn't offered (chat apps cut long messages): download a file instead. The demo board's link is about 4,000 characters.
@@ -448,18 +450,18 @@ Opening the link in your browser does the same: the same dashboards listed, the 
 - **Credentials** are left out unless you tick _Include credentials_. Anyone holding a link or file with credentials in it can use them, so give it only to people who should have them, and scope tokens and keys narrowly ([Credentials](#credentials)). Only the credentials the chosen dashboards use, and whose secrets are on this device, are included.
 - **Encryption**: included credentials are **encrypted with a passphrase** unless you untick it: AES-GCM with a key derived from the passphrase by PBKDF2-SHA256 (600,000 iterations, random salt and IV). Send the passphrase separately, never beside the link or file.
 - **Opening a link or file** shows the _Import dashboards_ dialog: its dashboards, all ticked. Nothing is saved until you press _Import_; _Cancel_ discards it.
-- _Add to my dashboards_ adds them, and for a dashboard you already have you choose _Replace mine_ or _Keep as a copy_.
-- **Taking an update**: _Replace mine_ is how you take an update: when someone changes a board they shared and shares it again, it is still the same dashboard, so _Replace mine_ updates yours in place, overwriting any changes you made to it on this device. It keeps its credentials, so the tokens and keys you remembered for it still work; where a secret imported with it differs from this device's, you choose which to keep (below).
-- _Keep as a copy_ leaves yours as it is and adds a separate dashboard with its own credentials. _Replace the whole setup_ makes the imported dashboards your only ones, after you confirm, and forgets the tokens and keys nothing uses any more.
+  - _Add to my dashboards_ adds them, and for a dashboard you already have you choose _Replace mine_ or _Keep as a copy_.
+  - **Taking an update**: _Replace mine_ is how you take an update: when someone changes a board they shared and shares it again, it is still the same dashboard, so _Replace mine_ updates yours in place, overwriting any changes you made to it on this device. It keeps its credentials, so the tokens and keys you remembered for it still work; where a secret imported with it differs from this device's, you choose which to keep (below).
+  - _Keep as a copy_ leaves yours as it is and adds a separate dashboard with its own credentials. _Replace the whole setup_ makes the imported dashboards your only ones, after you confirm, and forgets the tokens and keys nothing uses any more.
 - **Imported credentials** are kept for the current tab only unless you tick _Remember on this device_, as when you enter one. A secret this browser already remembers, unchanged, stays remembered, so taking an update never makes you enter it again.
 - **When secrets differ**: where a credential's secret in the share **differs** from the one this browser holds for it (remembered or this tab's), the dialog asks about each one by name, for example "GitHub token _org-reader_: keep yours, or use the one in this share?", showing neither secret.
-- **Choosing**: Nothing is chosen for you, and _Import_ stays disabled until every question is answered: _Keep yours_ leaves your secret exactly as it was (remembered or not), and _Use the share's_ replaces it, kept for this tab or remembered as _Remember on this device_ says. The comparison happens in your browser; nothing is sent anywhere.
-- **New credentials and encrypted shares**: a credential you don't have yet is simply imported, and _Keep as a copy_ never asks (the copy has credentials of its own).
+- **Choosing**: nothing is chosen for you, and _Import_ stays disabled until every question is answered: _Keep yours_ leaves your secret exactly as it was (remembered or not), and _Use the share's_ replaces it, kept for this tab or remembered as _Remember on this device_ says. The comparison happens in your browser; nothing is sent anywhere.
+- **New credentials**: a credential you don't have yet is simply imported, and _Keep as a copy_ never asks (the copy has credentials of its own).
 - **Encrypted credentials**: the questions come after the passphrase: the first _Import_ opens them and stops to ask if anything differs. Untick _Import its credentials_ to import the dashboards alone (their rows show _Needs credential_ until you add the secrets).
   The dialog asks for the passphrase there, after you choose the dashboards; a wrong one says "That passphrase doesn't open these credentials", and you can still import without them.
 - **Older and newer**: a link or file from an older fooboard opens and is upgraded; one from a newer fooboard is refused ("reload to update"), and anything else that isn't a fooboard share, or is damaged, says so ("This link isn't a fooboard board, or it's damaged").
 
-The format is public and versioned: `{ "format": "fooboard-share", "formatVersion": 1, "schemaVersion": 6, "dashboards": [ â€¦ ], "credentials": null }`, where `credentials` holds the secrets by credential id, plain or encrypted, beside the dashboards and never inside them.
+The format is public and versioned: `{ "format": "fooboard-share", "formatVersion": 1, "schemaVersion": 6, "dashboards": [ … ], "credentials": null }`, where `credentials` holds the secrets by credential id, plain or encrypted, beside the dashboards and never inside them.
 
 ## Header, menu and footer
 
@@ -474,13 +476,13 @@ The header stays at the top of the window. Its buttons, each with a tooltip:
 - **GitHub**: this repo.
 - **Report an issue**: [GitHub Issues](https://github.com/karmaniverous/fooboard/issues).
 
-As the window narrows, buttons move into the menu from the right, then the tagline goes; _README_ and _News & support_ stay longest. [Privacy](./PRIVACY.md) and [Terms](./TERMS.md) are always in the menu, followed by _What's new_ and _Resetâ€¦_; the menu ends with fooboard's version. The footer repeats every item as a link, turning to icons and then dropping out from the left as space runs short; Privacy and Terms always stay.
+As the window narrows, buttons move into the menu from the right, then the tagline goes; _README_ and _News & support_ stay longest. [Privacy](./PRIVACY.md) and [Terms](./TERMS.md) are always in the menu, followed by _Release notes_ and _Reset…_; the menu ends with fooboard's version. The footer repeats every item as a link, turning to icons and then dropping out from the left as space runs short; Privacy and Terms always stay.
 
-### What's new
+### Release notes
 
-_What's new_, in the menu, lists every release from the [changelog](./CHANGELOG.md) bundled with this version, newest first: each release is a collapsed entry (the newest starts open, and opening one closes the others) listing its features and fixes, with a link to its announcement on X when there is one.
+_Release notes_, in the menu, opens fooboard's [releases page](https://github.com/karmaniverous/fooboard/releases) on GitHub in a new tab: every release, newest first, with its features and fixes.
 
-A dot on the menu button and on the item marks a release this browser hasn't seen; opening _What's new_ clears it. The last version seen is saved on this device, like the theme; it is never exported, and _Reset_ clears it, so the dot comes back.
+A dot on the menu button and on the item marks a version of fooboard newer than the last one this browser has seen; following the link (a click, Enter or a tap) clears it. Your first visit counts as having seen the version you arrive on, so a new browser shows no dot until fooboard updates. The last version seen is saved on this device, like the theme; it is never exported, and _Reset_ clears it, so the next visit counts as a first one.
 
 ### When something goes wrong
 
@@ -493,13 +495,13 @@ Before it goes into the issue, the message is cleaned of anything shaped like a 
 Everything stays in this browser:
 
 - **Dashboards** are saved under a versioned format; older saves are upgraded when they load, and data that can't be read is reported and never overwritten. The first save after an upgrade keeps a copy of the old save (e.g. `fooboard:config.v5`) until the next save succeeds.
-- **Zoom, density, theme and the last version whose _What's new_ you've seen** are saved on each device, and never exported. Deleting a dashboard removes its settings on this device too.
+- **Zoom, density, theme and the last version whose release notes you've seen** are saved on each device, and never exported. On your first visit that version is the one you arrived on, stored without you doing anything, and the next load after _Reset_ stores it again. Deleting a dashboard removes its settings on this device too.
 - **Tokens and keys** are kept only for the current tab unless you tick _Remember on this device_. Unticking it later removes the stored copy, so a token or key kept for the tab only leaves nothing on the device. _Forget_ removes one.
 - **Answers from GitHub and AWS** (runs, jobs, branches, behind counts, and the app search's lists of each AWS key's Amplify apps, with their names and repository URLs) are kept in this browser's IndexedDB, **unencrypted**, for up to 24 hours, so a reload shows the last known board at once. A new version of fooboard starts the cache afresh.
 - **What's kept and for whom**: only answers read with the token or key remembered on this device are kept, each marked with a fingerprint of that secret (a one-way hash, never the secret itself).
-- **What's never kept**: the answers read with a token or key kept for the current tab only are never kept, even when another tab remembers a different one for the same credential, and a reload just after you replace a secret shows none of the old answers.
-  Unticking _Remember_, _Forget_, replacing a secret, removing a credential and deleting a dashboard remove what was read with it, in every open fooboard tab.
-- **What isn't kept**: the editors' lookups (repos, branches) aren't kept; the app picker reads the app search's lists, so those are. If the browser refuses IndexedDB (a full disk, or a privacy setting), or refuses the lock that lets one tab write it, fooboard says so in the banner and keeps answers for the tab only.
+- **Never kept**: the answers read with a token or key kept for the current tab only are never kept, even when another tab remembers a different one for the same credential, and a reload just after you replace a secret shows none of the old answers. Nor are the editors' lookups (repos, branches); the app picker reads the app search's lists, so those are kept.
+- **Removing a credential's answers**: unticking _Remember_, _Forget_, replacing a secret, removing a credential and deleting a dashboard remove what was read with it at once, from memory and from IndexedDB, in every open fooboard tab.
+- **If the browser refuses storage**: if the browser refuses IndexedDB (a full disk, or a privacy setting), or refuses the lock that lets one tab write it, fooboard says so in the banner and keeps answers for the tab only.
 - **Several tabs**: each reads with its own requests in flight; one tab at a time writes the kept answers, and the others read them when they open. The last configuration saved wins.
 - **Reset** (the menu's last item, and on the home page when saved dashboards can't be read) removes all of fooboard's data from this browser, and nothing else: dashboards, settings, tokens and keys (remembered or for the tab), and the kept answers, in every open fooboard tab, which then reload.
 - **How Reset works**: every tab stops writing first; the kept answers are cleared, then the rest, and only then do the other tabs reload, so none comes back. If the browser refuses either, Reset says so and stays open, and no other tab reloads (until they do, they stop writing the kept answers). Clearing this site's data in your browser's settings removes what is stored too, but not the tokens and keys held in open tabs' memory until those tabs close.
@@ -522,18 +524,20 @@ Only the maintainer releases and deploys. Three long-running branches feed the h
 
 Dev and release stay password-protected; production's password came off once the first production deploy completed.
 
-**Release.** On an up-to-date `main`, run `npm run release` (the first release names its version: see _The first release_ below). release-it runs the quality gate, bumps the version, writes `CHANGELOG.md`, commits, tags, pushes `main`, creates the GitHub release, then:
+**Release.** On an up-to-date `main`, run `npm run release` for a patch release, or name the version for any other: `npm run release -- 0.2.0` (release-it's default bump is a patch, which would give 0.1.1; the first release named its version too: see _The first release_ below). release-it runs the quality gate (lint, typecheck, tests, knip and the build, then the Playwright suite with `npm run e2e:release`), bumps the version, writes `CHANGELOG.md`, commits, tags, pushes `main`, creates the GitHub release, then:
 
 1. pushes the numbered branch `release/x.y.z`;
 2. moves `preview/release` to that commit (`git push --force-with-lease`, no merge commit), so release.fooboard.dev always shows the latest release. The move is a fast-forward in the normal case; the force keeps `preview/release` exactly equal to the release if anything else landed there, and the lease (taken just after a fetch) refuses to overwrite a push that races the release.
 
-**The first release** is `npm run release -- 0.1.0`, not a bare `npm run release`. release-it bumps from the version in `package.json`, which stays `0.0.0` until the first release, so the bare command would open its _Select increment_ prompt with `patch (0.0.1)` first and selected (with `--ci`, it would release `0.0.1` without asking). Passing the version makes it release `0.1.0`. Every later release bumps from the last one, so the bare command is right from then on.
+**The first release** is `npm run release -- 0.1.0`, not a bare `npm run release`. release-it bumps from the version in `package.json`, which stays `0.0.0` until the first release, so the bare command would open its _Select increment_ prompt with `patch (0.0.1)` first and selected (with `--ci`, it would release `0.0.1` without asking). Passing the version makes it release `0.1.0`. Every later release bumps from the last one, so the bare command is right for a patch from then on.
+
+**The release's e2e run** uses a preview server of its own, serving the build the release has just made: `e2e:release` never reuses a server already on the tests' port (`npm run e2e` does, outside CI), so stop any `npm run preview` left running first, or the run fails at once. Chromium must be installed on the releasing machine (`npx playwright install chromium`); the suite adds several minutes to each release.
 
 **Deploy to production.** Open a PR from `release/x.y.z` into `prod` and merge it. release-it never touches `prod`. The _prod PR from release/x.y.z_ check fails any PR into `prod` whose head isn't a stable `release/x.y.z` branch of this repo. It runs on `pull_request_target`, so its workflow always comes from `prod` and a PR can't edit away the guard that checks it; it never checks out or runs PR code.
 
 **Bootstrapping the prod check.** Because the check's workflow is read from `prod`, it only appears once a release that contains `.github/workflows/prod-pr.yml` has been merged into `prod`. The first release PR into `prod` therefore goes through without the guard (CI still runs on it) and brings the workflow file with it.
 
-After it merges, the check runs on every later PR into `prod`, and the maintainer makes _prod PR from release/x.y.z_ a required check in `prod`'s branch protection, alongside _quality (node 22)_ and _quality (node 24)_. Don't require it before then, or no PR into `prod` could merge.
+After it merges, the check runs on every later PR into `prod`, and the maintainer makes _prod PR from release/x.y.z_ a required check in `prod`'s ruleset, alongside _quality (node 22)_, _quality (node 24)_ and _e2e (chromium)_, allowing merge commits only and no force pushes.
 
 This path needs no direct push to `prod`, so `prod` never holds a commit that didn't come through a release PR, and the guard it adds is exactly the file released and tested on `main`. The only unguarded PR is that first one, which the maintainer opens from `release/x.y.z` by hand.
 
@@ -550,18 +554,18 @@ fooboard is static files: no server code, cookies or telemetry. Amplify Hosting 
 The build reads nothing about its branch or host, so all three sites build the same way, and each branch is built from its own commit's `amplify.yml` and `customHttp.yml`: a change to either reaches dev.fooboard.dev when it merges, and release and production with the next release.
 
 - **Headers.** [`customHttp.yml`](./customHttp.yml) puts these on every response, on every site (the policy names no host of its own, so it is the same on all three), each explained in the file: a Content-Security-Policy that loads scripts and styles only from the site (plus, by their hashes, the two style elements the UI library injects).
-- The CSP also connects only to `api.github.com` and the Amplify endpoint of each region fooboard lists, and forbids framing, `<base>` and form posts.
-- It also sets HSTS for two years, subdomains included; `X-Content-Type-Options: nosniff`; `Referrer-Policy: no-referrer`; a `Permissions-Policy` denying the camera, microphone, location, payments, USB and screen capture; `X-Frame-Options: DENY`; and same-origin opener and resource policies.
-- **Rewrite.** A path without a file extension (`/demo`, `/d/<id>`, `/new`) is served `index.html`, so a deep link or a reload opens the app; an asset path (scripts, styles, images, fonts) never is, so a missing asset is a 404 rather than the page. An address the app has no page for shows _Page not found_ with a link home.
-- Amplify keeps rewrites and redirects in the app's settings rather than the repository, so the rule is committed as [`amplify-rewrites.json`](./amplify-rewrites.json). The app's list holds more than this rule, so don't paste the file over it.
-- In the console's _Rewrites and redirects_ text editor, keep the redirects Amplify added with a custom domain (production's sends `https://fooboard.dev` to `https://www.fooboard.dev`, 302), replace only the default rule (source `/<*>`, target `/index.html`, type 404-200) with the file's rule, and list the redirects first, then the SPA rule.
-- `aws amplify update-app --custom-rules` sets the whole list, so the file alone would drop the redirects: give it the redirects followed by the file's rule, or use the console. A build fails if the rule would hide one of its files.
+  - The CSP also connects only to `api.github.com` and the Amplify endpoint of each region fooboard lists, and forbids framing, `<base>` and form posts.
+  - It also sets HSTS for two years, subdomains included; `X-Content-Type-Options: nosniff`; `Referrer-Policy: no-referrer`; a `Permissions-Policy` denying the camera, microphone, location, payments, USB and screen capture; `X-Frame-Options: DENY`; and same-origin opener and resource policies.
+- **Rewrite.** A path without a file extension (`/demo`, `/d/<id>`, `/new`) is served `index.html`, so a deep link or a reload opens the app; an asset path (scripts, styles, images, fonts) never is, so a missing asset is a 404 rather than the page. Any other path without a file extension shows _Page not found_, with a link home.
+  - Amplify keeps rewrites and redirects in the app's settings rather than the repository, so the rule is committed as [`amplify-rewrites.json`](./amplify-rewrites.json). The app's list holds more than this rule, so don't paste the file over it.
+  - In the console's _Rewrites and redirects_ text editor, keep the redirects Amplify added with a custom domain (production's sends `https://fooboard.dev` to `https://www.fooboard.dev`, 302), replace only the default rule (source `/<*>`, target `/index.html`, type 404-200) with the file's rule, and list the redirects first, then the SPA rule.
+  - `aws amplify update-app --custom-rules` sets the whole list, so the file alone would drop the redirects: give it the redirects followed by the file's rule, or use the console. A build fails if the rule would hide one of its files.
 - **Locally.** `npm run preview` serves the build with the same headers and rewrite, read from those two files, so the CSP is tested before a release. `npm run dev` applies neither.
 - **Three origins.** dev.fooboard.dev, release.fooboard.dev and www.fooboard.dev (production; fooboard.dev redirects there) are separate sites to your browser: dashboards, credentials and the kept answers saved on one don't appear on the others. A share link opens on the site it was made on, and the import dialog takes a link from any of them, so to move a setup across, export it on one and import it on another ([Sharing, export and import](#sharing-export-and-import)).
 
 ## Contributing
 
-Development setup, commands and standards are in [CONTRIBUTING.md](./CONTRIBUTING.md). In the dev server, the TanStack Query Devtools show every query, boards are timed and a summary is printed to the browser console; `/demo?latency=300` delays every simulated answer by 300 ms and `/demo?scenario=measure` plays the 19 Ã— 6 measurement scenario; production builds contain none of it. See [Timing (development builds)](./CONTRIBUTING.md#timing-development-builds).
+Development setup, commands and standards are in [CONTRIBUTING.md](./CONTRIBUTING.md). In the dev server, the TanStack Query Devtools show every query, boards are timed and a summary is printed to the browser console; `/demo?latency=300` delays every simulated answer by 300 ms and `/demo?scenario=measure` plays the 19 × 6 measurement scenario; production builds contain none of it. See [Timing (development builds)](./CONTRIBUTING.md#timing-development-builds).
 
 ## License
 

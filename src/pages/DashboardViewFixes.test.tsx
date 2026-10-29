@@ -16,12 +16,13 @@ import { DEMO_RENDER_TIMEOUT_MS } from '@/test/demoRender';
 import { WAIT } from '@/test/timeouts';
 
 import { DemoPage } from './DemoPage';
+import { DEMO_PATH } from './paths';
 
 const FIND = WAIT;
 
 function renderDemo(storage = memoryStorage()) {
   render(
-    <MemoryRouter initialEntries={['/demo']}>
+    <MemoryRouter initialEntries={[DEMO_PATH]}>
       <StoresContext value={createAppStores(storage)}>
         <DemoPage />
       </StoresContext>
@@ -58,9 +59,13 @@ describe('board fixes', () => {
     "opens the editor from an unmapped run's %s",
     async (fix) => {
       renderDemo();
-      // Text queries: role queries over the whole board are slow in jsdom.
-      const label = await screen.findByText(/^Unmapped \(\d+\)$/, {}, FIND);
-      fireEvent.click(label.closest('button') ?? label);
+      // Label queries: role queries over the whole board are slow in jsdom.
+      const button = await screen.findByLabelText(
+        /^Unmapped runs \(\d+\)$/,
+        {},
+        FIND,
+      );
+      fireEvent.click(button);
       const panel = await screen.findByRole('dialog', {}, FIND);
       expect(editor()).toBeNull();
       fireEvent.click(within(panel).getAllByText(fix)[0]);
@@ -73,13 +78,17 @@ describe('board fixes', () => {
     async () => {
       const storage = memoryStorage();
       renderDemo(storage);
-      const label = await screen.findByText(/^Problems \(\d+\)$/, {}, FIND);
-      const before = label.textContent;
-      fireEvent.click(label.closest('button') ?? label);
+      const button = await screen.findByLabelText(
+        /^Problems \(\d+\)$/,
+        {},
+        FIND,
+      );
+      const before = button.getAttribute('aria-label');
+      fireEvent.click(button);
       const panel = await screen.findByRole('dialog', {}, FIND);
       fireEvent.click(within(panel).getAllByText('Dismiss')[0]);
       // One fewer problem shown, and nothing dismissed on the device.
-      expect(label.textContent).not.toBe(before);
+      expect(button.getAttribute('aria-label')).not.toBe(before);
       expect(storage.getItem(DEVICE_PREFERENCES_KEY) ?? '').not.toMatch(
         /"dismissedProblems":\["/,
       );

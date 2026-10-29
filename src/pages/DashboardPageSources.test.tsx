@@ -65,7 +65,7 @@ describe('DashboardPage Amplify pinned apps', () => {
       expect(new Set(readsBy)).toEqual(new Set(['aws1']));
     });
 
-    fireEvent.click(screen.getByRole('button', { name: 'Edit' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Edit dashboard' }));
     const editor = screen.getByRole('dialog', { name: 'Edit dashboard' });
     fireEvent.mouseDown(within(editor).getByRole('tab', { name: 'Rows' }), {
       button: 0,

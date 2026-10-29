@@ -18,6 +18,7 @@ import { deleteWithSecrets, saveDuplicate } from '@/credentials/credentialOps';
 import { useInDemo } from '@/demo/inDemo';
 import type { Dashboard } from '@/domain/config/dashboard';
 import { targetKey } from '@/editors/editTarget';
+import { dashboardPath, HOME_PATH } from '@/pages/paths';
 import { useStores } from '@/storage/storesContext';
 
 import { duplicateDashboard } from './edit';
@@ -89,7 +90,7 @@ export function GeneralEditor({
                       rekey,
                     ),
                 );
-                navigate(`/d/${copy.id}`);
+                navigate(dashboardPath(copy.id));
               });
             }}
           >
@@ -107,7 +108,7 @@ export function GeneralEditor({
                   },
                   dashboard,
                 );
-                navigate('/');
+                navigate(HOME_PATH);
               });
             }}
           >

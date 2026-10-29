@@ -12,6 +12,7 @@ import { MemoryRouter } from 'react-router-dom';
 
 import { AppNavProvider } from '@/components/AppNavProvider';
 import { ThemeProvider } from '@/components/ThemeProvider';
+import { DEMO_PATH } from '@/pages/paths';
 import type { ShareEnvelope } from '@/share/envelope';
 import { type LinkPayload, shareLink } from '@/share/link';
 import { type AppStores, createAppStores } from '@/storage';
@@ -32,7 +33,7 @@ export function renderImport(
 ): AppStores {
   render(
     <StoresContext value={stores}>
-      <MemoryRouter initialEntries={['/demo']}>
+      <MemoryRouter initialEntries={[DEMO_PATH]}>
         <ThemeProvider>
           <AppNavProvider link={link}>
             <RouterProbe />

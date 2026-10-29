@@ -17,10 +17,11 @@ import { Footer } from '@/components/Footer';
 import { Header } from '@/components/Header';
 import { StorageBanner } from '@/components/StorageBanner';
 import { ThemeProvider } from '@/components/ThemeProvider';
-import { FIRST_RUN_PATH } from '@/firstRun/paths';
+import { FIRST_RUN_PATH, FIRST_RUN_STEP_ROUTE } from '@/firstRun/paths';
 import { useViewportWidthVar } from '@/lib/useViewportWidthVar';
 import { Home } from '@/pages/Home';
 import { PageNotFound } from '@/pages/PageNotFound';
+import { DASHBOARD_ROUTE, DEMO_PATH, HOME_PATH } from '@/pages/paths';
 import type { LinkPayload } from '@/share/link';
 
 // Board pages load on first visit, so the home page doesn't wait
@@ -70,28 +71,26 @@ export default function App({
               >
                 <Routes>
                   <Route
-                    path="/"
+                    path={HOME_PATH}
                     element={
                       <Page>
                         <Home />
                       </Page>
                     }
                   />
-                  <Route path="/demo" element={<DemoPage />} />
-                  {[FIRST_RUN_PATH, `${FIRST_RUN_PATH}/:id/:step`].map(
-                    (path) => (
-                      <Route
-                        key={path}
-                        path={path}
-                        element={
-                          <Page>
-                            <FirstRunPage />
-                          </Page>
-                        }
-                      />
-                    ),
-                  )}
-                  <Route path="/d/:id" element={<DashboardPage />} />
+                  <Route path={DEMO_PATH} element={<DemoPage />} />
+                  {[FIRST_RUN_PATH, FIRST_RUN_STEP_ROUTE].map((path) => (
+                    <Route
+                      key={path}
+                      path={path}
+                      element={
+                        <Page>
+                          <FirstRunPage />
+                        </Page>
+                      }
+                    />
+                  ))}
+                  <Route path={DASHBOARD_ROUTE} element={<DashboardPage />} />
                   <Route
                     path="*"
                     element={

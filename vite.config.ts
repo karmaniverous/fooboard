@@ -6,9 +6,11 @@
  * timing instrumentation or the Query Devtools
  * (`vite/noDevInstrumentation.ts`). `vite preview` serves the committed
  * Amplify headers and SPA rewrite, and a build fails if the rewrite would
- * hide one of its files (`vite/hostingPlugin.ts`). The app's version
- * (`package.json`) is defined as `__APP_VERSION__` (the persisted cache's buster). Vitest
- * extends this config (see `vitest.config.ts`).
+ * hide one of its files (`vite/hostingPlugin.ts`). Vendor code is split
+ * into cacheable chunks, `src/zodJitless.ts` in zod's (`vite/chunks.ts`).
+ * The app's version (`package.json`) is defined as `__APP_VERSION__` (the
+ * persisted cache's buster). Vitest extends this config (see
+ * `vitest.config.ts`).
  *
  * @module
  */
@@ -19,26 +21,9 @@ import tailwindcss from '@tailwindcss/vite';
 import react from '@vitejs/plugin-react';
 import { defineConfig } from 'vite';
 
+import { manualChunks } from './vite/chunks.ts';
 import { hosting } from './vite/hostingPlugin.ts';
 import { noDevInstrumentation } from './vite/noDevInstrumentation.ts';
-
-/** Heavy, rarely-changing vendor code, each group its own cacheable chunk:
- * React, the AWS SDK, the UI kit (Radix, dnd-kit, icons) and the data libraries
- * (schemas, JSONPath, utilities). */
-const VENDOR_CHUNKS: readonly [RegExp, string][] = [
-  [
-    /node_modules[\\/](react|react-dom|react-router|react-router-dom)[\\/]/,
-    'react-vendor',
-  ],
-  [/node_modules[\\/]@aws-sdk[\\/]/, 'aws-amplify'],
-  [/node_modules[\\/](@radix-ui|@dnd-kit|lucide-react)[\\/]/, 'ui-vendor'],
-  [/node_modules[\\/](zod|json-p3|radash)[\\/]/, 'data-vendor'],
-];
-
-/** Split vendor code into {@link VENDOR_CHUNKS}. */
-function manualChunks(id: string): string | undefined {
-  return VENDOR_CHUNKS.find(([pattern]) => pattern.test(id))?.[1];
-}
 
 /** The app's version, from `package.json`. */
 const version = ((): string => {

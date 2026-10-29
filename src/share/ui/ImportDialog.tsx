@@ -26,6 +26,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { describeError } from '@/lib/errors';
+import { dashboardPath, HOME_PATH } from '@/pages/paths';
 import { dashboardsOf } from '@/storage/configStore';
 import { useStores } from '@/storage/storesContext';
 
@@ -224,7 +225,11 @@ export function ImportDialog({
             onDone={(plan) => {
               close();
               const [only] = plan.imported;
-              navigate(plan.imported.length === 1 && only ? `/d/${only}` : '/');
+              navigate(
+                plan.imported.length === 1 && only
+                  ? dashboardPath(only)
+                  : HOME_PATH,
+              );
             }}
           />
         )}

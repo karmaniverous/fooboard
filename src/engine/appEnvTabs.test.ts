@@ -79,22 +79,26 @@ describe('the persisted cache across tabs', () => {
         s.credentials.set('gh', github('one'), false);
       },
     ],
-  ])('%s in the other tab leaves no data in IndexedDB', async (_, change) => {
-    const { shared, first, second, written } = await twoTabs();
-    first.stores.credentials.set('gh', github('one'), true);
-    first.stores.credentials.set('other', github('o'), true);
-    seedRuns(first.env, 'gh', 'other');
-    seedRuns(second.env, 'gh');
-    await written();
-    expect(storedCredentials(shared.idb.entries)).toEqual(['gh', 'other']);
+  ])(
+    '%s in the other tab leaves no data in IndexedDB, at once',
+    async (_, change) => {
+      const { shared, first, second, written } = await twoTabs();
+      first.stores.credentials.set('gh', github('one'), true);
+      first.stores.credentials.set('other', github('o'), true);
+      seedRuns(first.env, 'gh', 'other');
+      seedRuns(second.env, 'gh');
+      await written();
+      expect(storedCredentials(shared.idb.entries)).toEqual(['gh', 'other']);
 
-    change(second.stores);
-    // Every tab drops the credential's queries, the writer included.
-    expect(first.env.client.getQueryData(runsKey('gh'))).toBeUndefined();
-    expect(second.env.client.getQueryData(runsKey('gh'))).toBeUndefined();
-    await written();
-    expect(storedCredentials(shared.idb.entries)).toEqual(['other']);
-  });
+      change(second.stores);
+      // Every tab drops the credential's queries, the writer included,
+      // which writes the cache at once, not at its next throttled write.
+      expect(first.env.client.getQueryData(runsKey('gh'))).toBeUndefined();
+      expect(second.env.client.getQueryData(runsKey('gh'))).toBeUndefined();
+      await vi.advanceTimersByTimeAsync(0);
+      expect(storedCredentials(shared.idb.entries)).toEqual(['other']);
+    },
+  );
 
   it('keeps nothing of a secret kept for one tab only, though the device refuses to remove its copy (fooboard#21)', async () => {
     const { device, refuse } = refusingDevice();

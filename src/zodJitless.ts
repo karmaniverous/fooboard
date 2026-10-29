@@ -7,7 +7,8 @@
  * zod skips the check and uses the interpreter it would have used anyway.
  *
  * `main.tsx` imports this first, ahead of every module that builds a
- * schema.
+ * schema, and the build puts it in zod's own chunk (`vite.config.ts`), so
+ * it also runs before any shared chunk the entry imports.
  *
  * @module
  */

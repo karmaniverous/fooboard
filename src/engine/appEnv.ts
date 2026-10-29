@@ -11,8 +11,10 @@
  * board's reads made with a credential's remembered secret. When a
  * credential's data must go (a replaced or forgotten secret, unticked
  * *Remember*, a removed credential or dashboard), its queries and budget
- * are removed here and in every other open tab (Decision 38), so the
- * persisting tab's next write leaves them out. A removal heard while the
+ * are removed here and in every other open tab (Decision 38), and the
+ * persisting tab writes the cache at once, outside its throttle, so the
+ * removed answers are gone from IndexedDB before a quick close (spec
+ * 0.2.0 §3.C, #33). A removal heard while the
  * cache is being restored is applied again once it is, before any board
  * shows it, so the restore can't bring the removed data back.
  *
@@ -58,6 +60,7 @@ function createAppQueryEnv(stores: AppStores): AppQueryEnv {
   const removedEarly = new Set<string>();
   const remove = (ids: readonly string[]): void => {
     env.removeCredentials(ids);
+    persistence.saveNow();
     if (!done) for (const id of ids) removedEarly.add(id);
   };
   credentials.subscribe((id, dropsData) => {

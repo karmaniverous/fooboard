@@ -13,13 +13,24 @@
  * lock writes, until its storage stops (Reset); if the browser refuses
  * the lock, the storage reports it as a failure.
  *
+ * A removal (a credential's queries dropped) is written at once by
+ * `saveNow`, outside the throttle, through an unthrottled twin of the
+ * same persister (same storage, key, wrapping and buster), so the removed
+ * answers are gone from IndexedDB before a quick close (spec 0.2.0 §3.C,
+ * #33). The throttled writer stays subscribed: a write it has queued runs
+ * with the post-removal state the removal's own cache events gave it. A
+ * `saveNow` before this tab holds the lock (a removal heard while the
+ * cache is restored) is owed, and written as soon as the lock is held.
+ *
  * @module
  */
 import { createAsyncStoragePersister } from '@tanstack/query-async-storage-persister';
 import type { DehydratedState, Query, QueryClient } from '@tanstack/query-core';
 import {
   type PersistedClient,
+  type Persister,
   persistQueryClientRestore,
+  persistQueryClientSave,
   persistQueryClientSubscribe,
 } from '@tanstack/query-persist-client-core';
 
@@ -31,6 +42,9 @@ import { holdPersistLock, type Locks } from './persistLock';
 
 /** At most one write per second (TanStack's default throttle). */
 export const PERSIST_THROTTLE_MS = 1000;
+
+/** `saveNow`'s persister doesn't throttle: it writes on every call. */
+const NO_THROTTLE_MS = 0;
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -61,6 +75,10 @@ export interface CachePersistence {
   /** Settles once the cache is restored (or found missing, stale or
    * unreadable); boards wait for it. */
   restored: Promise<void>;
+  /** Write the cache now, outside the throttle (after a removal), if this
+   * tab is the one persisting, or as soon as it takes the persisting lock
+   * (a failed or stopped storage writes nothing). */
+  saveNow(): void;
   /** Stop persisting and let another tab take over. */
   stop(): void;
 }
@@ -83,11 +101,6 @@ export function persistQueryCache({
   readWith,
   locks,
 }: PersistOptions): CachePersistence {
-  const base = createAsyncStoragePersister({
-    storage,
-    key: CACHE_KEY,
-    throttleTime: PERSIST_THROTTLE_MS,
-  });
   const cache = client.getQueryCache();
   const readWithOf = (hash: string): string | undefined => {
     const query = cache.get(hash);
@@ -95,36 +108,65 @@ export function persistQueryCache({
   };
   /** The queries the restore hydrated, to note their secrets after. */
   let kept: StoredQuery[] = [];
-  const persister = {
-    persistClient: ({ clientState, ...rest }: PersistedClient) =>
-      base.persistClient({
-        ...rest,
-        clientState: {
-          ...clientState,
-          queries: clientState.queries.map((q) => ({
-            ...q,
-            readWith: readWithOf(q.queryHash),
-          })),
-        },
-      }),
-    removeClient: () => base.removeClient(),
-    restoreClient: async () => {
-      const stored = await base.restoreClient();
-      if (!stored) return undefined;
-      const { clientState } = stored;
-      kept = clientState.queries.filter((q) =>
-        keeps(q.queryKey, storedReadWith(q)),
-      );
-      return { ...stored, clientState: { ...clientState, queries: kept } };
-    },
+  /** The persister over `storage` writing at most once per
+   * `throttleTime`: each stored query carries the fingerprint of the
+   * secret it was read with, and a restored copy keeps only what `keeps`
+   * accepts with those fingerprints. */
+  const fingerprintedPersister = (throttleTime: number): Persister => {
+    const base = createAsyncStoragePersister({
+      storage,
+      key: CACHE_KEY,
+      throttleTime,
+    });
+    return {
+      persistClient: ({ clientState, ...rest }: PersistedClient) =>
+        base.persistClient({
+          ...rest,
+          clientState: {
+            ...clientState,
+            queries: clientState.queries.map((q) => ({
+              ...q,
+              readWith: readWithOf(q.queryHash),
+            })),
+          },
+        }),
+      removeClient: () => base.removeClient(),
+      restoreClient: async () => {
+        const stored = await base.restoreClient();
+        if (!stored) return undefined;
+        const { clientState } = stored;
+        kept = clientState.queries.filter((q) =>
+          keeps(q.queryKey, storedReadWith(q)),
+        );
+        return { ...stored, clientState: { ...clientState, queries: kept } };
+      },
+    };
   };
+  const persister = fingerprintedPersister(PERSIST_THROTTLE_MS);
+  const immediate = fingerprintedPersister(NO_THROTTLE_MS);
   const shouldDehydrateQuery = (query: Query): boolean =>
     query.state.status === 'success' &&
     keeps(query.queryKey, readWith.of(query));
+  const dehydrateOptions = { shouldDehydrateQuery };
 
   let stopped = false;
+  /** This tab holds the persisting lock and writes. */
+  let held = false;
+  /** A `saveNow` came before the lock: write once it is held. */
+  let owed = false;
   let unsubscribe = (): void => undefined;
   let release = (): void => undefined;
+  /** Write the cache at once, outside the throttle. As for the throttled
+   * writer, a failed or stopped storage writes nothing, and a failed
+   * write fails the storage, which reports it. */
+  const save = (): void => {
+    persistQueryClientSave({
+      queryClient: client,
+      persister: immediate,
+      buster,
+      dehydrateOptions,
+    }).catch(() => undefined);
+  };
   const restored = persistQueryClientRestore({
     queryClient: client,
     persister,
@@ -146,12 +188,14 @@ export function persistQueryCache({
       if (stopped) return;
       release = holdPersistLock(locks, {
         onHeld: () => {
+          held = true;
           unsubscribe = persistQueryClientSubscribe({
             queryClient: client,
             persister,
             buster,
-            dehydrateOptions: { shouldDehydrateQuery },
+            dehydrateOptions,
           });
+          if (owed) save();
         },
         until: storage.stopped,
         onRefused: () => {
@@ -161,8 +205,13 @@ export function persistQueryCache({
     });
   return {
     restored,
+    saveNow() {
+      if (held) save();
+      else owed = true;
+    },
     stop() {
       stopped = true;
+      held = false;
       unsubscribe();
       release();
     },

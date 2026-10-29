@@ -1,10 +1,12 @@
 /**
- * What's new, the menu's version and the error screen in the built app
- * (spec.md §3.10, C-20, Decision 25), under the locally served CSP: the
- * dot shows for the bundled changelog's newest release until What's new
- * is opened, and stays gone after a reload; a page that fails to load
- * shows the error screen with the version and a prefilled *Report an
- * issue*, carrying the version, the browser and the message.
+ * *Release notes*, the menu's version and the error screen in the built
+ * app (spec 0.2.0 §3.D; spec.md §3.10, C-20, Decision 25), under the
+ * locally served CSP: for a browser that last saw an older version, the
+ * dot shows on the menu button and the item, the item links to the
+ * releases page in a new tab, and following it clears the dot, which
+ * stays gone after a reload; a first visit shows no dot; a page that
+ * fails to load shows the error screen with the version and a prefilled
+ * *Report an issue*, carrying the version, the browser and the message.
  *
  * @module
  */
@@ -12,45 +14,70 @@ import { readFileSync } from 'node:fs';
 
 import { z } from 'zod';
 
-import { parseChangelog } from '../src/whatsNew/changelog';
+import { CURRENT_DEVICE_PREFERENCES_VERSION } from '../src/domain/config/devicePreferences';
+import { KEY_PREFIX } from '../src/storage/keyValue';
 import { expect, test } from './guard';
 
-const RELEASES = parseChangelog(readFileSync('CHANGELOG.md', 'utf8'));
 const { version: VERSION } = z
   .object({ version: z.string() })
   .parse(JSON.parse(readFileSync('package.json', 'utf8')));
 
-test("What's new marks the newest release until it is opened", async ({
+/** The releases page *Release notes* links to. */
+const RELEASES_PAGE = 'https://github.com/karmaniverous/fooboard/releases';
+
+/** The device preferences' key (`DEVICE_PREFERENCES_KEY`, whose module
+ * the e2e build can't import). */
+const DEVICE_KEY = `${KEY_PREFIX}device`;
+
+/** A version older than any build's. */
+const OLDER = '0.0.1';
+
+test('Release notes marks a version newer than the one last seen, until followed', async ({
   page,
 }) => {
+  // Seeded once: a reload keeps what the page stored since.
+  const prefs = JSON.stringify({
+    schemaVersion: CURRENT_DEVICE_PREFERENCES_VERSION,
+    lastSeenVersion: OLDER,
+  });
+  await page.addInitScript(
+    `if (localStorage.getItem(${JSON.stringify(DEVICE_KEY)}) === null)
+      localStorage.setItem(${JSON.stringify(DEVICE_KEY)}, ${JSON.stringify(prefs)});`,
+  );
+  // The releases page opens in a tab of its own, answered here.
+  await page
+    .context()
+    .route(RELEASES_PAGE, (route) => route.fulfill({ body: 'Releases' }));
   await page.goto('/');
   const menu = page.getByRole('button', { name: 'Menu' });
-  const dot = menu.locator('[data-whats-new-dot]');
-  await expect(dot).toHaveCount(RELEASES.length > 0 ? 1 : 0);
+  const dot = page.locator('[data-release-notes-dot]');
+  await expect(menu.locator('[data-release-notes-dot]')).toHaveCount(1);
 
   await menu.click();
   await expect(page.getByText(`fooboard ${VERSION}`)).toBeVisible();
-  await page.getByRole('menuitem', { name: /^What's new/ }).click();
-  const dialog = page.getByRole('dialog', { name: "What's new" });
-  await expect(dialog).toBeVisible();
-  const newest = RELEASES.at(0);
-  const older = RELEASES.at(1);
-  if (newest === undefined)
-    await expect(dialog).toContainText('No releases yet');
-  else
-    await expect(
-      dialog.getByRole('button', { name: new RegExp(`^${newest.version}`) }),
-    ).toHaveAttribute('aria-expanded', 'true');
-  if (older !== undefined)
-    await expect(
-      dialog.getByRole('button', { name: new RegExp(`^${older.version}`) }),
-    ).toHaveAttribute('aria-expanded', 'false');
+  const item = page.getByRole('menuitem', {
+    name: 'Release notes (new release)',
+  });
+  await expect(item).toHaveAttribute('href', RELEASES_PAGE);
+  await expect(item).toHaveAttribute('target', '_blank');
+  await expect(item.locator('[data-release-notes-dot]')).toHaveCount(1);
+  const popup = page.waitForEvent('popup');
+  await item.click();
+  await (await popup).close();
 
-  await page.keyboard.press('Escape');
   await expect(dot).toHaveCount(0);
   await page.reload();
   await expect(page.getByRole('button', { name: 'Menu' })).toBeVisible();
   await expect(dot).toHaveCount(0);
+});
+
+test('a first visit shows no release-notes dot', async ({ page }) => {
+  await page.goto('/');
+  await page.getByRole('button', { name: 'Menu' }).click();
+  await expect(
+    page.getByRole('menuitem', { name: 'Release notes', exact: true }),
+  ).toBeVisible();
+  await expect(page.locator('[data-release-notes-dot]')).toHaveCount(0);
 });
 
 test('a page that fails to load shows the error screen', async ({ page }) => {

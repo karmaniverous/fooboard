@@ -12,6 +12,9 @@ import type { Dashboard } from '@/domain/config/dashboard';
 /** Step 1: name the dashboard and add a token. */
 export const FIRST_RUN_PATH = '/new';
 
+/** The router's pattern for the steps after the token. */
+export const FIRST_RUN_STEP_ROUTE = `${FIRST_RUN_PATH}/:id/:step`;
+
 /** The steps after the token, by their path segment. */
 export const FirstRunStepSchema = z.enum(['repos', 'stages']);
 export type FirstRunStep = z.infer<typeof FirstRunStepSchema>;

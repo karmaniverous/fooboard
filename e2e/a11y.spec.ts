@@ -1,8 +1,8 @@
 /**
  * The accessibility pass's automated part (spec.md §3.10), under the
  * locally served CSP: axe finds no WCAG 2.1 A or AA violation (contrast
- * included) on the home page, the demo board, What's new, the cell
- * detail sheet, the settings popup and the error screen, in light and
+ * included) on the home page, the demo board, the menu, the cell detail
+ * sheet, the settings popup and the error screen, in light and
  * dark; Tab runs header, then body; the dialogs keep Tab inside; group
  * frames and boundary lines are hidden from assistive technology; and
  * with reduced motion nothing on the board animates.
@@ -12,7 +12,7 @@
 import AxeBuilder from '@axe-core/playwright';
 import type { Page } from '@playwright/test';
 
-import { firstCell, openDemo } from './board';
+import { firstCell, openDemo, PHONE } from './board';
 import { expect, test } from './guard';
 
 const WCAG = ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'];
@@ -43,6 +43,15 @@ async function violations(page: Page): Promise<string[]> {
   );
 }
 
+/** axe finds nothing on a board action's tooltip, shown by keyboard
+ * focus (spec 0.2.0 §3.A). */
+async function expectActionTooltipClean(page: Page): Promise<void> {
+  await page.getByRole('button', { name: 'Edit dashboard' }).focus();
+  await expect(page.getByRole('tooltip')).toHaveText('Edit dashboard');
+  expect(await violations(page), 'board action tooltip').toEqual([]);
+  await page.keyboard.press('Escape');
+}
+
 for (const colorScheme of ['light', 'dark'] as const)
   test.describe(`in ${colorScheme}`, () => {
     test.use({ colorScheme });
@@ -55,13 +64,11 @@ for (const colorScheme of ['light', 'dark'] as const)
 
       await openDemo(page);
       expect(await violations(page), 'demo board').toEqual([]);
+      await expectActionTooltipClean(page);
 
       const menu = page.getByRole('button', { name: 'Menu' });
       await menu.click();
       expect(await violations(page), 'menu').toEqual([]);
-      await page.getByRole('menuitem', { name: /^What's new/ }).click();
-      await expect(page.getByRole('dialog')).toBeVisible();
-      expect(await violations(page), "What's new").toEqual([]);
       await page.keyboard.press('Escape');
 
       await firstCell(page).focus();
@@ -76,6 +83,18 @@ for (const colorScheme of ['light', 'dark'] as const)
       await expect(page.getByRole('dialog')).toBeVisible();
       expect(await violations(page), 'settings popup').toEqual([]);
       await page.keyboard.press('Escape');
+    });
+
+    test.describe('on a phone', () => {
+      test.use({ viewport: PHONE, hasTouch: true });
+
+      test("axe finds no WCAG A or AA violation on the board's actions", async ({
+        page,
+      }) => {
+        await openDemo(page);
+        expect(await violations(page), 'demo board').toEqual([]);
+        await expectActionTooltipClean(page);
+      });
     });
 
     test('axe finds no WCAG A or AA violation on the error screen', async ({
@@ -110,10 +129,7 @@ test('Tab runs through the header, then the board', async ({ page }) => {
 test('dialogs keep Tab inside until closed', async ({ page }) => {
   await openDemo(page);
   const menu = page.getByRole('button', { name: 'Menu' });
-  for (const [item, role] of [
-    ["What's new", 'dialog'],
-    ['Reset…', 'alertdialog'],
-  ] as const) {
+  for (const [item, role] of [['Reset…', 'alertdialog']] as const) {
     await menu.click();
     await page.getByRole('menuitem', { name: new RegExp(`^${item}`) }).click();
     const dialog = page.getByRole(role);
@@ -150,8 +166,11 @@ test.describe('with reduced motion', () => {
 
   test('nothing on the board animates', async ({ page }) => {
     await openDemo(page);
-    // Long enough for a run to start and its cell to be marked.
-    await page.waitForTimeout(2_000);
+    // A run has started: under reduced motion nothing visible marks its
+    // cell, so wait for the cell's marker, not for a fixed pause.
+    await expect(
+      page.locator('main [data-in-progress]').first(),
+    ).toBeAttached();
     const animated = await page.evaluate(
       () =>
         [...document.querySelectorAll('main *')].filter(

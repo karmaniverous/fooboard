@@ -5,6 +5,8 @@
  * environment, each change saved at once. The board, step 4, is the
  * dashboard's own page (`FirstRunNote`). Each step keeps the dashboard it
  * opened with, and moves focus to its heading as it opens (`StepFrame`).
+ * A dashboard this browser hasn't saved shows *Dashboard not found*; a
+ * step that doesn't exist, *Page not found* (spec.md §2.16).
  *
  * @module
  */
@@ -12,6 +14,7 @@ import { useParams } from 'react-router-dom';
 
 import type { Dashboard } from '@/domain/config/dashboard';
 import { DashboardNotFound } from '@/pages/DashboardNotFound';
+import { PageNotFound } from '@/pages/PageNotFound';
 import { useAppQueryEnv } from '@/pages/useAppQueryEnv';
 import { QueryProvider } from '@/query/QueryProvider';
 import { dashboardsOf } from '@/storage/configStore';
@@ -27,7 +30,8 @@ function SavedStep({ id, step }: { id: string; step: string | undefined }) {
   const env = useAppQueryEnv();
   const dashboard = dashboardsOf(stores.config.load()).find((d) => d.id === id);
   const which = FirstRunStepSchema.safeParse(step);
-  if (!dashboard || !which.success) return <DashboardNotFound />;
+  if (!dashboard) return <DashboardNotFound />;
+  if (!which.success) return <PageNotFound />;
   const save = (next: Dashboard) => {
     stores.config.saveDashboard(next);
   };

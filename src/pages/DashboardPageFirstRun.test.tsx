@@ -47,7 +47,7 @@ describe('the first run on the board', () => {
     expect(screen.getByRole('button', { name: 'Problems (1)' })).toBeVisible();
     expect(
       screen.getByText(
-        /Runs that land in no cell will be listed under Unmapped\./,
+        /Runs that land in no cell will be listed under Unmapped runs\./,
       ),
     ).toBeVisible();
     expect(screen.getByTestId('location-state')).toHaveTextContent(

@@ -21,10 +21,11 @@ npm run lint:md      # Prettier --check on Markdown (not CHANGELOG.md)
 npm run typecheck    # tsc -b --noEmit
 npm test             # Vitest (jsdom, coverage reported)
 npm run e2e          # Playwright smoke tests on the build (run npm run build first)
+npm run e2e:release  # the same, as the release runs them: never on a server already running
 npm run knip         # find unused files, dependencies and exports
 ```
 
-The Playwright tests (`e2e/`) run against `vite preview` serving `dist/` with `customHttp.yml`'s headers, so under the CSP that ships. A guard on every page fails a test on any CSP violation and on any request to a host but the app's own. They cover the demo board, every dialog, sheet, popover and drag, What's new, the error screen, the served headers, touch scrolling on a phone (390 × 844 with touch, in Chromium and WebKit; Firefox has no mobile emulation) and the automated accessibility checks (axe, WCAG 2.1 A and AA, light and dark; Tab order; reduced motion). CI runs them in Chromium; install it once with `npx playwright install chromium`.
+The Playwright tests (`e2e/`) run against `vite preview` serving `dist/` with `customHttp.yml`'s headers, so under the CSP that ships. A guard on every page fails a test on any CSP violation and on any request to a host but the app's own. They cover the demo board, every dialog, sheet, popover and drag, Release notes, the error screen, the served headers, touch scrolling on a phone (390 × 844 with touch, in Chromium and WebKit; Firefox has no mobile emulation) and the automated accessibility checks (axe, WCAG 2.1 A and AA, light and dark; Tab order; reduced motion). CI runs them in Chromium; install it once with `npx playwright install chromium`. A release runs them too (`npm run e2e:release`, last in release-it's hooks, on a preview server of its own), so Chromium must also be installed on the releasing machine. No Playwright timeout (a `timeout:` option or `test.setTimeout`) is shorter than `MIN_TEST_TIMEOUT_MS` (30 s, `src/test/timeouts.ts`): build longer ones from it, and wait for a state (an attribute such as `data-in-progress`) rather than pausing a fixed time; `src/e2eTimeouts.test.ts` fails on a shorter one.
 
 **Browser pass** (before a release): `FOOBOARD_E2E_BROWSERS=all npm run e2e` runs them in Playwright's Chromium, the installed Chrome and Edge, Firefox and WebKit (`npx playwright install chromium firefox webkit`). WebKit stands in for Safari; real Safari on macOS and iOS is checked by hand (the spec's Verification Checklist lists the steps).
 
@@ -44,9 +45,9 @@ Amplify Hosting serves three sites, one per long-running branch:
 | ----------------------------------------------- | ------------------------------------- | --------- | ---------- |
 | dev.fooboard.dev                                | `main`, deployed on every merge       | `dev`     | `fooboard` |
 | release.fooboard.dev                            | `preview/release`, the latest release | `release` | `fooboard` |
-| www.fooboard.dev (fooboard.dev redirects there) | `prod`, production                    | `prod`    | `fooboard` |
+| www.fooboard.dev (fooboard.dev redirects there) | `prod`, production                    | none      | none       |
 
-The password isn't a secret: it guards against opening the wrong version by accident, not against access. Production's password comes off at launch, once the first release is deployed to `prod`.
+The password isn't a secret: it guards against opening the wrong version by accident, not against access. Production is public: its password came off once the first release was deployed to `prod`.
 
 ## Quality gate (every commit)
 
@@ -107,7 +108,7 @@ fooboard is static and browser-only; credentials never leave the user's browser 
 - Never commit, log or print credentials, and never put them in error messages, fixtures or screenshots.
 - Credentials are stored only where the user chooses: session memory, or local storage under _Remember on this device_.
 - No third-party or inline scripts, cookies or telemetry.
-- Everything runs under the CSP of `customHttp.yml` (README _Hosting_): no inline `<script>` or `<style>`, no `eval` or `new Function` (zod runs jitless: `src/zodJitless.ts`, the first import of `main.tsx`), no third-party script, embed, font or image, and requests only to `api.github.com` and the Amplify endpoints. React `style` props are fine. A region added to `AMPLIFY_REGIONS` goes into `connect-src` too, and a library that injects a `<style>` needs its hash: `src/workflows.test.ts` and `src/cspStyles.test.tsx` fail until they match. Check a change that adds a dialog, a library control or a request with `npm run preview` and the browser console open: a CSP violation is a bug.
+- Everything runs under the CSP of `customHttp.yml` (README _Hosting_): no inline `<script>` or `<style>`, no `eval` or `new Function` (zod runs jitless: `src/zodJitless.ts`, the first import of `main.tsx` and built into zod's chunk, so it runs before any app code a chunk shares), no third-party script, embed, font or image, and requests only to `api.github.com` and the Amplify endpoints. React `style` props are fine. A region added to `AMPLIFY_REGIONS` goes into `connect-src` too, and a library that injects a `<style>` needs its hash: `src/workflows.test.ts` and `src/cspStyles.test.tsx` fail until they match. Check a change that adds a dialog, a library control or a request with `npm run preview` and the browser console open: a CSP violation is a bug.
 
 ## Timing (development builds)
 
