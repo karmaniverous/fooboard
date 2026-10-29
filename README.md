@@ -122,13 +122,13 @@ Answers are kept, so an edit, opening a board again, or reloading the page shows
 
 **Polling.** A row polls every 5 s while one of its cells is in progress (a provisional _Running_ included) and every 60 s otherwise, four times slower for a token past half its budget, and nothing polls while the tab is hidden; coming back reads only what fell due. A finished run's jobs are never read again.
 
-When GitHub says a token is rate-limited, or AWS throttles a key, fooboard pauses that credential until the provider says to retry (AWS's suggested delay, else 5 s). Each credential's requests wait in one queue: the editors' lookups and a row's first read go to its front, while polls wait their turn with run jobs and behind counts.
+When GitHub says a token is rate-limited, or AWS throttles a key, fooboard pauses that credential until the provider says to retry (a throttled AWS key pauses a fixed 5 s, since Amplify doesn't let the browser read its suggested delay). Each credential's requests wait in one queue: the editors' lookups and a row's first read go to its front, while polls wait their turn with run jobs and behind counts.
 
 **Errors.** A repo GitHub can't find (or an Amplify app that's gone) shows _error_ with a problem on its row; an expired or revoked token shows _needs credential_; either way, nothing cached is shown in its place.
 
-An Amplify row with a source whose AWS key can't be resolved (none chosen or inherited, or its secret not entered) shows _needs credential_ in every cell, with a problem naming that source. You can dismiss that problem (handy when the secret is kept for the session only and asked for again after a reload); the cells still show _needs credential_. A renamed repo keeps its data and gets a "renamed to" problem.
+An Amplify cell whose AWS key can't be resolved (none chosen or inherited, or its secret not entered) shows _needs credential_ on its own, with a problem naming the row's columns that lack a key or a secret. You can dismiss that problem (handy when the secret is kept for the session only and asked for again after a reload); the cells still show _needs credential_. A renamed repo keeps its data and gets a "renamed to" problem.
 
-Any other failed read puts _error_ with the message on the cells it feeds (the message alone, such as _GitHub request to runs failed with status 502_), and a problem you can dismiss; so does a failure in working out what a row shows, on every cell of that row. One failing Amplify app affects only the rows that read it.
+Any other failed read puts _error_ with the message on the cells it feeds (the message alone, such as _GitHub request to runs failed with status 502_), and a problem you can dismiss; so does a failure in working out what a row shows, on every cell of that row. One failing Amplify app affects only the cells that read it.
 
 **Amplify apps found by repo.** An Amplify row with a GitHub repo needs no pinned app: each of its cells reads the Amplify apps that build that repo in the account of the cell's AWS key.
 
@@ -522,18 +522,20 @@ Only the maintainer releases and deploys. Three long-running branches feed the h
 
 Dev and release stay password-protected; production's password came off once the first production deploy completed.
 
-**Release.** On an up-to-date `main`, run `npm run release` (the first release names its version: see _The first release_ below). release-it runs the quality gate, bumps the version, writes `CHANGELOG.md`, commits, tags, pushes `main`, creates the GitHub release, then:
+**Release.** On an up-to-date `main`, run `npm run release` for a patch release, or name the version for any other: `npm run release -- 0.2.0` (release-it's default bump is a patch, which would give 0.1.1; the first release named its version too: see _The first release_ below). release-it runs the quality gate (lint, typecheck, tests, knip and the build, then the Playwright suite with `npm run e2e:release`), bumps the version, writes `CHANGELOG.md`, commits, tags, pushes `main`, creates the GitHub release, then:
 
 1. pushes the numbered branch `release/x.y.z`;
 2. moves `preview/release` to that commit (`git push --force-with-lease`, no merge commit), so release.fooboard.dev always shows the latest release. The move is a fast-forward in the normal case; the force keeps `preview/release` exactly equal to the release if anything else landed there, and the lease (taken just after a fetch) refuses to overwrite a push that races the release.
 
-**The first release** is `npm run release -- 0.1.0`, not a bare `npm run release`. release-it bumps from the version in `package.json`, which stays `0.0.0` until the first release, so the bare command would open its _Select increment_ prompt with `patch (0.0.1)` first and selected (with `--ci`, it would release `0.0.1` without asking). Passing the version makes it release `0.1.0`. Every later release bumps from the last one, so the bare command is right from then on.
+**The first release** is `npm run release -- 0.1.0`, not a bare `npm run release`. release-it bumps from the version in `package.json`, which stays `0.0.0` until the first release, so the bare command would open its _Select increment_ prompt with `patch (0.0.1)` first and selected (with `--ci`, it would release `0.0.1` without asking). Passing the version makes it release `0.1.0`. Every later release bumps from the last one, so the bare command is right for a patch from then on.
+
+**The release's e2e run** uses a preview server of its own, serving the build the release has just made: `e2e:release` never reuses a server already on the tests' port (`npm run e2e` does, outside CI), so stop any `npm run preview` left running first, or the run fails at once. Chromium must be installed on the releasing machine (`npx playwright install chromium`); the suite adds several minutes to each release.
 
 **Deploy to production.** Open a PR from `release/x.y.z` into `prod` and merge it. release-it never touches `prod`. The _prod PR from release/x.y.z_ check fails any PR into `prod` whose head isn't a stable `release/x.y.z` branch of this repo. It runs on `pull_request_target`, so its workflow always comes from `prod` and a PR can't edit away the guard that checks it; it never checks out or runs PR code.
 
 **Bootstrapping the prod check.** Because the check's workflow is read from `prod`, it only appears once a release that contains `.github/workflows/prod-pr.yml` has been merged into `prod`. The first release PR into `prod` therefore goes through without the guard (CI still runs on it) and brings the workflow file with it.
 
-After it merges, the check runs on every later PR into `prod`, and the maintainer makes _prod PR from release/x.y.z_ a required check in `prod`'s branch protection, alongside _quality (node 22)_ and _quality (node 24)_. Don't require it before then, or no PR into `prod` could merge.
+After it merges, the check runs on every later PR into `prod`, and the maintainer makes _prod PR from release/x.y.z_ a required check in `prod`'s ruleset, alongside _quality (node 22)_, _quality (node 24)_ and _e2e (chromium)_, allowing merge commits only and no force pushes.
 
 This path needs no direct push to `prod`, so `prod` never holds a commit that didn't come through a release PR, and the guard it adds is exactly the file released and tested on `main`. The only unguarded PR is that first one, which the maintainer opens from `release/x.y.z` by hand.
 

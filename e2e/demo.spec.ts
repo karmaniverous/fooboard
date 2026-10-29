@@ -9,11 +9,20 @@
  */
 import type { Locator, Page } from '@playwright/test';
 
+import { MIN_TEST_TIMEOUT_MS } from '../src/test/timeouts';
 import { firstCell, openDemo } from './board';
 import { expect, test } from './guard';
 
 /** Time for dnd-kit's keyboard sensor between keys. */
 const KEY_SETTLE_MS = 300;
+
+/** How many lost `ArrowDown` presses the drag retry allows for: each
+ * waits `MIN_TEST_TIMEOUT_MS` for the item to move (Decision 99). */
+const DRAG_TRIES = 3;
+
+/** The editor tour's whole budget, in `MIN_TEST_TIMEOUT_MS`: the drag
+ * retry's `DRAG_TRIES`, plus room for every other step. */
+const TOUR_TIMEOUTS = 6;
 
 /** `locator`'s box once it has stopped moving (a drop animates). */
 async function settledBox(locator: Locator) {
@@ -84,7 +93,7 @@ test('every dialog, sheet, popover and drag works under the CSP', async ({
   page,
 }) => {
   // Many steps: room for a busy machine running the others alongside.
-  test.setTimeout(90_000);
+  test.setTimeout(TOUR_TIMEOUTS * MIN_TEST_TIMEOUT_MS);
   await openDemo(page);
   const cell = firstCell(page);
   await expect(cell).toHaveAttribute('aria-keyshortcuts', 'Space ,');
@@ -173,9 +182,9 @@ test('every dialog, sheet, popover and drag works under the CSP', async ({
   await expect(async () => {
     await page.keyboard.press('ArrowDown');
     await expect(live).toContainText('moved over droppable area mobile-web', {
-      timeout: 2_000,
+      timeout: MIN_TEST_TIMEOUT_MS,
     });
-  }).toPass({ timeout: 15_000 });
+  }).toPass({ timeout: DRAG_TRIES * MIN_TEST_TIMEOUT_MS });
   await page.keyboard.press('Space');
   await expect(rows.nth(1)).toContainText('storefront');
   // Measure once the drop has finished moving the item.

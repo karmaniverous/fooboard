@@ -150,8 +150,11 @@ test.describe('with reduced motion', () => {
 
   test('nothing on the board animates', async ({ page }) => {
     await openDemo(page);
-    // Long enough for a run to start and its cell to be marked.
-    await page.waitForTimeout(2_000);
+    // A run has started: under reduced motion nothing visible marks its
+    // cell, so wait for the cell's marker, not for a fixed pause.
+    await expect(
+      page.locator('main [data-in-progress]').first(),
+    ).toBeAttached();
     const animated = await page.evaluate(
       () =>
         [...document.querySelectorAll('main *')].filter(
