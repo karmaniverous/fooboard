@@ -12,7 +12,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { PERSIST_THROTTLE_MS } from '@/persist/persistence';
-import type { Locks } from '@/persist/persistLock';
 import { runsKey, seedRuns, storedCredentials } from '@/test/persisted';
 import { type Browser, browser, fakeLocks, openTab, tabHub } from '@/test/tabs';
 
@@ -46,9 +45,10 @@ async function cachedBrowser() {
 }
 
 /** Web Locks granted a task after the request, as a browser grants them. */
-function laterLocks(): Locks {
+function laterLocks(): Browser['locks'] {
   const locks = fakeLocks();
   return {
+    holders: () => locks.holders(),
     request: (name, callback) =>
       new Promise((resolve) => setTimeout(resolve, 0)).then(() =>
         locks.request(name, callback),
