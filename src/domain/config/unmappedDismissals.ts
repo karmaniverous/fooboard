@@ -25,7 +25,6 @@ export const UnmappedReasonKindSchema = z.enum([
 ]);
 export type UnmappedReasonKind = z.infer<typeof UnmappedReasonKindSchema>;
 
-/** A dismissal's pattern fields, each optional and never empty. */
 /** The pattern fields typed as text (the reason is chosen). */
 export const DISMISSAL_TEXT_FIELDS = ['where', 'workflow', 'branch'] as const;
 const DISMISSAL_FIELDS = [...DISMISSAL_TEXT_FIELDS, 'reason'] as const;
