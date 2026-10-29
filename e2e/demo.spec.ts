@@ -231,6 +231,8 @@ test('dismisses an unmapped run with a preset, shows it and undoes it', async ({
   await expect(runLink(dismissed).first()).toBeVisible();
   await dismissed.getByRole('button', { name: 'Undo' }).first().click();
   await expect(runLink(entries).first()).toBeVisible();
+  // Focus is on a restored entry's Dismiss… button.
+  await expect(page.locator(':focus')).toHaveAccessibleName('Dismiss…');
 });
 
 test.describe('on a phone', () => {
