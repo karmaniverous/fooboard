@@ -4,23 +4,17 @@
  * field can be cleared; *Dismiss* is disabled, saying why, while none is
  * set; the form counts the entries its pattern matches; *Dismiss* saves
  * the pattern, hides what it matches and returns focus to the heading,
- * or to the board's title when no entry is left; Escape cancels to the
+ * or, when no entry is left, tells its owner (who focuses the title); Escape cancels to the
  * *Dismiss…* button without closing the panel; one form is open at a
  * time; *Show dismissed* lists the dismissed entries with the pattern
  * hiding each, and *Undo* removes it, focusing the restored entry; a refused save says *Not saved*.
  *
  * @module
  */
-import {
-  fireEvent,
-  render,
-  screen,
-  waitFor,
-  within,
-} from '@testing-library/react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 import { Unlink } from 'lucide-react';
 import { useState } from 'react';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import { SidePanel } from '@/components/SidePanel';
 import { type Dashboard, DashboardSchema } from '@/domain/config/dashboard';
@@ -30,7 +24,6 @@ import { splitUnmapped } from '@/engine/unmappedDismissals';
 import { choose } from '@/test/choose';
 
 import { BoardActionButton } from './BoardActionButton';
-import { BOARD_TITLE_ID } from './BoardScreen';
 import { UnmappedPanel } from './UnmappedPanel';
 
 const noRow = { kind: UNMAPPED.noRowMatches } as const;
@@ -56,6 +49,7 @@ const PANEL = 'Unmapped runs';
 function renderPanel(
   unmapped: UnmappedRun[] = [deploy, nightly],
   save: (d: Dashboard) => void = () => undefined,
+  onEmptied?: () => void,
 ) {
   const saved: Dashboard[] = [];
   function Harness(): React.JSX.Element {
@@ -66,9 +60,6 @@ function renderPanel(
     const shown = splitUnmapped(unmapped, dashboard.unmappedDismissals).shown;
     return (
       <>
-        <h1 id={BOARD_TITLE_ID} tabIndex={-1}>
-          Board
-        </h1>
         {shown.length > 0 && (
           <SidePanel
             title={PANEL}
@@ -86,6 +77,7 @@ function renderPanel(
               showDismissed={show}
               onShowDismissed={setShow}
               onAddTest={() => undefined}
+              onEmptied={onEmptied}
             />
           </SidePanel>
         )}
@@ -192,12 +184,13 @@ describe('dismissing an unmapped run', () => {
     expect(document.activeElement).toBe(heading());
   });
 
-  it('focuses the board title once the last entry is dismissed', async () => {
-    renderPanel([deploy]);
+  it('tells its owner once the last entry is dismissed, and only then', () => {
+    const emptied = vi.fn();
+    renderPanel(undefined, undefined, emptied);
+    fireEvent.click(dismissButton(openForm('Nightly')));
+    expect(emptied).not.toHaveBeenCalled();
     fireEvent.click(dismissButton(openForm('Deploy API')));
-    await waitFor(() => {
-      expect(document.activeElement?.id).toBe(BOARD_TITLE_ID);
-    });
+    expect(emptied).toHaveBeenCalledTimes(1);
   });
 
   it('cancels on Escape back to Dismiss…, the panel still open; one form at a time', () => {

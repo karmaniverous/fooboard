@@ -32,7 +32,6 @@ import {
   splitUnmapped,
 } from '@/engine/unmappedDismissals';
 
-import { BOARD_TITLE_ID } from './BoardScreen';
 import { DismissForm } from './DismissForm';
 import {
   hiddenBy,
@@ -90,6 +89,7 @@ export function UnmappedPanel({
   onShowDismissed,
   onAddTest,
   onAddOverride,
+  onEmptied,
   rowNames,
 }: {
   /** Every unmapped entry the board found, dismissed or not. */
@@ -107,6 +107,9 @@ export function UnmappedPanel({
   /** For a branch no stage matches: a branch-pattern override instead of
    * a new stage (C-15). Absent when it can't help. */
   onAddOverride?: (run: UnmappedRun) => (() => void) | undefined;
+  /** A dismissal left no entry shown: the panel and its button go, so
+   * whatever owns the next focus target is told. */
+  onEmptied?: () => void;
 }): React.JSX.Element {
   const { shown, dismissed } = splitUnmapped(
     unmapped,
@@ -134,12 +137,7 @@ export function UnmappedPanel({
     setFormFor(null);
     if (splitUnmapped(unmapped, next.unmappedDismissals).shown.length > 0)
       heading.current?.focus();
-    // The last entry gone, the panel and its button go too: focus the
-    // board's title once the panel has let go of it.
-    else
-      setTimeout(() => {
-        document.getElementById(BOARD_TITLE_ID)?.focus();
-      }, 0);
+    else onEmptied?.();
   };
   const cancel = (runId: string) => {
     setFormFor(null);

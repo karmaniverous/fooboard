@@ -2,12 +2,15 @@
  * A board's fixes open the dashboard editor (spec.md §2.4), shown on the
  * demo's board (`DashboardView` over the simulator): a row's problem mark
  * opens the editor at the problem, an unmapped run's *Add rule* and *Add
- * override* open it on their drafts, and closing the editor closes it.
+ * override* open it on their drafts, and closing the editor closes it;
+ * dismissing the last unmapped entry closes its panel and focuses the
+ * board's title.
  */
-import { fireEvent, render, screen, within } from '@testing-library/react';
+import { act, fireEvent, render, screen, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { describe, expect, it } from 'vitest';
 
+import { BOARD_TITLE_ID } from '@/board/BoardScreen';
 import { createAppStores } from '@/storage';
 import { memoryStorage } from '@/storage/keyValue';
 import { DEVICE_PREFERENCES_KEY } from '@/storage/preferencesStore';
@@ -19,6 +22,8 @@ import { DemoPage } from './DemoPage';
 import { DEMO_PATH } from './paths';
 
 const FIND = WAIT;
+/** Long enough for a closed panel's focus return (Radix's 0 ms timer). */
+const PANEL_CLOSE_MS = 50;
 
 function renderDemo(storage = memoryStorage()) {
   render(
@@ -126,6 +131,12 @@ describe('board fixes', () => {
       );
       expect(counts.at(-1)).toBe(0);
       expect(screen.queryByLabelText(/^Unmapped runs/)).toBeNull();
+      // The panel gone with its button, focus is on the board's title, and
+      // stays there once the panel's own close has run.
+      await act(async () => {
+        await new Promise((done) => setTimeout(done, PANEL_CLOSE_MS));
+      });
+      expect(document.activeElement?.id).toBe(BOARD_TITLE_ID);
     },
     DEMO_RENDER_TIMEOUT_MS,
   );

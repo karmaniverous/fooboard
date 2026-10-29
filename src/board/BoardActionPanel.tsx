@@ -18,6 +18,7 @@ export function BoardActionPanel({
   tone,
   open,
   onOpenChange,
+  onCloseAutoFocus,
   children,
 }: {
   /** The panel's title. */
@@ -29,6 +30,8 @@ export function BoardActionPanel({
   tone?: ActionTone;
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
+  /** Where focus goes as the panel closes (`SidePanel`). */
+  onCloseAutoFocus?: (e: Event) => void;
   children: React.ReactNode;
 }): React.JSX.Element {
   return (
@@ -37,6 +40,7 @@ export function BoardActionPanel({
       tooltip={label}
       open={open}
       onOpenChange={onOpenChange}
+      onCloseAutoFocus={onCloseAutoFocus}
       trigger={<BoardActionButton label={label} Icon={Icon} tone={tone} />}
     >
       {children}

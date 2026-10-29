@@ -8,12 +8,13 @@
  * what was read with the old one and re-derives the board, so entering a
  * token fills it at once. The *Unmapped runs* button and the first run's
  * note count the entries the dashboard's dismissals don't hide (spec
- * 0.2.0 §3.I).
+ * 0.2.0 §3.I); when a dismissal leaves none, the panel closes with its
+ * button and focus goes to the board's title, which this view owns.
  *
  * @module
  */
 import type { LucideIcon } from 'lucide-react';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 
 import {
   CREDENTIALS_ICON,
@@ -104,11 +105,17 @@ export function DashboardView({
 }): React.JSX.Element {
   const [dashboard, setDashboard] = useState(initial);
   const [intro, setIntro] = useState(firstRun);
+  const focusTitle = () => {
+    document.getElementById(BOARD_TITLE_ID)?.focus();
+  };
   const closeIntro = () => {
     setIntro(false);
     onFirstRunDone?.();
-    document.getElementById(BOARD_TITLE_ID)?.focus();
+    focusTitle();
   };
+  /** The last unmapped entry was dismissed: the panel closes with its
+   * button, so focus goes to the title, not back to the gone trigger. */
+  const titleAfterUnmapped = useRef(false);
   // A changed secret (new `version`) has dropped what the old one read;
   // the board re-derives (`refreshKey`).
   const version = useCredentialVersion();
@@ -188,6 +195,12 @@ export function DashboardView({
                 title={UNMAPPED_RUNS}
                 label={unmappedLabel(unmappedShown)}
                 Icon={UNMAPPED_RUNS_ICON}
+                onCloseAutoFocus={(e) => {
+                  if (!titleAfterUnmapped.current) return;
+                  titleAfterUnmapped.current = false;
+                  e.preventDefault();
+                  focusTitle();
+                }}
               >
                 <UnmappedPanel
                   unmapped={model.unmapped}
@@ -195,6 +208,9 @@ export function DashboardView({
                   onChange={save}
                   showDismissed={showDismissed}
                   onShowDismissed={setShowDismissed}
+                  onEmptied={() => {
+                    titleAfterUnmapped.current = true;
+                  }}
                   rowNames={Object.fromEntries(
                     dashboard.rows.map((r) => [r.id, r.displayName]),
                   )}
