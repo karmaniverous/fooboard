@@ -8,76 +8,25 @@
  *
  * @module
  */
-import { QueryClient, type QueryKey } from '@tanstack/query-core';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { createReadWith } from '@/query/readWith';
-import { storedKeys as keysIn } from '@/test/persisted';
+import {
+  cacheTab,
+  keepsAllBut,
+  land,
+  queryOf,
+  storedHeads,
+} from '@/test/cacheTab';
 import { fakeLocks } from '@/test/tabs';
 
-import { cacheStorage, memoryCacheStore } from './cacheStorage';
+import { memoryCacheStore } from './cacheStorage';
 import type { Keeps } from './keeps';
 import {
   CACHE_KEY,
   CACHE_MAX_AGE_MS,
   PERSIST_THROTTLE_MS,
-  persistQueryCache,
 } from './persistence';
 import type { Locks } from './persistLock';
-
-const BUSTER = '1.0.0+5';
-const keepsAllBut =
-  (refused: string): Keeps =>
-  (key: QueryKey) =>
-    key[0] !== refused;
-
-/** A tab's client persisting to `raw` with `locks`. */
-function tab(
-  raw: ReturnType<typeof memoryCacheStore>,
-  locks: Locks,
-  {
-    buster = BUSTER,
-    keeps = keepsAllBut('skip'),
-  }: { buster?: string; keeps?: Keeps } = {},
-) {
-  const client = new QueryClient();
-  const readWith = createReadWith();
-  const storage = cacheStorage(raw);
-  const persistence = persistQueryCache({
-    client,
-    storage,
-    buster,
-    keeps,
-    readWith,
-    locks,
-  });
-  return { client, readWith, storage, ...persistence };
-}
-
-/** The query `key` names in `t`'s client. */
-function queryOf(t: ReturnType<typeof tab>, key: QueryKey) {
-  const query = t.client.getQueryCache().find({ queryKey: key, exact: true });
-  if (!query) throw new Error(`no query ${JSON.stringify(key)}`);
-  return query;
-}
-
-/** `data` lands for `key` in `t`, read with the secret `readWith`. */
-function land(
-  t: ReturnType<typeof tab>,
-  key: QueryKey,
-  data: unknown,
-  readWith: string,
-): void {
-  t.readWith.note(
-    t.client.getQueryCache().build(t.client, { queryKey: key }),
-    readWith,
-  );
-  t.client.setQueryData(key, data);
-}
-
-/** The first parts of the keys in the stored copy. */
-const storedKeys = (raw: ReturnType<typeof memoryCacheStore>) =>
-  keysIn(raw.entries).map((key) => key[0]);
 
 describe('persistQueryCache', () => {
   beforeEach(() => {
@@ -90,7 +39,7 @@ describe('persistQueryCache', () => {
   it('writes the successful queries it keeps, at most once a second', async () => {
     const raw = memoryCacheStore();
     const writes = vi.spyOn(raw, 'setItem');
-    const { client, restored } = tab(raw, fakeLocks());
+    const { client, restored } = cacheTab(raw, fakeLocks());
     await restored;
     await vi.advanceTimersByTimeAsync(0);
     client.setQueryData(['a'], 1);
@@ -103,7 +52,7 @@ describe('persistQueryCache', () => {
       })
       .catch(() => undefined);
     await vi.advanceTimersByTimeAsync(PERSIST_THROTTLE_MS);
-    expect(storedKeys(raw)).toEqual(['a']);
+    expect(storedHeads(raw)).toEqual(['a']);
     const first = writes.mock.calls.length;
     client.setQueryData(['b'], 3);
     client.setQueryData(['c'], 4);
@@ -111,19 +60,19 @@ describe('persistQueryCache', () => {
     expect(writes.mock.calls.length).toBe(first);
     await vi.advanceTimersByTimeAsync(1);
     expect(writes.mock.calls.length).toBe(first + 1);
-    expect(storedKeys(raw)).toEqual(['a', 'b', 'c']);
+    expect(storedHeads(raw)).toEqual(['a', 'b', 'c']);
   });
 
   it('restores what was stored, with its times, minus what it no longer keeps', async () => {
     const raw = memoryCacheStore();
-    const writer = tab(raw, fakeLocks());
+    const writer = cacheTab(raw, fakeLocks());
     await writer.restored;
     await vi.advanceTimersByTimeAsync(0);
     writer.client.setQueryData(['a'], 1, { updatedAt: 1234 });
     writer.client.setQueryData(['b'], 2);
     await vi.advanceTimersByTimeAsync(PERSIST_THROTTLE_MS);
 
-    const reader = tab(raw, fakeLocks(), { keeps: keepsAllBut('b') });
+    const reader = cacheTab(raw, fakeLocks(), { keeps: keepsAllBut('b') });
     await reader.restored;
     expect(reader.client.getQueryData(['a'])).toBe(1);
     expect(reader.client.getQueryState(['a'])?.dataUpdatedAt).toBe(1234);
@@ -135,7 +84,7 @@ describe('persistQueryCache', () => {
     ['older than a day', {}, CACHE_MAX_AGE_MS + 1],
   ])('discards a copy %s', async (_, options, age) => {
     const raw = memoryCacheStore();
-    const writer = tab(raw, fakeLocks());
+    const writer = cacheTab(raw, fakeLocks());
     await writer.restored;
     await vi.advanceTimersByTimeAsync(0);
     writer.client.setQueryData(['a'], 1);
@@ -143,7 +92,7 @@ describe('persistQueryCache', () => {
     writer.stop();
     vi.setSystemTime(Date.now() + age);
 
-    const reader = tab(raw, fakeLocks(), options);
+    const reader = cacheTab(raw, fakeLocks(), options);
     await reader.restored;
     expect(reader.client.getQueryData(['a'])).toBeUndefined();
     expect(raw.entries.has(CACHE_KEY)).toBe(false);
@@ -154,7 +103,7 @@ describe('persistQueryCache', () => {
     raw.entries.set(CACHE_KEY, 'not json');
     vi.spyOn(console, 'error').mockImplementation(() => undefined);
     vi.spyOn(console, 'warn').mockImplementation(() => undefined);
-    const reader = tab(raw, fakeLocks());
+    const reader = cacheTab(raw, fakeLocks());
     await reader.restored;
     expect(reader.client.getQueryCache().getAll()).toEqual([]);
     expect(raw.entries.has(CACHE_KEY)).toBe(false);
@@ -163,24 +112,24 @@ describe('persistQueryCache', () => {
   it('lets only the lock holder write, and the next tab take over when it stops', async () => {
     const raw = memoryCacheStore();
     const locks = fakeLocks();
-    const first = tab(raw, locks);
-    const second = tab(raw, locks);
+    const first = cacheTab(raw, locks);
+    const second = cacheTab(raw, locks);
     await Promise.all([first.restored, second.restored]);
     await vi.advanceTimersByTimeAsync(0);
     first.client.setQueryData(['first'], 1);
     second.client.setQueryData(['second'], 2);
     await vi.advanceTimersByTimeAsync(PERSIST_THROTTLE_MS);
-    expect(storedKeys(raw)).toEqual(['first']);
+    expect(storedHeads(raw)).toEqual(['first']);
 
     first.stop();
     await vi.advanceTimersByTimeAsync(0);
     second.client.setQueryData(['second'], 3);
     await vi.advanceTimersByTimeAsync(PERSIST_THROTTLE_MS);
-    expect(storedKeys(raw)).toEqual(['second']);
+    expect(storedHeads(raw)).toEqual(['second']);
     // The tab that stopped writes no more.
     first.client.setQueryData(['late'], 4);
     await vi.advanceTimersByTimeAsync(PERSIST_THROTTLE_MS);
-    expect(storedKeys(raw)).toEqual(['second']);
+    expect(storedHeads(raw)).toEqual(['second']);
   });
 
   it('stores the secret each query was read with, and restores only what its secret still keeps', async () => {
@@ -188,25 +137,25 @@ describe('persistQueryCache', () => {
     const remembered = new Map([['a', 'one']]);
     const keeps: Keeps = (key, readWith) =>
       readWith !== undefined && readWith === remembered.get(String(key[0]));
-    const writer = tab(raw, fakeLocks(), { keeps });
+    const writer = cacheTab(raw, fakeLocks(), { keeps });
     await writer.restored;
     await vi.advanceTimersByTimeAsync(0);
     land(writer, ['a'], 1, 'one');
     land(writer, ['b'], 2, 'one');
     writer.client.setQueryData(['untold'], 3);
     await vi.advanceTimersByTimeAsync(PERSIST_THROTTLE_MS);
-    expect(storedKeys(raw)).toEqual(['a']);
+    expect(storedHeads(raw)).toEqual(['a']);
     expect(raw.entries.get(CACHE_KEY)).toContain('"readWith":"one"');
 
     // Replaced before the next write: nothing read with the old secret.
     remembered.set('a', 'two');
-    const reader = tab(raw, fakeLocks(), { keeps });
+    const reader = cacheTab(raw, fakeLocks(), { keeps });
     await reader.restored;
     expect(reader.client.getQueryData(['a'])).toBeUndefined();
 
     // Restored with the secret it was read with, so it is written again.
     remembered.set('a', 'one');
-    const again = tab(raw, fakeLocks(), { keeps });
+    const again = cacheTab(raw, fakeLocks(), { keeps });
     await again.restored;
     expect(again.client.getQueryData(['a'])).toBe(1);
     expect(again.readWith.of(queryOf(again, ['a']))).toBe('one');
@@ -215,13 +164,13 @@ describe('persistQueryCache', () => {
   it('keeps the secret of a query this tab read before the restore landed', async () => {
     const raw = memoryCacheStore();
     const keeps: Keeps = (_, readWith) => readWith === 'one';
-    const writer = tab(raw, fakeLocks(), { keeps });
+    const writer = cacheTab(raw, fakeLocks(), { keeps });
     await writer.restored;
     await vi.advanceTimersByTimeAsync(0);
     land(writer, ['a'], 1, 'one');
     await vi.advanceTimersByTimeAsync(PERSIST_THROTTLE_MS);
 
-    const reader = tab(raw, fakeLocks(), { keeps });
+    const reader = cacheTab(raw, fakeLocks(), { keeps });
     land(reader, ['a'], 2, 'session');
     await reader.restored;
     expect(reader.client.getQueryData(['a'])).toBe(2);
@@ -230,7 +179,7 @@ describe('persistQueryCache', () => {
 
   it('reports a refused lock, and still restores', async () => {
     const raw = memoryCacheStore();
-    const writer = tab(raw, fakeLocks());
+    const writer = cacheTab(raw, fakeLocks());
     await writer.restored;
     await vi.advanceTimersByTimeAsync(0);
     writer.client.setQueryData(['a'], 1);
@@ -239,7 +188,7 @@ describe('persistQueryCache', () => {
     const refusing: Locks = {
       request: () => Promise.reject(new Error('SecurityError')),
     };
-    const reader = tab(raw, refusing);
+    const reader = cacheTab(raw, refusing);
     await reader.restored;
     await vi.advanceTimersByTimeAsync(0);
     expect(reader.client.getQueryData(['a'])).toBe(1);
@@ -249,8 +198,8 @@ describe('persistQueryCache', () => {
   it('lets the next tab write once its storage stops (Reset)', async () => {
     const raw = memoryCacheStore();
     const locks = fakeLocks();
-    const first = tab(raw, locks);
-    const second = tab(raw, locks);
+    const first = cacheTab(raw, locks);
+    const second = cacheTab(raw, locks);
     await Promise.all([first.restored, second.restored]);
     await vi.advanceTimersByTimeAsync(0);
     first.storage.stop();
@@ -258,13 +207,13 @@ describe('persistQueryCache', () => {
     first.client.setQueryData(['first'], 1);
     second.client.setQueryData(['second'], 2);
     await vi.advanceTimersByTimeAsync(PERSIST_THROTTLE_MS);
-    expect(storedKeys(raw)).toEqual(['second']);
+    expect(storedHeads(raw)).toEqual(['second']);
   });
 
   it('never takes the lock once stopped before restoring', async () => {
     const raw = memoryCacheStore();
     const locks = fakeLocks();
-    const stopped = tab(raw, locks);
+    const stopped = cacheTab(raw, locks);
     stopped.stop();
     await stopped.restored;
     await vi.advanceTimersByTimeAsync(0);

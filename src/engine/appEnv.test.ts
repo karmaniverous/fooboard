@@ -6,7 +6,8 @@
  * removes its credentials' queries; editor lookups and secrets are never
  * at rest; and a budget read with an old secret that lands after the
  * secret changed doesn't bring the old battery or back-off back
- * (fooboard#24).
+ * (fooboard#24). A removal is written to the cache at once, not at the
+ * next throttled write (spec 0.2.0 §3.C, #33).
  *
  * @module
  */
@@ -39,7 +40,9 @@ async function persistingTab() {
   await vi.advanceTimersByTimeAsync(0);
   /** Let the throttled write land. */
   const written = () => vi.advanceTimersByTimeAsync(PERSIST_THROTTLE_MS);
-  return { shared, stores, env, written };
+  /** Let only what is written at once land (the tab closes now). */
+  const atOnce = () => vi.advanceTimersByTimeAsync(0);
+  return { shared, stores, env, written, atOnce };
 }
 
 describe('appQueryEnv persistence', () => {
@@ -51,8 +54,8 @@ describe('appQueryEnv persistence', () => {
     vi.unstubAllGlobals();
   });
 
-  it('never persists a session-only credential’s queries, and unticking Remember removes them', async () => {
-    const { shared, stores, env, written } = await persistingTab();
+  it('never persists a session-only credential’s queries, and unticking Remember removes them at once', async () => {
+    const { shared, stores, env, written, atOnce } = await persistingTab();
     stores.credentials.set('kept', github('a'), true);
     stores.credentials.set('session', github('b'), false);
     seedRuns(env, 'kept', 'session');
@@ -61,7 +64,7 @@ describe('appQueryEnv persistence', () => {
 
     stores.credentials.set('kept', github('a'), false);
     expect(env.client.getQueryData(runsKey('kept'))).toBeUndefined();
-    await written();
+    await atOnce();
     expect(storedCredentials(shared.idb.entries)).toEqual([]);
   });
 
@@ -81,20 +84,20 @@ describe('appQueryEnv persistence', () => {
     expect(env.client.getQueryData(runsKey('gh'))).toBeDefined();
   });
 
-  it('removes data read with a replaced secret from memory and the cache', async () => {
-    const { shared, stores, env, written } = await persistingTab();
+  it('removes data read with a replaced secret from memory and, at once, the cache', async () => {
+    const { shared, stores, env, written, atOnce } = await persistingTab();
     stores.credentials.set('gh', github('one'), true);
     stores.credentials.set('other', github('o'), true);
     seedRuns(env, 'gh', 'other');
     await written();
     stores.credentials.set('gh', github('two'), true);
     expect(env.client.getQueryData(runsKey('gh'))).toBeUndefined();
-    await written();
+    await atOnce();
     expect(storedCredentials(shared.idb.entries)).toEqual(['other']);
   });
 
-  it('removes the queries of every credential a deleted dashboard held', async () => {
-    const { shared, stores, env, written } = await persistingTab();
+  it('removes the queries of every credential a deleted dashboard held, at once', async () => {
+    const { shared, stores, env, written, atOnce } = await persistingTab();
     const dashboard = {
       ...measureBoard,
       credentials: [
@@ -105,9 +108,11 @@ describe('appQueryEnv persistence', () => {
     stores.credentials.set('gh', github('a'), true);
     stores.credentials.set('other', github('o'), true);
     seedRuns(env, 'gh', 'gone', 'other');
+    await written();
+    expect(storedCredentials(shared.idb.entries)).toEqual(['gh', 'other']);
     deleteWithSecrets(stores.credentials, () => undefined, dashboard);
     expect(env.client.getQueryData(runsKey('gone'))).toBeUndefined();
-    await written();
+    await atOnce();
     expect(storedCredentials(shared.idb.entries)).toEqual(['other']);
   });
 
