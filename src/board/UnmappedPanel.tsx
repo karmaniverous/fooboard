@@ -229,7 +229,14 @@ export function UnmappedPanel({
             const next = withDismissals(
               dashboard.unmappedDismissals.filter((d) => d.id !== by.id),
             );
-            if (update(next)) restored.current = run.id;
+            if (!update(next)) return;
+            // Only an entry the change shows takes focus: one another
+            // pattern still hides stays listed here, and focus with it.
+            const { shown: after } = splitUnmapped(
+              unmapped,
+              next.unmappedDismissals,
+            );
+            if (after.some((r) => r.id === run.id)) restored.current = run.id;
           }}
         />
       )}

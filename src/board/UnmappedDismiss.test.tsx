@@ -4,103 +4,27 @@
  * field can be cleared; *Dismiss* is disabled, saying why, while none is
  * set; the form counts the entries its pattern matches; *Dismiss* saves
  * the pattern, hides what it matches and returns focus to the heading,
- * or, when no entry is left, tells its owner (who focuses the title); Escape cancels to the
- * *Dismiss…* button without closing the panel; one form is open at a
- * time; *Show dismissed* lists the dismissed entries with the pattern
- * hiding each, and *Undo* removes it, focusing the restored entry; a refused save says *Not saved*.
+ * or, when no entry is left, tells its owner (who focuses the title);
+ * Escape cancels to the *Dismiss…* button without closing the panel; one
+ * form is open at a time; a refused save says *Not saved*. *Show
+ * dismissed* and *Undo*: UnmappedUndo.test.tsx.
  *
  * @module
  */
-import { fireEvent, render, screen, within } from '@testing-library/react';
-import { Unlink } from 'lucide-react';
-import { useState } from 'react';
+import { fireEvent, screen, within } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
-import { SidePanel } from '@/components/SidePanel';
-import { type Dashboard, DashboardSchema } from '@/domain/config/dashboard';
-import { UNMAPPED } from '@/domain/derivation';
-import type { UnmappedRun } from '@/engine';
-import { splitUnmapped } from '@/engine/unmappedDismissals';
 import { choose } from '@/test/choose';
-
-import { BoardActionButton } from './BoardActionButton';
-import { UnmappedPanel } from './UnmappedPanel';
-
-const noRow = { kind: UNMAPPED.noRowMatches } as const;
-const entry = (n: number, over: Partial<UnmappedRun> = {}): UnmappedRun => ({
-  provider: 'github',
-  id: `github:acme/api#${String(n)}`,
-  where: 'acme/api',
-  title: 'Deploy API',
-  record: {},
-  branch: 'feature/login',
-  htmlUrl: `https://github.com/acme/api/actions/runs/${String(n)}`,
-  reason: noRow,
-  rows: [{ rowId: 'api', reason: noRow }],
-  ...over,
-});
-const deploy = entry(1);
-const nightly = entry(2, { title: 'Nightly', branch: 'main' });
-
-const PANEL = 'Unmapped runs';
-
-/** The panel in its side panel, open, over a dashboard kept in state;
- * the panel goes, as its button does, once no entry is shown. */
-function renderPanel(
-  unmapped: UnmappedRun[] = [deploy, nightly],
-  save: (d: Dashboard) => void = () => undefined,
-  onEmptied?: () => void,
-) {
-  const saved: Dashboard[] = [];
-  function Harness(): React.JSX.Element {
-    const [dashboard, setDashboard] = useState(
-      DashboardSchema.parse({ id: 'd', name: 'D' }),
-    );
-    const [show, setShow] = useState(false);
-    const shown = splitUnmapped(unmapped, dashboard.unmappedDismissals).shown;
-    return (
-      <>
-        {shown.length > 0 && (
-          <SidePanel
-            title={PANEL}
-            tooltip={PANEL}
-            trigger={<BoardActionButton label={PANEL} Icon={Unlink} />}
-          >
-            <UnmappedPanel
-              unmapped={unmapped}
-              dashboard={dashboard}
-              onChange={(next) => {
-                save(next);
-                saved.push(next);
-                setDashboard(next);
-              }}
-              showDismissed={show}
-              onShowDismissed={setShow}
-              onAddTest={() => undefined}
-              onEmptied={onEmptied}
-            />
-          </SidePanel>
-        )}
-      </>
-    );
-  }
-  render(<Harness />);
-  fireEvent.click(screen.getByRole('button', { name: PANEL }));
-  return saved;
-}
-
-const panel = () => screen.getByRole('dialog', { name: PANEL });
-const openForm = (title: string) => {
-  const item = within(panel()).getByRole('link', { name: title }).closest('li');
-  if (!item) throw new Error(`no entry ${title}`);
-  fireEvent.click(within(item).getByRole('button', { name: 'Dismiss…' }));
-  return screen.getByRole('form', { name: `Dismiss ${title}` });
-};
-const field = (form: HTMLElement, name: string) =>
-  within(form).getByRole('textbox', { name });
-const dismissButton = (form: HTMLElement) =>
-  within(form).getByRole('button', { name: 'Dismiss' });
-const heading = () => within(panel()).getByRole('heading', { level: 3 });
+import {
+  dismissButton,
+  entry,
+  field,
+  heading,
+  nightly,
+  openForm,
+  panel,
+  renderPanel,
+} from '@/test/unmappedPanel';
 
 describe('dismissing an unmapped run', () => {
   it('fills the fields from the chosen preset, focus on the preset choice', () => {
@@ -205,42 +129,6 @@ describe('dismissing an unmapped run', () => {
     expect(document.activeElement?.closest('li')?.textContent).toContain(
       'Nightly',
     );
-  });
-
-  it('lists dismissed entries with their pattern, and Undo brings them back', () => {
-    const saved = renderPanel();
-    fireEvent.click(dismissButton(openForm('Nightly')));
-    const toggle = within(panel()).getByRole('button', {
-      name: 'Show dismissed',
-    });
-    expect(toggle).toHaveAttribute('aria-pressed', 'false');
-    expect(toggle).not.toHaveClass('bg-primary');
-    expect(toggle.querySelector('svg')).toBeNull();
-    fireEvent.click(toggle);
-    expect(toggle).toHaveAttribute('aria-pressed', 'true');
-    // Pressed is filled and checked, unlike the ghost hover.
-    expect(toggle).toHaveClass('bg-primary');
-    expect(toggle.querySelector('svg')).not.toBeNull();
-    const list = within(panel()).getByRole('list', { name: 'Dismissed runs' });
-    expect(within(list).getByRole('link', { name: 'Nightly' })).toBeVisible();
-    expect(
-      within(list).getByText(
-        'Dismissed by Repo or app acme/api, Workflow Nightly',
-      ),
-    ).toBeVisible();
-    fireEvent.click(within(list).getByRole('button', { name: 'Undo' }));
-    expect(saved.at(-1)?.unmappedDismissals).toEqual([]);
-    // Focus goes to the restored entry's Dismiss… button.
-    expect(document.activeElement).toHaveAccessibleName('Dismiss…');
-    expect(document.activeElement?.closest('li')?.textContent).toContain(
-      'Nightly',
-    );
-    expect(
-      within(panel()).getByRole('link', { name: 'Nightly' }),
-    ).toBeVisible();
-    expect(
-      within(panel()).queryByRole('list', { name: 'Dismissed runs' }),
-    ).toBeNull();
   });
 
   it('says Not saved when the save is refused, the form left open', () => {
