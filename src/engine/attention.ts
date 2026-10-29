@@ -58,7 +58,8 @@ export interface Attention {
   /** Step `rowId`'s boost on if every root query in `completions` has
    * completed a fetch since its step began (or begin the restart waiting
    * for that poll); the boost ends after its last step's poll, or at a
-   * completed poll `BOOST_MAX_MS` or more after it started. */
+   * completed poll `BOOST_MAX_MS` or more after it started (a waiting
+   * restart: after its dwell). */
   advance(rowId: string, completions: Completions, at: number): void;
   /** `rowId`'s current boost interval (unmultiplied), if boosted. */
   intervalOf(rowId: string): number | undefined;
@@ -126,6 +127,11 @@ export function createAttention(): Attention {
       );
       if (!done) return;
       if (boost.restart) {
+        // No step begins `BOOST_MAX_MS` or more after the dwell either.
+        if (at - boost.restart.startedAt >= BOOST_MAX_MS) {
+          boosts.delete(rowId);
+          return;
+        }
         boosts.set(rowId, {
           ...boost.restart,
           polls: 0,

@@ -124,6 +124,24 @@ describe('the attention store', () => {
     expect(store.intervalOf(ROW)).toBeUndefined();
   });
 
+  it('ends a deferred restart whose awaited poll completes 75 s or more after the dwell', () => {
+    const store = createAttention();
+    store.attend(ROW, 'dwell', 0, done(0, 0));
+    store.advance(ROW, done(1, 1), 1);
+    const dwell = 1 + DWELL_BOOST_START_MS + 1;
+    expect(store.attend(ROW, 'dwell', dwell, done(1, 1))).toBe(false);
+    // The awaited poll is delayed (a hidden tab): no step begins at it.
+    const late = dwell + BOOST_MAX_MS;
+    const early = createAttention();
+    early.attend(ROW, 'dwell', 0, done(0, 0));
+    early.advance(ROW, done(1, 1), 1);
+    early.attend(ROW, 'dwell', dwell, done(1, 1));
+    early.advance(ROW, done(late - 1, late - 1), late - 1);
+    expect(early.intervalOf(ROW)).toBe(DWELL_BOOST_START_MS);
+    store.advance(ROW, done(late, late), late);
+    expect(store.intervalOf(ROW)).toBeUndefined();
+  });
+
   it('drops the boosts of rows no longer kept, and all on clear', () => {
     const store = createAttention();
     store.attend(ROW, 'click', 0, done(0, 0));
