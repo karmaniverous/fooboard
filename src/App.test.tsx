@@ -44,9 +44,12 @@ describe('App', () => {
     'shows Page not found at %s, linking home',
     async (path) => {
       renderAt(path);
-      expect(
-        await screen.findByRole('heading', { name: 'Page not found' }),
-      ).toBeInTheDocument();
+      const heading = await screen.findByRole('heading', {
+        name: 'Page not found',
+      });
+      // Inside the shell: in its main region, above its footer.
+      expect(screen.getByRole('main')).toContainElement(heading);
+      expect(screen.getByRole('contentinfo')).toBeInTheDocument();
       expect(screen.queryByText(/browser spike/i)).toBeNull();
       expect(
         screen.getByText("There's nothing at this address."),

@@ -14,6 +14,7 @@ import { appQueryEnv } from '@/engine/appEnv';
 import { FirstRunPage } from '@/firstRun/FirstRunPage';
 import { DashboardPage } from '@/pages/DashboardPage';
 import { Home } from '@/pages/Home';
+import { DASHBOARD_ROUTE } from '@/pages/paths';
 import { type AppStores, createAppStores } from '@/storage';
 import { memoryStorage } from '@/storage/keyValue';
 import { StoresContext } from '@/storage/storesContext';
@@ -39,7 +40,7 @@ export async function renderFirstRun(
                 <Route path="/" element={<Home />} />
                 <Route path="/new" element={<FirstRunPage />} />
                 <Route path="/new/:id/:step" element={<FirstRunPage />} />
-                <Route path="/d/:id" element={<DashboardPage />} />
+                <Route path={DASHBOARD_ROUTE} element={<DashboardPage />} />
               </Routes>
             </Suspense>
           </AppNavProvider>

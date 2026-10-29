@@ -9,6 +9,8 @@
 import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 
+import { HOME_PATH } from '@/pages/paths';
+
 import { type LinkPayload, takeShareLink } from './link';
 
 export function useShareLinkArrivals(
@@ -19,7 +21,7 @@ export function useShareLinkArrivals(
     const onHashChange = () => {
       const taken = takeShareLink(window);
       if (!taken) return;
-      navigate('/', { replace: true });
+      navigate(HOME_PATH, { replace: true });
       onLink(taken);
     };
     window.addEventListener('hashchange', onHashChange);

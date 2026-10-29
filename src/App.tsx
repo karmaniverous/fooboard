@@ -21,6 +21,7 @@ import { FIRST_RUN_PATH } from '@/firstRun/paths';
 import { useViewportWidthVar } from '@/lib/useViewportWidthVar';
 import { Home } from '@/pages/Home';
 import { PageNotFound } from '@/pages/PageNotFound';
+import { DASHBOARD_ROUTE, HOME_PATH } from '@/pages/paths';
 import type { LinkPayload } from '@/share/link';
 
 // Board pages load on first visit, so the home page doesn't wait
@@ -70,7 +71,7 @@ export default function App({
               >
                 <Routes>
                   <Route
-                    path="/"
+                    path={HOME_PATH}
                     element={
                       <Page>
                         <Home />
@@ -91,7 +92,7 @@ export default function App({
                       />
                     ),
                   )}
-                  <Route path="/d/:id" element={<DashboardPage />} />
+                  <Route path={DASHBOARD_ROUTE} element={<DashboardPage />} />
                   <Route
                     path="*"
                     element={

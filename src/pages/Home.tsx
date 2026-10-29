@@ -18,6 +18,8 @@ import { site } from '@/lib/site';
 import { dashboardsOf } from '@/storage/configStore';
 import { useStores } from '@/storage/storesContext';
 
+import { dashboardPath } from './paths';
+
 export function Home(): React.JSX.Element {
   const loaded = useStores().config.load();
   const dashboards = dashboardsOf(loaded);
@@ -40,7 +42,7 @@ export function Home(): React.JSX.Element {
           {dashboards.map((d) => (
             <li key={d.id}>
               <Link
-                to={`/d/${d.id}`}
+                to={dashboardPath(d.id)}
                 className="block rounded-md border px-3 py-2 hover:bg-muted"
               >
                 {d.name}
