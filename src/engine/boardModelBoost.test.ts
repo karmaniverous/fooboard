@@ -4,7 +4,8 @@
  * actually polls, with every timer and the clock fake. A click polls at
  * once, then 5, 10, 20 and 40 s apart; a dwell 10, 20 and 40 s apart;
  * each step begins when the row's previous poll completes; no step begins
- * 75 s or more after the boost started; then the row is back at 60 s.
+ * 75 s or more after the boost started; then the row is back at 60 s. A
+ * dwell restarting a boost never postpones the running step's poll.
  *
  * @module
  */
@@ -115,6 +116,32 @@ describe('the poll boost, as polled', () => {
     board.attend([row.id], 'click');
     await vi.advanceTimersByTimeAsync(WATCH_MS);
     expect(polls(row, since).slice(0, 7)).toEqual(at(0, 5, 15, 20, 25, 35, 55));
+    done();
+  });
+
+  it("never lets a dwell's restart postpone the running step's poll", async () => {
+    const { board, polls, done } = await boostBoard();
+    const since = Date.now();
+    board.attend([row.id], 'dwell');
+    // The 20 s step began at 10 s; its poll, due at 30 s, is 3 s off.
+    await vi.advanceTimersByTimeAsync(27 * SECOND);
+    board.attend([row.id], 'dwell');
+    await vi.advanceTimersByTimeAsync(WATCH_MS);
+    // That poll kept its time; the restart's 10 s step began when it
+    // completed, then 20 and 40 s, then the baseline.
+    expect(polls(row, since).slice(0, 6)).toEqual(at(10, 30, 40, 60, 100, 160));
+    done();
+  });
+
+  it('restarts a dwell at once when its first interval is sooner', async () => {
+    const { board, polls, done } = await boostBoard();
+    const since = Date.now();
+    board.attend([row.id], 'dwell');
+    // The 20 s step's poll is due at 30 s, 18 s off: a 10 s step is sooner.
+    await vi.advanceTimersByTimeAsync(12 * SECOND);
+    board.attend([row.id], 'dwell');
+    await vi.advanceTimersByTimeAsync(WATCH_MS);
+    expect(polls(row, since).slice(0, 5)).toEqual(at(10, 22, 42, 82, 142));
     done();
   });
 

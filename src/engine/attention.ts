@@ -6,7 +6,11 @@
  * row's interval changes only when a boost starts and when one of its
  * polls completes, never between polls (TanStack restarts a query's
  * interval timer whenever its interval changes). No step begins
- * `BOOST_MAX_MS` or more after the boost started. For this board in this
+ * `BOOST_MAX_MS` or more after the boost started. A dwell restarting a
+ * running boost never postpones the row's next poll: when the running
+ * step's poll is due sooner than the restarted boost's first interval
+ * from now, that poll keeps its time and the restarted boost's first step
+ * begins when it completes. For this board in this
  * tab only; the model drops it on `destroy` and for rows it no longer has.
  * Pure but for the cache reader `rootCompletions`.
  *
@@ -33,13 +37,18 @@ interface Boost {
   stepStartedAt: number;
   /** The row's root queries' completions when the step began. */
   baseline: Completions;
+  /** A dwell's restart waiting for the running step's poll (due sooner
+   * than the restart's first interval) to complete: when it began. */
+  restart?: { kind: BoostKind; startedAt: number };
 }
 
 export interface Attention {
   /** Start (or restart) `rowId`'s `kind` boost at `at`, its root queries
    * having completed as `completions` say. A dwell doesn't restart a
-   * boost already at a shorter interval than a dwell's first; a click
-   * always does. Returns whether it started. */
+   * boost already at a shorter interval than a dwell's first, and
+   * restarts one whose running poll is due sooner than its first interval
+   * from now only once that poll completes; a click always restarts at
+   * once. Returns whether it (re)started now. */
   attend(
     rowId: string,
     kind: BoostKind,
@@ -47,9 +56,9 @@ export interface Attention {
     completions: Completions,
   ): boolean;
   /** Step `rowId`'s boost on if every root query in `completions` has
-   * completed a fetch since its step began; the boost ends after its last
-   * step's poll, or at a completed poll `BOOST_MAX_MS` or more after it
-   * started. */
+   * completed a fetch since its step began (or begin the restart waiting
+   * for that poll); the boost ends after its last step's poll, or at a
+   * completed poll `BOOST_MAX_MS` or more after it started. */
   advance(rowId: string, completions: Completions, at: number): void;
   /** `rowId`'s current boost interval (unmultiplied), if boosted. */
   intervalOf(rowId: string): number | undefined;
@@ -85,13 +94,20 @@ export function createAttention(): Attention {
     attend(rowId, kind, at, completions) {
       const running = boosts.get(rowId);
       const first = boostInterval(kind, 0);
-      if (
-        kind === 'dwell' &&
-        running &&
-        first !== undefined &&
-        (current(running) ?? Infinity) < first
-      )
-        return false;
+      const interval = running && current(running);
+      if (kind === 'dwell' && running && first !== undefined) {
+        if ((interval ?? Infinity) < first) return false;
+        // Judged in unbacked-off time. Past half a budget both intervals
+        // are four times longer: a restart judged so still never postpones
+        // the poll, though it may keep one a restart would bring forward.
+        if (
+          interval !== undefined &&
+          running.stepStartedAt + interval - at < first
+        ) {
+          boosts.set(rowId, { ...running, restart: { kind, startedAt: at } });
+          return false;
+        }
+      }
       boosts.set(rowId, {
         kind,
         startedAt: at,
@@ -109,6 +125,15 @@ export function createAttention(): Attention {
           completed > (boost.baseline.get(hash) ?? boost.stepStartedAt),
       );
       if (!done) return;
+      if (boost.restart) {
+        boosts.set(rowId, {
+          ...boost.restart,
+          polls: 0,
+          stepStartedAt: at,
+          baseline: completions,
+        });
+        return;
+      }
       const polls = boost.polls + 1;
       if (
         at - boost.startedAt >= BOOST_MAX_MS ||

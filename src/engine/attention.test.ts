@@ -3,7 +3,9 @@
  * ends only when every root query of the row has completed a fetch since
  * it began; the boost ends after its last step's poll or at a completion
  * 75 s or more after it started; a dwell never cuts short a faster boost,
- * a click always restarts one; boosts of rows no longer kept are dropped.
+ * a click always restarts one; a dwell whose restart would postpone the
+ * running poll begins it when that poll completes, its cap counted from
+ * the dwell; boosts of rows no longer kept are dropped.
  * The cache reader takes only root needs, with data or an error.
  *
  * @module
@@ -85,15 +87,41 @@ describe('the attention store', () => {
     store.attend(ROW, 'click', 0, done(0, 0));
     expect(store.attend(ROW, 'dwell', 1, done(0, 0))).toBe(false);
     expect(store.intervalOf(ROW)).toBe(ACTIVE_INTERVAL_MS);
-    // Two polls on, the click is at 10 s: a dwell restarts it there.
+    // Three polls on, the click is at 20 s: a dwell while that step's poll
+    // is still 10 s or more off restarts it at 10 s.
     store.advance(ROW, done(1, 1), 2);
     store.advance(ROW, done(3, 3), 3);
-    expect(store.intervalOf(ROW)).toBe(DWELL_BOOST_START_MS);
-    expect(store.attend(ROW, 'dwell', 4, done(3, 3))).toBe(true);
-    store.advance(ROW, done(5, 5), 5);
+    store.advance(ROW, done(4, 4), 4);
     expect(store.intervalOf(ROW)).toBe(2 * DWELL_BOOST_START_MS);
-    expect(store.attend(ROW, 'click', 6, done(5, 5))).toBe(true);
+    const edge = 4 + DWELL_BOOST_START_MS;
+    expect(store.attend(ROW, 'dwell', edge, done(4, 4))).toBe(true);
+    expect(store.intervalOf(ROW)).toBe(DWELL_BOOST_START_MS);
+    store.advance(ROW, done(edge + 1, edge + 1), edge + 1);
+    expect(store.intervalOf(ROW)).toBe(2 * DWELL_BOOST_START_MS);
+    expect(store.attend(ROW, 'click', edge + 2, done(edge + 1, edge + 1))).toBe(
+      true,
+    );
     expect(store.intervalOf(ROW)).toBe(ACTIVE_INTERVAL_MS);
+  });
+
+  it("begins a dwell's restart on the running poll when that poll is due sooner", () => {
+    const store = createAttention();
+    store.attend(ROW, 'dwell', 0, done(0, 0));
+    store.advance(ROW, done(1, 1), 1);
+    // The 20 s step's poll is due in under 10 s: it keeps its time.
+    const dwell = 1 + DWELL_BOOST_START_MS + 1;
+    expect(store.attend(ROW, 'dwell', dwell, done(1, 1))).toBe(false);
+    expect(store.intervalOf(ROW)).toBe(2 * DWELL_BOOST_START_MS);
+    const polled = 1 + 2 * DWELL_BOOST_START_MS;
+    store.advance(ROW, done(polled, polled), polled);
+    expect(store.intervalOf(ROW)).toBe(DWELL_BOOST_START_MS);
+    // Its 75 s cap counts from the dwell.
+    store.advance(
+      ROW,
+      done(dwell + BOOST_MAX_MS, dwell + BOOST_MAX_MS),
+      dwell + BOOST_MAX_MS,
+    );
+    expect(store.intervalOf(ROW)).toBeUndefined();
   });
 
   it('drops the boosts of rows no longer kept, and all on clear', () => {
