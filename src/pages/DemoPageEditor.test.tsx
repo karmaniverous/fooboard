@@ -17,11 +17,12 @@ import { DEMO_RENDER_TIMEOUT_MS } from '@/test/demoRender';
 import { WAIT } from '@/test/timeouts';
 
 import { DemoPage } from './DemoPage';
+import { DEMO_PATH } from './paths';
 
 function renderDemo(store = memoryStorage()) {
   const stores = createAppStores(store);
   const view = render(
-    <MemoryRouter initialEntries={['/demo']}>
+    <MemoryRouter initialEntries={[DEMO_PATH]}>
       <StoresContext value={stores}>
         <Suspense fallback="Loading">
           <DemoPage />
