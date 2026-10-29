@@ -122,6 +122,10 @@ describe('dismissing an unmapped run', () => {
       'reason',
     ]);
     expect(document.activeElement).toBe(presets[0]);
+    expect(within(form).getByRole('radiogroup')).toHaveAccessibleName(
+      'Which runs to dismiss',
+    );
+    expect(dismissButton(form)).toHaveAccessibleName('Dismiss');
     expect(field(form, 'Repo or app')).toHaveValue('acme/api');
     expect(field(form, 'Workflow')).toHaveValue('Deploy API');
     expect(field(form, 'Branch pattern')).toHaveValue('');

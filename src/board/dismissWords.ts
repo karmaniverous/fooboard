@@ -17,8 +17,8 @@ export const SHOW_DISMISSED = 'Show dismissed';
 export const UNDO = 'Undo';
 /** Why *Dismiss* is disabled while the pattern sets no field. */
 export const NEED_A_FIELD = 'Set at least one field';
-/** The preset choice's name. */
-export const PRESET_CHOICE = 'Dismiss';
+/** The preset choice's name, distinct from the *Dismiss* button's. */
+export const PRESET_CHOICE = 'Which runs to dismiss';
 
 const plural = (n: number, one: string, many: string): string =>
   `${String(n)} ${n === 1 ? one : many}`;
