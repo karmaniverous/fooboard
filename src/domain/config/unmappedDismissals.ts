@@ -14,7 +14,7 @@
  */
 import { z } from 'zod';
 
-import { UNMAPPED } from '@/domain/derivation/unmapped';
+import { describeUnmappedReason, UNMAPPED } from '@/domain/derivation/unmapped';
 
 /** The reasons a dismissal can name (`UNMAPPED`). */
 export const UnmappedReasonKindSchema = z.enum([
@@ -50,6 +50,30 @@ export const UnmappedDismissalSchema = z.object({
   reason: UnmappedReasonKindSchema.optional(),
 });
 export type UnmappedDismissal = z.infer<typeof UnmappedDismissalSchema>;
+
+/** Each pattern field's name, as the form and the editor label it. */
+export const DISMISSAL_FIELD_LABELS: Record<DismissalField, string> = {
+  where: 'Repo or app',
+  workflow: 'Workflow',
+  branch: 'Branch pattern',
+  reason: 'Reason',
+};
+
+/** What a dismissal hides, in words: each field it sets, by name
+ * ("Repo or app acme/api, Branch pattern feature/*"). */
+export function describeDismissal(
+  dismissal: Omit<UnmappedDismissal, 'id'>,
+): string {
+  return DISMISSAL_FIELDS.flatMap((field) => {
+    const value = dismissal[field];
+    if (value === undefined) return [];
+    const text =
+      field === 'reason' && dismissal.reason !== undefined
+        ? describeUnmappedReason({ kind: dismissal.reason })
+        : value;
+    return [`${DISMISSAL_FIELD_LABELS[field]} ${text}`];
+  }).join(', ');
+}
 
 type Issue = { message: string; path: (string | number)[] };
 

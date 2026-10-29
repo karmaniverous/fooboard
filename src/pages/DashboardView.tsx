@@ -6,7 +6,9 @@
  * handed to `onSave`. A saved dashboard saves it to this browser; the
  * demo keeps it in memory for the tab (§3.14). A changed secret removes
  * what was read with the old one and re-derives the board, so entering a
- * token fills it at once.
+ * token fills it at once. The *Unmapped runs* button and the first run's
+ * note count the entries the dashboard's dismissals don't hide (spec
+ * 0.2.0 §3.I).
  *
  * @module
  */
@@ -51,6 +53,8 @@ import {
 } from '@/editors/draft';
 import { ruleSamples } from '@/editors/rules/samples';
 import { unknownCells } from '@/editors/statuses/unknownRuns';
+import { type UnmappedRun } from '@/engine';
+import { splitUnmapped } from '@/engine/unmappedDismissals';
 import { FirstRunNote } from '@/firstRun/FirstRunNote';
 
 /** How many of `shown` are problems rather than notes. */
@@ -113,6 +117,10 @@ export function DashboardView({
     setDashboard(next);
   };
   const missing = dashboard.credentials.length === 0;
+  const [showDismissed, setShowDismissed] = useState(false);
+  /** How many entries the dashboard's dismissals don't hide. */
+  const shownOf = (unmapped: readonly UnmappedRun[]) =>
+    splitUnmapped(unmapped, dashboard.unmappedDismissals).shown.length;
   const [editorOpen, setEditorOpen] = useState(false);
   const [draft, setDraft] = useState<{ n: number; draft?: EditorDraft }>({
     n: 0,
@@ -143,7 +151,7 @@ export function DashboardView({
         intro
           ? (model, problems) => (
               <FirstRunNote
-                unmapped={model.unmapped.length}
+                unmapped={shownOf(model.unmapped)}
                 problems={problemCount(problems.shown)}
                 onDone={closeIntro}
               />
@@ -152,6 +160,7 @@ export function DashboardView({
       }
       actions={(model, problems) => {
         const problemsButton = problemsAction(problems.shown);
+        const unmappedShown = shownOf(model.unmapped);
         return (
           <>
             {problems.shown.length > 0 && (
@@ -174,14 +183,18 @@ export function DashboardView({
                 />
               </BoardActionPanel>
             )}
-            {model.unmapped.length > 0 && (
+            {unmappedShown > 0 && (
               <BoardActionPanel
                 title={UNMAPPED_RUNS}
-                label={unmappedLabel(model.unmapped.length)}
+                label={unmappedLabel(unmappedShown)}
                 Icon={UNMAPPED_RUNS_ICON}
               >
                 <UnmappedPanel
-                  runs={model.unmapped}
+                  unmapped={model.unmapped}
+                  dashboard={dashboard}
+                  onChange={save}
+                  showDismissed={showDismissed}
+                  onShowDismissed={setShowDismissed}
                   rowNames={Object.fromEntries(
                     dashboard.rows.map((r) => [r.id, r.displayName]),
                   )}
