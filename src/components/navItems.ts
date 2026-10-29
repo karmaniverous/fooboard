@@ -30,6 +30,7 @@ import {
   ThemeChoiceSchema,
 } from '@/domain/config/devicePreferences';
 import { site } from '@/lib/site';
+import { DEMO_PATH } from '@/pages/paths';
 
 import { GithubLogo, XLogo } from './brandIcons';
 import { useTheme } from './themeContext';
@@ -137,7 +138,7 @@ export function useNavItems(): NavItem[] {
       kind: 'route',
       label: 'Try the demo',
       Icon: CirclePlay,
-      to: '/demo',
+      to: DEMO_PATH,
     },
     {
       id: 'theme',

@@ -18,7 +18,7 @@ import { site } from '@/lib/site';
 import { dashboardsOf } from '@/storage/configStore';
 import { useStores } from '@/storage/storesContext';
 
-import { dashboardPath } from './paths';
+import { dashboardPath, DEMO_PATH } from './paths';
 
 export function Home(): React.JSX.Element {
   const loaded = useStores().config.load();
@@ -83,7 +83,7 @@ export function Home(): React.JSX.Element {
             </Button>
           </>
         )}
-        <Link to="/demo" className={buttonVariants({ variant: 'outline' })}>
+        <Link to={DEMO_PATH} className={buttonVariants({ variant: 'outline' })}>
           Try the demo
         </Link>
       </div>

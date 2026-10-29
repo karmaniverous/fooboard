@@ -34,6 +34,7 @@ import {
   useMeasured,
 } from '@/lib/useMeasured';
 import { cn, PINNED_FULL } from '@/lib/utils';
+import { HOME_PATH } from '@/pages/paths';
 
 import { ExternalLink } from './ExternalLink';
 import { NavControl } from './NavControl';
@@ -54,7 +55,10 @@ function NewDot({ className }: { className?: string }): React.JSX.Element {
 
 function Brand(): React.JSX.Element {
   return (
-    <Link to="/" className="flex shrink-0 items-center gap-2.5 font-bold">
+    <Link
+      to={HOME_PATH}
+      className="flex shrink-0 items-center gap-2.5 font-bold"
+    >
       <img
         src={site.logoUrl}
         alt=""
