@@ -2,7 +2,8 @@
  * The accessibility pass's automated part (spec.md §3.10), under the
  * locally served CSP: axe finds no WCAG 2.1 A or AA violation (contrast
  * included) on the home page, the demo board, the menu, the cell detail
- * sheet, the settings popup and the error screen, in light and
+ * sheet, the settings popup, the *Unmapped runs* panel with a *Dismiss…*
+ * form open and with *Show dismissed* on, and the error screen, in light and
  * dark; Tab runs header, then body; the dialogs keep Tab inside; group
  * frames and boundary lines are hidden from assistive technology; and
  * with reduced motion nothing on the board animates.
@@ -52,6 +53,26 @@ async function expectActionTooltipClean(page: Page): Promise<void> {
   await page.keyboard.press('Escape');
 }
 
+/** axe finds nothing in the *Unmapped runs* panel with an entry's
+ * *Dismiss…* form open, then with *Show dismissed* on (spec 0.2.0
+ * §3.I). */
+async function expectUnmappedPanelClean(page: Page): Promise<void> {
+  await page.getByRole('button', { name: /^Unmapped runs \(\d+\)$/ }).click();
+  const panel = page.getByRole('dialog', { name: 'Unmapped runs' });
+  await expect(panel).toBeVisible();
+  await panel.getByRole('button', { name: 'Dismiss…' }).first().click();
+  await expect(panel.getByRole('form')).toBeVisible();
+  expect(await violations(page), 'dismiss form').toEqual([]);
+  await panel.getByRole('button', { name: 'Dismiss', exact: true }).click();
+  await panel.getByRole('button', { name: 'Show dismissed' }).click();
+  await expect(
+    panel.getByRole('list', { name: 'Dismissed runs' }),
+  ).toBeVisible();
+  expect(await violations(page), 'show dismissed').toEqual([]);
+  await page.keyboard.press('Escape');
+  await expect(panel).toHaveCount(0);
+}
+
 for (const colorScheme of ['light', 'dark'] as const)
   test.describe(`in ${colorScheme}`, () => {
     test.use({ colorScheme });
@@ -65,6 +86,7 @@ for (const colorScheme of ['light', 'dark'] as const)
       await openDemo(page);
       expect(await violations(page), 'demo board').toEqual([]);
       await expectActionTooltipClean(page);
+      await expectUnmappedPanelClean(page);
 
       const menu = page.getByRole('button', { name: 'Menu' });
       await menu.click();
@@ -94,6 +116,7 @@ for (const colorScheme of ['light', 'dark'] as const)
         await openDemo(page);
         expect(await violations(page), 'demo board').toEqual([]);
         await expectActionTooltipClean(page);
+        await expectUnmappedPanelClean(page);
       });
     });
 

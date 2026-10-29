@@ -95,4 +95,38 @@ describe('board fixes', () => {
     },
     DEMO_RENDER_TIMEOUT_MS,
   );
+
+  it(
+    'counts the unmapped entries shown, and hides the button at zero',
+    async () => {
+      renderDemo();
+      const count = () => {
+        const label =
+          screen
+            .queryByLabelText(/^Unmapped runs \(\d+\)$/)
+            ?.getAttribute('aria-label') ?? '';
+        return Number(/\d+/.exec(label)?.[0] ?? 0);
+      };
+      fireEvent.click(
+        await screen.findByLabelText(/^Unmapped runs \(\d+\)$/, {}, FIND),
+      );
+      const panel = await screen.findByRole('dialog', {}, FIND);
+      const total = count();
+      expect(total).toBeGreaterThan(0);
+      // Dismiss each entry left with its first preset, until none is shown.
+      const counts = [total];
+      for (let left = total; left > 0 && count() > 0; left -= 1) {
+        fireEvent.click(within(panel).getAllByText('Dismiss…')[0]);
+        fireEvent.click(within(panel).getByRole('button', { name: 'Dismiss' }));
+        counts.push(count());
+      }
+      // Each dismissal hid at least one entry; the last left none.
+      expect(counts.every((n, i) => i === 0 || n < (counts[i - 1] ?? 0))).toBe(
+        true,
+      );
+      expect(counts.at(-1)).toBe(0);
+      expect(screen.queryByLabelText(/^Unmapped runs/)).toBeNull();
+    },
+    DEMO_RENDER_TIMEOUT_MS,
+  );
 });
