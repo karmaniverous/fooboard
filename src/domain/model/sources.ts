@@ -15,6 +15,7 @@ import {
   BUILTIN_SOURCES,
   builtinSourceFor,
   DEFAULT_SOURCE_RULE_IDS,
+  isBuiltinSourceId,
 } from './builtinSources';
 import {
   isSourceRuleFor,
@@ -68,7 +69,7 @@ export function sourceRuleReferenceIssues(
   const seen = new Set<string>();
   scope.customSourceRules.forEach((s, i) => {
     const path = ['customSourceRules', i, 'id'];
-    if (BUILTIN_SOURCES.some((b) => b.id === s.id))
+    if (isBuiltinSourceId(s.id))
       issues.push({ message: `source rule id ${s.id} is a built-in's`, path });
     else if (seen.has(s.id))
       issues.push({ message: `duplicate source rule id: ${s.id}`, path });

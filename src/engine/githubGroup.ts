@@ -79,7 +79,7 @@ export function githubGroup(
       rows: reasons,
     });
   }
-  const hints = fullReadHints(full, servedBy(readers), cells, ctx.source);
+  const hints = fullReadHints(() => full, servedBy(readers), cells, ctx.source);
   return {
     unmapped,
     mapped: placed,

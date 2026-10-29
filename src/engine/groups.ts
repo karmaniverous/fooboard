@@ -3,8 +3,9 @@
  * GitHub token's repo or an Amplify app, recomputed with the rows its
  * queries feed, each judged against only the cells that read it (a
  * token's cells, an app's cells), with window hints for those cells
- * only. Amplify groups also carry the app's branch list entries for the
- * branch rule's sample. Pure.
+ * only (an Amplify cell with a branch-pattern stage rule hinted only when
+ * a branch it matches was read full, Decision 94). Amplify groups also
+ * carry the app's branch list entries for the branch rule's sample. Pure.
  *
  * @module
  */
@@ -12,6 +13,7 @@ import type { JSONValue } from 'json-p3';
 
 import type { Dashboard } from '@/domain/config/dashboard';
 import type { AmplifyRow } from '@/domain/config/row';
+import { isBuiltinSourceId } from '@/domain/model/builtinSources';
 import type { Problem } from '@/domain/problems/problem';
 import { translationProblems } from '@/domain/problems/runtime';
 import { appKey, type ResolvedAmplifySource } from '@/lib/amplify/rowJobs';
@@ -30,7 +32,7 @@ import {
   type RowEntry,
 } from './rowDerive';
 import type { CellView, UnmappedRun } from './types';
-import { fullReadHints, servedBy } from './windowHints';
+import { amplifyCellFull, fullReadHints, servedBy } from './windowHints';
 
 export interface GroupEntry {
   unmapped: UnmappedRun[];
@@ -120,8 +122,14 @@ export function computeGroup(
     appKey(plan.app),
     app.records,
   );
+  const customSource = !isBuiltinSourceId(ctx.source.id);
+  const readers = new Map(plan.readers.map((r) => [r.row.id, r.row]));
   const hints = fullReadHints(
-    app.full,
+    (rowId, stageId) => {
+      const row = readers.get(rowId);
+      const stageRule = row && ctx.rulesFor(row, stageId).stage;
+      return amplifyCellFull(app, stageRule, customSource);
+    },
     servedBy(plan.readers),
     cells,
     ctx.source,

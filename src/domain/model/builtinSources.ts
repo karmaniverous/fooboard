@@ -147,6 +147,11 @@ const amplify = builtin({
 /** The built-in source rules. */
 export const BUILTIN_SOURCES: readonly SourceRule[] = [github, amplify];
 
+/** Is `id` a built-in source rule's (a dashboard's own rules can't take
+ * one)? */
+export const isBuiltinSourceId = (id: string): boolean =>
+  BUILTIN_SOURCES.some((s) => s.id === id);
+
 /** The built-in source rule for `provider`. */
 export function builtinSourceFor<P extends Provider>(
   provider: P,

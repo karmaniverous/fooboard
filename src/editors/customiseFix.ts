@@ -8,7 +8,7 @@
  */
 import type { Dashboard } from '@/domain/config/dashboard';
 import type { Provider } from '@/domain/config/providers';
-import { BUILTIN_SOURCES } from '@/domain/model/builtinSources';
+import { isBuiltinSourceId } from '@/domain/model/builtinSources';
 import { sourceRuleFor } from '@/domain/model/sources';
 import { type Problem, targetOf } from '@/domain/problems/problem';
 import { PRESETS } from '@/domain/statuses/presets';
@@ -30,7 +30,7 @@ function builtinOf(
   const target = targetOf(problem);
   if (target.kind === 'source') {
     const { id } = sourceRuleFor(dashboard, target.provider);
-    return BUILTIN_SOURCES.some((s) => s.id === id)
+    return isBuiltinSourceId(id)
       ? { kind: 'source', provider: target.provider, id }
       : undefined;
   }
