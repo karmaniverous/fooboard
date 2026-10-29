@@ -17,8 +17,6 @@ export const SHOW_DISMISSED = 'Show dismissed';
 export const UNDO = 'Undo';
 /** Why *Dismiss* is disabled while the pattern sets no field. */
 export const NEED_A_FIELD = 'Set at least one field';
-/** The *Reason* choice meaning any reason. */
-export const ANY_REASON = 'Any';
 /** The preset choice's name. */
 export const PRESET_CHOICE = 'Dismiss';
 

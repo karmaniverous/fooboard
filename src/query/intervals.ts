@@ -69,7 +69,7 @@ export function faster(a: Freshness, b: Freshness): Freshness {
 
 /** How much longer each boost step is than the one before (Decision
  * 79: the interval doubles after each poll). */
-export const BOOST_GROWTH = 2;
+const BOOST_GROWTH = 2;
 
 /** Where a dwell's boost starts: one step after a click's, so a dwell,
  * the weaker signal, costs under half a click's extra polls (Decision
@@ -84,7 +84,7 @@ export const BOOST_MAX_MS = 75_000;
 /** A boost's step intervals, unmultiplied: from `ACTIVE_INTERVAL_MS`,
  * each `BOOST_GROWTH` times the last, while shorter than the baseline
  * `IDLE_INTERVAL_MS` (5, 10, 20 and 40 s). */
-export const BOOST_STEPS: readonly number[] = (() => {
+const BOOST_STEPS: readonly number[] = (() => {
   const steps: number[] = [];
   for (let ms = ACTIVE_INTERVAL_MS; ms < IDLE_INTERVAL_MS; ms *= BOOST_GROWTH)
     steps.push(ms);

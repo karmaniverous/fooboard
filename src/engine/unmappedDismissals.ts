@@ -25,7 +25,7 @@ const same = (a: string, b: string): boolean =>
   a.toLowerCase() === b.toLowerCase();
 
 /** The one reason every row reading `run` gives, if they agree. */
-export function sharedReason(run: UnmappedRun): UnmappedReasonKind | undefined {
+function sharedReason(run: UnmappedRun): UnmappedReasonKind | undefined {
   const kinds = new Set(run.rows.map((r) => r.reason.kind));
   return kinds.size === 1 ? [...kinds][0] : undefined;
 }
@@ -72,13 +72,13 @@ export function splitUnmapped(
 }
 
 /** The presets the *Dismiss…* form offers. */
-export const DISMISS_PRESETS = {
+const DISMISS_PRESETS = {
   workflow: 'This workflow on any branch',
   branchHere: 'This branch here',
   branchesLike: 'Branches like this anywhere',
   reason: 'Everything with this reason',
 } as const;
-export type DismissPresetId = keyof typeof DISMISS_PRESETS;
+type DismissPresetId = keyof typeof DISMISS_PRESETS;
 
 /** A preset: its id and the pattern it fills the form with. */
 export interface DismissPreset {

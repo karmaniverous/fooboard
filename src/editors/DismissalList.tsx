@@ -17,32 +17,22 @@ import type { Dashboard } from '@/domain/config/dashboard';
 import {
   describeDismissal,
   DISMISSAL_FIELD_LABELS,
+  DISMISSAL_REASON_OPTIONS,
+  DISMISSAL_TEXT_FIELDS,
   type UnmappedDismissal,
   UnmappedReasonKindSchema,
 } from '@/domain/config/unmappedDismissals';
-import { describeUnmappedReason } from '@/domain/derivation/unmapped';
 
 import { CommitInput } from './fields';
 import { useAccordion } from './useAccordion';
 
 /** The section's title. */
-export const DISMISSED_UNMAPPED_RUNS = 'Dismissed unmapped runs';
-
-const TEXT_FIELDS = ['where', 'workflow', 'branch'] as const;
-
-/** The *Reason* choice, *Any* first. */
-const REASON_OPTIONS = [
-  { value: '' as const, label: 'Any' },
-  ...UnmappedReasonKindSchema.options.map((kind) => ({
-    value: kind,
-    label: describeUnmappedReason({ kind }),
-  })),
-];
+const DISMISSED_UNMAPPED_RUNS = 'Dismissed unmapped runs';
 
 /** `dismissal` with `field` set to `value`, or without it when empty. */
 function withField(
   dismissal: UnmappedDismissal,
-  field: (typeof TEXT_FIELDS)[number] | 'reason',
+  field: (typeof DISMISSAL_TEXT_FIELDS)[number] | 'reason',
   value: string,
 ): UnmappedDismissal {
   const rest = omit(dismissal, [field]);
@@ -101,7 +91,7 @@ export function DismissalList({
               </Button>
             }
           >
-            {TEXT_FIELDS.map((field) => (
+            {DISMISSAL_TEXT_FIELDS.map((field) => (
               <label key={field} className="flex flex-col gap-1">
                 <span className="text-xs text-muted-foreground">
                   {DISMISSAL_FIELD_LABELS[field]}
@@ -123,7 +113,7 @@ export function DismissalList({
               <Choice
                 label={DISMISSAL_FIELD_LABELS.reason}
                 value={d.reason ?? ''}
-                options={REASON_OPTIONS}
+                options={DISMISSAL_REASON_OPTIONS}
                 onValueChange={(value) => {
                   replace(withField(d, 'reason', value));
                 }}

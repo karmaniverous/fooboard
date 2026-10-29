@@ -19,11 +19,11 @@ import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import {
   DISMISSAL_FIELD_LABELS,
+  DISMISSAL_REASON_OPTIONS,
+  DISMISSAL_TEXT_FIELDS,
   setsAnyField,
   type UnmappedReasonKind,
-  UnmappedReasonKindSchema,
 } from '@/domain/config/unmappedDismissals';
-import { describeUnmappedReason } from '@/domain/derivation/unmapped';
 import type { UnmappedRun } from '@/engine';
 import {
   type DismissalPattern,
@@ -32,7 +32,6 @@ import {
 } from '@/engine/unmappedDismissals';
 
 import {
-  ANY_REASON,
   CANCEL,
   DISMISS,
   matchesText,
@@ -48,8 +47,6 @@ interface Fields {
   reason: UnmappedReasonKind | '';
 }
 
-const TEXT_FIELDS = ['where', 'workflow', 'branch'] as const;
-
 const fieldsOf = (pattern: DismissalPattern = {}): Fields => ({
   where: pattern.where ?? '',
   workflow: pattern.workflow ?? '',
@@ -60,19 +57,11 @@ const fieldsOf = (pattern: DismissalPattern = {}): Fields => ({
 /** The pattern the fields make: each empty field left out. */
 const patternOf = (fields: Fields): DismissalPattern => {
   const pattern: DismissalPattern = {};
-  for (const field of TEXT_FIELDS)
+  for (const field of DISMISSAL_TEXT_FIELDS)
     if (fields[field] !== '') pattern[field] = fields[field];
   if (fields.reason !== '') pattern.reason = fields.reason;
   return pattern;
 };
-
-const REASON_OPTIONS = [
-  { value: '' as const, label: ANY_REASON },
-  ...UnmappedReasonKindSchema.options.map((kind) => ({
-    value: kind,
-    label: describeUnmappedReason({ kind }),
-  })),
-];
 
 /** Cancel on Escape inside `form`, before the panel's dialog hears it
  * (Radix listens on the document; the window hears it first). */
@@ -170,7 +159,7 @@ export function DismissForm({
           ))}
         </RadioGroup>
       )}
-      {TEXT_FIELDS.map((field) => (
+      {DISMISSAL_TEXT_FIELDS.map((field) => (
         <div key={field} className="flex flex-col gap-1">
           <Label htmlFor={`${base}-field-${field}`}>
             {DISMISSAL_FIELD_LABELS[field]}
@@ -192,7 +181,7 @@ export function DismissForm({
           label={DISMISSAL_FIELD_LABELS.reason}
           labelledBy={`${base}-field-reason`}
           value={fields.reason}
-          options={REASON_OPTIONS}
+          options={DISMISSAL_REASON_OPTIONS}
           onValueChange={(value) => {
             set('reason', value);
           }}

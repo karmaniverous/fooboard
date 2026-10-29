@@ -119,7 +119,7 @@ function holding(inner: Transport, gate: Gate): Transport {
 }
 
 /** Run fake timers due now until nothing is fetching. */
-export async function drain(env: QueryEnv): Promise<void> {
+async function drain(env: QueryEnv): Promise<void> {
   for (let turn = 0; turn < FILL_TURNS; turn += 1) {
     await vi.advanceTimersByTimeAsync(0);
     if (env.client.isFetching() === 0) return;

@@ -159,7 +159,7 @@ export function createBoardModel({
         continue;
       }
       // A boost steps on once its row's root queries have polled.
-      if (before)
+      if (before && attention.intervalOf(rowId) !== undefined)
         attention.advance(
           rowId,
           rootCompletions(env.client, before.needs),

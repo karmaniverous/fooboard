@@ -26,12 +26,9 @@ export const UnmappedReasonKindSchema = z.enum([
 export type UnmappedReasonKind = z.infer<typeof UnmappedReasonKindSchema>;
 
 /** A dismissal's pattern fields, each optional and never empty. */
-export const DISMISSAL_FIELDS = [
-  'where',
-  'workflow',
-  'branch',
-  'reason',
-] as const;
+/** The pattern fields typed as text (the reason is chosen). */
+export const DISMISSAL_TEXT_FIELDS = ['where', 'workflow', 'branch'] as const;
+const DISMISSAL_FIELDS = [...DISMISSAL_TEXT_FIELDS, 'reason'] as const;
 export type DismissalField = (typeof DISMISSAL_FIELDS)[number];
 
 export const UnmappedDismissalSchema = z.object({
@@ -74,6 +71,19 @@ export function describeDismissal(
     return [`${DISMISSAL_FIELD_LABELS[field]} ${text}`];
   }).join(', ');
 }
+
+/** The *Reason* choice meaning any reason. */
+const ANY_REASON = 'Any';
+
+/** The *Reason* choices of the form and the editor: *Any* (empty), then
+ * each reason as the panel words it. */
+export const DISMISSAL_REASON_OPTIONS = [
+  { value: '' as const, label: ANY_REASON },
+  ...UnmappedReasonKindSchema.options.map((kind) => ({
+    value: kind,
+    label: describeUnmappedReason({ kind }),
+  })),
+];
 
 type Issue = { message: string; path: (string | number)[] };
 
