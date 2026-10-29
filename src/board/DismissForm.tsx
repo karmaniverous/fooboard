@@ -3,7 +3,7 @@
  * the entry, below its reasons. A preset choice fills one field per
  * pattern part (*Repo or app*, *Workflow*, *Branch pattern*, and *Reason*
  * with *Any*); each can then be edited or cleared (cleared is "any"). It
- * says how many of the current entries the pattern matches; *Dismiss* is
+ * says how many of the entries shown the pattern matches; *Dismiss* is
  * disabled while no field is set, saying why. Focus starts on the preset
  * choice (on the first field when no preset is offered); Escape cancels
  * without closing the panel around it.
@@ -99,7 +99,7 @@ export function DismissForm({
   /** The form's id (its *Dismiss…* button controls it). */
   id: string;
   run: UnmappedRun;
-  /** Every current entry, shown or dismissed, for the match count. */
+  /** The entries shown (none dismissed), for the match count. */
   entries: readonly UnmappedRun[];
   onDismiss: (pattern: DismissalPattern) => void;
   onCancel: () => void;

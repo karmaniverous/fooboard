@@ -30,9 +30,10 @@ export const unmappedHeading = (shown: number, dismissed: number): string =>
     ...(dismissed > 0 ? [`${String(dismissed)} dismissed`] : []),
   ].join(', ');
 
-/** How many of the current entries the form's pattern matches. */
+/** How many of the entries shown the form's pattern matches (dismissed
+ * ones aren't counted, so the total agrees with the heading). */
 export const matchesText = (matches: number, entries: number): string =>
-  `Matches ${String(matches)} of the ${plural(entries, 'current entry', 'current entries')}.`;
+  `Matches ${String(matches)} of the ${plural(entries, 'entry', 'entries')} shown.`;
 
 /** What hides a dismissed entry. */
 export const hiddenBy = (pattern: string): string => `Dismissed by ${pattern}`;

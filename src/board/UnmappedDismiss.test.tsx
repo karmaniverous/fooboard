@@ -151,6 +151,21 @@ describe('dismissing an unmapped run', () => {
     expect(within(form).getByText(/Matches 2 of the 2/)).toBeVisible();
   });
 
+  it('counts only the entries shown, as the heading does', () => {
+    renderPanel();
+    fireEvent.click(dismissButton(openForm('Nightly')));
+    const form = openForm('Deploy API');
+    fireEvent.change(field(form, 'Repo or app'), { target: { value: '' } });
+    fireEvent.change(field(form, 'Workflow'), { target: { value: '' } });
+    fireEvent.change(field(form, 'Branch pattern'), {
+      target: { value: '**' },
+    });
+    expect(heading()).toHaveTextContent('1 unmapped run, 1 dismissed');
+    expect(
+      within(form).getByText('Matches 1 of the 1 entry shown.'),
+    ).toBeVisible();
+  });
+
   it('saves the pattern, hides what it matches and focuses the heading', () => {
     const saved = renderPanel();
     const form = openForm('Deploy API');

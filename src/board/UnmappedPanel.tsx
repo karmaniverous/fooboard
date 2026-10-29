@@ -196,7 +196,7 @@ export function UnmappedPanel({
                   <DismissForm
                     id={formId}
                     run={run}
-                    entries={unmapped}
+                    entries={shown}
                     onDismiss={dismiss}
                     onCancel={() => {
                       cancel(run.id);
