@@ -80,7 +80,7 @@ Write every rule this way, with all six fields, so fooboard's editors show it as
 
 ### What JSON Schema can't say
 
-- Ids are any non-empty strings. Short readable ones (`api-core`, `prod`) are fine. Row ids are unique within the dashboard, and so are stage ids, row group ids, column group ids and credential ids.
+- Write every id with letters, digits and hyphens only, short and readable (`api-core`, `prod`, `acme-platform`): a dashboard's id becomes its address (`/d/<id>`), where a dot, slash or space would break the link. Row ids are unique within the dashboard, and so are stage ids, row group ids, column group ids and credential ids.
 - A group's `memberIds` name existing rows (or stages), each in at most one group, and next to each other in board order.
 - `settings.githubToken` names a credential of kind `github`; `settings.awsKey` one of kind `aws`.
 - `sourceStageId` names another stage, and sources never form a cycle.

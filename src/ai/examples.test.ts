@@ -5,7 +5,9 @@
  * names, so the examples teach exactly the form fooboard writes; every
  * fooboard address in either file is production's canonical host
  * (Decision 96); the envelope and examples are this data model's
- * version; and the example link opens to the example's share.
+ * version; the example link opens to the example's share; and every id
+ * in the examples is letters, digits and hyphens, as `/ai` asks (a
+ * dashboard's id becomes its address).
  *
  * @module
  */
@@ -120,6 +122,28 @@ describe('the worked examples in /ai', () => {
       expect(JSON.parse(json)).toMatchObject({
         schemaVersion: CURRENT_SCHEMA_VERSION,
       });
+  });
+
+  it('asks for ids of letters, digits and hyphens, and its examples keep to them', () => {
+    expect(aiMd).toContain(
+      'Write every id with letters, digits and hyphens only',
+    );
+    const ids = examples.flatMap(({ json }) => {
+      const shape = JSON.parse(json) as unknown;
+      const found: string[] = [];
+      const walk = (value: unknown): void => {
+        if (Array.isArray(value)) value.forEach(walk);
+        else if (value !== null && typeof value === 'object')
+          for (const [k, v] of Object.entries(value)) {
+            if (k === 'id' && typeof v === 'string') found.push(v);
+            walk(v);
+          }
+      };
+      walk(shape);
+      return found;
+    });
+    expect(ids.length).toBeGreaterThan(10);
+    expect(ids.filter((id) => !/^[A-Za-z0-9-]+$/.test(id))).toEqual([]);
   });
 
   it('/ai tells the assistant to build the link on the canonical host', () => {
