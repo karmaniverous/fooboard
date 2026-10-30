@@ -23,8 +23,8 @@
  *   missing paths, since its own modules (`/@vite/client`, `/src/main.tsx`)
  *   are not files of a build. So `npm run dev` serves `/ai` from
  *   `public/ai.md` as markdown with every header, as on Amplify;
- * - a build fails if the rewrite would hide one of its files or a file in
- *   `public/`.
+ * - a build fails if a rewrite (not a redirect) would hide one of its
+ *   files or a file in `public/`.
  *
  * @module
  */
