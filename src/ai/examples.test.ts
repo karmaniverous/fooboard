@@ -4,12 +4,14 @@
  * each example's stage rules read back as the branch patterns its table
  * names, so the examples teach exactly the form fooboard writes; every
  * fooboard address in either file is production's canonical host
- * (Decision 96); and the example link opens to the example's share.
+ * (Decision 96); the envelope and examples are this data model's
+ * version; and the example link opens to the example's share.
  *
  * @module
  */
 import { describe, expect, it } from 'vitest';
 
+import { CURRENT_SCHEMA_VERSION } from '@/domain/config/root';
 import { configProblems } from '@/domain/problems/problems';
 import { branchOf } from '@/domain/rules/branch';
 import { readShare } from '@/share/envelope';
@@ -108,6 +110,16 @@ describe('the worked examples in /ai', () => {
     expect(fooboard.length).toBeGreaterThan(0);
     for (const url of fooboard)
       expect(url).toMatch(/^https:\/\/www\.fooboard\.dev\//);
+  });
+
+  it("/ai's envelope and examples are this data model's version", () => {
+    expect(aiMd).toMatch(
+      new RegExp(`^schemaVersion +${String(CURRENT_SCHEMA_VERSION)}$`, 'm'),
+    );
+    for (const { json } of examples)
+      expect(JSON.parse(json)).toMatchObject({
+        schemaVersion: CURRENT_SCHEMA_VERSION,
+      });
   });
 
   it('/ai tells the assistant to build the link on the canonical host', () => {

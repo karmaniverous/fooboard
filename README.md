@@ -23,11 +23,14 @@ fooboard shows the deployment state of every repo × stage at a glance, live at 
 
 **Try it now:** open [fooboard.dev](https://fooboard.dev), or try the demo first at [fooboard.dev/demo](https://fooboard.dev/demo) (no account or token needed). Running fooboard locally is for contributors; see [CONTRIBUTING](./CONTRIBUTING.md).
 
+**Set up with an AI assistant:** Paste fooboard.dev/ai into your assistant. See [Set up with an AI assistant](#set-up-with-an-ai-assistant).
+
 ## Contents
 
 - [Try the demo](#try-the-demo)
   - [Demo account](#demo-account)
 - [Getting started](#getting-started)
+- [Set up with an AI assistant](#set-up-with-an-ai-assistant)
 - [Reading the board](#reading-the-board)
 - [Editing a dashboard](#editing-a-dashboard)
 - [Settings](#settings)
@@ -65,12 +68,12 @@ Its tokens and keys are demo values the simulator alone accepts; they mean nothi
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/home-dark.png" />
-  <img src="docs/screenshots/home-light.png" alt="The fooboard home page: Create a dashboard, Import from link or file, and Try the demo." width="960" />
+  <img src="docs/screenshots/home-light.png" alt="The fooboard home page: Create a dashboard, Import from link or file, Set up with an AI assistant, and Try the demo." width="960" />
 </picture>
 
 ## Getting started
 
-The home page offers three ways in: _Create a dashboard_, _Import from link or file…_ (a board someone shared: choose its file, or paste its link; see [Sharing, export and import](#sharing-export-and-import)) and _Try the demo_.
+The home page offers four ways in: _Create a dashboard_, _Import from link or file…_ (a board someone shared: choose its file, or paste its link or JSON; see [Sharing, export and import](#sharing-export-and-import)), _Set up with an AI assistant…_ (your assistant builds the board with you; see [Set up with an AI assistant](#set-up-with-an-ai-assistant)) and _Try the demo_.
 
 _Create a dashboard_ walks you through four steps. Each step's heading takes the keyboard focus as it opens, so a screen reader announces it.
 
@@ -83,6 +86,19 @@ _Create a dashboard_ walks you through four steps. Each step's heading takes the
 4. **Your board.** The board opens and fills in as GitHub answers. A note above it says how many runs landed in no cell (_Unmapped runs (N)_ lists them, with a fix for each; [Unmapped runs](#unmapped-runs)) and how many rule problems are marked ! (_Problems (N)_), and names _Edit dashboard_ for changes, each button shown with its icon as on the board. _Done_ closes the note.
 
 New dashboards use the built-in source rules and status sets. Add Amplify rows, rename or re-pattern stages and tweak rules afterwards with _Edit dashboard_ ([Editing a dashboard](#editing-a-dashboard)). A dashboard lives at `/d/<id>` in this browser.
+
+## Set up with an AI assistant
+
+Paste fooboard.dev/ai into your assistant. Any assistant that can read a web page will do (ChatGPT, Claude, Gemini and the like): fooboard has no assistant of its own and sends nothing to one.
+
+1. Open _Set up with an AI assistant_ (in the header, the menu or the footer, or on the home page) and press _Copy prompt_, or copy the address alone with _Copy link_: [https://www.fooboard.dev/ai](https://www.fooboard.dev/ai).
+2. Paste it into your assistant. It reads fooboard's instructions there, then asks you about your repos, Amplify apps, stages and the branches that feed them, groups, and your credentials by name only.
+3. It gives you a link (`https://www.fooboard.dev/#j=…`). Open it and choose _Import_. If it can't build a link, it gives you the board's JSON instead: paste that into _Import_ (_Or a fooboard link, or its JSON_).
+4. The board opens with _Credentials_ open on the first credential that has no secret on this device: enter each token and key there ([Credentials](#credentials)). Your keys never pass through the assistant, and the instructions tell it never to ask for them.
+
+If fooboard refuses what the assistant built, the import lists each problem as a path into the share and a message (for example `dashboards[0].stages[1].id: …`); _Copy errors for your assistant_ copies them all, to paste back so it can correct the share. A share that imports but whose board lists configuration problems works the same way: the _Problems_ panel offers _Copy problems for your assistant_.
+
+What you tell your assistant (repo, branch and app names) is between you and its provider ([PRIVACY.md](./PRIVACY.md)). The instructions are plain markdown at [/ai](https://www.fooboard.dev/ai), with the share's JSON Schema at [/ai.schema.json](https://www.fooboard.dev/ai.schema.json) and an [/llms.txt](https://www.fooboard.dev/llms.txt) for assistants that look for one.
 
 ## Reading the board
 
@@ -109,7 +125,7 @@ An **empty cell** says why: _no records_, _needs credential_ (with a link to [Cr
 
 A **warning marker** (!) on a row or stage header, or beside the board's name for board-wide problems, means a rule there has a problem (a group's problems mark its members; a status set's problems mark the rows whose cells use it); hover it to read them, click it to open the editor at the problem. A cell's own problems (such as a hint to read more) are listed in its detail.
 
-_Problems (N)_, the red warning-triangle button beside the board's name, lists every problem with _Fix_ to open the editor at the exact item, and notes on what the rule check couldn't decide; when there are only notes it is _Notes (N)_, a speech bubble, and its panel is titled _Notes_.
+_Problems (N)_, the red warning-triangle button beside the board's name, lists every problem with _Fix_ to open the editor at the exact item, and notes on what the rule check couldn't decide; when there are only notes it is _Notes (N)_, a speech bubble, and its panel is titled _Notes_. While it lists any of the configuration's own problems, _Copy problems for your assistant_ copies their messages, for an assistant that built the board to correct ([Set up with an AI assistant](#set-up-with-an-ai-assistant)); problems found while reading, about GitHub or AWS rather than the board, aren't copied.
 
 **Loading.** A board fills as answers arrive: each repo's runs first, then each run's jobs, then the behind counts.
 
@@ -458,9 +474,13 @@ The copied policy uses `*` for the account, because fooboard doesn't know it: th
 
 ## Sharing, export and import
 
-_Share / Export_ in the header (or the menu) shares your saved dashboards; _Import_ (in the header, and _Import from link or file…_ on the home page) brings them in: choose a file, or paste a link into _Or a fooboard link_.
+_Share / Export_ in the header (or the menu) shares your saved dashboards; _Import_ (in the header, and _Import from link or file…_ on the home page) brings them in: choose a file, or paste a link, or a share's JSON text, into _Or a fooboard link, or its JSON_ (text starting with `{` is read as the JSON, as from a file).
 
-Opening the link in your browser does the same: the same dashboards listed, the same passphrase step, the same import. Pasting tolerates spaces around the link, and takes the link at any path or its `#b=…` part alone; text with no `#b=` in it is refused as a damaged link.
+Opening the link in your browser does the same: the same dashboards listed, the same passphrase step, the same import. Pasting tolerates spaces around the link, and takes the link at any path or its `#b=…` part alone; text with no `#b=` or `#j=` in it is refused as a damaged link.
+
+**`#j=` links.** fooboard makes `#b=` links, compressed. It also opens `#j=` links, which hold the share's JSON itself, as an AI assistant builds them ([Set up with an AI assistant](#set-up-with-an-ai-assistant)): base64 of the JSON (base64url or standard, padded or not), or the JSON as it is, percent-encoded or not. Like `#b=`, the fragment is cleared before anything else, and pasted text after the link is ignored. fooboard 0.1.0 ignores `#j=` links: the app just opens.
+
+**Keys on arrival.** After importing one dashboard, its board opens; if any of its credentials has no secret on this device (always so for a board an assistant built), _Credentials_ opens with the first of them, by name, expanded to enter its secret.
 
 - **Choose dashboards**: one, some or all (every one is ticked at first; _Select all_ toggles them). Each carries its groups, overrides, rules, custom status sets, settings at every level, pinned apps and dismissed unmapped runs. Zoom, density, theme, the kept answers and anything held for a tab are never shared.
 - **Copy board link**: everything goes into the part of the link after `#b=`, compressed. Browsers never send that part to a server (nor in a `Referer` header), and fooboard removes it from the address bar and history the moment the link opens, so a reload can't import it twice. A link longer than 32,000 characters isn't offered (chat apps cut long messages): download a file instead. The demo board's link is about 4,000 characters.
@@ -478,7 +498,8 @@ Opening the link in your browser does the same: the same dashboards listed, the 
 - **New credentials**: a credential you don't have yet is simply imported, and _Keep as a copy_ never asks (the copy has credentials of its own).
 - **Encrypted credentials**: the questions come after the passphrase: the first _Import_ opens them and stops to ask if anything differs. Untick _Import its credentials_ to import the dashboards alone (their rows show _Needs credential_ until you add the secrets).
   The dialog asks for the passphrase there, after you choose the dashboards; a wrong one says "That passphrase doesn't open these credentials", and you can still import without them.
-- **Older and newer**: a link or file from an older fooboard opens and is upgraded; one from a newer fooboard is refused ("reload to update"; fooboard 0.1.0 refuses the shares of 0.2.0, which carry version 7), and anything else that isn't a fooboard share, or is damaged, says so ("This link isn't a fooboard board, or it's damaged").
+- **Older and newer**: a link or file from an older fooboard opens and is upgraded; one from a newer fooboard is refused ("reload to update"; fooboard 0.1.0 refuses the shares of 0.2.0, which carry version 7). A link that can't be decoded says "This link isn't a fooboard board, or it's damaged".
+- **Errors, field by field**: a share that can be read but not imported (not JSON, not a fooboard share, the wrong shape, a repeated id) says "This link has problems fooboard can't import:" and lists the first 20 problems, each a path into the share and a message (`dashboards[0].stages[3].id: …`; `share: …` for the share as a whole), with "and N more" beyond them. _Copy errors for your assistant_ copies them all, one per line, after a line saying what they are. No message holds a credential's secret.
 
 The format is public and versioned: `{ "format": "fooboard-share", "formatVersion": 1, "schemaVersion": 7, "dashboards": [ … ], "credentials": null }`, where `credentials` holds the secrets by credential id, plain or encrypted, beside the dashboards and never inside them.
 
@@ -491,11 +512,12 @@ The header stays at the top of the window. Its buttons, each with a tooltip:
 - **Try the demo**.
 - **Theme**: _System_ (follows your device's light or dark setting), _Light_ or _Dark_. The button cycles through them and the menu offers all three; the choice is saved on this device.
 - **Share / Export**: shares and exports your dashboards ([Sharing, export and import](#sharing-export-and-import)), and the demo (your device's share menu where there is one, _Copy link_, _Post on X_).
-- **Import**: imports dashboards from a fooboard file.
+- **Import**: imports dashboards from a fooboard file, link or JSON.
+- **Set up with an AI assistant** (a robot): the address of fooboard's instructions for assistants and a ready prompt, each with a copy button ([Set up with an AI assistant](#set-up-with-an-ai-assistant)).
 - **GitHub**: this repo.
 - **Report an issue**: [GitHub Issues](https://github.com/karmaniverous/fooboard/issues).
 
-As the window narrows, buttons move into the menu from the right, then the tagline goes; _README_ and _News & support_ stay longest. [Privacy](./PRIVACY.md) and [Terms](./TERMS.md) are always in the menu, followed by _Release notes_ and _Reset…_; the menu ends with fooboard's version. The footer repeats every item as a link, turning to icons and then dropping out from the left as space runs short; Privacy and Terms always stay.
+As the window narrows, buttons move into the menu from the right (_Set up with an AI assistant_ just before _Import_, so the two stay side by side), then the tagline goes; _README_ and _News & support_ stay longest. [Privacy](./PRIVACY.md) and [Terms](./TERMS.md) are always in the menu, followed by _Release notes_ and _Reset…_; the menu ends with fooboard's version. The footer repeats every item as a link, turning to icons and then dropping out from the left as space runs short; Privacy and Terms always stay.
 
 ### Release notes
 
@@ -575,11 +597,16 @@ The build reads nothing about its branch or host, so all three sites build the s
 - **Headers.** [`customHttp.yml`](./customHttp.yml) puts these on every response, on every site (the policy names no host of its own, so it is the same on all three), each explained in the file: a Content-Security-Policy that loads scripts and styles only from the site (plus, by their hashes, the two style elements the UI library injects).
   - The CSP also connects only to `api.github.com` and the Amplify endpoint of each region fooboard lists, and forbids framing, `<base>` and form posts.
   - It also sets HSTS for two years, subdomains included; `X-Content-Type-Options: nosniff`; `Referrer-Policy: no-referrer`; a `Permissions-Policy` denying the camera, microphone, location, payments, USB and screen capture; `X-Frame-Options: DENY`; and same-origin opener and resource policies.
-- **Rewrite.** A path without a file extension (`/demo`, `/d/<id>`, `/new`) is served `index.html`, so a deep link or a reload opens the app; an asset path (scripts, styles, images, fonts) never is, so a missing asset is a 404 rather than the page. Any other path without a file extension shows _Page not found_, with a link home.
-  - Amplify keeps rewrites and redirects in the app's settings rather than the repository, so the rule is committed as [`amplify-rewrites.json`](./amplify-rewrites.json). The app's list holds more than this rule, so don't paste the file over it.
-  - In the console's _Rewrites and redirects_ text editor, keep the redirects Amplify added with a custom domain (production's sends `https://fooboard.dev` to `https://www.fooboard.dev`, 302), replace only the default rule (source `/<*>`, target `/index.html`, type 404-200) with the file's rule, and list the redirects first, then the SPA rule.
-  - `aws amplify update-app --custom-rules` sets the whole list, so the file alone would drop the redirects: give it the redirects followed by the file's rule, or use the console. A build fails if the rule would hide one of its files.
-- **Locally.** `npm run preview` serves the build with the same headers and rewrite, read from those two files, so the CSP is tested before a release. `npm run dev` applies neither.
+  - Every response also carries `Link: </ai>; rel="alternate"; type="text/markdown"`, pointing assistants (and anything reading a share link) to the instructions for AI assistants.
+  - After the `'**'` pattern, two one-path patterns, `/ai` and `/ai.md`, each add only `Content-Type: text/markdown; charset=utf-8`. Amplify merges the headers of every pattern a path matches, so those two paths carry all of the above as well; a one-path pattern may not set a header `'**'` sets.
+- **Rewrites.** [`amplify-rewrites.json`](./amplify-rewrites.json) holds two rules, in this order:
+  1. `/ai` is served `/ai.md` (a 200 rewrite, not a redirect), the instructions for AI assistants. `/ai.md`, `/ai.schema.json` and `/llms.txt` are files, served as they are.
+  2. The SPA rule: a path without a file extension (`/demo`, `/d/<id>`, `/new`) is served `index.html`, so a deep link or a reload opens the app; an asset path (scripts, styles, images, fonts, `.md`, `.json`, `.txt`) never is, so a missing asset is a 404 rather than the page. Any other path without a file extension shows _Page not found_, with a link home.
+  - Amplify keeps rewrites and redirects in the app's settings rather than the repository, so the rules are committed as that file. The app's list holds more than these rules, so don't paste the file over it.
+  - In the console's _Rewrites and redirects_ text editor, keep the redirects Amplify added with a custom domain (production's sends `https://fooboard.dev` to `https://www.fooboard.dev`, 302), replace only the default rule (source `/<*>`, target `/index.html`, type 404-200) with the file's rules, and list the redirects first, then the `/ai` rewrite, then the SPA rule. The list is app-wide: it reaches dev, release and production at once.
+  - `aws amplify update-app --custom-rules` sets the whole list, so the file alone would drop the redirects: give it the redirects followed by the file's rules, or use the console. A build fails if a rule would hide one of its files.
+- **Discovery.** `index.html` holds, inside the page's root element, a sentence pointing to `https://www.fooboard.dev/ai` for assistants that don't run scripts (React replaces it as the app mounts), repeated at the end of the page's description and as its `og:description`, and a `<link rel="alternate" type="text/markdown" href="/ai">`.
+- **Locally.** `npm run preview` serves the build with the same headers and rewrites, read from those two files and merged as Amplify merges them, so the CSP is tested before a release. `npm run dev` applies neither.
 - **Three origins.** dev.fooboard.dev, release.fooboard.dev and www.fooboard.dev (production; fooboard.dev redirects there) are separate sites to your browser: dashboards, credentials and the kept answers saved on one don't appear on the others. A share link opens on the site it was made on, and the import dialog takes a link from any of them, so to move a setup across, export it on one and import it on another ([Sharing, export and import](#sharing-export-and-import)).
 
 ## Contributing
