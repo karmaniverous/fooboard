@@ -6,7 +6,7 @@
  */
 import { NEWER_VERSION_MESSAGE } from '@/domain/config/migrate';
 
-import type { Share, ShareRefusal } from '../envelope';
+import type { Share, ShareRefused } from '../envelope';
 import { SHARE_LINK_MAX_CHARS, X_LINK_MAX_CHARS } from '../link';
 import type { SecretAnswer } from '../secretQuestions';
 
@@ -25,14 +25,33 @@ export const postNote = (length: number): string =>
     ? 'A post on X carries the link without credentials, but the link reveals repo and branch names.'
     : `Too long to post on X: the link is ${count(length)} characters, and X links up to ${count(X_LINK_MAX_CHARS)}.`;
 
-/** The import dialog's error state for a refused share. */
+/** The import dialog's error state for a refused share: a newer one's
+ * own message; over a list of issues, that it has problems (spec 0.2.0
+ * §3.J); else that it isn't a board or is damaged. */
 export const refusalMessage = (
-  reason: ShareRefusal,
+  { reason, issues }: Pick<ShareRefused, 'reason' | 'issues'>,
   origin: ShareOrigin,
-): string =>
-  reason === 'newer'
-    ? `This ${origin} was ${NEWER_VERSION_MESSAGE}.`
+): string => {
+  if (reason === 'newer') return `This ${origin} was ${NEWER_VERSION_MESSAGE}.`;
+  return issues.length > 0
+    ? `This ${origin} has problems fooboard can't import:`
     : `This ${origin} isn't a fooboard board, or it's damaged.`;
+};
+
+/** How many of a refusal's issues the import dialog lists; *Copy errors
+ * for your assistant* copies them all (spec 0.2.0 §3.J). */
+export const IMPORT_ISSUES_SHOWN = 20;
+
+/** Under the listed issues, when there are more. */
+export const moreIssues = (n: number): string => `and ${count(n)} more`;
+
+/** The button that copies a refusal's issues. */
+export const COPY_ERRORS = 'Copy errors for your assistant';
+
+/** The line copied above a refusal's issues, so the assistant knows what
+ * they are. */
+export const ISSUES_PREAMBLE =
+  "fooboard's import refused the share with these errors (path: message); please correct the share:";
 
 /** The hint under a refused (damaged or foreign) share. */
 export const refusalHint = (origin: ShareOrigin): string =>

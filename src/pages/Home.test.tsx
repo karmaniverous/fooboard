@@ -51,7 +51,9 @@ describe('Home', () => {
       screen.getByRole('dialog', { name: 'Import dashboards' }),
     ).toBeInTheDocument();
     expect(screen.getByLabelText('A fooboard file')).toBeInTheDocument();
-    expect(screen.getByLabelText('Or a fooboard link')).toBeInTheDocument();
+    expect(
+      screen.getByLabelText('Or a fooboard link, or its JSON'),
+    ).toBeInTheDocument();
   });
 
   it('lists saved dashboards above the same three ways in', () => {

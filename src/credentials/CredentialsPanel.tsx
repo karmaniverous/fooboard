@@ -9,7 +9,10 @@
  * The credentials collapse (Decision 32), like the editors' lists
  * (`useAccordion`): one open at a time, all closed at first; a credential
  * just added or copied opens and scrolls into view, and one just added
- * takes focus on its header (the form it was added from clears).
+ * takes focus on its header (the form it was added from clears). The
+ * board may ask for one to open (`openOn`): after an import, the first
+ * credential with no secret here, so fooboard asks for its key (spec
+ * 0.2.0 §3.J *Keys on arrival*).
  *
  * @module
  */
@@ -23,7 +26,7 @@ import { Input } from '@/components/ui/input';
 import { useActionError } from '@/components/useActionError';
 import type { CredentialKind } from '@/domain/config/credentials';
 import type { Dashboard } from '@/domain/config/dashboard';
-import { useAccordion } from '@/editors/useAccordion';
+import { type OpenRequest, useAccordion } from '@/editors/useAccordion';
 import { readmeSection } from '@/lib/site';
 import { useStores } from '@/storage/storesContext';
 
@@ -39,10 +42,13 @@ export function CredentialsPanel({
   otherDashboards,
   onChange,
   keyApps,
+  openOn,
 }: {
   dashboard: Dashboard;
   otherDashboards: readonly Dashboard[];
   onChange: (dashboard: Dashboard) => void;
+  /** The credential to open and scroll to (its id as the key). */
+  openOn?: OpenRequest;
   /** The Amplify apps the board reads with an AWS key, once its app
    * search has finished (*Copy AWS policy*). */
   keyApps?: (
@@ -60,6 +66,7 @@ export function CredentialsPanel({
   const listed = sortCredentials(dashboard.credentials);
   const accordion = useAccordion(
     listed.map((c) => ({ key: c.id, targets: [] })),
+    openOn,
   );
   const copyable = sortByCredential(
     otherDashboards.flatMap((d) =>

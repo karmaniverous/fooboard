@@ -5,13 +5,16 @@
  * waits for the persisted cache to be restored, then shows it at once
  * (§3.4). A changed secret removes what was read with the old one
  * (`appQueryEnv`). Opened at the end of the first run, the board is its
- * last step (§3.9, `FirstRunNote`).
+ * last step (§3.9, `FirstRunNote`). Opened after an import to ask for a
+ * credential's secret, its credentials panel opens on it, once (spec
+ * 0.2.0 §3.J *Keys on arrival*).
  *
  * @module
  */
+import { useEffect } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 
-import { isFirstRunState } from '@/firstRun/paths';
+import { isFirstRunState, openCredentialOf } from '@/firstRun/paths';
 import { QueryProvider } from '@/query/QueryProvider';
 import { dashboardsOf } from '@/storage/configStore';
 import { useStores } from '@/storage/storesContext';
@@ -30,6 +33,12 @@ export function DashboardPage(): React.JSX.Element {
   const location = useLocation();
   const { pathname } = location;
   const state: unknown = location.state;
+  const openCredential = openCredentialOf(state);
+  // Asked once: a reload or Back no longer reopens the panel.
+  useEffect(() => {
+    if (openCredential !== undefined)
+      navigate(pathname, { replace: true, state: null });
+  }, [openCredential, navigate, pathname]);
   // Last: it may suspend until the cache is restored (`use`).
   const env = useAppQueryEnv();
   if (!dashboard) return <DashboardNotFound />;
@@ -40,6 +49,7 @@ export function DashboardPage(): React.JSX.Element {
         initial={dashboard}
         others={dashboards.filter((d) => d.id !== dashboard.id)}
         firstRun={isFirstRunState(state)}
+        openCredential={openCredential}
         onFirstRunDone={() => {
           // A reload or Back no longer reopens the note.
           navigate(pathname, { replace: true, state: null });

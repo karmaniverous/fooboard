@@ -4,7 +4,7 @@
  * dashboards listed, the same passphrase step, and the same import
  * result. A link is opened two ways: in a new page (`takeShareLink` on the
  * window before rendering, as `main.tsx` does) and into an open tab (a
- * `hashchange`); it is pasted, between spaces, into *Or a fooboard link*.
+ * `hashchange`); it is pasted, between spaces, into *Or a fooboard link, or its JSON*.
  * The dialog opened by a link shows no file or link field, which is the
  * one thing that differs, so the comparison leaves the fields out.
  *
@@ -64,9 +64,12 @@ async function bring(link: string, way: Way): Promise<AppStores> {
     expect(window.location.hash).toBe('');
   } else {
     fireEvent.click(screen.getByRole('button', { name: 'Open import' }));
-    fireEvent.change(within(dialog()).getByLabelText('Or a fooboard link'), {
-      target: { value: `  ${link}  ` },
-    });
+    fireEvent.change(
+      within(dialog()).getByLabelText('Or a fooboard link, or its JSON'),
+      {
+        target: { value: `  ${link}  ` },
+      },
+    );
   }
   return stores;
 }

@@ -4,11 +4,9 @@
  *
  * @module
  */
-import { readShare, type ShareRead } from './envelope';
+import { readShare, refused, type ShareRead } from './envelope';
 import type { LinkPayload } from './link';
 
 /** A link's payload, read as a share. */
 export const readLink = (link: LinkPayload): ShareRead =>
-  link.kind === 'text'
-    ? readShare(link.text)
-    : { ok: false, reason: 'damaged' };
+  link.kind === 'text' ? readShare(link.text) : refused('damaged');

@@ -23,7 +23,7 @@ describe('ShareInputs', () => {
       await Promise.resolve();
     });
     expect(onRead).toHaveBeenCalledWith(
-      { ok: false, reason: 'damaged' },
+      { ok: false, reason: 'damaged', issues: [] },
       'file',
     );
   });

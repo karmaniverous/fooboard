@@ -1,14 +1,18 @@
 /**
  * The import dialog (spec.md §3.8), for a share link just opened, or a
- * file the user chooses or a link pasted in (`ShareInputs`): a share that can't be read shows the error state
- * ("This link isn't a fooboard board, or it's damaged", or that a newer
- * fooboard made it); one that can lists its dashboards and the choices
+ * file the user chooses or a link or JSON pasted in (`ShareInputs`): a
+ * share that can't be read shows the error state (`ShareRefusalNotice`:
+ * its problems field by field, with *Copy errors for your assistant*;
+ * that it's damaged; or that a newer fooboard made it); one that can
+ * lists its dashboards and the choices
  * (`ImportForm`). *Replace the whole setup* asks for confirmation in an
  * alert dialog. While a question about a secret that differs is
  * unanswered, *Import* is disabled and says why (`aria-describedby`).
  * Nothing is written until *Import*; cancelling discards
- * the share. After an import the app opens the imported dashboard, or the
- * home page when there were several.
+ * the share. After an import the app opens the imported dashboard, with
+ * its credentials panel open on the first credential that has no secret
+ * here (`landingAfter`, spec 0.2.0 §3.J *Keys on arrival*), or the home
+ * page when there were several.
  *
  * @module
  */
@@ -26,25 +30,20 @@ import {
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { describeError } from '@/lib/errors';
-import { dashboardPath, HOME_PATH } from '@/pages/paths';
 import { dashboardsOf } from '@/storage/configStore';
 import { useStores } from '@/storage/storesContext';
 
 import { applyImport } from '../applyImport';
 import type { Share, ShareRead } from '../envelope';
 import type { ImportPlan } from '../importPlan';
+import { landingAfter } from '../landing';
 import type { LinkPayload } from '../link';
 import { readLink } from '../readLink';
 import { DIALOG_SCROLLS } from './dialogClass';
 import { ImportForm } from './ImportForm';
 import { ShareInputs } from './ShareInputs';
-import {
-  ANSWER_TO_IMPORT,
-  refusalHint,
-  refusalMessage,
-  type ShareOrigin,
-  shareSummary,
-} from './shareWords';
+import { ShareRefusalNotice } from './ShareRefusalNotice';
+import { ANSWER_TO_IMPORT, type ShareOrigin, shareSummary } from './shareWords';
 import { useImportForm } from './useImportForm';
 
 function ImportChoices({
@@ -163,6 +162,7 @@ export function ImportDialog({
   link: LinkPayload | null;
 }): React.JSX.Element {
   const navigate = useNavigate();
+  const stores = useStores();
   // Each file or pasted link read gets its own form (`n`), whatever it
   // holds.
   const [chosen, setChosen] = useState<{
@@ -201,16 +201,7 @@ export function ImportDialog({
           />
         )}
         {read && !read.ok && (
-          <>
-            <p role="alert" className="text-sm text-status-failure">
-              {refusalMessage(read.reason, origin)}
-            </p>
-            {read.reason !== 'newer' && (
-              <p className="text-sm text-muted-foreground">
-                {refusalHint(origin)}
-              </p>
-            )}
-          </>
+          <ShareRefusalNotice refusal={read} origin={origin} />
         )}
         {read?.ok && (
           <p className="text-sm text-muted-foreground">
@@ -224,12 +215,11 @@ export function ImportDialog({
             onCancel={close}
             onDone={(plan) => {
               close();
-              const [only] = plan.imported;
-              navigate(
-                plan.imported.length === 1 && only
-                  ? dashboardPath(only)
-                  : HOME_PATH,
+              const { path, state } = landingAfter(
+                plan,
+                (id) => stores.credentials.get(id) !== undefined,
               );
+              navigate(path, state ? { state } : undefined);
             }}
           />
         )}

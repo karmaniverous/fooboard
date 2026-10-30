@@ -75,11 +75,11 @@ describe('importing from a file', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Open import' }));
     await chooseFile('{"dashboards": [');
     expect(await within(dialog()).findByRole('alert')).toHaveTextContent(
-      "This file isn't a fooboard board, or it's damaged.",
+      "This file has problems fooboard can't import:",
     );
     expect(
-      within(dialog()).getByText('Ask whoever sent it for a new file.'),
-    ).toBeVisible();
+      within(dialog()).getByRole('list', { name: 'Import errors' }),
+    ).toHaveTextContent(/^share: not JSON: /);
     await chooseFile(JSON.stringify(buildEnvelope([shareBoard()], null)));
     await waitFor(() => {
       expect(within(dialog()).queryByRole('alert')).toBeNull();

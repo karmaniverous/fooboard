@@ -10,6 +10,9 @@
  * note count the entries the dashboard's dismissals don't hide (spec
  * 0.2.0 §3.I); when a dismissal leaves none, the panel closes with its
  * button and focus goes to the board's title, which this view owns.
+ * Opened after an import to ask for a credential's secret
+ * (`openCredential`), the credentials panel starts open on it (spec 0.2.0
+ * §3.J *Keys on arrival*).
  *
  * @module
  */
@@ -91,6 +94,7 @@ export function DashboardView({
   others,
   firstRun = false,
   onFirstRunDone,
+  openCredential,
   onSave,
 }: {
   initial: Dashboard;
@@ -100,6 +104,8 @@ export function DashboardView({
   firstRun?: boolean;
   /** The first run's note closed (the page forgets it was opened so). */
   onFirstRunDone?: () => void;
+  /** The credential whose secret to ask for as the board opens. */
+  openCredential?: string;
   /** Keep an edited dashboard (saved, or in memory for the demo). */
   onSave: (dashboard: Dashboard) => void;
 }): React.JSX.Element {
@@ -129,6 +135,13 @@ export function DashboardView({
   const shownOf = (unmapped: readonly UnmappedRun[]) =>
     splitUnmapped(unmapped, dashboard.unmappedDismissals).shown.length;
   const [editorOpen, setEditorOpen] = useState(false);
+  const [credentialsOpen, setCredentialsOpen] = useState(
+    openCredential !== undefined,
+  );
+  // Made once, so the panel opens the credential once.
+  const [askFor] = useState(() =>
+    openCredential === undefined ? undefined : { key: openCredential },
+  );
   const [draft, setDraft] = useState<{ n: number; draft?: EditorDraft }>({
     n: 0,
   });
@@ -175,6 +188,7 @@ export function DashboardView({
                 <ProblemsPanel
                   dashboard={dashboard}
                   problems={problems.shown}
+                  copyable={problems.config}
                   onFix={(p) => {
                     openEditor(problemDraft(p));
                   }}
@@ -243,6 +257,8 @@ export function DashboardView({
               />
             </BoardActionPanel>
             <BoardActionPanel
+              open={credentialsOpen}
+              onOpenChange={setCredentialsOpen}
               title={CREDENTIALS}
               label={missing ? ADD_A_CREDENTIAL : CREDENTIALS}
               Icon={CREDENTIALS_ICON}
@@ -253,6 +269,7 @@ export function DashboardView({
                 otherDashboards={others}
                 onChange={save}
                 keyApps={(id) => model.amplifyKeyApps[id]}
+                openOn={askFor}
               />
             </BoardActionPanel>
           </>
