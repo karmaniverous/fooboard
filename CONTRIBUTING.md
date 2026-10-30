@@ -53,7 +53,7 @@ Amplify Hosting serves three sites, one per long-running branch:
 
 The password isn't a secret: it guards against opening the wrong version by accident, not against access. Production is public: its password came off once the first release was deployed to `prod`.
 
-The three sites share one _Rewrites and redirects_ list in the Amplify console, and `amplify-rewrites.json` mirrors it: every rule, redirects included (such as the apex `https://fooboard.dev` 302 to `https://www.fooboard.dev`), in the console's order: redirects first, then one-path rewrites such as `/ai`, then the SPA rule. A rule changed in the console is changed in the file, and the file is pasted into the console as it is (README _Hosting_). The dev and preview servers and the tests refuse to start, and the build fails, if it holds a rule `vite/hosting.ts` doesn't read or breaks that order.
+The three sites share one _Rewrites and redirects_ list in the Amplify console, and `amplify-rewrites.json` mirrors it: every rule, redirects included (such as the apex `https://fooboard.dev` 302 to `https://www.fooboard.dev`), in the console's order: redirects first, then one-path rewrites such as `/ai`, then the SPA rule. A rule changed in the console is changed in the file, and the file is pasted into the console as it is (README _Hosting_). The dev and preview servers and the tests refuse to start, and the build fails, if it holds a rule `vite/hostingRules.ts` doesn't read or breaks that order.
 
 ## Quality gate (every commit)
 

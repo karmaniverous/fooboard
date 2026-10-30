@@ -10,12 +10,12 @@ import path from 'node:path';
 
 import { type Mock, vi } from 'vitest';
 
-import { parseRewrites } from './hosting.ts';
 import {
   CSP_HEADER,
   hostingMiddleware,
   REWRITES_FILE,
 } from './hostingPlugin.ts';
+import { parseRewrites } from './hostingRules.ts';
 
 /** The repository root. */
 export const ROOT = path.resolve(import.meta.dirname, '..');

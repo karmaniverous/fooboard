@@ -33,12 +33,8 @@ import rewritesRaw from '../amplify-rewrites.json?raw';
 import customHttpRaw from '../customHttp.yml?raw';
 import packageJsonRaw from '../package.json?raw';
 import viteConfigRaw from '../vite.config.ts?raw';
-import {
-  parseCustomHttp,
-  parseRewrites,
-  rewrite,
-  SPA_ENTRY,
-} from '../vite/hosting';
+import { parseCustomHttp } from '../vite/hosting';
+import { parseRewrites, rewrite, SPA_ENTRY } from '../vite/hostingRules';
 import { FIRST_RUN_PATH } from './firstRun/paths';
 import { AMPLIFY_REGIONS } from './lib/amplify/regions';
 import { cspDirectives } from './test/csp';

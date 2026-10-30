@@ -31,16 +31,14 @@ import path from 'node:path';
 
 import type { Plugin } from 'vite';
 
+import { headersFor, type HostingHeaders, parseCustomHttp } from './hosting.ts';
 import {
-  headersFor,
   hiddenFiles,
-  type HostingHeaders,
   type HostingRules,
-  parseCustomHttp,
   parseRewrites,
   rewrite,
   SPA_ENTRY,
-} from './hosting.ts';
+} from './hostingRules.ts';
 
 /** The headers file Amplify reads from the repository root. */
 export const CUSTOM_HTTP_FILE = 'customHttp.yml';

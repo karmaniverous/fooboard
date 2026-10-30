@@ -12,7 +12,7 @@ import path from 'node:path';
 import { build, preview, type PreviewServer } from 'vite';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 
-import { headersFor, parseCustomHttp, SPA_ENTRY } from './hosting';
+import { headersFor, parseCustomHttp } from './hosting';
 import {
   CSP_HEADER,
   CUSTOM_HTTP_FILE,
@@ -21,6 +21,7 @@ import {
   sitePaths,
   within,
 } from './hostingPlugin';
+import { SPA_ENTRY } from './hostingRules';
 import { read, ROOT, serve } from './serveProbe';
 
 /** A fresh temporary directory. */

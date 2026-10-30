@@ -8,8 +8,8 @@
  */
 import { describe, expect, it } from 'vitest';
 
-import { REDIRECT_STATUSES, SPA_ENTRY } from './hosting';
 import { REWRITES_FILE } from './hostingPlugin';
+import { REDIRECT_STATUSES, SPA_ENTRY } from './hostingRules';
 import { read, serve } from './serveProbe';
 
 const SERVERS = ['preview', 'dev'] as const;
