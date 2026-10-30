@@ -4,8 +4,8 @@
  * included) on the home page, the demo board, the menu, the cell detail
  * sheet, the settings popup, the *Unmapped runs* panel with a *Dismiss…*
  * form open and with *Show dismissed* on, *Set up with an AI assistant*
- * and an import refusal listing its errors (spec 0.2.0 §3.J), and the
- * error screen, in light and dark; Tab runs header, then body; the dialogs keep Tab inside; group
+ * and an import refusal listing its errors (spec 0.2.0 §3.J), the
+ * loading screen (Decision 106) and the error screen, in light and dark; Tab runs header, then body; the dialogs keep Tab inside; group
  * frames and boundary lines are hidden from assistive technology; and
  * with reduced motion nothing on the board animates.
  *
@@ -101,6 +101,23 @@ async function expectAiSetupClean(page: Page): Promise<void> {
   await page.keyboard.press('Escape');
 }
 
+/** The loading screen, held on the page by blocking the app's scripts
+ * (spec 0.2.0 §3.J *The loading screen*): it shows before the app
+ * mounts, with the name, the tagline and the link to /ai. */
+async function openLoadingScreen(page: Page): Promise<void> {
+  await page.route('**/assets/*.js', (route) => route.abort());
+  await page.goto('/');
+  await expect(
+    page.getByRole('heading', { level: 1, name: 'fooboard' }),
+  ).toBeVisible();
+  await expect(
+    page.getByText("Welcome to DevOps hell. Here's your map."),
+  ).toBeVisible();
+  await expect(
+    page.getByRole('link', { name: 'https://www.fooboard.dev/ai' }),
+  ).toHaveAttribute('href', '/ai');
+}
+
 for (const colorScheme of ['light', 'dark'] as const)
   test.describe(`in ${colorScheme}`, () => {
     test.use({ colorScheme });
@@ -153,6 +170,13 @@ for (const colorScheme of ['light', 'dark'] as const)
       }) => {
         await expectAiSetupClean(page);
       });
+    });
+
+    test('axe finds no WCAG A or AA violation on the loading screen', async ({
+      page,
+    }) => {
+      await openLoadingScreen(page);
+      expect(await violations(page)).toEqual([]);
     });
 
     test('axe finds no WCAG A or AA violation on the error screen', async ({
@@ -237,4 +261,22 @@ test.describe('with reduced motion', () => {
     );
     expect(animated).toBe(0);
   });
+
+  test("the loading screen's pulse stands still", async ({ page }) => {
+    await openLoadingScreen(page);
+    await expect(page.locator('.loading-pulse')).toHaveCSS(
+      'animation-name',
+      'none',
+    );
+  });
+});
+
+test("the loading screen's pulse moves without reduced motion", async ({
+  page,
+}) => {
+  await openLoadingScreen(page);
+  await expect(page.locator('.loading-pulse')).toHaveCSS(
+    'animation-name',
+    'loading-pulse',
+  );
 });

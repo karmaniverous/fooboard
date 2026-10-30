@@ -5,6 +5,7 @@
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <link rel="stylesheet" href="/loading.css" />
     <link
       rel="alternate"
       type="text/markdown"
@@ -27,10 +28,21 @@
   </head>
   <body>
     <div id="root">
-      <p>
-        fooboard: a deployment status board. To set up a board with an AI
-        assistant, read https://www.fooboard.dev/ai.
-      </p>
+      <div class="loading">
+        <h1 class="loading-name">
+          <img src="/favicon.svg" alt="" width="40" height="40" />
+          fooboard
+        </h1>
+        <p class="loading-tagline">
+          Welcome to DevOps hell. Here&#39;s your map.
+        </p>
+        <div class="loading-pulse" aria-hidden="true"></div>
+        <p class="loading-ai">
+          fooboard: a deployment status board. To set up a board with an AI
+          assistant, read
+          <a href="/ai">https://www.fooboard.dev/ai</a>.
+        </p>
+      </div>
     </div>
     <script type="module" src="/src/main.tsx"></script>
   </body>

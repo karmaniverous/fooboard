@@ -72,7 +72,7 @@ test('the schema answers JSON and llms.txt text', async ({ request }) => {
 test('the page points to /ai without running a script', async ({ request }) => {
   const html = await (await request.get('/')).text();
   expect(html).toMatch(
-    /<div id="root">\s*<p>[^<]*read https:\/\/www\.fooboard\.dev\/ai\.\s*<\/p>/,
+    /<div id="root">[\s\S]*read\s*<a href="\/ai">https:\/\/www\.fooboard\.dev\/ai<\/a>\.\s*<\/p>/,
   );
   expect(html).toContain('rel="alternate"');
   expect(html).toMatch(/<link[^>]*type="text\/markdown"[^>]*href="\/ai"/);
