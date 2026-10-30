@@ -35,8 +35,10 @@ export function ShareRefusalNotice({
     <>
       <p
         role="alert"
-        // The failure red is too dark on the dark dialog (axe, 4.5:1).
-        className="text-sm text-status-failure dark:text-red-400"
+        // The failure red is too dark on the dark dialog (axe, 4.5:1), and
+        // the light destructive red too pale on the light one: each
+        // theme's own token that passes.
+        className="text-sm text-status-failure dark:text-destructive"
       >
         {refusalMessage(refusal, origin)}
       </p>

@@ -54,6 +54,20 @@ describe('ShareRefusalNotice', () => {
     expect(screen.queryByText(/Ask whoever sent it/)).toBeNull();
   });
 
+  it("colours its message with the theme's tokens, the destructive one in dark, never a raw palette red", () => {
+    render(
+      <ShareRefusalNotice
+        refusal={refused('damaged', issues(1))}
+        origin="link"
+      />,
+    );
+    const classes = screen.getByRole('alert').className.split(' ');
+    expect(classes).toEqual(
+      expect.arrayContaining(['text-status-failure', 'dark:text-destructive']),
+    );
+    expect(classes.filter((c) => /red-\d/.test(c))).toEqual([]);
+  });
+
   it(`lists the first ${String(IMPORT_ISSUES_SHOWN)} and counts the rest`, () => {
     render(
       <ShareRefusalNotice
