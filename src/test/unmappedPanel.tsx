@@ -102,7 +102,7 @@ export function renderPanel(
 /** The open side panel. */
 export const panel = (): HTMLElement =>
   screen.getByRole('dialog', { name: PANEL });
-/** Open the *Dismiss…* form of the entry titled 	itle. */
+/** Open the *Dismiss…* form of the entry titled `title`. */
 export const openForm = (title: string): HTMLElement => {
   const item = within(panel()).getByRole('link', { name: title }).closest('li');
   if (!item) throw new Error(`no entry ${title}`);

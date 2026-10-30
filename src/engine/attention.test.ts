@@ -5,7 +5,8 @@
  * 75 s or more after it started; a dwell never cuts short a faster boost,
  * a click always restarts one; a dwell whose restart would postpone the
  * running poll (judged in real time, past half a budget too) begins it
- * when that poll completes, its cap counted from the dwell; boosts of rows no longer kept are dropped.
+ * when that poll completes, its cap counted from the dwell; boosts of
+ * rows no longer kept are dropped.
  * The cache reader takes only root needs, with data or an error.
  *
  * @module
