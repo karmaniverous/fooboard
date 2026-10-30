@@ -1,7 +1,7 @@
 # Amplify Hosting build spec (spec.md §3.10, Decision 24): Node 22, a clean
 # install from the lockfile, the production build, and `dist` as the site.
-# The response headers are in customHttp.yml and the SPA rewrite in
-# amplify-rewrites.json; src/workflows.test.ts checks all three.
+# The response headers are in customHttp.yml and the rewrites and redirects
+# in amplify-rewrites.json; src/workflows.test.ts checks all three.
 version: 1
 frontend:
   phases:
