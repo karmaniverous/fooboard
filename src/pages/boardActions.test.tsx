@@ -2,9 +2,10 @@
  * A saved dashboard's actions beside its title (spec 0.2.0 §3.A; #53):
  * icon buttons named by the title of what each opens, with its count,
  * after the batteries; every one ghost, as the header's buttons are, its
- * emphasis the icon's colour (Decision 104): *Problems* destructive and
- * *Add a credential* primary; a button with a count only while its count
- * is above zero;
+ * emphasis the icon's colour (Decision 104), *Problems* destructive, or
+ * for *Add a credential* the attention dot on its icon, decorative, with
+ * no primary colour anywhere (Decision 105); a button with a count only
+ * while its count is above zero;
  * the panel *Notes (N)* opens is titled *Notes*; a counted button's
  * tooltip is its name, count included. (The demo's actions,
  * *Unmapped runs (N)* among them, are found by name in
@@ -50,12 +51,22 @@ const iconTone = (button: HTMLElement): string | undefined =>
     ?.split(' ')
     .find((c) => /^text-(destructive|primary)$/.test(c));
 
+/** The attention dot on `button`'s icon, if it has one. */
+const dotOf = (button: HTMLElement): Element | null =>
+  button.querySelector('[data-action-dot]');
+
+/** Does `button`, or anything in it, take the primary colour? */
+const primaryIn = (button: HTMLElement): boolean =>
+  [button, ...button.querySelectorAll('*')].some((el) =>
+    /(^|\s)text-primary(\s|$)/.test(el.getAttribute('class') ?? ''),
+  );
+
 /** The board has read its rows (none has a credential). */
 const settled = () =>
   screen.findAllByRole('button', { name: /needs credential/, hidden: true });
 
 describe('the board actions', () => {
-  it('asks for a credential with a primary icon, every button ghost', async () => {
+  it('asks for a credential with a dot on its icon, every button ghost', async () => {
     await renderDashboardPage({ id: 'mine', name: 'My board' });
     expect(actionNames()).toEqual([
       'Legend',
@@ -64,9 +75,14 @@ describe('the board actions', () => {
     ]);
     for (const name of ['Legend', 'Edit dashboard', 'Add a credential'])
       expect(ghost(action(name))).toBe(true);
-    expect(iconTone(action('Add a credential'))).toBe('text-primary');
-    for (const name of ['Legend', 'Edit dashboard'])
+    const add = action('Add a credential');
+    expect(iconTone(add)).toBeUndefined();
+    expect(primaryIn(add)).toBe(false);
+    expect(dotOf(add)).toHaveAttribute('aria-hidden', 'true');
+    for (const name of ['Legend', 'Edit dashboard']) {
       expect(iconTone(action(name))).toBeUndefined();
+      expect(dotOf(action(name))).toBeNull();
+    }
     // No count above zero, so no Problems, Notes or Unmapped runs.
     expect(
       screen.queryByRole('button', { name: /^(Problems|Notes|Unmapped)/ }),
@@ -83,6 +99,8 @@ describe('the board actions', () => {
     });
     expect(ghost(action('Credentials'))).toBe(true);
     expect(iconTone(action('Credentials'))).toBeUndefined();
+    expect(dotOf(action('Credentials'))).toBeNull();
+    expect(primaryIn(action('Credentials'))).toBe(false);
     // The battery comes first, before Legend.
     const actions = screen.getByTestId('board-actions');
     const battery =

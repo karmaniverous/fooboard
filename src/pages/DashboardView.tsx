@@ -246,7 +246,7 @@ export function DashboardView({
               title={CREDENTIALS}
               label={missing ? ADD_A_CREDENTIAL : CREDENTIALS}
               Icon={CREDENTIALS_ICON}
-              tone={missing ? 'primary' : 'plain'}
+              dot={missing}
             >
               <CredentialsPanel
                 dashboard={dashboard}

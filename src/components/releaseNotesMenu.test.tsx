@@ -75,7 +75,11 @@ describe('Release notes', () => {
     );
     const link = releaseNotes();
     expect(link).toHaveAccessibleName('Release notes (new release)');
-    expect(link.querySelector('[data-release-notes-dot]')).not.toBeNull();
+    // The shared attention dot (Decision 105): decoration.
+    expect(link.querySelector('[data-release-notes-dot]')).toHaveAttribute(
+      'aria-hidden',
+      'true',
+    );
 
     fireEvent.click(link);
     expect(dotShown()).toBe(false);

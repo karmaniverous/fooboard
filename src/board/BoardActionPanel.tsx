@@ -16,6 +16,7 @@ export function BoardActionPanel({
   label,
   Icon,
   tone,
+  dot,
   open,
   onOpenChange,
   onCloseAutoFocus,
@@ -28,6 +29,8 @@ export function BoardActionPanel({
   Icon: LucideIcon;
   /** Its icon's emphasis (Decision 104). */
   tone?: ActionTone;
+  /** The attention dot on its icon (Decision 105). */
+  dot?: boolean;
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
   /** Where focus goes as the panel closes (`SidePanel`). */
@@ -41,7 +44,9 @@ export function BoardActionPanel({
       open={open}
       onOpenChange={onOpenChange}
       onCloseAutoFocus={onCloseAutoFocus}
-      trigger={<BoardActionButton label={label} Icon={Icon} tone={tone} />}
+      trigger={
+        <BoardActionButton label={label} Icon={Icon} tone={tone} dot={dot} />
+      }
     >
       {children}
     </SidePanel>
