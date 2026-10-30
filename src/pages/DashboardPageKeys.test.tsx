@@ -46,13 +46,18 @@ describe('keys on arrival', () => {
     expect(panel()).toBeVisible();
     expect(isOpen('acme B')).toBe(true);
     expect(isOpen('acme A')).toBe(false);
-    // Forgotten at once: a reload or Back opens the board alone.
-    expect(screen.getByTestId('location-state')).toHaveTextContent('null');
+    // Forgotten at once: a reload or Back opens the board alone. A reload
+    // reopens the entry with the state history now holds for it.
+    const held: unknown = JSON.parse(
+      screen.getByTestId('location-state').textContent,
+    );
     cleanup();
     await act(async () => {
-      await renderFirstRun('/d/acme', stores);
+      await renderFirstRun({ pathname: '/d/acme', state: held }, stores);
     });
     expect(panel()).toBeNull();
+    expect(screen.getByRole('heading', { name: 'Acme' })).toBeVisible();
+    expect(held).toBeNull();
   });
 
   it('keeps the panel closed when the board is opened any other way', async () => {
