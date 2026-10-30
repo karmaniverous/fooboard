@@ -89,14 +89,47 @@ const parses = (text: string): boolean => {
   }
 };
 
-/** `text` percent-decoded, or as it is if that throws. */
-const percentDecoded = (text: string): string => {
+/** `text` percent-decoded, or nothing if that throws. */
+const decoded = (text: string): string | undefined => {
   try {
     return decodeURIComponent(text);
   } catch {
-    return text;
+    return undefined;
   }
 };
+
+/** `text` percent-decoded, or as it is if that throws. */
+const percentDecoded = (text: string): string => decoded(text) ?? text;
+
+/** A run of percent escapes. */
+const ESCAPE_RUN = /(?:%[0-9A-Fa-f]{2})+/g;
+/** The most escapes one character's UTF-8 takes. */
+const MAX_UTF8_ESCAPES = 4;
+
+/** A run of escapes decoded character by character: each escape starts
+ * the shortest sequence that decodes, or is kept as it is when none
+ * does (a lone or stray byte). */
+function escapeRunDecoded(run: string): string {
+  const escapes = run.match(/%../g) ?? [];
+  let out = '';
+  for (let i = 0; i < escapes.length;) {
+    let n = 1;
+    let char: string | undefined;
+    for (; n <= MAX_UTF8_ESCAPES && i + n <= escapes.length; n++) {
+      char = decoded(escapes.slice(i, i + n).join(''));
+      if (char !== undefined) break;
+    }
+    out += char ?? escapes[i];
+    i += char === undefined ? 1 : n;
+  }
+  return out;
+}
+
+/** `text` percent-decoded tolerantly: each run of escapes on its own, a
+ * malformed one (`%`, `%zz`, a lone `%E2`) kept as it is, so a stray
+ * escape after a pasted link can't stop the link itself decoding. */
+const percentDecodedTolerantly = (text: string): string =>
+  text.replace(ESCAPE_RUN, (run) => decoded(run) ?? escapeRunDecoded(run));
 
 /**
  * Decode a `#j=` link's payload (spec 0.2.0 §3.J). The JSON form starts
@@ -146,15 +179,14 @@ const toBalancingBrace = (text: string): string =>
 /** A pasted `#j=` payload decoded, cut where the link ends, so text after
  * it (a full stop, Slack's `>`, a line break, more words) is never read:
  * raw JSON at its balancing brace; percent-encoded JSON percent-decoded
- * up to the first whitespace and then cut the same way (spec 0.2.0 §3.J
- * *Pasted percent-encoded links*); base64 at the end of its run. */
+ * up to the first whitespace, tolerantly (a stray escape after it is
+ * kept as it is), and then cut the same way (spec 0.2.0 §3.J *Pasted
+ * percent-encoded links*); base64 at the end of its run. */
 function pastedJsonPayload(rest: string): LinkPayload {
   if (ENCODED_OPEN.test(rest)) {
-    const decoded = percentDecoded(TO_WHITESPACE.exec(rest)?.[0] ?? '');
-    return {
-      kind: 'text',
-      text: decoded.startsWith(OPEN) ? toBalancingBrace(decoded) : decoded,
-    };
+    // Tolerant, so the leading `%7B` always decodes to `{`.
+    const text = percentDecodedTolerantly(TO_WHITESPACE.exec(rest)?.[0] ?? '');
+    return { kind: 'text', text: toBalancingBrace(text) };
   }
   if (rest.startsWith(OPEN)) return decodeJsonPayload(toBalancingBrace(rest));
   return decodeJsonPayload(BASE64_RUN.exec(rest)?.[0] ?? '');

@@ -5,7 +5,8 @@
  * percent-encoded or raw JSON) reads the same share as the `#b=` link
  * fooboard makes; raw JSON holding a literal `%` reads; a pasted link is
  * cut where it ends, raw JSON at its balancing brace and percent-encoded
- * JSON at its balancing brace once decoded; and a payload that
+ * JSON at its balancing brace once decoded, tolerantly, so a malformed
+ * escape glued after it is kept as it is; and a payload that
  * isn't base64 or UTF-8 is refused as damaged.
  *
  * @module
@@ -161,8 +162,32 @@ describe('pasted #j= links', () => {
       'raw JSON with its quotes percent-encoded, then a full stop',
       `${at(json.replaceAll('"', '%22'))}.`,
     ],
+    // A malformed escape glued on can't stop the link itself decoding.
+    ['percent-encoded JSON, then a lone %', `${at(encodeURIComponent(json))}%`],
+    ['percent-encoded JSON, then %zz', `${at(encodeURIComponent(json))}%zz`],
+    [
+      'percent-encoded JSON, then half a character',
+      `${at(encodeURIComponent(json))}%E2`,
+    ],
+    [
+      'percent-encoded JSON, then a bracket and a stray %',
+      `${at(encodeURIComponent(json))})%.`,
+    ],
   ])('reads %s, ignoring what follows', (_form, text) => {
     expect(pasted(text)).toEqual(twin);
+  });
+
+  it('decodes each character of a malformed run of escapes it can, keeping the rest', () => {
+    const named = { ...board, name: 'café €' };
+    const encoded = encodeURIComponent(
+      JSON.stringify(buildEnvelope([named], null)),
+    );
+    const read = pasted(`${at(encoded)}%FF%E2%82`);
+    expect(read.ok && read.share.dashboards[0]?.name).toBe('café €');
+    expect(pastedLink(at('%7B%C3%A9%FF%E2%82%AC%E2%82'))).toEqual({
+      kind: 'text',
+      text: '{é%FF€%E2%82',
+    });
   });
 
   it('cuts percent-encoded JSON at the brace that balances, not at one inside a string', () => {
