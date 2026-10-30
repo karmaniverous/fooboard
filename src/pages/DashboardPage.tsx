@@ -7,11 +7,14 @@
  * (`appQueryEnv`). Opened at the end of the first run, the board is its
  * last step (§3.9, `FirstRunNote`). Opened after an import to ask for a
  * credential's secret, its credentials panel opens on it, once (spec
- * 0.2.0 §3.J *Keys on arrival*).
+ * 0.2.0 §3.J *Keys on arrival*), even when the import replaced the
+ * dashboard already open here: each such arrival opens the board afresh.
+ * Each arrival is its navigation's `location.key`, and the view is keyed
+ * by it, so clearing the request (another navigation) keeps the view.
  *
  * @module
  */
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 
 import { isFirstRunState, openCredentialOf } from '@/firstRun/paths';
@@ -34,6 +37,11 @@ export function DashboardPage(): React.JSX.Element {
   const { pathname } = location;
   const state: unknown = location.state;
   const openCredential = openCredentialOf(state);
+  // The navigation that last asked for a credential: a new one (an import
+  // landing here again) remounts the view on the imported dashboard.
+  const asking = openCredential === undefined ? undefined : location.key;
+  const [arrival, setArrival] = useState(asking);
+  if (asking !== undefined && asking !== arrival) setArrival(asking);
   // Asked once: a reload or Back no longer reopens the panel.
   useEffect(() => {
     if (openCredential !== undefined)
@@ -45,7 +53,7 @@ export function DashboardPage(): React.JSX.Element {
   return (
     <QueryProvider env={env}>
       <DashboardView
-        key={dashboard.id}
+        key={`${dashboard.id}:${arrival ?? ''}`}
         initial={dashboard}
         others={dashboards.filter((d) => d.id !== dashboard.id)}
         firstRun={isFirstRunState(state)}
