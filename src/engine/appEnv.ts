@@ -16,7 +16,10 @@
  * removed answers are gone from IndexedDB before a quick close (spec
  * 0.2.0 §3.C, #33). A removal heard while the
  * cache is being restored is applied again once it is, before any board
- * shows it, so the restore can't bring the removed data back.
+ * shows it, so the restore can't bring the removed data back. Battery
+ * readings are saved in local storage for remembered secrets and
+ * restored with the environment (Decision 109); removing a credential's
+ * data removes its saved reading.
  *
  * @module
  */
@@ -26,6 +29,7 @@ import { keepsQuery } from '@/persist/keeps';
 import { CACHE_GC_TIME_MS, persistQueryCache } from '@/persist/persistence';
 import { createQueryEnv, type QueryEnv } from '@/query/client';
 import type { AppStores } from '@/storage';
+import { savedFor } from '@/storage/savedBudgets';
 
 import { credentialProviders } from './credentialProviders';
 
@@ -46,6 +50,11 @@ function createAppQueryEnv(stores: AppStores): AppQueryEnv {
   const env = createQueryEnv({
     providers: (hooks) => credentialProviders(credentials, hooks),
     gcTime: CACHE_GC_TIME_MS,
+    // Battery readings outlive a reload for remembered secrets only, as
+    // their reads do (Decision 109).
+    savedBudgets: savedFor(stores.budgets, (id) =>
+      credentials.isRemembered(id),
+    ),
   });
   const persistence = persistQueryCache({
     client: env.client,

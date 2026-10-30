@@ -16,7 +16,12 @@ export {
 } from './api';
 export { RateLimitedError } from './errors';
 export { mapRunWithJobs, mapWorkflowRun } from './mapToDerivation';
-export { isOverPollingShare, type RateLimitBudget } from './rateLimit';
+export {
+  budgetFrom,
+  isOverPollingShare,
+  type RateLimitBudget,
+  supersedes,
+} from './rateLimit';
 export {
   attemptOf,
   type Branch,
