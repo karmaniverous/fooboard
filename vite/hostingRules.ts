@@ -7,7 +7,7 @@
  * The parser accepts only the subset fooboard uses and throws on anything
  * else, so the local server can never quietly serve less than Amplify
  * would: the console's whole list of rules, in order (Decision 110):
- * redirects first (301, 302 or 307, from a plain path or a full URL such
+ * redirects first (301 or 302, from a plain path or a full URL such
  * as the apex `https://fooboard.dev`, to a path or a URL), then 200
  * rewrites from one plain path to one file (`/ai` → `/ai.md`), then 200
  * rewrites to the page from an Amplify regular expression (`</regex/>`),
@@ -32,12 +32,29 @@ const REGEX_SOURCE = /^<\/(.+)\/>$/;
 const literal = (text: string): string =>
   text.replace(/[.*+?^${}()|[\]\\/]/g, '\\$&');
 
-/** The statuses a redirect rule may have: permanent (301), temporary
- * (302) and temporary keeping the method (307). */
-export const REDIRECT_STATUSES = ['301', '302', '307'] as const;
+/** The statuses a redirect rule may have: permanent (301) and temporary
+ * (302), the redirects Amplify offers (it has no 307 or 308). */
+export const REDIRECT_STATUSES = ['301', '302'] as const;
 
 /** A redirect rule's status. */
 export type RedirectStatus = (typeof REDIRECT_STATUSES)[number];
+
+/** The statuses fooboard reads: a 200 rewrite's and the redirects'. */
+const STATUSES: readonly string[] = ['200', ...REDIRECT_STATUSES];
+
+/** Each rule's status, checked before its shape, so a status fooboard
+ * doesn't read (a 307) is named plainly rather than as no rule matching. */
+const StatusSchema = z.array(
+  z.looseObject({
+    status: z.string().superRefine((status, ctx) => {
+      if (!STATUSES.includes(status))
+        ctx.addIssue({
+          code: 'custom',
+          message: `Status ${status} is not one fooboard reads: a redirect is 301 or 302 (Amplify offers no other), a rewrite 200`,
+        });
+    }),
+  }),
+);
 
 /** Whether `text` is an absolute `http:` or `https:` URL. */
 const isHttpUrl = (text: string): boolean =>
@@ -79,77 +96,82 @@ const RULE_NAMES: Record<(typeof RULE_ORDER)[number], string> = {
   page: 'the SPA rule',
 };
 
-const RewritesSchema = z
-  .array(
-    z.union([
-      z
-        .strictObject({
-          source: z
-            .string()
-            .refine(isPathOrUrl, 'not a plain path or an http(s) URL'),
-          status: z.enum(REDIRECT_STATUSES),
-          target: z
-            .string()
-            .refine(isPathOrUrl, 'not a plain path or an http(s) URL'),
-        })
-        .transform(({ source, status, target }) => ({
-          kind: 'redirect' as const,
-          redirect: {
-            path: ONE_PATH.test(source) ? source : undefined,
-            status,
-            target,
-          },
-        })),
-      z
-        .strictObject({
-          source: z
-            .string()
-            .regex(ONE_PATH, 'not a plain path')
-            .transform((source) => new RegExp(`^${literal(source)}$`)),
-          status: z.literal('200'),
-          target: z.string().regex(FILE_PATH, 'not a file path'),
-        })
-        .transform(({ source, target }) => ({
-          kind: 'file' as const,
-          rewrite: { source, target },
-        })),
-      z
-        .strictObject({
-          source: z.string().transform((source, ctx) => {
-            const body = REGEX_SOURCE.exec(source)?.[1];
-            if (body !== undefined) return new RegExp(body);
-            ctx.addIssue({ code: 'custom', message: 'not a </regex/> source' });
-            return z.NEVER;
-          }),
-          status: z.literal('200'),
-          target: z.literal(SPA_ENTRY),
-        })
-        .transform(({ source, target }) => ({
-          kind: 'page' as const,
-          rewrite: { source, target },
-        })),
-    ]),
-  )
-  .min(1)
-  .superRefine((rules, ctx) => {
-    rules.slice(1).forEach(({ kind }, i) => {
-      const before = rules[i].kind;
-      if (RULE_ORDER.indexOf(kind) < RULE_ORDER.indexOf(before))
-        ctx.addIssue({
-          code: 'custom',
-          path: [i + 1],
-          message: `Rule ${String(i + 2)}, ${RULE_NAMES[kind]}, follows ${RULE_NAMES[before]}: list the redirects first, then the one-path rewrites, then the SPA rule`,
-        });
-    });
-  })
-  .transform((rules): HostingRules => ({
-    redirects: rules.flatMap((rule) =>
-      rule.kind === 'redirect' ? [rule.redirect] : [],
-    ),
-    rewrites: rules.flatMap((rule) =>
-      rule.kind === 'redirect' ? [] : [rule.rewrite],
-    ),
-  }));
+const RewritesSchema = StatusSchema.pipe(
+  z
+    .array(
+      z.union([
+        z
+          .strictObject({
+            source: z
+              .string()
+              .refine(isPathOrUrl, 'not a plain path or an http(s) URL'),
+            status: z.enum(REDIRECT_STATUSES),
+            target: z
+              .string()
+              .refine(isPathOrUrl, 'not a plain path or an http(s) URL'),
+          })
+          .transform(({ source, status, target }) => ({
+            kind: 'redirect' as const,
+            redirect: {
+              path: ONE_PATH.test(source) ? source : undefined,
+              status,
+              target,
+            },
+          })),
+        z
+          .strictObject({
+            source: z
+              .string()
+              .regex(ONE_PATH, 'not a plain path')
+              .transform((source) => new RegExp(`^${literal(source)}$`)),
+            status: z.literal('200'),
+            target: z.string().regex(FILE_PATH, 'not a file path'),
+          })
+          .transform(({ source, target }) => ({
+            kind: 'file' as const,
+            rewrite: { source, target },
+          })),
+        z
+          .strictObject({
+            source: z.string().transform((source, ctx) => {
+              const body = REGEX_SOURCE.exec(source)?.[1];
+              if (body !== undefined) return new RegExp(body);
+              ctx.addIssue({
+                code: 'custom',
+                message: 'not a </regex/> source',
+              });
+              return z.NEVER;
+            }),
+            status: z.literal('200'),
+            target: z.literal(SPA_ENTRY),
+          })
+          .transform(({ source, target }) => ({
+            kind: 'page' as const,
+            rewrite: { source, target },
+          })),
+      ]),
+    )
+    .min(1)
+    .superRefine((rules, ctx) => {
+      rules.slice(1).forEach(({ kind }, i) => {
+        const before = rules[i].kind;
+        if (RULE_ORDER.indexOf(kind) < RULE_ORDER.indexOf(before))
+          ctx.addIssue({
+            code: 'custom',
+            path: [i + 1],
+            message: `Rule ${String(i + 2)}, ${RULE_NAMES[kind]}, follows ${RULE_NAMES[before]}: list the redirects first, then the one-path rewrites, then the SPA rule`,
+          });
+      });
+    })
+    .transform((rules): HostingRules => ({
+      redirects: rules.flatMap((rule) =>
+        rule.kind === 'redirect' ? [rule.redirect] : [],
+      ),
+      rewrites: rules.flatMap((rule) =>
+        rule.kind === 'redirect' ? [] : [rule.rewrite],
+      ),
+    })),
+);
 
 /** The rules of an `amplify-rewrites.json`, each kind in its order. */
 export interface HostingRules {

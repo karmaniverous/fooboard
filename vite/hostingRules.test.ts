@@ -45,7 +45,6 @@ describe('parseRewrites', () => {
   );
 
   it.each([
-    ['an unknown status', { ...APEX, status: '308' }],
     ['a 404-200 rule', { ...APEX, source: '/<*>', status: '404-200' }],
     ['a non-http source URL', { ...APEX, source: 'ftp://fooboard.dev' }],
     ['a glob source', { ...APEX, source: '/<*>' }],
@@ -54,6 +53,15 @@ describe('parseRewrites', () => {
   ])('refuses a redirect with %s', (_why, rule) => {
     expect(() => parseRewrites(rules(rule, RULE))).toThrow();
   });
+
+  it.each(['307', '308'])(
+    'refuses a %s redirect, which Amplify does not offer, naming its status',
+    (status) => {
+      expect(() => parseRewrites(rules({ ...APEX, status }, RULE))).toThrow(
+        `Status ${status} is not one fooboard reads: a redirect is 301 or 302 (Amplify offers no other), a rewrite 200`,
+      );
+    },
+  );
 
   it.each([
     [
