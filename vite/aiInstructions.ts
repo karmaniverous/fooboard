@@ -5,7 +5,8 @@
  * file this site serves at `/ai.md` without a request (the CSP's
  * `connect-src` allows none to the site itself) and without importing from
  * `public/`, which Vite refuses. The app imports it lazily, so the text is
- * a chunk of its own, loaded only off production.
+ * a chunk of its own, loaded on every site when the AI setup dialog opens
+ * (Decision 108: *Copy instructions* shows everywhere).
  *
  * @module
  */
