@@ -43,13 +43,21 @@ export interface SavedBudgets {
 /** `saved`, limited to the credentials `keeps` (in the app, those whose
  * secret is remembered on this device: a session-only token's reading is
  * no use after a reload, when the token has gone, as the persisted cache
- * keeps only remembered secrets' reads). Removing works for any. */
+ * keeps only remembered secrets' reads). Loading deletes the readings of
+ * credentials it doesn't keep, so one left behind (a write racing *Reset*,
+ * a credential forgotten) can't come back as the reading of a new
+ * credential given the same id, nor hold back that credential's readings
+ * with its later reset. Removing works for any. */
 export function savedFor(
   saved: SavedBudgets,
   keeps: (credentialId: string) => boolean,
 ): SavedBudgets {
   return {
-    load: () => new Map([...saved.load()].filter(([id]) => keeps(id))),
+    load() {
+      const loaded = [...saved.load()];
+      for (const [id] of loaded) if (!keeps(id)) saved.remove(id);
+      return new Map(loaded.filter(([id]) => keeps(id)));
+    },
     save(id, budget) {
       if (keeps(id)) saved.save(id, budget);
     },

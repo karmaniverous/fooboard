@@ -3,7 +3,9 @@
  * keys load, each back as a reading with its status derived; an
  * unreadable one is skipped; a save keeps the newer of the saved and the
  * new reading; `savedFor` keeps only the credentials it is told to,
- * though it removes any; and storage refusing a write isn't an error.
+ * though it removes any, and deletes the others' readings as it loads, so
+ * a new credential reusing an id starts clean; and storage refusing a
+ * write isn't an error.
  *
  * @module
  */
@@ -74,9 +76,33 @@ describe('saved battery readings', () => {
     const kept = savedFor(inner, (id) => id === 'gh');
     kept.save('gh', reading(3000));
     kept.save('other', reading(3000));
-    expect([...kept.load().keys()]).toEqual(['gh']);
     expect([...inner.load().keys()].sort()).toEqual(['gh', 'session']);
     kept.remove('session');
     expect([...inner.load().keys()]).toEqual(['gh']);
+  });
+
+  it("savedFor deletes the readings it doesn't keep as it loads", () => {
+    const inner = createSavedBudgets(memoryStorage());
+    inner.save('gh', reading(3000));
+    inner.save('orphan', reading(1000));
+    const kept = savedFor(inner, (id) => id === 'gh');
+    expect([...kept.load().keys()]).toEqual(['gh']);
+    expect([...inner.load().keys()]).toEqual(['gh']);
+  });
+
+  it('savedFor lets a new credential reusing an id start clean', () => {
+    const inner = createSavedBudgets(memoryStorage());
+    // Left behind by a write racing Reset: an exhausted token, its window
+    // resetting later than the new token's.
+    inner.save('gh', reading(0, 200));
+    // After the reset nothing is remembered; the app loads.
+    let remembered = false;
+    const kept = savedFor(inner, () => remembered);
+    expect(kept.load().size).toBe(0);
+    // A new credential, given the same id, is remembered and read.
+    remembered = true;
+    expect(kept.load().size).toBe(0);
+    kept.save('gh', reading(4999, 100));
+    expect(kept.load().get('gh')).toEqual(reading(4999, 100));
   });
 });
