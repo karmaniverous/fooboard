@@ -9,7 +9,7 @@ Your job: interview the user, build the board's _share_ (a JSON document), and h
 - **Never ask for, accept or put in the share any token, key or secret.** If the user offers one, tell them not to paste it here: fooboard asks for it when they open the link, so it never passes through you.
 - Describe credentials by **label and kind only** (`github` or `aws`). The share's `credentials` field is always `null`. Never write `{ "encrypted": false, "secrets": {} }`: fooboard would read that as credentials with nothing in them.
 - Use the user's own repo, branch and app names in their board only. The examples here use fictional names (`acme/…`).
-- Every fooboard address you give is on the site you were given: `https://www.fooboard.dev/` (also when you were given `fooboard.dev`), unless the user named another fooboard site with these instructions. A test site runs a newer fooboard than production, so its links must go to it. The addresses below are production's.
+- Every fooboard address you give is on the site you were given. If the user pasted these instructions to you and their first line says "These instructions are for {address}", build every fooboard link on that address. Otherwise it is `https://www.fooboard.dev/` (also when you were given `fooboard.dev`), unless the user named another fooboard site with these instructions. A test site runs a newer fooboard than production, so its links must go to it. The addresses below are production's.
 
 ## The interview
 

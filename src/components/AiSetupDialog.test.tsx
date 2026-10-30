@@ -167,14 +167,29 @@ describe('AiSetupDialog copy buttons', () => {
     expect(writeText).toHaveBeenCalledWith(text);
   });
 
-  it("Copy instructions copies this site's /ai.md in full", async () => {
-    const writeText = mockClipboard();
-    renderAt(DEV);
-    fireEvent.click(button('Copy instructions'));
-    await waitFor(() => {
-      expect(writeText).toHaveBeenCalledWith(aiMd);
-    }, WAIT);
-    expect(aiMd).toMatch(/^# fooboard: set up a board, for AI assistants/);
+  it.each([
+    ['dev', DEV],
+    ['production', PRODUCTION_ORIGIN],
+    ['localhost', 'http://localhost:5173'],
+  ])(
+    "Copy instructions on %s copies a line naming the site, then this site's /ai.md in full",
+    async (_site, origin) => {
+      const writeText = mockClipboard();
+      renderAt(origin);
+      fireEvent.click(button('Copy instructions'));
+      await waitFor(() => {
+        expect(writeText).toHaveBeenCalledWith(
+          `These instructions are for ${origin}/. Build every fooboard link on that address.\n\n${aiMd}`,
+        );
+      }, WAIT);
+      expect(aiMd).toMatch(/^# fooboard: set up a board, for AI assistants/);
+    },
+  );
+
+  it('/ai.md tells an assistant given pasted instructions to build links on the address in their first line', () => {
+    expect(aiMd).toContain(
+      'If the user pasted these instructions to you and their first line says "These instructions are for {address}", build every fooboard link on that address.',
+    );
   });
 
   it('turns the icon into a check, announces Copied with no visible text, then reverts', async () => {

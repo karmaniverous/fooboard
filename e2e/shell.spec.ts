@@ -170,7 +170,8 @@ test("the AI dialog's buttons copy this site's address, prompt and /ai.md", asyn
   const dialog = page.getByRole('dialog', {
     name: 'Set up with an AI assistant',
   });
-  const ai = `${new URL(page.url()).origin}/ai`;
+  const { origin } = new URL(page.url());
+  const ai = `${origin}/ai`;
   // Windows' clipboard hands text back with CRLF line ends.
   const clipboard = async () =>
     (await page.evaluate(() => navigator.clipboard.readText())).replaceAll(
@@ -180,7 +181,10 @@ test("the AI dialog's buttons copy this site's address, prompt and /ai.md", asyn
   for (const [name, text] of [
     ['Copy link', ai],
     ['Copy prompt', `Follow the instructions at ${ai}`],
-    ['Copy instructions', await (await request.get('/ai.md')).text()],
+    [
+      'Copy instructions',
+      `These instructions are for ${origin}/. Build every fooboard link on that address.\n\n${await (await request.get('/ai.md')).text()}`,
+    ],
   ] as const) {
     const button = dialog.getByRole('button', { name });
     await button.click();

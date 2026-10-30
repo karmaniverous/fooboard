@@ -3,8 +3,9 @@
  * revised*, *Copy buttons*; Decisions 90, 107 and 108): the title, how it
  * works, then exactly two rows. *Instructions for your assistant* holds
  * this site's `/ai` address with three icon buttons: open it in a new tab,
- * copy the address, and copy the full instructions (this site's `/ai.md`,
- * to paste where an assistant can't reach the site). *Try this prompt*
+ * copy the address, and copy the full instructions (a line naming this
+ * site, then its `/ai.md`, to paste where an assistant can't reach the
+ * site). *Try this prompt*
  * holds "Follow the instructions at \{address\}" with a copy button. Every
  * button shows on every site. Opened from the navigation item and the
  * home page.
@@ -14,7 +15,7 @@
 import { ExternalLink as ExternalLinkIcon, Link } from 'lucide-react';
 import { useEffect, useId } from 'react';
 
-import { aiSetupFor, loadInstructions } from '@/ai/setup';
+import { aiSetupFor, copiedInstructions, loadInstructions } from '@/ai/setup';
 import {
   buttonVariants,
   ICON_BUTTON_CLASS,
@@ -126,7 +127,7 @@ export function AiSetupDialog({
           />
           <CopyButton
             label="Copy instructions"
-            text={load}
+            text={async () => copiedInstructions(origin, await load())}
             failed={`Couldn't copy the instructions. Open ${url} and copy them yourself.`}
           />
         </Row>
