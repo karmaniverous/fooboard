@@ -1,5 +1,10 @@
 [
   {
+    "source": "https://fooboard.dev",
+    "status": "302",
+    "target": "https://www.fooboard.dev"
+  },
+  {
     "source": "/ai",
     "status": "200",
     "target": "/ai.md"
