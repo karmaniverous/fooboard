@@ -36,6 +36,7 @@ import {
 import { cn, PINNED_FULL } from '@/lib/utils';
 import { HOME_PATH } from '@/pages/paths';
 
+import { AttentionDot } from './AttentionDot';
 import { ExternalLink } from './ExternalLink';
 import { NavControl } from './NavControl';
 import { useNavDialogs, useNavItems } from './navItems';
@@ -43,14 +44,8 @@ import { NavMenuEntry } from './NavMenuEntry';
 
 /** The unseen-version dot (spec 0.2.0 §3.D): decoration; the names say
  * it. */
-function NewDot({ className }: { className?: string }): React.JSX.Element {
-  return (
-    <span
-      aria-hidden
-      data-release-notes-dot
-      className={cn('size-2 rounded-full bg-status-started', className)}
-    />
-  );
+function NewDot({ className }: { className: string }): React.JSX.Element {
+  return <AttentionDot data-release-notes-dot className={className} />;
 }
 
 function Brand(): React.JSX.Element {

@@ -131,6 +131,7 @@ export function SidePanel({
   tooltip,
   open,
   onOpenChange,
+  onCloseAutoFocus: onClose,
   children,
 }: {
   title: string;
@@ -140,6 +141,10 @@ export function SidePanel({
   tooltip?: string;
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
+  /** Runs as the panel closes, before focus returns to the trigger;
+   * preventing its default keeps focus where the handler put it (e.g.
+   * when the trigger has gone with the panel). */
+  onCloseAutoFocus?: (e: Event) => void;
   children: React.ReactNode;
 }): React.JSX.Element {
   const { triggerProps, onCloseAutoFocus } = useTouchFocusReturn();
@@ -158,7 +163,10 @@ export function SidePanel({
       <PanelSheetContent
         side="right"
         title={title}
-        onCloseAutoFocus={onCloseAutoFocus}
+        onCloseAutoFocus={(e) => {
+          onClose?.(e);
+          if (!e.defaultPrevented) onCloseAutoFocus(e);
+        }}
       >
         {children}
       </PanelSheetContent>

@@ -16,7 +16,9 @@
  *
  * `SettingsPopupProvider` holds the one popup and renders it beside the
  * board's viewport, not inside it, so events in the popup never reach the
- * board's zoom keys or panning.
+ * board's zoom keys or panning. Every popup opens through its `open`, so
+ * that is where opening a cell's, row's or row group's settings boosts
+ * the polling of the rows it covers (spec 0.2.0 §3.H).
  *
  * @module
  */
@@ -42,6 +44,7 @@ import { OpenPlaceContext } from '@/editors/settings/openPlace';
 import { SettingsEntries } from '@/editors/settings/SettingsEditor';
 import { useValidatedChange } from '@/editors/useValidatedChange';
 
+import { placeTarget, useAttend } from './attentionContext';
 import { popupTitle } from './settingsGearWords';
 import {
   type PopupRequest,
@@ -174,8 +177,14 @@ export function SettingsPopupProvider({
   children: React.ReactNode;
 }): React.JSX.Element {
   const [request, setRequest] = useState<PopupRequest | null>(null);
+  const attend = useAttend();
+  const open = (next: PopupRequest) => {
+    const target = placeTarget(next.place);
+    if (target) attend(target, 'click');
+    setRequest(next);
+  };
   return (
-    <SettingsPopupContext value={{ dashboard, request, open: setRequest }}>
+    <SettingsPopupContext value={{ dashboard, request, open }}>
       {children}
       {request && (
         <SettingsPopup

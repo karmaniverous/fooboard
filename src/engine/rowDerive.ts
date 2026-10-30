@@ -41,6 +41,9 @@ export interface DeriveEnv {
   now: () => number;
   /** When a query's fetch under way started (Decision 47). */
   fetchStartedAt: RefreshClock['fetchStartedAt'];
+  /** A row's current boost interval (unmultiplied), if the user's
+   * interest has boosted it (spec 0.2.0 §3.H). */
+  boostOf: (rowId: string) => number | undefined;
 }
 
 /** A derived row. */
@@ -79,6 +82,7 @@ export function githubContext(
     rulesFor: (row: GithubRow, stageId) =>
       cellRulesFor(dashboard, row, stageId),
     overBudget: overBudget(env, credentialId),
+    boostOf: env.boostOf,
     now: env.now(),
     fetchStartedAt: env.fetchStartedAt,
   };
@@ -105,6 +109,7 @@ export function amplifyContext(
     },
     keyLabel: (id) => credentialName(dashboard, id),
     source: sourceRuleFor(dashboard, 'amplify'),
+    boostOf: env.boostOf,
     now: env.now(),
     fetchStartedAt: env.fetchStartedAt,
   };

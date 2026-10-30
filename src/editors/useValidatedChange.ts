@@ -14,8 +14,9 @@ import { type Dashboard, DashboardSchema } from '@/domain/config/dashboard';
 import { describeError } from '@/lib/errors';
 
 export function useValidatedChange(onChange: (dashboard: Dashboard) => void): {
-  /** Validate `next` and save it, or record why not. */
-  update: (next: Dashboard) => void;
+  /** Validate `next` and save it, or record why not; says whether it
+   * was saved. */
+  update: (next: Dashboard) => boolean;
   /** Why the last change wasn't saved, if it wasn't. */
   error: string | null;
 } {
@@ -24,13 +25,15 @@ export function useValidatedChange(onChange: (dashboard: Dashboard) => void): {
     const parsed = DashboardSchema.safeParse(next);
     if (!parsed.success) {
       setError(parsed.error.issues.map((i) => i.message).join('; '));
-      return;
+      return false;
     }
     try {
       onChange(parsed.data);
       setError(null);
+      return true;
     } catch (err) {
       setError(describeError(err));
+      return false;
     }
   };
   return { update, error };

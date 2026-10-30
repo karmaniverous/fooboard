@@ -1,8 +1,11 @@
 /**
  * A saved dashboard's actions beside its title (spec 0.2.0 §3.A; #53):
- * icon buttons named by the title of what each opens, with its count;
- * *Problems* destructive and *Add a credential* primary, the rest
- * outlined; a button with a count only while its count is above zero;
+ * icon buttons named by the title of what each opens, with its count,
+ * after the batteries; every one ghost, as the header's buttons are, its
+ * emphasis the icon's colour (Decision 104), *Problems* destructive, or
+ * for *Add a credential* the attention dot on its icon, decorative, with
+ * no primary colour anywhere (Decision 105); a button with a count only
+ * while its count is above zero;
  * the panel *Notes (N)* opens is titled *Notes*; a counted button's
  * tooltip is its name, count included. (The demo's actions,
  * *Unmapped runs (N)* among them, are found by name in
@@ -35,21 +38,51 @@ const actionNames = (): string[] =>
 const action = (name: string | RegExp): HTMLElement =>
   within(screen.getByTestId('board-actions')).getByRole('button', { name });
 
+/** Is `button` in the header's ghost style: no outline or fill? */
+const ghost = (button: HTMLElement): boolean =>
+  !/(^|\s)(border|bg-)/.test(button.className) &&
+  button.className.includes('hover:bg-accent');
+
+/** The colour class of `button`'s icon, if any. */
+const iconTone = (button: HTMLElement): string | undefined =>
+  button
+    .querySelector('svg')
+    ?.getAttribute('class')
+    ?.split(' ')
+    .find((c) => /^text-(destructive|primary)$/.test(c));
+
+/** The attention dot on `button`'s icon, if it has one. */
+const dotOf = (button: HTMLElement): Element | null =>
+  button.querySelector('[data-action-dot]');
+
+/** Does `button`, or anything in it, take the primary colour? */
+const primaryIn = (button: HTMLElement): boolean =>
+  [button, ...button.querySelectorAll('*')].some((el) =>
+    /(^|\s)text-primary(\s|$)/.test(el.getAttribute('class') ?? ''),
+  );
+
 /** The board has read its rows (none has a credential). */
 const settled = () =>
   screen.findAllByRole('button', { name: /needs credential/, hidden: true });
 
 describe('the board actions', () => {
-  it('asks for a credential with a primary button, the rest outlined', async () => {
+  it('asks for a credential with a dot on its icon, every button ghost', async () => {
     await renderDashboardPage({ id: 'mine', name: 'My board' });
     expect(actionNames()).toEqual([
       'Legend',
       'Edit dashboard',
       'Add a credential',
     ]);
-    expect(action('Add a credential')).toHaveClass('bg-primary');
-    for (const name of ['Legend', 'Edit dashboard'])
-      expect(action(name)).toHaveClass('border-border');
+    for (const name of ['Legend', 'Edit dashboard', 'Add a credential'])
+      expect(ghost(action(name))).toBe(true);
+    const add = action('Add a credential');
+    expect(iconTone(add)).toBeUndefined();
+    expect(primaryIn(add)).toBe(false);
+    expect(dotOf(add)).toHaveAttribute('aria-hidden', 'true');
+    for (const name of ['Legend', 'Edit dashboard']) {
+      expect(iconTone(action(name))).toBeUndefined();
+      expect(dotOf(action(name))).toBeNull();
+    }
     // No count above zero, so no Problems, Notes or Unmapped runs.
     expect(
       screen.queryByRole('button', { name: /^(Problems|Notes|Unmapped)/ }),
@@ -61,14 +94,27 @@ describe('the board actions', () => {
       id: 'mine',
       name: 'My board',
       credentials: [{ id: 'gh', kind: 'github', label: 'GitHub token' }],
+      settings: { githubToken: 'gh' },
+      rows: [githubRow],
     });
-    expect(action('Credentials')).toHaveClass('border-border');
+    expect(ghost(action('Credentials'))).toBe(true);
+    expect(iconTone(action('Credentials'))).toBeUndefined();
+    expect(dotOf(action('Credentials'))).toBeNull();
+    expect(primaryIn(action('Credentials'))).toBe(false);
+    // The battery comes first, before Legend.
+    const actions = screen.getByTestId('board-actions');
+    const battery =
+      await within(actions).findByLabelText(/^GitHub GitHub token/);
+    expect(
+      battery.compareDocumentPosition(action('Legend')) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
     expect(
       screen.queryByRole('button', { name: 'Add a credential' }),
     ).toBeNull();
   });
 
-  it('counts problems on a destructive button that opens Problems', async () => {
+  it('counts problems on a ghost button with a destructive icon that opens Problems', async () => {
     await renderDashboardPage({
       id: 'p',
       name: 'P',
@@ -77,7 +123,8 @@ describe('the board actions', () => {
     });
     await settled();
     const problems = action(/^Problems \(\d+\)$/);
-    expect(problems).toHaveClass('bg-destructive');
+    expect(ghost(problems)).toBe(true);
+    expect(iconTone(problems)).toBe('text-destructive');
     // Its tooltip is its name, count included.
     focusElement(problems);
     expect(await screen.findByRole('tooltip')).toHaveTextContent(
@@ -94,7 +141,8 @@ describe('the board actions', () => {
       stages: [{ id: 'dev', name: 'Dev', rules: branchRules('dev') }],
     });
     const notes = action(/^Notes \(\d+\)$/);
-    expect(notes).toHaveClass('border-border');
+    expect(ghost(notes)).toBe(true);
+    expect(iconTone(notes)).toBeUndefined();
     expect(screen.queryByRole('button', { name: /^Problems/ })).toBeNull();
     fireEvent.click(notes);
     expect(screen.getByRole('dialog', { name: 'Notes' })).toBeVisible();

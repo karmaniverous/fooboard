@@ -123,6 +123,15 @@ Answers are kept, so an edit, opening a board again, or reloading the page shows
 
 **Polling.** A row polls every 5 s while one of its cells is in progress (a provisional _Running_ included) and every 60 s otherwise, four times slower for a token past half its budget, and nothing polls while the tab is hidden; coming back reads only what fell due. A finished run's jobs are never read again.
 
+A row you show interest in polls faster for a while (its runs, or its Amplify apps' branches and jobs):
+
+- **A click** on one of its cells (a tap included), its row header, or the label of a row group it is in (which boosts every row of the group), and opening the settings of its cell, its row or its group, reads it at once, then 5, 10, 20 and 40 s apart. Space on a cell that opens its details, and Enter on a focused row header, count as clicks.
+- **Resting** the mouse or keyboard focus on one of its cells for 1.5 s polls it 10, 20 and 40 s apart, once each time you come to the cell.
+- **Each step** starts when the row's previous poll completes, so a slow answer delays the next poll rather than overlapping it, and no step starts 75 s or more after the boost did; then the row is back at 60 s. A new click starts it again; resting on a cell never slows a click's boost, and when it starts a boost again, a poll already due sooner keeps its time, the new boost's steps following it.
+- **What doesn't**: a stage header, a column group's label, a column's settings, the middle or right mouse button, passing over a cell and touch without a tap. A boost never marks a cell refreshing by itself.
+
+A row already in progress stays at 5 s (a click still reads it at once), a token past half its budget polls four times slower here too, and nothing polls while the tab is hidden: coming back within 75 s carries a boost on from where it was. Boosts are for this tab only, and are never saved or shared.
+
 When GitHub says a token is rate-limited, or AWS throttles a key, fooboard pauses that credential until the provider says to retry (a throttled AWS key pauses 5 s, since Amplify doesn't let the browser read its suggested delay; fooboard would use that delay if it could). Each credential's requests wait in one queue: the editors' lookups and a row's first read go to its front, while polls wait their turn with run jobs and behind counts.
 
 **Errors.** A repo GitHub can't find (or an Amplify app that's gone) shows _error_ with a problem on its row; an expired or revoked token shows _needs credential_; either way, nothing cached is shown in its place.
@@ -155,7 +164,7 @@ Any other region is waited for, however long it takes, since a partial list coul
 - **Zoom**: Ctrl/⌘ + wheel, a pinch, the toolbar buttons or `+` `-` `0` (a tap on a touch screen opens the cell it lands on, so there is no double-tap zoom); zooming out fits more, zooming in shows more.
 - **Scrolling**: a board larger than the window scrolls with the page: drag it with the mouse, or swipe it on a touch screen like any page. On a phone or tablet the board keeps its size while the browser’s toolbars come and go as you scroll, and fits itself again when you rotate the device.
 - **Density**: _Default_, _Comfortable_ and _Compact_ density change the padding. On a narrow screen the controls beside the board's name wrap onto more lines, so none sits off-screen at any zoom.
-- **Board actions**: beside the board's name sit icon buttons: _Legend_ (an i), each GitHub token's battery, then _Problems_ or _Notes_, _Unmapped runs_ (a broken link), _Edit dashboard_ (a pencil) and _Credentials_ (a key; _Add a credential_, highlighted, while the dashboard has none). A button is named by what it opens, with its count where there is one (_Problems (2)_, _Unmapped runs (12)_), and a tooltip shows that name when you point at it or Tab to it. On a touch screen a tap opens it, and the panel's title says what it is. A button with a count shows only while its count is above zero.
+- **Board actions**: beside the board's name sit each GitHub token's battery, then icon buttons: _Legend_ (an i), _Problems_ or _Notes_, _Unmapped runs_ (a broken link), _Edit dashboard_ (a pencil) and _Credentials_ (a key; _Add a credential_ while the dashboard has none). Like the header's buttons they have no outline or fill until you point at them; _Problems_ has a red icon, and while the dashboard has no credential the key carries a small dot, the same one the menu shows on _Release notes_ for a new release. A button is named by what it opens, with its count where there is one (_Problems (2)_, _Unmapped runs (12)_), and a tooltip shows that name when you point at it or Tab to it. On a touch screen a tap opens it, and the panel's title says what it is. A button with a count shows only while its count is above zero (_Unmapped runs_ counts the entries not [dismissed](#unmapped-runs)).
 - **Legend**: _Legend_ shows each status set the board’s cells use, with its statuses as cells show them.
 - **Summary**: a count for each summary status the cells show (for the built-in sets: _Failing_, _Running_, _Cancelled_, _OK_; _Unknown_ last), then behind and diverged cells; click one to show only those cells, again to clear. A provisional cell (see _Loading_ above) counts toward no chip and matches no filter until its jobs land.
 - **Request budget**: a battery for each GitHub token the board uses shows the requests left this hour; its tooltip names the token and says when the budget resets. It is grey and empty until the board's first GitHub response with that token, and again after you replace or forget the token.
@@ -287,6 +296,8 @@ The _Statuses_ tab lists the records no status matches; _Add status_ drafts a st
 
 Version 6 moved every default credential, status set choice, item rule and row token into the [settings](#settings) at its level, and an Amplify row's sources into its pinned apps, with a row whose sources all named one key keeping it as its own AWS key; a row whose sources named several keys reads the key its cells inherit, and a note on the other pins says to set that key on the columns that use it.
 
+Version 7 gave each dashboard an empty list of [dismissed unmapped runs](#unmapped-runs).
+
 A board from a newer release asks you to reload. Boards saved by early development builds (before version 4) can't be opened. Saved boards that can't be read, from any version, are reported and left unchanged: fooboard never saves over them.
 
 ## Unmapped runs
@@ -294,6 +305,14 @@ A board from a newer release asks you to reload. Boards saved by early developme
 _Unmapped runs (N)_ (the broken-link button beside the board's name) lists recent GitHub runs and Amplify jobs that have no cell, with the reason for each row that reads their repo or app: no stage rule matches (naming the branch), no row rule matches, no item counts, or no order key (none, or an empty one).
 
 _Add rule_ opens the editor where the fix goes, with a check drafted from the record to add: a new stage pre-filled with the branch; the row rule that missed it; the item rule of the row's status set; or the source rule's order key. _Add override_ opens a stage-rule override for the branch on a row reading the record or its group.
+
+**Dismissing.** Some runs belong nowhere on the board (a nightly job, a dependency bot's branches). _Dismiss…_ on an entry opens a form below it to hide entries like it with a pattern saved to the dashboard:
+
+- **Presets**: _This workflow on any branch_ (GitHub runs), _This branch here_ (an entry with a branch), _Branches like this anywhere_ (its branch with the last part made `*`, as `feature/*` for `feature/login`; for a branch of two or more parts) and _Everything with this reason_ (when every row reading it gives the same reason). There is no "this run only": the next run of the same kind would show anyway.
+- **Fields**: a preset fills _Repo or app_, _Workflow_, _Branch pattern_ and _Reason_; edit any of them, or clear one to mean any. A pattern hides an entry when every field it sets matches: the repo or app and the workflow ignoring case, the branch as a [branch pattern](#rules) (an entry without a branch never matches one), and the reason when every row reading the entry gives it. The form says how many of the entries shown it matches (dismissed ones aren't counted); _Dismiss_ needs at least one field.
+- **Showing them**: the panel's heading counts the entries shown and those dismissed; _Show dismissed_ (for this visit) lists the dismissed ones greyed, each naming the pattern hiding it, with _Undo_. The editor's _General_ tab lists every pattern under _Dismissed unmapped runs_, to edit or remove, including when every entry is dismissed and the button is gone.
+- **Only hiding**: a dismissal changes nothing the board reads or shows in its cells. Dismissals are part of the dashboard, so they are saved, shared and duplicated with it; the demo's last until you leave it, like its other changes.
+- **Several tabs**: a dismissal is an edit to the dashboard, so another tab's later save of the same dashboard, made before that tab reloaded, drops it (the last save wins). A tab left open from fooboard 0.1.0 across the upgrade can't save at all once this version has saved, so it can't drop a dismissal either: its edits are refused until you reload it.
 
 ## Credentials
 
@@ -443,7 +462,7 @@ _Share / Export_ in the header (or the menu) shares your saved dashboards; _Impo
 
 Opening the link in your browser does the same: the same dashboards listed, the same passphrase step, the same import. Pasting tolerates spaces around the link, and takes the link at any path or its `#b=…` part alone; text with no `#b=` in it is refused as a damaged link.
 
-- **Choose dashboards**: one, some or all (every one is ticked at first; _Select all_ toggles them). Each carries its groups, overrides, rules, custom status sets, settings at every level and pinned apps. Zoom, density, theme, the kept answers and anything held for a tab are never shared.
+- **Choose dashboards**: one, some or all (every one is ticked at first; _Select all_ toggles them). Each carries its groups, overrides, rules, custom status sets, settings at every level, pinned apps and dismissed unmapped runs. Zoom, density, theme, the kept answers and anything held for a tab are never shared.
 - **Copy board link**: everything goes into the part of the link after `#b=`, compressed. Browsers never send that part to a server (nor in a `Referer` header), and fooboard removes it from the address bar and history the moment the link opens, so a reload can't import it twice. A link longer than 32,000 characters isn't offered (chat apps cut long messages): download a file instead. The demo board's link is about 4,000 characters.
 - **Download file**: the same thing as a `.json` file (`fooboard-<name>.json`).
 - **Post this board on X**: a post with the board's link, never its credentials. The link shows anyone who opens it your repo and branch names. X links URLs only up to 4,096 characters, so a longer board can't be posted; copy its link instead.
@@ -459,9 +478,9 @@ Opening the link in your browser does the same: the same dashboards listed, the 
 - **New credentials**: a credential you don't have yet is simply imported, and _Keep as a copy_ never asks (the copy has credentials of its own).
 - **Encrypted credentials**: the questions come after the passphrase: the first _Import_ opens them and stops to ask if anything differs. Untick _Import its credentials_ to import the dashboards alone (their rows show _Needs credential_ until you add the secrets).
   The dialog asks for the passphrase there, after you choose the dashboards; a wrong one says "That passphrase doesn't open these credentials", and you can still import without them.
-- **Older and newer**: a link or file from an older fooboard opens and is upgraded; one from a newer fooboard is refused ("reload to update"), and anything else that isn't a fooboard share, or is damaged, says so ("This link isn't a fooboard board, or it's damaged").
+- **Older and newer**: a link or file from an older fooboard opens and is upgraded; one from a newer fooboard is refused ("reload to update"; fooboard 0.1.0 refuses the shares of 0.2.0, which carry version 7), and anything else that isn't a fooboard share, or is damaged, says so ("This link isn't a fooboard board, or it's damaged").
 
-The format is public and versioned: `{ "format": "fooboard-share", "formatVersion": 1, "schemaVersion": 6, "dashboards": [ … ], "credentials": null }`, where `credentials` holds the secrets by credential id, plain or encrypted, beside the dashboards and never inside them.
+The format is public and versioned: `{ "format": "fooboard-share", "formatVersion": 1, "schemaVersion": 7, "dashboards": [ … ], "credentials": null }`, where `credentials` holds the secrets by credential id, plain or encrypted, beside the dashboards and never inside them.
 
 ## Header, menu and footer
 
@@ -494,7 +513,7 @@ Before it goes into the issue, the message is cleaned of anything shaped like a 
 
 Everything stays in this browser:
 
-- **Dashboards** are saved under a versioned format; older saves are upgraded when they load, and data that can't be read is reported and never overwritten. The first save after an upgrade keeps a copy of the old save (e.g. `fooboard:config.v5`) until the next save succeeds.
+- **Dashboards** are saved under a versioned format; older saves are upgraded when they load, and data that can't be read is reported and never overwritten. The first save after an upgrade keeps a copy of the old save (e.g. `fooboard:config.v6`) until the next save succeeds. A dashboard's dismissed unmapped runs are saved with it. A tab left open from before an upgrade can't save until it is reloaded: it refuses to overwrite the newer save it can't read.
 - **Zoom, density, theme and the last version whose release notes you've seen** are saved on each device, and never exported. On your first visit that version is the one you arrived on, stored without you doing anything, and the next load after _Reset_ stores it again. Deleting a dashboard removes its settings on this device too.
 - **Tokens and keys** are kept only for the current tab unless you tick _Remember on this device_. Unticking it later removes the stored copy, so a token or key kept for the tab only leaves nothing on the device. _Forget_ removes one.
 - **Answers from GitHub and AWS** (runs, jobs, branches, behind counts, and the app search's lists of each AWS key's Amplify apps, with their names and repository URLs) are kept in this browser's IndexedDB, **unencrypted**, for up to 24 hours, so a reload shows the last known board at once. A new version of fooboard starts the cache afresh.

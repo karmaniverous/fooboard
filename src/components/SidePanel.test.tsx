@@ -2,11 +2,20 @@
  * Tests for the pinned-header layout (spec.md §3.6): the title, the close
  * button and any tabs sit outside the body, which alone scrolls; Tab runs
  * header, then body; opening focuses the first tab, else the body's first
- * control; tabs outside a panel stay in place.
+ * control; closing returns focus to the trigger, unless a close handler
+ * prevents that and puts it elsewhere, after a touch open too; tabs
+ * outside a panel stay in place.
  *
  * @module
  */
-import { fireEvent, render, screen, within } from '@testing-library/react';
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { Button } from '@/components/ui/button';
@@ -161,6 +170,69 @@ describe('SidePanel', () => {
     fireEvent.click(within(dialog).getByRole('button', { name: 'Close' }));
     expect(onOpenChange).toHaveBeenCalledWith(false);
   });
+});
+
+/** A panel opened from its trigger by `pointerType`, an input beside it
+ * that its close handler (if `prevent`) focuses, preventing the default
+ * return; then closed. Returns the trigger and the input. */
+function closeWithHandler(
+  pointerType: 'touch' | 'mouse',
+  prevent: boolean,
+): { trigger: HTMLElement; elsewhere: HTMLElement } {
+  render(
+    <>
+      <input aria-label="Elsewhere" />
+      <SidePanel
+        title="Edit dashboard"
+        trigger={<Button>Edit</Button>}
+        onCloseAutoFocus={(e) => {
+          if (!prevent) return;
+          e.preventDefault();
+          screen.getByRole('textbox', { name: 'Elsewhere' }).focus();
+        }}
+      >
+        <Button>In the body</Button>
+      </SidePanel>
+    </>,
+  );
+  const trigger = screen.getByRole('button', { name: 'Edit' });
+  const elsewhere = screen.getByRole('textbox', { name: 'Elsewhere' });
+  // Radix returns focus to what had it on open.
+  act(() => {
+    trigger.focus();
+  });
+  fireEvent.pointerDown(trigger, { pointerType });
+  fireEvent.pointerUp(trigger, { pointerType });
+  fireEvent.click(trigger);
+  fireEvent.click(
+    within(screen.getByRole('dialog')).getByRole('button', { name: 'Close' }),
+  );
+  return { trigger, elsewhere };
+}
+
+describe('SidePanel closing', () => {
+  it.each(['touch', 'mouse'] as const)(
+    'returns focus to the trigger after a %s open',
+    async (pointerType) => {
+      const { trigger } = closeWithHandler(pointerType, false);
+      await waitFor(() => {
+        expect(trigger).toHaveFocus();
+      });
+    },
+  );
+
+  it.each(['touch', 'mouse'] as const)(
+    'keeps focus where a preventing handler put it after a %s open',
+    async (pointerType) => {
+      const { trigger, elsewhere } = closeWithHandler(pointerType, true);
+      // The handler and any return run in one go, a task after closing.
+      await waitFor(() => {
+        expect(screen.queryByRole('dialog')).toBeNull();
+        expect(elsewhere).toHaveFocus();
+      });
+      expect(trigger).not.toHaveFocus();
+    },
+  );
 });
 
 describe('PanelTabs', () => {

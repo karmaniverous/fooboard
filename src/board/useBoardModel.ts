@@ -4,11 +4,13 @@
  * (re-derived from the cache at once, so the board never blanks), and
  * re-renders on every published model. Also ticks a clock once a minute
  * so relative times stay current. In development builds each board model
- * is timed (spec.md §3.5, `src/perf`).
+ * is timed (spec.md §3.5, `src/perf`). `attend` boosts rows' polling
+ * through the live model (spec 0.2.0 §3.H), and does nothing between
+ * models.
  *
  * @module
  */
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 import type { Dashboard } from '@/domain/config/dashboard';
 import {
@@ -21,7 +23,7 @@ import {
 import { useBoardTiming } from '@/perf';
 import type { QueryEnv } from '@/query/client';
 import type { Around } from '@/query/instrument';
-import { IDLE_INTERVAL_MS } from '@/query/intervals';
+import { type BoostKind, IDLE_INTERVAL_MS } from '@/query/intervals';
 
 /** `outer` around `inner` (either may be absent). */
 const compose =
@@ -41,7 +43,12 @@ export function useBoardModel(
     /** A new value re-derives every row (a secret changed). */
     refreshKey?: unknown;
   } = {},
-): { model: BoardModel; now: number } {
+): {
+  model: BoardModel;
+  now: number;
+  /** Boost `rowIds`' polling for the user's `kind` of interest. */
+  attend: (rowIds: readonly string[], kind: BoostKind) => void;
+} {
   const [model, setModel] = useState<BoardModel>(() =>
     emptyModel(githubCredentialIds(dashboard)),
   );
@@ -93,5 +100,9 @@ export function useBoardModel(
     };
   }, []);
 
-  return { model, now };
+  const attend = useCallback((rowIds: readonly string[], kind: BoostKind) => {
+    handle.current?.attend(rowIds, kind);
+  }, []);
+
+  return { model, now, attend };
 }

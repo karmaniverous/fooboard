@@ -3,7 +3,9 @@
  * 53), under the locally served CSP: the board fills in and no request
  * leaves for another host (the guard fails any, and is shown to catch
  * one); every dialog, sheet, popover and drag opens, works and closes,
- * with no CSP violation; on a phone, the settings popup is a bottom sheet.
+ * with no CSP violation; an unmapped run is dismissed with a preset,
+ * listed under *Show dismissed* and brought back with *Undo* (spec 0.2.0
+ * §3.I); on a phone, the settings popup is a bottom sheet.
  *
  * @module
  */
@@ -206,6 +208,31 @@ test('every dialog, sheet, popover and drag works under the CSP', async ({
   await page.keyboard.press('Escape');
   await page.keyboard.press('Escape');
   await expect(page.getByRole('dialog')).toHaveCount(0);
+});
+
+test('dismisses an unmapped run with a preset, shows it and undoes it', async ({
+  page,
+}) => {
+  await openDemo(page);
+  await page.getByRole('button', { name: /^Unmapped runs \(\d+\)$/ }).click();
+  const panel = page.getByRole('dialog', { name: 'Unmapped runs' });
+  const entries = panel.getByRole('list').first();
+  const first = entries.getByRole('listitem').first();
+  const title = (await first.getByRole('link').first().innerText()).trim();
+  const runLink = (scope: Locator) =>
+    scope.getByRole('link', { name: title, exact: true });
+  await first.getByRole('button', { name: 'Dismiss…' }).click();
+  await expect(panel.getByRole('radio').first()).toBeFocused();
+  await panel.getByRole('button', { name: 'Dismiss', exact: true }).click();
+  await expect(panel.getByRole('heading', { level: 3 })).toBeFocused();
+  await expect(runLink(entries)).toHaveCount(0);
+  await panel.getByRole('button', { name: 'Show dismissed' }).click();
+  const dismissed = panel.getByRole('list', { name: 'Dismissed runs' });
+  await expect(runLink(dismissed).first()).toBeVisible();
+  await dismissed.getByRole('button', { name: 'Undo' }).first().click();
+  await expect(runLink(entries).first()).toBeVisible();
+  // Focus is on a restored entry's Dismiss… button.
+  await expect(page.locator(':focus')).toHaveAccessibleName('Dismiss…');
 });
 
 test.describe('on a phone', () => {

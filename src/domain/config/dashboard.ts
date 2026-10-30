@@ -3,8 +3,9 @@
  * rules, row and column groups, credential references, custom status
  * sets, source rules and settings. Rejects, as defensive integrity
  * checks, duplicate row, stage and group ids, a source-stage cycle, and
- * group members that are unknown, in two groups or split apart (the
- * editors prevent all of these before saving).
+ * group members that are unknown, in two groups or split apart, and
+ * dismissed-run patterns that repeat an id or set no field (the editors
+ * prevent all of these before saving).
  *
  * @module
  */
@@ -28,6 +29,7 @@ import { RowSchema } from './row';
 import { DashboardSettingsSchema, defaultSettings } from './settings';
 import { StageSchema } from './stage';
 import { StatusSetSchema } from './statusSets';
+import { dismissalIssues, UnmappedDismissalSchema } from './unmappedDismissals';
 
 type Issue = { message: string; path: (string | number)[] };
 
@@ -125,6 +127,9 @@ export const DashboardSchema = z
     /** The dashboard's settings (spec.md §3.11), beside requests in
      * flight per credential, per platform (spec.md §3.2). */
     settings: DashboardSettingsSchema.default(() => defaultSettings()),
+    /** Patterns hiding entries from the *Unmapped runs* panel (spec
+     * 0.2.0 §3.I; data model v7). */
+    unmappedDismissals: z.array(UnmappedDismissalSchema).default(() => []),
   })
   .superRefine((dashboard, ctx) => {
     // Duplicate stage ids would also let a cycle hide behind a later stage
@@ -148,6 +153,7 @@ export const DashboardSchema = z
         'columnGroups',
         'stage',
       ),
+      ...dismissalIssues(dashboard.unmappedDismissals),
     ]) {
       ctx.addIssue({ code: 'custom', ...issue });
     }
