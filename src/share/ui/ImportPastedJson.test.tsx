@@ -11,6 +11,7 @@ import { fireEvent, screen, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
 import { sortCredentials } from '@/credentials/credentialOrder';
+import { importArrivalState } from '@/firstRun/paths';
 import { createAppStores } from '@/storage';
 import { memoryStorage } from '@/storage/keyValue';
 import { LocationState } from '@/test/LocationState';
@@ -48,7 +49,7 @@ describe('the import dialog, from pasted JSON', () => {
     await importNow();
     expect(savedIds(stores)).toEqual([board.id]);
     expect(where()).toBe(`/d/${board.id}`);
-    expect(state()).toBe(JSON.stringify({ openCredential: first.id }));
+    expect(state()).toBe(JSON.stringify(importArrivalState(first.id)));
   });
 
   it('asks for the next credential when the first one has its secret here', async () => {
@@ -58,7 +59,7 @@ describe('the import dialog, from pasted JSON', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Open import' }));
     paste(json);
     await importNow();
-    expect(state()).toBe(JSON.stringify({ openCredential: second.id }));
+    expect(state()).toBe(JSON.stringify(importArrivalState(second.id)));
   });
 
   it('lists the errors of JSON that is refused, calling it a share', () => {

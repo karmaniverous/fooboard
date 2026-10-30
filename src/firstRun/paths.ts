@@ -2,8 +2,9 @@
  * Where the first run's steps live (spec.md §3.9): step 1 at `/new`, the
  * saved dashboard's repos and stages at `/new/<id>/<step>`, and the board
  * (step 4) at the dashboard's own page, opened with `FIRST_RUN_STATE`.
- * Beside it, the state a board is opened with after an import to ask for
- * a credential's secret (`openCredentialState`, spec 0.2.0 §3.J).
+ * Beside it, the state a board is opened with after an import, asking
+ * for a credential's secret when one is missing (`importArrivalState`,
+ * spec 0.2.0 §3.J).
  *
  * @module
  */
@@ -39,18 +40,25 @@ export const FIRST_RUN_STATE = { firstRun: true } as const;
 export const isFirstRunState = (state: unknown): boolean =>
   z.object({ firstRun: z.literal(true) }).safeParse(state).success;
 
-const OpenCredentialStateSchema = z.object({
-  openCredential: z.string().min(1),
+const ImportArrivalSchema = z.object({
+  imported: z.literal(true),
+  openCredential: z.string().min(1).optional(),
 });
 
-/** The router state a board is opened with after an import, to ask for
- * the secret of credential `id` (spec 0.2.0 §3.J *Keys on arrival*). */
-export const openCredentialState = (
-  id: string,
-): z.infer<typeof OpenCredentialStateSchema> => ({ openCredential: id });
+/** How a board was opened after an import. */
+export type ImportArrival = z.infer<typeof ImportArrivalSchema>;
 
-/** The credential a board was opened to ask for, if any. */
-export const openCredentialOf = (state: unknown): string | undefined => {
-  const parsed = OpenCredentialStateSchema.safeParse(state);
-  return parsed.success ? parsed.data.openCredential : undefined;
+/** The router state a board is opened with after an import: always, so
+ * the board shows the imported dashboard even when it replaced the one
+ * open; with `openCredential`, to ask for that credential's secret (spec
+ * 0.2.0 §3.J *Keys on arrival*). */
+export const importArrivalState = (openCredential?: string): ImportArrival =>
+  openCredential === undefined
+    ? { imported: true }
+    : { imported: true, openCredential };
+
+/** How a board was opened after an import, if it was. */
+export const importArrivalOf = (state: unknown): ImportArrival | undefined => {
+  const parsed = ImportArrivalSchema.safeParse(state);
+  return parsed.success ? parsed.data : undefined;
 };

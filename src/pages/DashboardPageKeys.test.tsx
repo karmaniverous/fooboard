@@ -3,8 +3,9 @@
  * for a credential's secret, the board opens its credentials panel with
  * that credential expanded, and forgets the request at once, so a reload
  * or Back doesn't reopen the panel; an import that replaces the board
- * already open lands on it afresh, asking too; opened any other way, the
- * panel stays closed.
+ * already open lands on it afresh, asking too, and shows the imported
+ * dashboard even when it asks for nothing, so an edit keeps it; opened
+ * any other way, the panel stays closed.
  *
  * @module
  */
@@ -14,7 +15,7 @@ import { useNavigate } from 'react-router-dom';
 import { describe, expect, it } from 'vitest';
 
 import { DashboardSchema } from '@/domain/config/dashboard';
-import { openCredentialState } from '@/firstRun/paths';
+import { importArrivalState } from '@/firstRun/paths';
 import { type AppStores, createAppStores } from '@/storage';
 import { memoryStorage } from '@/storage/keyValue';
 import { isOpen } from '@/test/openItem';
@@ -40,8 +41,14 @@ function storesWithKeys() {
 const panel = () => screen.queryByRole('dialog', { name: 'Credentials' });
 
 /** What an import that replaces `acme` does: saves the new one, then
- * lands on it asking for `gh-c` (`landingAfter`). */
-function ReplaceAcme({ stores }: { stores: AppStores }): React.JSX.Element {
+ * lands on it (`landingAfter`), asking for `ask` if given. */
+function ReplaceAcme({
+  stores,
+  ask,
+}: {
+  stores: AppStores;
+  ask?: string;
+}): React.JSX.Element {
   const navigate = useNavigate();
   return (
     <button
@@ -58,7 +65,7 @@ function ReplaceAcme({ stores }: { stores: AppStores }): React.JSX.Element {
             settings: { githubToken: 'gh-c' },
           }),
         );
-        navigate('/d/acme', { state: openCredentialState('gh-c') });
+        navigate('/d/acme', { state: importArrivalState(ask) });
       }}
     >
       Replace acme
@@ -69,7 +76,7 @@ function ReplaceAcme({ stores }: { stores: AppStores }): React.JSX.Element {
 describe('keys on arrival', () => {
   it('opens the credentials panel on the credential asked for, once', async () => {
     const stores = await renderFirstRun(
-      { pathname: '/d/acme', state: openCredentialState('gh-b') },
+      { pathname: '/d/acme', state: importArrivalState('gh-b') },
       storesWithKeys(),
     );
     expect(panel()).toBeVisible();
@@ -91,7 +98,11 @@ describe('keys on arrival', () => {
 
   it('opens the panel on the imported board when an import replaces the one open', async () => {
     const stores = storesWithKeys();
-    await renderFirstRun('/d/acme', stores, <ReplaceAcme stores={stores} />);
+    await renderFirstRun(
+      '/d/acme',
+      stores,
+      <ReplaceAcme stores={stores} ask="gh-c" />,
+    );
     expect(panel()).toBeNull();
     act(() => {
       fireEvent.click(screen.getByRole('button', { name: 'Replace acme' }));
@@ -101,6 +112,32 @@ describe('keys on arrival', () => {
     expect(isOpen('acme C')).toBe(true);
     expect(screen.queryByText('acme B')).toBeNull();
     expect(screen.getByTestId('location-state')).toHaveTextContent('null');
+  });
+
+  it('shows the imported board when an import replaces the one open and asks for nothing', async () => {
+    const stores = storesWithKeys();
+    for (const id of ['gh-a', 'gh-b', 'gh-c'])
+      stores.credentials.set(id, { kind: 'github', token: 't' }, false);
+    await renderFirstRun('/d/acme', stores, <ReplaceAcme stores={stores} />);
+    act(() => {
+      fireEvent.click(screen.getByRole('button', { name: 'Replace acme' }));
+    });
+    expect(screen.getByRole('heading', { name: 'Acme v2' })).toBeVisible();
+    expect(panel()).toBeNull();
+    expect(screen.getByTestId('location-state')).toHaveTextContent('null');
+    // An edit saves the imported dashboard, never the one it replaced.
+    fireEvent.click(screen.getByRole('button', { name: 'Credentials' }));
+    fireEvent.change(screen.getByLabelText('Token'), {
+      target: { value: 'github_pat_1' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Add' }));
+    const loaded = stores.config.load();
+    const saved = loaded.kind === 'ok' ? loaded.root.dashboards[0] : undefined;
+    expect(saved?.name).toBe('Acme v2');
+    expect(saved?.credentials.map((c) => c.id)).toEqual(
+      expect.arrayContaining(['gh-a', 'gh-c']),
+    );
+    expect(saved?.credentials).toHaveLength(3);
   });
 
   it('keeps the panel closed when the board is opened any other way', async () => {

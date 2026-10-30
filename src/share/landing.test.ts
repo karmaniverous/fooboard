@@ -1,8 +1,8 @@
 /**
  * Tests for where an import lands (spec 0.2.0 §3.J *Keys on arrival*):
  * one dashboard opens its board, asking for the first credential, by
- * name, that has no secret here; none missing, the board alone; several
- * dashboards, the home page.
+ * name, that has no secret here; none missing, the board as an import's
+ * arrival all the same; several dashboards, the home page.
  *
  * @module
  */
@@ -33,28 +33,31 @@ describe('landingAfter', () => {
   it('opens one dashboard on the first credential by name with no secret here', () => {
     expect(landingAfter(plan(['a']), () => false)).toEqual({
       path: '/d/a',
-      state: { openCredential: 'c-Alpha' },
+      state: { imported: true, openCredential: 'c-Alpha' },
     });
   });
 
   it('skips a credential whose secret is here', () => {
     expect(landingAfter(plan(['a']), (id) => id === 'c-Alpha')).toEqual({
       path: '/d/a',
-      state: { openCredential: 'c-beta' },
+      state: { imported: true, openCredential: 'c-beta' },
     });
   });
 
-  it('opens the board alone when every secret is here', () => {
-    expect(landingAfter(plan(['a']), () => true)).toEqual({ path: '/d/a' });
+  it('opens the board, asking for nothing, when every secret is here', () => {
+    expect(landingAfter(plan(['a']), () => true)).toEqual({
+      path: '/d/a',
+      state: { imported: true },
+    });
   });
 
-  it('opens the board alone when it has no credentials', () => {
+  it('opens the board, asking for nothing, when it has no credentials', () => {
     expect(
       landingAfter(
         { dashboards: [board('c', [])], imported: ['c'] },
         () => false,
       ),
-    ).toEqual({ path: '/d/c' });
+    ).toEqual({ path: '/d/c', state: { imported: true } });
   });
 
   it('opens the home page after several dashboards, or none', () => {
