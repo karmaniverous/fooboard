@@ -1,0 +1,12 @@
+# fooboard
+
+> fooboard is a free, open-source deployment status board that runs entirely in the browser: the deployment state of every repo × stage at a glance, filled in from GitHub Actions runs and AWS Amplify jobs. No server, no account; tokens and keys never leave the browser except to call GitHub and AWS.
+
+## Set up a board with an AI assistant
+
+- [Instructions for AI assistants](https://www.fooboard.dev/ai): interview the user, build the board's share, and hand back a link that opens it in fooboard.
+- [JSON Schema of a share](https://www.fooboard.dev/ai.schema.json)
+
+## More
+
+- [README](https://github.com/karmaniverous/fooboard#readme): the user guide and credential guide.

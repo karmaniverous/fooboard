@@ -1,0 +1,1142 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "format": {
+      "type": "string",
+      "const": "fooboard-share"
+    },
+    "formatVersion": {
+      "type": "number",
+      "const": 1
+    },
+    "schemaVersion": {
+      "type": "number",
+      "const": 7
+    },
+    "dashboards": {
+      "minItems": 1,
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/Dashboard"
+      }
+    },
+    "credentials": {
+      "type": "null"
+    }
+  },
+  "required": [
+    "format",
+    "formatVersion",
+    "schemaVersion",
+    "dashboards",
+    "credentials"
+  ],
+  "title": "fooboard share",
+  "description": "A fooboard share as an AI assistant builds it, with no credentials. Instructions: https://www.fooboard.dev/ai",
+  "$defs": {
+    "Dashboard": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "rows": {
+          "default": [],
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Row"
+          }
+        },
+        "stages": {
+          "default": [],
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Stage"
+          }
+        },
+        "stageRules": {
+          "default": {},
+          "$ref": "#/$defs/ProviderRules"
+        },
+        "rowRules": {
+          "default": {},
+          "type": "object",
+          "properties": {
+            "github": {
+              "type": "object",
+              "properties": {
+                "record": {
+                  "$ref": "#/$defs/Rule"
+                }
+              }
+            },
+            "amplify": {
+              "type": "object",
+              "properties": {
+                "record": {
+                  "$ref": "#/$defs/Rule"
+                }
+              }
+            }
+          }
+        },
+        "rowGroups": {
+          "default": [],
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/RowGroup"
+          }
+        },
+        "columnGroups": {
+          "default": [],
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ColumnGroup"
+          }
+        },
+        "credentials": {
+          "default": [],
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/CredentialRef"
+          }
+        },
+        "customStatusSets": {
+          "default": [],
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/StatusSet"
+          }
+        },
+        "sourceRules": {
+          "default": {
+            "github": "github",
+            "amplify": "amplify"
+          },
+          "type": "object",
+          "properties": {
+            "github": {
+              "default": "github",
+              "type": "string",
+              "minLength": 1
+            },
+            "amplify": {
+              "default": "amplify",
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        },
+        "customSourceRules": {
+          "default": [],
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/SourceRule"
+          }
+        },
+        "settings": {
+          "default": {
+            "requestsInFlight": {
+              "github": 10,
+              "aws": 10
+            }
+          },
+          "type": "object",
+          "properties": {
+            "githubToken": {
+              "type": "string",
+              "minLength": 1
+            },
+            "awsKey": {
+              "type": "string",
+              "minLength": 1
+            },
+            "statusSets": {
+              "type": "object",
+              "properties": {
+                "github": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "amplify": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              }
+            },
+            "itemRules": {
+              "type": "object",
+              "properties": {
+                "github": {
+                  "$ref": "#/$defs/Rule"
+                },
+                "amplify": {
+                  "$ref": "#/$defs/Rule"
+                }
+              }
+            },
+            "requestsInFlight": {
+              "default": {
+                "github": 10,
+                "aws": 10
+              },
+              "type": "object",
+              "properties": {
+                "github": {
+                  "default": 10,
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 100
+                },
+                "aws": {
+                  "default": 10,
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 100
+                }
+              }
+            }
+          }
+        },
+        "unmappedDismissals": {
+          "default": [],
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/UnmappedDismissal"
+          }
+        }
+      },
+      "required": [
+        "id",
+        "name"
+      ]
+    },
+    "Row": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "github"
+            },
+            "repo": {
+              "type": "string",
+              "minLength": 1,
+              "pattern": "^[^/\\s]+\\/[^/\\s]+$"
+            },
+            "id": {
+              "type": "string",
+              "minLength": 1
+            },
+            "displayName": {
+              "type": "string",
+              "minLength": 1
+            },
+            "stageRules": {
+              "default": {},
+              "type": "object",
+              "propertyNames": {
+                "type": "string",
+                "minLength": 1
+              },
+              "additionalProperties": {
+                "$ref": "#/$defs/Rule"
+              }
+            },
+            "recordRule": {
+              "$ref": "#/$defs/Rule"
+            },
+            "settings": {
+              "default": {},
+              "$ref": "#/$defs/Settings"
+            },
+            "cellSettings": {
+              "default": {},
+              "type": "object",
+              "propertyNames": {
+                "type": "string",
+                "minLength": 1
+              },
+              "additionalProperties": {
+                "$ref": "#/$defs/Settings"
+              }
+            }
+          },
+          "required": [
+            "type",
+            "repo",
+            "id",
+            "displayName"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "amplify"
+            },
+            "repo": {
+              "type": "string",
+              "minLength": 1,
+              "pattern": "^[^/\\s]+\\/[^/\\s]+$"
+            },
+            "pinnedApps": {
+              "default": [],
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "credentialId": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "region": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "appId": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                },
+                "required": [
+                  "region",
+                  "appId"
+                ]
+              }
+            },
+            "id": {
+              "type": "string",
+              "minLength": 1
+            },
+            "displayName": {
+              "type": "string",
+              "minLength": 1
+            },
+            "stageRules": {
+              "default": {},
+              "type": "object",
+              "propertyNames": {
+                "type": "string",
+                "minLength": 1
+              },
+              "additionalProperties": {
+                "$ref": "#/$defs/Rule"
+              }
+            },
+            "recordRule": {
+              "$ref": "#/$defs/Rule"
+            },
+            "settings": {
+              "default": {},
+              "$ref": "#/$defs/Settings"
+            },
+            "cellSettings": {
+              "default": {},
+              "type": "object",
+              "propertyNames": {
+                "type": "string",
+                "minLength": 1
+              },
+              "additionalProperties": {
+                "$ref": "#/$defs/Settings"
+              }
+            }
+          },
+          "required": [
+            "type",
+            "id",
+            "displayName"
+          ]
+        }
+      ]
+    },
+    "Rule": {
+      "type": "object",
+      "properties": {
+        "combine": {
+          "default": "and",
+          "type": "string",
+          "enum": [
+            "and",
+            "or"
+          ]
+        },
+        "checks": {
+          "default": [],
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Check"
+          }
+        }
+      }
+    },
+    "Check": {
+      "type": "object",
+      "properties": {
+        "path": {
+          "type": "string",
+          "minLength": 1
+        },
+        "operator": {
+          "default": "glob",
+          "type": "string",
+          "enum": [
+            "glob",
+            "regex",
+            "exists"
+          ]
+        },
+        "value": {
+          "default": "",
+          "type": "string"
+        },
+        "ignoreCase": {
+          "default": true,
+          "type": "boolean"
+        },
+        "quantifier": {
+          "default": "any",
+          "type": "string",
+          "enum": [
+            "any",
+            "every"
+          ]
+        },
+        "not": {
+          "default": false,
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "path"
+      ]
+    },
+    "Settings": {
+      "type": "object",
+      "properties": {
+        "githubToken": {
+          "type": "string",
+          "minLength": 1
+        },
+        "awsKey": {
+          "type": "string",
+          "minLength": 1
+        },
+        "statusSets": {
+          "type": "object",
+          "properties": {
+            "github": {
+              "type": "string",
+              "minLength": 1
+            },
+            "amplify": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        },
+        "itemRules": {
+          "type": "object",
+          "properties": {
+            "github": {
+              "$ref": "#/$defs/Rule"
+            },
+            "amplify": {
+              "$ref": "#/$defs/Rule"
+            }
+          }
+        }
+      }
+    },
+    "Stage": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "rules": {
+          "default": {},
+          "$ref": "#/$defs/ProviderRules"
+        },
+        "sourceStageId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "settings": {
+          "default": {},
+          "$ref": "#/$defs/Settings"
+        }
+      },
+      "required": [
+        "id",
+        "name"
+      ]
+    },
+    "ProviderRules": {
+      "type": "object",
+      "properties": {
+        "github": {
+          "$ref": "#/$defs/Rule"
+        },
+        "amplify": {
+          "$ref": "#/$defs/Rule"
+        }
+      }
+    },
+    "RowGroup": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "label": {
+          "type": "string",
+          "minLength": 1
+        },
+        "memberIds": {
+          "minItems": 1,
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "settings": {
+          "default": {},
+          "$ref": "#/$defs/Settings"
+        },
+        "stageRules": {
+          "default": {},
+          "type": "object",
+          "propertyNames": {
+            "type": "string",
+            "minLength": 1
+          },
+          "additionalProperties": {
+            "$ref": "#/$defs/ProviderRules"
+          }
+        },
+        "rowRules": {
+          "default": {},
+          "type": "object",
+          "properties": {
+            "github": {
+              "type": "object",
+              "properties": {
+                "record": {
+                  "$ref": "#/$defs/Rule"
+                }
+              }
+            },
+            "amplify": {
+              "type": "object",
+              "properties": {
+                "record": {
+                  "$ref": "#/$defs/Rule"
+                }
+              }
+            }
+          }
+        }
+      },
+      "required": [
+        "id",
+        "memberIds"
+      ]
+    },
+    "ColumnGroup": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "label": {
+          "type": "string",
+          "minLength": 1
+        },
+        "memberIds": {
+          "minItems": 1,
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "settings": {
+          "default": {},
+          "$ref": "#/$defs/Settings"
+        },
+        "stageRules": {
+          "default": {},
+          "$ref": "#/$defs/ProviderRules"
+        }
+      },
+      "required": [
+        "id",
+        "memberIds"
+      ]
+    },
+    "CredentialRef": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "kind": {
+          "type": "string",
+          "enum": [
+            "github",
+            "aws"
+          ]
+        },
+        "label": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "id",
+        "kind",
+        "label"
+      ]
+    },
+    "StatusSet": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "provider": {
+          "type": "string",
+          "enum": [
+            "github",
+            "amplify"
+          ]
+        },
+        "items": {
+          "default": {
+            "combine": "and",
+            "checks": []
+          },
+          "$ref": "#/$defs/Rule"
+        },
+        "summary": {
+          "minItems": 1,
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "name": {
+                "type": "string",
+                "minLength": 1
+              },
+              "color": {
+                "type": "string",
+                "pattern": "^#[0-9a-fA-F]{6}$"
+              },
+              "icon": {
+                "type": "string",
+                "enum": [
+                  "success",
+                  "failure",
+                  "running",
+                  "queued",
+                  "partial",
+                  "cancelled",
+                  "unknown"
+                ]
+              },
+              "inProgress": {
+                "default": false,
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "id",
+              "name",
+              "color",
+              "icon"
+            ]
+          }
+        },
+        "cell": {
+          "minItems": 1,
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "name": {
+                "type": "string",
+                "minLength": 1
+              },
+              "color": {
+                "type": "string",
+                "pattern": "^#[0-9a-fA-F]{6}$"
+              },
+              "summary": {
+                "type": "string",
+                "minLength": 1
+              },
+              "icon": {
+                "type": "string",
+                "enum": [
+                  "success",
+                  "failure",
+                  "running",
+                  "queued",
+                  "partial",
+                  "cancelled",
+                  "unknown"
+                ]
+              },
+              "outlined": {
+                "default": false,
+                "type": "boolean"
+              },
+              "rule": {
+                "$ref": "#/$defs/Rule"
+              }
+            },
+            "required": [
+              "id",
+              "name",
+              "color",
+              "summary",
+              "rule"
+            ]
+          }
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "provider",
+        "summary",
+        "cell"
+      ]
+    },
+    "SourceRule": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "string",
+              "minLength": 1
+            },
+            "name": {
+              "type": "string",
+              "minLength": 1
+            },
+            "keys": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "translations": {
+                    "type": "array",
+                    "items": {
+                      "anyOf": [
+                        {
+                          "type": "object",
+                          "properties": {
+                            "rule": {
+                              "$ref": "#/$defs/Rule"
+                            },
+                            "value": {
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "rule",
+                            "value"
+                          ]
+                        },
+                        {
+                          "type": "object",
+                          "properties": {
+                            "rule": {
+                              "$ref": "#/$defs/Rule"
+                            },
+                            "copy": {
+                              "type": "string",
+                              "minLength": 1
+                            }
+                          },
+                          "required": [
+                            "rule",
+                            "copy"
+                          ]
+                        }
+                      ]
+                    }
+                  }
+                },
+                "required": [
+                  "name",
+                  "translations"
+                ]
+              }
+            },
+            "items": {
+              "type": "object",
+              "properties": {
+                "path": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "keys": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "name": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "translations": {
+                        "type": "array",
+                        "items": {
+                          "anyOf": [
+                            {
+                              "type": "object",
+                              "properties": {
+                                "rule": {
+                                  "$ref": "#/$defs/Rule"
+                                },
+                                "value": {
+                                  "type": "string"
+                                }
+                              },
+                              "required": [
+                                "rule",
+                                "value"
+                              ]
+                            },
+                            {
+                              "type": "object",
+                              "properties": {
+                                "rule": {
+                                  "$ref": "#/$defs/Rule"
+                                },
+                                "copy": {
+                                  "type": "string",
+                                  "minLength": 1
+                                }
+                              },
+                              "required": [
+                                "rule",
+                                "copy"
+                              ]
+                            }
+                          ]
+                        }
+                      }
+                    },
+                    "required": [
+                      "name",
+                      "translations"
+                    ]
+                  }
+                }
+              },
+              "required": [
+                "path",
+                "keys"
+              ]
+            },
+            "keep": {
+              "default": {
+                "combine": "and",
+                "checks": []
+              },
+              "$ref": "#/$defs/Rule"
+            },
+            "order": {
+              "type": "string",
+              "minLength": 1
+            },
+            "provider": {
+              "type": "string",
+              "const": "github"
+            },
+            "reader": {
+              "default": {
+                "excludePullRequests": true,
+                "runs": 100
+              },
+              "type": "object",
+              "properties": {
+                "excludePullRequests": {
+                  "default": true,
+                  "type": "boolean"
+                },
+                "runs": {
+                  "default": 100,
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 500
+                }
+              }
+            }
+          },
+          "required": [
+            "id",
+            "name",
+            "keys",
+            "order",
+            "provider"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "string",
+              "minLength": 1
+            },
+            "name": {
+              "type": "string",
+              "minLength": 1
+            },
+            "keys": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "translations": {
+                    "type": "array",
+                    "items": {
+                      "anyOf": [
+                        {
+                          "type": "object",
+                          "properties": {
+                            "rule": {
+                              "$ref": "#/$defs/Rule"
+                            },
+                            "value": {
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "rule",
+                            "value"
+                          ]
+                        },
+                        {
+                          "type": "object",
+                          "properties": {
+                            "rule": {
+                              "$ref": "#/$defs/Rule"
+                            },
+                            "copy": {
+                              "type": "string",
+                              "minLength": 1
+                            }
+                          },
+                          "required": [
+                            "rule",
+                            "copy"
+                          ]
+                        }
+                      ]
+                    }
+                  }
+                },
+                "required": [
+                  "name",
+                  "translations"
+                ]
+              }
+            },
+            "items": {
+              "type": "object",
+              "properties": {
+                "path": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "keys": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "name": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "translations": {
+                        "type": "array",
+                        "items": {
+                          "anyOf": [
+                            {
+                              "type": "object",
+                              "properties": {
+                                "rule": {
+                                  "$ref": "#/$defs/Rule"
+                                },
+                                "value": {
+                                  "type": "string"
+                                }
+                              },
+                              "required": [
+                                "rule",
+                                "value"
+                              ]
+                            },
+                            {
+                              "type": "object",
+                              "properties": {
+                                "rule": {
+                                  "$ref": "#/$defs/Rule"
+                                },
+                                "copy": {
+                                  "type": "string",
+                                  "minLength": 1
+                                }
+                              },
+                              "required": [
+                                "rule",
+                                "copy"
+                              ]
+                            }
+                          ]
+                        }
+                      }
+                    },
+                    "required": [
+                      "name",
+                      "translations"
+                    ]
+                  }
+                }
+              },
+              "required": [
+                "path",
+                "keys"
+              ]
+            },
+            "keep": {
+              "default": {
+                "combine": "and",
+                "checks": []
+              },
+              "$ref": "#/$defs/Rule"
+            },
+            "order": {
+              "type": "string",
+              "minLength": 1
+            },
+            "provider": {
+              "type": "string",
+              "const": "amplify"
+            },
+            "reader": {
+              "default": {
+                "jobsPerBranch": 20,
+                "branches": {
+                  "combine": "and",
+                  "checks": []
+                }
+              },
+              "type": "object",
+              "properties": {
+                "jobsPerBranch": {
+                  "default": 20,
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 100
+                },
+                "branches": {
+                  "default": {
+                    "combine": "and",
+                    "checks": []
+                  },
+                  "$ref": "#/$defs/Rule"
+                }
+              }
+            }
+          },
+          "required": [
+            "id",
+            "name",
+            "keys",
+            "order",
+            "provider"
+          ]
+        }
+      ]
+    },
+    "UnmappedDismissal": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "where": {
+          "type": "string",
+          "minLength": 1
+        },
+        "workflow": {
+          "type": "string",
+          "minLength": 1
+        },
+        "branch": {
+          "type": "string",
+          "minLength": 1
+        },
+        "reason": {
+          "type": "string",
+          "enum": [
+            "no-stage-matches",
+            "no-row-matches",
+            "no-item-counts",
+            "no-order-key"
+          ]
+        }
+      },
+      "required": [
+        "id"
+      ]
+    }
+  }
+}

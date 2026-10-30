@@ -131,6 +131,7 @@
     "url": "git+https://github.com/karmaniverous/fooboard.git"
   },
   "scripts": {
+    "ai:schema": "vitest run src/ai/schema.test.ts -u",
     "build": "tsc -b --noEmit && vite build",
     "changelog": "git-cliff -o CHANGELOG.md",
     "dev": "vite",
