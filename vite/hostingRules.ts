@@ -144,6 +144,10 @@ const RewritesSchema = StatusSchema.pipe(
               .refine(isPathOrUrl, 'not a plain path or an http(s) URL'),
             condition: CONDITION,
           })
+          .refine(({ source, target }) => source !== target, {
+            message: 'redirects to itself, which would loop',
+            path: ['target'],
+          })
           .transform(({ source, status, target, condition }) => ({
             kind: 'redirect' as const,
             redirect: {
@@ -225,7 +229,7 @@ export interface HostingRules {
  *
  * @throws When a rule is none of a redirect (status in
  * {@link REDIRECT_STATUSES}, from a plain path or a bare http(s) origin to
- * a path or a URL),
+ * a path or a URL other than itself),
  * a 200 rewrite from a plain path to a file and a 200 rewrite to
  * {@link SPA_ENTRY} from an Amplify regular expression, each with an
  * optional `condition` (`null` or a country code); or when the rules

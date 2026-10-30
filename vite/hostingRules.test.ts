@@ -27,6 +27,15 @@ describe('parseRewrites', () => {
     ).toHaveLength(1);
   });
 
+  it.each(['/old', 'https://fooboard.dev'])(
+    'refuses a redirect from %s to itself, which would loop',
+    (source) => {
+      expect(() =>
+        parseRewrites(rules({ ...APEX, source, target: source }, RULE)),
+      ).toThrow('redirects to itself, which would loop');
+    },
+  );
+
   it.each(['https://fooboard.dev/a', 'https://fooboard.dev/?a'])(
     'refuses a full-URL source that is not a bare origin: %s',
     (source) => {
