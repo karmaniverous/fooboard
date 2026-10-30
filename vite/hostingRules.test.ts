@@ -9,7 +9,7 @@ import {
 } from './hostingRules';
 
 /** An amplify-rewrites.json with these rules. */
-const rules = (...list: Record<string, string>[]): string =>
+const rules = (...list: Record<string, string | null>[]): string =>
   JSON.stringify(list);
 const RULE = { source: '</^[^.]+$/>', status: '200', target: SPA_ENTRY };
 const AI = { source: '/ai', status: '200', target: '/ai.md' };
@@ -24,6 +24,44 @@ describe('parseRewrites', () => {
     expect(parseRewrites(rules(APEX, AI, RULE)).redirects).toEqual([
       { path: undefined, status: '302', target: 'https://www.fooboard.dev' },
     ]);
+  });
+
+  it('reads the console\'s shape, `"condition": null` on every rule, as unconditioned', () => {
+    const { redirects, rewrites } = parseRewrites(
+      rules(...[APEX, AI, RULE].map((rule) => ({ ...rule, condition: null }))),
+    );
+    expect(redirects).toEqual([
+      {
+        path: undefined,
+        status: '302',
+        target: 'https://www.fooboard.dev',
+        condition: undefined,
+      },
+    ]);
+    expect(rewrites.map(({ condition }) => condition)).toEqual([
+      undefined,
+      undefined,
+    ]);
+  });
+
+  it('reads a country condition on any rule', () => {
+    const { redirects, rewrites } = parseRewrites(
+      rules(
+        ...[APEX, AI, RULE].map((rule) => ({ ...rule, condition: '<US>' })),
+      ),
+    );
+    expect(
+      [...redirects, ...rewrites].map(({ condition }) => condition),
+    ).toEqual(['<US>', '<US>', '<US>']);
+  });
+
+  it.each([
+    ['an empty condition', ''],
+    ['a number', 1],
+  ])('refuses %s', (_why, condition) => {
+    expect(() =>
+      parseRewrites(JSON.stringify([{ ...AI, condition }, RULE])),
+    ).toThrow();
   });
 
   it.each(REDIRECT_STATUSES)(

@@ -11,7 +11,9 @@
  * as the apex `https://fooboard.dev`, to a path or a URL), then 200
  * rewrites from one plain path to one file (`/ai` → `/ai.md`), then 200
  * rewrites to the page from an Amplify regular expression (`</regex/>`),
- * the SPA rule.
+ * the SPA rule. Any rule may carry a `condition`: `null`, as the console
+ * writes it, or a country code; a local server has no country, so it
+ * applies only the rules without one.
  *
  * @module
  */
@@ -65,9 +67,30 @@ const isHttpUrl = (text: string): boolean =>
 const isPathOrUrl = (text: string): boolean =>
   ONE_PATH.test(text) || isHttpUrl(text);
 
+/** A rule's `condition`: absent or `null` (as the console writes it) for
+ * every visitor, or a country code (Amplify's `<US>`) for visitors from
+ * that country alone; read as undefined or the code. */
+const CONDITION = z
+  .string()
+  .min(1)
+  .nullish()
+  .transform((condition) => condition ?? undefined);
+
+/** What every rule has besides its source, status and target. */
+interface Conditioned {
+  /** The country it applies to; undefined for every visitor. A local
+   * server has no country, so it applies only rules without one. */
+  condition: string | undefined;
+}
+
+/** The rules a local server applies: those without a condition. */
+export const unconditioned = <T extends Conditioned>(
+  rules: readonly T[],
+): T[] => rules.filter(({ condition }) => condition === undefined);
+
 /** One redirect: a request for its path is answered its status, with its
  * target as the `Location`. */
-export interface Redirect {
+export interface Redirect extends Conditioned {
   /** The plain path it matches; undefined when its source is a full URL
    * (a host's redirect, such as the apex's, which a local server never
    * receives). */
@@ -79,7 +102,7 @@ export interface Redirect {
 }
 
 /** One 200 rewrite: the paths it matches are served its target. */
-export interface Rewrite {
+export interface Rewrite extends Conditioned {
   /** The source's regular expression. */
   source: RegExp;
   /** Where a matching path is served from. */
@@ -109,13 +132,15 @@ const RewritesSchema = StatusSchema.pipe(
             target: z
               .string()
               .refine(isPathOrUrl, 'not a plain path or an http(s) URL'),
+            condition: CONDITION,
           })
-          .transform(({ source, status, target }) => ({
+          .transform(({ source, status, target, condition }) => ({
             kind: 'redirect' as const,
             redirect: {
               path: ONE_PATH.test(source) ? source : undefined,
               status,
               target,
+              condition,
             },
           })),
         z
@@ -126,10 +151,11 @@ const RewritesSchema = StatusSchema.pipe(
               .transform((source) => new RegExp(`^${literal(source)}$`)),
             status: z.literal('200'),
             target: z.string().regex(FILE_PATH, 'not a file path'),
+            condition: CONDITION,
           })
-          .transform(({ source, target }) => ({
+          .transform(({ source, target, condition }) => ({
             kind: 'file' as const,
-            rewrite: { source, target },
+            rewrite: { source, target, condition },
           })),
         z
           .strictObject({
@@ -144,10 +170,11 @@ const RewritesSchema = StatusSchema.pipe(
             }),
             status: z.literal('200'),
             target: z.literal(SPA_ENTRY),
+            condition: CONDITION,
           })
-          .transform(({ source, target }) => ({
+          .transform(({ source, target, condition }) => ({
             kind: 'page' as const,
-            rewrite: { source, target },
+            rewrite: { source, target, condition },
           })),
       ]),
     )
@@ -189,7 +216,8 @@ export interface HostingRules {
  * @throws When a rule is none of a redirect (status in
  * {@link REDIRECT_STATUSES}, from a plain path or an http(s) URL to either),
  * a 200 rewrite from a plain path to a file and a 200 rewrite to
- * {@link SPA_ENTRY} from an Amplify regular expression; or when the rules
+ * {@link SPA_ENTRY} from an Amplify regular expression, each with an
+ * optional `condition` (`null` or a country code); or when the rules
  * aren't in that order.
  */
 export function parseRewrites(text: string): HostingRules {

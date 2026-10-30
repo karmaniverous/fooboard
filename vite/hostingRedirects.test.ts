@@ -2,7 +2,8 @@
 /**
  * The middleware's redirects (Decision 110): a redirect from a full URL
  * (the committed apex redirect) names another host and is skipped locally;
- * a redirect from a plain path is answered its status and `Location`.
+ * a redirect from a plain path is answered its status and `Location`. A
+ * rule with a country `condition` is skipped locally, redirect or rewrite.
  *
  * @module
  */
@@ -20,12 +21,16 @@ const SERVERS = ['preview', 'dev'] as const;
 const on = (server: (typeof SERVERS)[number]) =>
   server === 'dev' ? 'dev' : undefined;
 
-/** The committed rules with a redirect of `status` from `/old` first. */
-const withPathRedirect = (status: string): string =>
+/** The committed rules with `first` before them. */
+const withFirst = (first: object): string =>
   JSON.stringify([
-    { source: '/old', status, target: 'https://example.com/new' },
+    first,
     ...z.array(z.unknown()).parse(JSON.parse(read(REWRITES_FILE))),
   ]);
+
+/** The committed rules with a redirect of `status` from `/old` first. */
+const withPathRedirect = (status: string): string =>
+  withFirst({ source: '/old', status, target: 'https://example.com/new' });
 
 describe('hostingMiddleware redirects', () => {
   it.each(SERVERS)(
@@ -57,5 +62,35 @@ describe('hostingMiddleware redirects', () => {
     const r = serve('/older', undefined, withPathRedirect('301'));
     expect(r.url).toBe(SPA_ENTRY);
     expect(r.headers.has('Location')).toBe(false);
+  });
+});
+
+describe('hostingMiddleware conditions', () => {
+  it('skips a redirect with a country condition', () => {
+    const r = serve(
+      '/old',
+      undefined,
+      withFirst({
+        source: '/old',
+        status: '302',
+        target: '/new',
+        condition: '<US>',
+      }),
+    );
+    expect(r.headers.has('Location')).toBe(false);
+    expect(r.url).toBe(SPA_ENTRY);
+  });
+
+  it('skips a rewrite with a country condition, applying the next rule', () => {
+    const r = serve(
+      '/ai',
+      undefined,
+      JSON.stringify([
+        { source: '/ai', status: '200', target: '/ai.txt', condition: '<US>' },
+        { source: '/ai', status: '200', target: '/ai.md', condition: null },
+        { source: '</^[^.]+$/>', status: '200', target: SPA_ENTRY },
+      ]),
+    );
+    expect(r.url).toBe('/ai.md');
   });
 });

@@ -10,7 +10,8 @@
  * - a path an `amplify-rewrites.json` redirect names is answered its
  *   status with its target as the `Location`; a redirect from a full URL
  *   (the apex `https://fooboard.dev`) names another host, which a local
- *   server never is, so it is skipped (Decision 110);
+ *   server never is, so it is skipped (Decision 110); so is any rule with
+ *   a country `condition`, since a local request has no country;
  * - a path `amplify-rewrites.json` rewrites is served the rule's target
  *   (the page, or a file such as `/ai.md`), as on Amplify; any other path
  *   is a file, and a missing file is a 404 (the rewrite excludes asset
@@ -38,6 +39,7 @@ import {
   parseRewrites,
   rewrite,
   SPA_ENTRY,
+  unconditioned,
 } from './hostingRules.ts';
 
 /** The headers file Amplify reads from the repository root. */
@@ -97,7 +99,9 @@ const decodePath = (pathname: string): string | undefined => {
  * page goes without the CSP and is left to Vite, as are missing paths (see
  * the module). */
 export function hostingMiddleware(options: HostingOptions): Middleware {
-  const { headers, redirects, rewrites } = options;
+  const { headers } = options;
+  const redirects = unconditioned(options.redirects);
+  const rewrites = unconditioned(options.rewrites);
   const dev = options.server === 'dev';
   return (req, res, next) => {
     const url = new URL(req.url ?? '/', 'http://localhost');
