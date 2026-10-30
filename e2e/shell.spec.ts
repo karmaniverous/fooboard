@@ -139,9 +139,11 @@ test('Set up with an AI assistant opens from the header and the home page', asyn
     .getByRole('button', { name: 'Set up with an AI assistant' })
     .click();
   await expect(dialog).toBeVisible();
+  // The preview server isn't production, so the dialog names its own /ai
+  // (Decision 107).
   await expect(
     dialog.getByLabel('Instructions for your assistant'),
-  ).toHaveValue('https://www.fooboard.dev/ai');
+  ).toHaveValue(`${new URL(page.url()).origin}/ai`);
   await page.keyboard.press('Escape');
   await expect(dialog).toHaveCount(0);
   await page
@@ -149,6 +151,30 @@ test('Set up with an AI assistant opens from the header and the home page', asyn
     .getByRole('button', { name: 'Set up with an AI assistant…' })
     .click();
   await expect(dialog).toBeVisible();
+});
+
+test("Copy instructions copies this site's /ai.md, off production", async ({
+  page,
+  context,
+  request,
+}) => {
+  await context.grantPermissions(['clipboard-read', 'clipboard-write']);
+  await page.goto('/');
+  await page
+    .getByRole('main')
+    .getByRole('button', { name: 'Set up with an AI assistant…' })
+    .click();
+  const dialog = page.getByRole('dialog', {
+    name: 'Set up with an AI assistant',
+  });
+  await expect(dialog).toContainText("An assistant can't reach this site");
+  await dialog.getByRole('button', { name: 'Copy instructions' }).click();
+  await expect(dialog).toContainText('Instructions copied.');
+  const copied = await page.evaluate(() => navigator.clipboard.readText());
+  // Windows' clipboard hands text back with CRLF line ends.
+  expect(copied.replaceAll('\r\n', '\n')).toBe(
+    await (await request.get('/ai.md')).text(),
+  );
 });
 
 test('a page that fails to load shows the error screen', async ({ page }) => {

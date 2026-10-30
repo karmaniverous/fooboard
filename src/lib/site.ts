@@ -6,6 +6,12 @@
  * @module
  */
 
+/** Production's origin: the canonical host, and the only fooboard site an
+ * AI assistant can reach (dev and release are password-protected, and the
+ * bare domain only redirects here; spec 0.2.0 §3.J, Decisions 96 and
+ * 107). */
+export const PRODUCTION_ORIGIN = 'https://www.fooboard.dev';
+
 /** Product identity and outbound links. */
 export const site = {
   name: 'fooboard',
@@ -17,10 +23,11 @@ export const site = {
   repoUrl: 'https://github.com/karmaniverous/fooboard',
   issuesUrl: 'https://github.com/karmaniverous/fooboard/issues',
   readmeUrl: 'https://github.com/karmaniverous/fooboard#readme',
-  /** The instructions for AI assistants (spec 0.2.0 §3.J): production's
-   * canonical host on every host (Decision 96), since dev and release are
-   * password-protected and the bare domain only redirects. */
-  aiUrl: 'https://www.fooboard.dev/ai',
+  /** The instructions for AI assistants as the discovery pointers name
+   * them (spec 0.2.0 §3.J *Discovery*): production's, on every host
+   * (Decision 96). *Set up with an AI assistant* gives the current site's
+   * instead (`aiSetupFor`, Decision 107). */
+  aiUrl: `${PRODUCTION_ORIGIN}/ai`,
   /** The menu's *Release notes* (spec 0.2.0 §3.D). */
   releasesUrl: 'https://github.com/karmaniverous/fooboard/releases',
   privacyUrl: 'https://github.com/karmaniverous/fooboard/blob/main/PRIVACY.md',
@@ -30,10 +37,6 @@ export const site = {
   ownerName: 'karmaniverous',
   ownerUrl: 'https://github.com/karmaniverous',
 } as const;
-
-/** The prompt *Set up with an AI assistant* offers to copy (spec 0.2.0
- * §3.J). */
-export const AI_PROMPT = `Read ${site.aiUrl} and help me set up a fooboard board.`;
 
 /** This build's version (`package.json`; spec.md §3.10): in the menu and
  * on the error screen. */
