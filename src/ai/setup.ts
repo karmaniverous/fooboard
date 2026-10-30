@@ -39,8 +39,8 @@ export function aiSetupFor(origin: string): AiSetup {
 }
 
 /** The text of this site's `/ai.md`, for *Copy instructions*: the file
- * itself from this build, loaded only when asked for (a chunk of its own,
- * which the CSP's `script-src 'self'` allows; its `connect-src` allows no
- * request to the site itself). */
+ * itself from this build (`vite/aiInstructions.ts`), loaded only when
+ * asked for, as a chunk of its own, which the CSP's `script-src 'self'`
+ * allows (its `connect-src` allows no request to the site itself). */
 export const loadInstructions = async (): Promise<string> =>
-  (await import('../../public/ai.md?raw')).default;
+  (await import('virtual:ai-instructions')).default;
