@@ -127,18 +127,33 @@ describe('AiSetupDialog layout', () => {
     expect(open).toHaveAttribute('rel', 'noopener noreferrer');
   });
 
-  it.each([OPEN_INSTRUCTIONS, 'Copy link', 'Copy instructions', 'Copy prompt'])(
-    '%s shows its name as a tooltip on focus',
-    async (name) => {
+  // The board's action buttons' tooltip (`WithTooltip`), its text the
+  // accessible name, on hover and on keyboard focus.
+  describe.each([
+    [
+      'hover',
+      (control: HTMLElement) => {
+        fireEvent.pointerMove(control, { pointerType: 'mouse' });
+      },
+    ],
+    ['focus', focusElement],
+  ])('on %s', (_how, reach) => {
+    it.each([
+      OPEN_INSTRUCTIONS,
+      'Copy link',
+      'Copy instructions',
+      'Copy prompt',
+    ])('%s shows its name as a tooltip', async (name) => {
       renderAt(DEV);
       const control = within(dialog()).getByRole(
         name === OPEN_INSTRUCTIONS ? 'link' : 'button',
         { name },
       );
-      focusElement(control);
+      reach(control);
       expect(await screen.findByRole('tooltip')).toHaveTextContent(name);
-    },
-  );
+      expect(screen.getByRole('tooltip').textContent).toBe(name);
+    });
+  });
 });
 
 describe('AiSetupDialog copy buttons', () => {
