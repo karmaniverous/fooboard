@@ -443,7 +443,7 @@ Two API repos deployed by GitHub Actions and two web apps on Amplify Hosting, gr
 
 Build the link: `https://www.fooboard.dev/#j=` followed by the share's JSON (minified is fine), encoded as UTF-8 and then base64url without padding (`+` → `-`, `/` → `_`, no trailing `=`). Give the user the link and tell them: open it, choose _Import_, then enter each key when fooboard asks.
 
-If you can't encode base64, give the user the JSON instead and tell them to open https://www.fooboard.dev/, choose _Import_ in the header, and paste the JSON into _Or a fooboard link, or its JSON_.
+If you can't encode base64, give the user the JSON instead and tell them to open https://www.fooboard.dev/, choose _Import_ (in the header, or its menu on a narrow screen), and paste the JSON into _Or a fooboard link, or its JSON_.
 
 ## The fix loop
 
