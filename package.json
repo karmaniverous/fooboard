@@ -144,6 +144,7 @@
     "preview": "vite preview",
     "release": "dotenvx run -f .env.local -- release-it",
     "release:pre": "dotenvx run -f .env.local -- release-it --no-git.requireBranch --github.prerelease --preRelease",
+    "screenshots": "npm run build && playwright test --config scripts/screenshots/playwright.config.ts && npx -y -p oxipng-bin oxipng -q -o 4 --strip safe -r docs/screenshots",
     "test": "vitest run",
     "typecheck": "tsc -b --noEmit"
   },
