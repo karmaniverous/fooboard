@@ -9,6 +9,7 @@
  * refreshing delay re-derives the rows it feeds once the delay passes.
  * The user's interest in a row (`attend`) boosts its polling, stepping on
  * as its root queries' polls complete (spec 0.2.0 §3.H; `attention.ts`).
+ * Opening a board polls every row's roots at once (Decision 109).
  * React only subscribes to it.
  *
  * @module
@@ -27,6 +28,7 @@ import { keyApps } from './keyApps';
 import { emptyModel, githubCredentialIds } from './model';
 import type { Need } from './need';
 import { createObserverSet, mergeNeeds } from './observers';
+import { pollRootsNow } from './pollNow';
 import {
   type DeriveEnv,
   deriveRow,
@@ -240,6 +242,11 @@ export function createBoardModel({
   env.limiters.configure(dashboard);
   markAll();
   flush();
+  // The first poll is now, not an interval after a restore (Decision 109).
+  pollRootsNow(
+    env.client,
+    [...rows.values()].flatMap((entry) => entry.needs),
+  );
 
   return {
     getModel: () => model,
@@ -278,12 +285,7 @@ export function createBoardModel({
       });
       flush();
       if (kind !== 'click') return;
-      // A fetch already running counts as the poll at once.
-      for (const { key } of roots)
-        env.client.refetchQueries(
-          { queryKey: key, exact: true },
-          { cancelRefetch: false },
-        );
+      pollRootsNow(env.client, roots);
     },
     destroy() {
       destroyed = true;

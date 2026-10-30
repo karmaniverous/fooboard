@@ -140,9 +140,9 @@ Until a cell's jobs land it can show **provisional**: dashed, in the look of the
 
 A cell showing earlier data while newer data may be on its way carries a pulsing corner dot (**refreshing**): once a read of its row's runs (or of its Amplify apps' branches and jobs) has taken longer than 300 ms, until it lands; at once when they are older than their poll interval; and while a newer run's jobs load over its last placement.
 
-A quicker read, as most polls are, shows no dot, so polling doesn't make cells flash. Data still within its poll interval, as when you open a board again soon after, shows no dot. Neither mark changes a cell's size.
+A quicker read, as most polls are, shows no dot, so polling doesn't make cells flash. Data still within its poll interval shows no dot unless a read of it is slow. Neither mark changes a cell's size.
 
-Answers are kept, so an edit, opening a board again, or reloading the page shows what is known at once and reads only what is due; a GitHub answer that hasn't changed costs no request budget. After a reload the board shows the answers kept in this browser (see [Your data](#your-data)), with the dot on whatever is older than its poll interval.
+Answers are kept, so an edit, opening a board again, or reloading the page shows what is known at once. Opening a board (a reload included) polls every row at once, its runs or its Amplify apps' branches and jobs, however recent the kept answers, and its poll interval runs from there; an edit reads only what is due. A GitHub answer that hasn't changed costs no request budget. After a reload the board shows the answers kept in this browser (see [Your data](#your-data)), with the dot on whatever is older than its poll interval.
 
 **Polling.** A row polls every 5 s while one of its cells is in progress (a provisional _Running_ included) and every 60 s otherwise, four times slower for a token past half its budget, and nothing polls while the tab is hidden; coming back reads only what fell due. A finished run's jobs are never read again.
 
