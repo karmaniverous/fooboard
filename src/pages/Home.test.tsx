@@ -1,9 +1,11 @@
 /**
- * Tests for the home page: the empty app offers the three ways in
- * (spec.md §3.9 *First run*): *Create a dashboard* opening the first
- * run, *Import from link or file* opening the import dialog, and *Try the
+ * Tests for the home page: the empty app offers the four ways in
+ * (spec.md §3.9 *First run*; spec 0.2.0 §3.J): *Create a dashboard*
+ * opening the first run, *Import from link or file* opening the import
+ * dialog, *Set up with an AI assistant* opening its dialog, and *Try the
  * demo*; saved dashboards are listed; unreadable configuration offers no
- * *Create* or *Import* (neither could be saved), but *Reset*.
+ * *Create*, *Import* or *Set up with an AI assistant* (none could be
+ * saved), but *Reset*.
  *
  * @module
  */
@@ -56,7 +58,26 @@ describe('Home', () => {
     ).toBeInTheDocument();
   });
 
-  it('lists saved dashboards above the same three ways in', () => {
+  it('opens Set up with an AI assistant, after Import from link or file', () => {
+    renderHome();
+    expect(
+      screen.getByText(
+        /Create a dashboard, import one from a link or file, set one up with your AI assistant, or try the demo/,
+      ),
+    ).toBeVisible();
+    const buttons = screen.getAllByRole('button').map((b) => b.textContent);
+    expect(buttons.indexOf('Set up with an AI assistant…')).toBe(
+      buttons.indexOf('Import from link or file…') + 1,
+    );
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Set up with an AI assistant…' }),
+    );
+    expect(
+      screen.getByRole('dialog', { name: 'Set up with an AI assistant' }),
+    ).toBeInTheDocument();
+  });
+
+  it('lists saved dashboards above the same four ways in', () => {
     const stores = createAppStores(memoryStorage());
     stores.config.saveDashboard(createDashboard('Acme', 'env-branches'));
     renderShell(<Home />, undefined, stores);
@@ -68,6 +89,9 @@ describe('Home', () => {
     );
     expect(
       screen.getByRole('link', { name: 'Create a dashboard' }),
+    ).toBeVisible();
+    expect(
+      screen.getByRole('button', { name: 'Set up with an AI assistant…' }),
     ).toBeVisible();
   });
 });
@@ -82,6 +106,9 @@ describe('Home storage failures', () => {
     ).toBeNull();
     expect(
       screen.queryByRole('button', { name: 'Import from link or file…' }),
+    ).toBeNull();
+    expect(
+      screen.queryByRole('button', { name: 'Set up with an AI assistant…' }),
     ).toBeNull();
     expect(screen.getByRole('link', { name: 'Try the demo' })).toBeVisible();
     fireEvent.click(screen.getByRole('button', { name: 'Reset…' }));

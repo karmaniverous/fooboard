@@ -23,7 +23,7 @@ export interface BoardProblems {
 
 export function useProblems(
   dashboard: Dashboard,
-  model: BoardModel,
+  model: Pick<BoardModel, 'problems'>,
 ): BoardProblems {
   const { preferences } = useStores();
   const [dismissed, setDismissed] = useState(

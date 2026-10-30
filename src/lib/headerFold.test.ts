@@ -15,6 +15,7 @@ const FIXED = 100;
 const widths: Record<string, number> = {
   issue: 31,
   github: 32,
+  ai: 39,
   import: 33,
   share: 34,
   theme: 35,
@@ -45,6 +46,15 @@ describe('foldCount', () => {
     expect(shownAfter(rowWith(all) - 1)).toContain('github');
     const noIssue = all.filter((id) => id !== 'issue');
     expect(shownAfter(rowWith(noIssue) - 1)).not.toContain('github');
+  });
+
+  it('folds Set up with an AI assistant after GitHub and just before Import', () => {
+    const before = all.slice(0, all.indexOf('ai'));
+    expect(before).toEqual(['issue', 'github']);
+    const rest = all.filter((id) => !before.includes(id));
+    expect(shownAfter(rowWith(rest))).toContain('ai');
+    expect(shownAfter(rowWith(rest) - 1)).not.toContain('ai');
+    expect(shownAfter(rowWith(rest) - 1)).toContain('import');
   });
 
   it('keeps the tagline until every other button but README and News has folded', () => {

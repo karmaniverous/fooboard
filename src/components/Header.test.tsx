@@ -151,6 +151,19 @@ describe('Header', () => {
     expect(screen.getByRole('dialog', { name: dialog })).toBeInTheDocument();
   });
 
+  it('opens Set up with an AI assistant from the menu once it has folded', () => {
+    layOut(300);
+    renderShell(<Header />);
+    fireEvent.click(
+      within(openMenu()).getByRole('menuitem', {
+        name: 'Set up with an AI assistant',
+      }),
+    );
+    expect(
+      screen.getByRole('dialog', { name: 'Set up with an AI assistant' }),
+    ).toBeInTheDocument();
+  });
+
   it.each(['Light', 'Dark', 'System'] as const)(
     'sets Theme: %s from the menu and saves it',
     (label) => {
