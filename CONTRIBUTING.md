@@ -12,7 +12,7 @@ npx lefthook install   # install Git hooks (once, after cloning)
 ## Commands
 
 ```bash
-npm run dev          # start the Vite dev server
+npm run dev          # start the Vite dev server (the hosted headers and rewrites, but no CSP on the page)
 npm run build        # type-check (tsc -b) and build the static site to dist/
 npm run preview      # the production build, with the hosted headers and CSP
 npm run lint         # ESLint (+ Prettier), then lint:md

@@ -2,9 +2,9 @@
  * The committed Amplify Hosting configuration, read the way Amplify reads it
  * (spec.md §3.10, Decisions 24 and 40; spec 0.2.0 §3.J *Serving them*):
  * the response headers of `customHttp.yml` and the rewrites of
- * `amplify-rewrites.json`. One source for both the hosted site and
- * `vite preview`, so the CSP is tested locally against the headers that
- * ship.
+ * `amplify-rewrites.json`. One source for the hosted site, `vite preview`
+ * and the dev server, so the CSP is tested locally against the headers
+ * that ship.
  *
  * The parsers accept only the subset fooboard uses and throw on anything
  * else, so the local server can never quietly serve less than Amplify

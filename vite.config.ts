@@ -4,9 +4,10 @@
  * require: a relative base would resolve assets against the route path on
  * deep links. A production build fails if it contains the development
  * timing instrumentation or the Query Devtools
- * (`vite/noDevInstrumentation.ts`). `vite preview` serves the committed
- * Amplify headers and SPA rewrite, and a build fails if the rewrite would
- * hide one of its files (`vite/hostingPlugin.ts`). Vendor code is split
+ * (`vite/noDevInstrumentation.ts`). `vite preview` and the dev server
+ * serve the committed Amplify headers and rewrites (the dev server's page
+ * without the CSP), and a build fails if the rewrite would hide one of its
+ * files (`vite/hostingPlugin.ts`). Vendor code is split
  * into cacheable chunks, `src/zodJitless.ts` in zod's (`vite/chunks.ts`).
  * The app's version (`package.json`) is defined as `__APP_VERSION__` (the
  * persisted cache's buster). Vitest extends this config (see

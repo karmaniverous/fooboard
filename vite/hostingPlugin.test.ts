@@ -20,6 +20,7 @@ import {
   SPA_ENTRY,
 } from './hosting';
 import {
+  CSP_HEADER,
   CUSTOM_HTTP_FILE,
   hosting,
   hostingMiddleware,
@@ -35,10 +36,11 @@ const read = (file: string) => readFileSync(path.join(ROOT, file), 'utf8');
 const tempDir = (name: string) =>
   mkdtempSync(path.join(tmpdir(), `fooboard-${name}-`));
 
-/** Runs the middleware on one request; what it did. */
+/** Runs the middleware on one request; what it did. `dev` runs the dev
+ * server's. */
 function serve(
   url: string | undefined,
-  exists: (sitePath: string) => boolean = (p) => p === '/assets/a.js',
+  exists: ((sitePath: string) => boolean) | 'dev' = (p) => p === '/assets/a.js',
 ) {
   const req = { url };
   const headers = new Map<string, string>();
@@ -48,21 +50,28 @@ function serve(
     end: vi.fn(),
   };
   const next = vi.fn();
-  hostingMiddleware({
+  const config = {
     headers: {
-      every: { 'X-A': 'a', 'X-B': 'b' },
+      every: { 'X-A': 'a', [CSP_HEADER]: 'csp' },
       byPath: { '/ai': { 'Content-Type': 'text/markdown' } },
     },
     rules: parseRewrites(read(REWRITES_FILE)),
-    exists,
-  })(req, res, next);
+  };
+  hostingMiddleware(
+    exists === 'dev'
+      ? { ...config, server: 'dev' }
+      : { ...config, server: 'preview', exists },
+  )(req, res, next);
   return { url: req.url, headers, status: res.statusCode, next, end: res.end };
 }
 
 describe('hostingMiddleware', () => {
   it('sets every header, then serves the page for a route', () => {
     const r = serve('/d/acme?x=1');
-    expect(Object.fromEntries(r.headers)).toEqual({ 'X-A': 'a', 'X-B': 'b' });
+    expect(Object.fromEntries(r.headers)).toEqual({
+      'X-A': 'a',
+      [CSP_HEADER]: 'csp',
+    });
     expect(r.url).toBe(`${SPA_ENTRY}?x=1`);
     expect(r.next).toHaveBeenCalledOnce();
   });
@@ -71,11 +80,42 @@ describe('hostingMiddleware', () => {
     const r = serve('/ai');
     expect(Object.fromEntries(r.headers)).toEqual({
       'X-A': 'a',
-      'X-B': 'b',
+      [CSP_HEADER]: 'csp',
       'Content-Type': 'text/markdown',
     });
     expect(r.url).toBe('/ai.md');
     expect(r.next).toHaveBeenCalledOnce();
+  });
+
+  describe('on the dev server', () => {
+    it("rewrites /ai to /ai.md with every header and the path's own", () => {
+      const r = serve('/ai?x=1', 'dev');
+      expect(Object.fromEntries(r.headers)).toEqual({
+        'X-A': 'a',
+        [CSP_HEADER]: 'csp',
+        'Content-Type': 'text/markdown',
+      });
+      expect(r.url).toBe('/ai.md?x=1');
+      expect(r.next).toHaveBeenCalledOnce();
+    });
+
+    it.each(['/d/acme', '/', SPA_ENTRY, '/@vite/client'])(
+      'leaves %s to Vite, with every header but the CSP',
+      (url) => {
+        const r = serve(url, 'dev');
+        expect(Object.fromEntries(r.headers)).toEqual({ 'X-A': 'a' });
+        expect(r.url).toBe(url);
+        expect(r.next).toHaveBeenCalledOnce();
+      },
+    );
+
+    it('leaves a path that is not a file to Vite, with the CSP', () => {
+      const r = serve('/node_modules/.vite/deps/react.js', 'dev');
+      expect(r.headers.get(CSP_HEADER)).toBe('csp');
+      expect(r.status).toBe(200);
+      expect(r.next).toHaveBeenCalledOnce();
+      expect(r.end).not.toHaveBeenCalled();
+    });
   });
 
   it('serves the page for a request with no URL, as for the root', () => {
