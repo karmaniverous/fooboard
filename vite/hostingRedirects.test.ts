@@ -7,6 +7,7 @@
  * @module
  */
 import { describe, expect, it } from 'vitest';
+import { z } from 'zod';
 
 import { REWRITES_FILE } from './hostingPlugin';
 import { REDIRECT_STATUSES, SPA_ENTRY } from './hostingRules';
@@ -21,11 +22,10 @@ const on = (server: (typeof SERVERS)[number]) =>
 
 /** The committed rules with a redirect of `status` from `/old` first. */
 const withPathRedirect = (status: string): string =>
-  read(REWRITES_FILE).replace(
-    /^\s*\[/,
-    (open) =>
-      `${open}${JSON.stringify({ source: '/old', status, target: 'https://example.com/new' })},`,
-  );
+  JSON.stringify([
+    { source: '/old', status, target: 'https://example.com/new' },
+    ...z.array(z.unknown()).parse(JSON.parse(read(REWRITES_FILE))),
+  ]);
 
 describe('hostingMiddleware redirects', () => {
   it.each(SERVERS)(
