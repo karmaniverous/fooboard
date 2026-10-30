@@ -3,8 +3,9 @@
  * locally served CSP: axe finds no WCAG 2.1 A or AA violation (contrast
  * included) on the home page, the demo board, the menu, the cell detail
  * sheet, the settings popup, the *Unmapped runs* panel with a *Dismiss…*
- * form open and with *Show dismissed* on, and the error screen, in light and
- * dark; Tab runs header, then body; the dialogs keep Tab inside; group
+ * form open and with *Show dismissed* on, *Set up with an AI assistant*
+ * and an import refusal listing its errors (spec 0.2.0 §3.J), and the
+ * error screen, in light and dark; Tab runs header, then body; the dialogs keep Tab inside; group
  * frames and boundary lines are hidden from assistive technology; and
  * with reduced motion nothing on the board animates.
  *
@@ -13,6 +14,7 @@
 import AxeBuilder from '@axe-core/playwright';
 import type { Page } from '@playwright/test';
 
+import { REFUSED_FRAGMENT } from './aiShare';
 import { firstCell, openDemo, PHONE } from './board';
 import { expect, test } from './guard';
 
@@ -73,6 +75,32 @@ async function expectUnmappedPanelClean(page: Page): Promise<void> {
   await expect(panel).toHaveCount(0);
 }
 
+/** axe finds nothing in *Set up with an AI assistant*, opened from the
+ * home page, nor in an import refusal listing its errors (spec 0.2.0
+ * §3.J). */
+async function expectAiSetupClean(page: Page): Promise<void> {
+  await page.goto('/');
+  await page
+    .getByRole('main')
+    .getByRole('button', { name: 'Set up with an AI assistant…' })
+    .click();
+  const dialog = page.getByRole('dialog', {
+    name: 'Set up with an AI assistant',
+  });
+  await expect(dialog).toBeVisible();
+  expect(await violations(page), 'AI setup dialog').toEqual([]);
+  await page.keyboard.press('Escape');
+  await expect(dialog).toHaveCount(0);
+
+  await page.goto(`/${REFUSED_FRAGMENT}`);
+  const refusal = page.getByRole('dialog', { name: 'Import dashboards' });
+  await expect(
+    refusal.getByRole('list', { name: 'Import errors' }),
+  ).toBeVisible();
+  expect(await violations(page), 'import refusal').toEqual([]);
+  await page.keyboard.press('Escape');
+}
+
 for (const colorScheme of ['light', 'dark'] as const)
   test.describe(`in ${colorScheme}`, () => {
     test.use({ colorScheme });
@@ -82,6 +110,7 @@ for (const colorScheme of ['light', 'dark'] as const)
       await page.goto('/');
       await expect(page.getByRole('main')).toBeVisible();
       expect(await violations(page), 'home').toEqual([]);
+      await expectAiSetupClean(page);
 
       await openDemo(page);
       expect(await violations(page), 'demo board').toEqual([]);
@@ -117,6 +146,12 @@ for (const colorScheme of ['light', 'dark'] as const)
         expect(await violations(page), 'demo board').toEqual([]);
         await expectActionTooltipClean(page);
         await expectUnmappedPanelClean(page);
+      });
+
+      test('axe finds no WCAG A or AA violation in the AI setup dialog or an import refusal', async ({
+        page,
+      }) => {
+        await expectAiSetupClean(page);
       });
     });
 

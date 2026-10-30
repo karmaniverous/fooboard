@@ -7,6 +7,11 @@
  * stays gone after a reload; a first visit shows no dot; a page that
  * fails to load shows the error screen with the version and a prefilled
  * *Report an issue*, carrying the version, the browser and the message.
+ * Setting up with an AI assistant (spec 0.2.0 §3.J): `/ai`'s example `#j=`
+ * link, a one-dashboard share with one credential, imports and lands on the board
+ * with the credentials panel open on that credential; pasting the same
+ * share's JSON into *Import* imports it; the dialog opens from the header
+ * and from the home page.
  *
  * @module
  */
@@ -16,6 +21,12 @@ import { z } from 'zod';
 
 import { CURRENT_DEVICE_PREFERENCES_VERSION } from '../src/domain/config/devicePreferences';
 import { KEY_PREFIX } from '../src/storage/keyValue';
+import {
+  AI_BOARD_PATH,
+  AI_CREDENTIAL,
+  AI_LINK_FRAGMENT,
+  AI_SHARE_JSON,
+} from './aiShare';
 import { expect, test } from './guard';
 
 const { version: VERSION } = z
@@ -78,6 +89,66 @@ test('a first visit shows no release-notes dot', async ({ page }) => {
     page.getByRole('menuitem', { name: 'Release notes', exact: true }),
   ).toBeVisible();
   await expect(page.locator('[data-release-notes-dot]')).toHaveCount(0);
+});
+
+test('a #j= link imports and asks for its key on the board', async ({
+  page,
+}) => {
+  await page.goto(`/${AI_LINK_FRAGMENT}`);
+  const dialog = page.getByRole('dialog', { name: 'Import dashboards' });
+  await expect(dialog.getByText('This link holds 1 dashboard.')).toBeVisible();
+  // The fragment is gone before anything else.
+  expect(new URL(page.url()).hash).toBe('');
+  await dialog.getByRole('button', { name: 'Import' }).click();
+  await expect(page).toHaveURL(new RegExp(`${AI_BOARD_PATH}$`));
+  const panel = page.getByRole('dialog', { name: 'Credentials' });
+  await expect(panel).toBeVisible();
+  await expect(
+    panel.getByRole('button', { name: new RegExp(`^${AI_CREDENTIAL}`) }),
+  ).toHaveAttribute('aria-expanded', 'true');
+  // Its secret's field, first in the open item, asks for the key.
+  await expect(panel.getByLabel('Token').first()).toBeVisible();
+});
+
+test("pasting a share's JSON into Import imports it", async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.goto('/');
+  await page
+    .getByRole('banner')
+    .getByRole('button', { name: 'Import', exact: true })
+    .click();
+  const dialog = page.getByRole('dialog', { name: 'Import dashboards' });
+  await dialog
+    .getByLabel('Or a fooboard link, or its JSON')
+    .fill(AI_SHARE_JSON ?? '');
+  await dialog.getByRole('button', { name: 'Import' }).click();
+  await expect(page).toHaveURL(new RegExp(`${AI_BOARD_PATH}$`));
+  await expect(page.getByRole('dialog', { name: 'Credentials' })).toBeVisible();
+});
+
+test('Set up with an AI assistant opens from the header and the home page', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.goto('/');
+  const dialog = page.getByRole('dialog', {
+    name: 'Set up with an AI assistant',
+  });
+  await page
+    .getByRole('banner')
+    .getByRole('button', { name: 'Set up with an AI assistant' })
+    .click();
+  await expect(dialog).toBeVisible();
+  await expect(
+    dialog.getByLabel('Instructions for your assistant'),
+  ).toHaveValue('https://www.fooboard.dev/ai');
+  await page.keyboard.press('Escape');
+  await expect(dialog).toHaveCount(0);
+  await page
+    .getByRole('main')
+    .getByRole('button', { name: 'Set up with an AI assistant…' })
+    .click();
+  await expect(dialog).toBeVisible();
 });
 
 test('a page that fails to load shows the error screen', async ({ page }) => {

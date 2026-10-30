@@ -33,7 +33,11 @@ export function ShareRefusalNotice({
   const more = lines.length - IMPORT_ISSUES_SHOWN;
   return (
     <>
-      <p role="alert" className="text-sm text-status-failure">
+      <p
+        role="alert"
+        // The failure red is too dark on the dark dialog (axe, 4.5:1).
+        className="text-sm text-status-failure dark:text-red-400"
+      >
         {refusalMessage(refusal, origin)}
       </p>
       {lines.length > 0 ? (
