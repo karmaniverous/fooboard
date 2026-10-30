@@ -8,7 +8,8 @@
  *   the `'**'` pattern's, merged with those of the one-path pattern naming
  *   the requested path, as Amplify merges them (spec 0.2.0 §3.J);
  * - a path an `amplify-rewrites.json` redirect names is answered its
- *   status with its target as the `Location`; a redirect from a full URL
+ *   status with its target as the `Location`, the request's query carried
+ *   over unless the target has its own, as on Amplify; a redirect from a full URL
  *   (the apex `https://fooboard.dev`) names another host, which a local
  *   server never is, so it is skipped (Decision 110); so is any rule with
  *   a country `condition`, since a local request has no country;
@@ -93,6 +94,16 @@ const decodePath = (pathname: string): string | undefined => {
   }
 };
 
+/** A redirect's `Location` for a request with query `search`: the
+ * target with the request's query carried over, as Amplify carries it,
+ * unless the target has a query of its own (before any fragment). */
+const location = (target: string, search: string): string => {
+  const hash = target.indexOf('#');
+  const [base, fragment] =
+    hash < 0 ? [target, ''] : [target.slice(0, hash), target.slice(hash)];
+  return base.includes('?') ? target : `${base}${search}${fragment}`;
+};
+
 /** The hosting middleware: headers on every response, then a path
  * redirect, then the rewrite, then (on `vite preview`) a 404 for a path
  * that is neither redirected, rewritten nor a file. On the dev server the
@@ -114,7 +125,7 @@ export function hostingMiddleware(options: HostingOptions): Middleware {
       if (!(dev && page && name === CSP_HEADER)) res.setHeader(name, value);
     if (redirect !== undefined) {
       res.statusCode = Number(redirect.status);
-      res.setHeader('Location', redirect.target);
+      res.setHeader('Location', location(redirect.target, url.search));
       res.end();
       return;
     }

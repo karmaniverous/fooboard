@@ -2,7 +2,8 @@
 /**
  * The middleware's redirects (Decision 110): a redirect from a full URL
  * (the committed apex redirect) names another host and is skipped locally;
- * a redirect from a plain path is answered its status and `Location`. A
+ * a redirect from a plain path is answered its status and `Location`, the
+ * request's query carried over unless the target has its own. A
  * rule with a country `condition` is skipped locally, redirect or rewrite.
  *
  * @module
@@ -28,9 +29,12 @@ const withFirst = (first: object): string =>
     ...z.array(z.unknown()).parse(JSON.parse(read(REWRITES_FILE))),
   ]);
 
-/** The committed rules with a redirect of `status` from `/old` first. */
-const withPathRedirect = (status: string): string =>
-  withFirst({ source: '/old', status, target: 'https://example.com/new' });
+/** The committed rules with a redirect of `status` from `/old` to
+ * `target` first. */
+const withPathRedirect = (
+  status: string,
+  target = 'https://example.com/new',
+): string => withFirst({ source: '/old', status, target });
 
 describe('hostingMiddleware redirects', () => {
   it.each(SERVERS)(
@@ -50,13 +54,31 @@ describe('hostingMiddleware redirects', () => {
       (status) => {
         const r = serve('/old?x=1', on(server), withPathRedirect(status));
         expect(r.status).toBe(Number(status));
-        expect(r.headers.get('Location')).toBe('https://example.com/new');
+        expect(r.headers.get('Location')).toBe('https://example.com/new?x=1');
         expect(r.headers.get('X-A')).toBe('a');
         expect(r.end).toHaveBeenCalledOnce();
         expect(r.next).not.toHaveBeenCalled();
       },
     );
   });
+
+  it.each([
+    ['no query of its own', '/new', '/old?x=1', '/new?x=1'],
+    ['a fragment', '/new#top', '/old?x=1', '/new?x=1#top'],
+    [
+      'its own query',
+      'https://example.com/new?y=2#top',
+      '/old?x=1',
+      'https://example.com/new?y=2#top',
+    ],
+    ['a request with no query', '/new#top', '/old', '/new#top'],
+  ])(
+    'carries the query over (or not) to a target with %s, as Amplify does',
+    (_why, target, url, expected) => {
+      const r = serve(url, undefined, withPathRedirect('302', target));
+      expect(r.headers.get('Location')).toBe(expected);
+    },
+  );
 
   it('leaves any other path to the rewrites', () => {
     const r = serve('/older', undefined, withPathRedirect('301'));
