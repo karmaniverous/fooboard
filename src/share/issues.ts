@@ -5,11 +5,14 @@
  * an assistant reads them (`dashboards[0].stages[3].id`); an issue about
  * the share as a whole is written `share`. Messages never hold a value
  * from the share's credentials: zod's name what was expected, not what
- * was found, and a parser's quoted text is cut. Pure.
+ * was found, and text that isn't JSON is described by the position of
+ * its error alone. Pure.
  *
  * @module
  */
 import type { z } from 'zod';
+
+import { jsonErrorAt, lineColumn } from './jsonErrorAt';
 
 /** One thing wrong with a share: where (a written path), and what. */
 export interface ShareIssue {
@@ -48,17 +51,23 @@ export const zodIssues = (
 ): ShareIssue[] =>
   error.issues.map((i) => shareIssue([...prefix, ...i.path], i.message));
 
-/** A quoted run in a parser's message: some engines quote the text that
- * failed, which could hold a secret. */
-const QUOTED = /"(?:[^"\\]|\\.)*"/g;
-
-/** What a parser said about text that isn't JSON, without the text it
- * quoted. */
-export const notJsonIssue = (error: unknown): ShareIssue =>
-  shareIssue(
+/** Where `text`, which a parser refused, stops being JSON: its position
+ * alone, never any of its text (a parser's own message can quote part of
+ * a secret, spec 0.2.0 §3.J *No quoted input in error messages*). */
+export function notJsonIssue(text: string): ShareIssue {
+  const at = jsonErrorAt(text);
+  if (at === undefined)
+    return shareIssue([], 'not JSON: the error could not be placed');
+  const { line, column } = lineColumn(text, at);
+  const where =
+    at >= text.length
+      ? `it ends too soon, at position ${String(at)}`
+      : `the error is at position ${String(at)}`;
+  return shareIssue(
     [],
-    `not JSON: ${(error instanceof Error ? error.message : String(error)).replace(QUOTED, '"…"')}`,
+    `not JSON: ${where} (line ${String(line)}, column ${String(column)})`,
   );
+}
 
 /** An issue as one line: its path, `: `, then its message. */
 export const issueLine = (issue: ShareIssue): string =>

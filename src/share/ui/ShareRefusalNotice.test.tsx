@@ -13,7 +13,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 
 import { clickToCopy, mockClipboard, unmockClipboard } from '@/test/clipboard';
 
-import { refused } from '../envelope';
+import { readShare, refused } from '../envelope';
 import type { ShareIssue } from '../issues';
 import { ShareRefusalNotice } from './ShareRefusalNotice';
 import {
@@ -80,6 +80,21 @@ describe('ShareRefusalNotice', () => {
     expect(screen.getByRole('status')).toHaveTextContent(
       'Copied. Paste it into your assistant.',
     );
+  });
+
+  it('copies no part of a secret from text that is not JSON', async () => {
+    const writeText = mockClipboard();
+    // An odd number of quotes around an unquoted secret, as V8 quotes it.
+    const read = readShare(
+      '{"format":"fooboard","credentials":{"secrets":{"gh":{"token": ghp_SECRET123"x""}}}}',
+    );
+    if (read.ok) throw new Error('expected a refusal');
+    render(<ShareRefusalNotice refusal={read} origin="file" />);
+    expect(listed().join('\n')).not.toMatch(/ghp|SECRET/);
+    await clickToCopy(screen.getByRole('button', { name: COPY_ERRORS }));
+    const copied = writeText.mock.calls[0]?.[0] ?? '';
+    expect(copied).toMatch(/^share: not JSON: the error is at position \d+/m);
+    expect(copied).not.toMatch(/ghp|SECRET/);
   });
 
   it("says so when the browser won't copy", async () => {

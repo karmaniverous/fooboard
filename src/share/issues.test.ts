@@ -1,7 +1,8 @@
 /**
  * Tests for field-level import errors' paths and lines (spec 0.2.0 §3.J
  * *Paths*): zod's path written for a reader, the whole share written
- * `share`, and a parser's quoted text cut from its message.
+ * `share`, and text that isn't JSON described by its error's position
+ * alone, never any of its text.
  *
  * @module
  */
@@ -41,30 +42,39 @@ describe('issueLine', () => {
 });
 
 describe('notJsonIssue', () => {
-  it("is about the whole share, with the parser's message", () => {
-    expect(
-      notJsonIssue(new SyntaxError('Unexpected end of JSON input')),
-    ).toEqual({
+  it('is about the whole share, giving where the error is', () => {
+    expect(notJsonIssue('{"a":1} x')).toEqual({
       path: WHOLE_SHARE,
-      message: 'not JSON: Unexpected end of JSON input',
+      message: 'not JSON: the error is at position 8 (line 1, column 9)',
     });
   });
 
-  it('cuts the text a parser quotes, which could hold a secret', () => {
-    let error: unknown;
-    try {
-      JSON.parse('ghp_secret');
-    } catch (err) {
-      error = err;
-    }
-    const { message } = notJsonIssue(error);
-    expect(message).toMatch(/^not JSON: /);
-    expect(message).not.toContain('ghp_secret');
+  it('says text that stops early ends too soon', () => {
+    expect(notJsonIssue('{"a":\n').message).toBe(
+      'not JSON: it ends too soon, at position 6 (line 2, column 1)',
+    );
   });
 
-  it('cuts quoted text with escaped quotes inside it', () => {
-    expect(
-      notJsonIssue(new Error('Unexpected token "a\\"b" here')).message,
-    ).toBe('not JSON: Unexpected token "…" here');
+  it('says so when it cannot place the error', () => {
+    expect(notJsonIssue('['.repeat(100_000)).message).toBe(
+      'not JSON: the error could not be placed',
+    );
+  });
+
+  // V8 quotes the input around the error; with an odd number of quotes in
+  // its snippet, cutting quoted runs left part of the secret behind.
+  it.each([
+    ['an unquoted secret', '{"k":"v","t": ghp_SECRET"x"}'],
+    [
+      'unpaired quotes',
+      '{"aaaaaaaaaaaaaaaaaaaaaaaa":"bb", "t": ghp_SECRET"x""}',
+    ],
+    ['the secret alone', 'ghp_SECRET'],
+    ['a secret in an unterminated string', '{"t":"ghp_SECRET'],
+  ])('keeps no input text with %s', (_why, text) => {
+    const { message } = notJsonIssue(text);
+    expect(message).toMatch(/^not JSON: /);
+    for (const piece of ['ghp', 'SECRET', '"', 'aaa', 'bb'])
+      expect(message).not.toContain(piece);
   });
 });

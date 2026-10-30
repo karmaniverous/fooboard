@@ -217,8 +217,8 @@ export function readShare(text: string): ShareRead {
   let raw: unknown;
   try {
     raw = JSON.parse(text);
-  } catch (err) {
-    return refused('damaged', [notJsonIssue(err)]);
+  } catch {
+    return refused('damaged', [notJsonIssue(text)]);
   }
   const format = ShareFormatSchema.safeParse(raw);
   if (!format.success) return refused('notShare', zodIssues(format.error));
