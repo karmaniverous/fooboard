@@ -6,6 +6,12 @@
  * @module
  */
 
+/** Production's origin: the canonical host, and the only fooboard site an
+ * AI assistant can reach (dev and release are password-protected, and the
+ * bare domain only redirects here; spec 0.2.0 §3.J, Decisions 96 and
+ * 107). */
+export const PRODUCTION_ORIGIN = 'https://www.fooboard.dev';
+
 /** Product identity and outbound links. */
 export const site = {
   name: 'fooboard',
@@ -17,6 +23,11 @@ export const site = {
   repoUrl: 'https://github.com/karmaniverous/fooboard',
   issuesUrl: 'https://github.com/karmaniverous/fooboard/issues',
   readmeUrl: 'https://github.com/karmaniverous/fooboard#readme',
+  /** The instructions for AI assistants as the discovery pointers name
+   * them (spec 0.2.0 §3.J *Discovery*): production's, on every host
+   * (Decision 96). *Set up with an AI assistant* gives the current site's
+   * instead (`aiSetupFor`, Decision 107). */
+  aiUrl: `${PRODUCTION_ORIGIN}/ai`,
   /** The menu's *Release notes* (spec 0.2.0 §3.D). */
   releasesUrl: 'https://github.com/karmaniverous/fooboard/releases',
   privacyUrl: 'https://github.com/karmaniverous/fooboard/blob/main/PRIVACY.md',

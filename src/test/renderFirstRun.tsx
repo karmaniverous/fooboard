@@ -1,7 +1,8 @@
 /**
  * For first-run tests (spec.md §3.9): the app's routes for the home page,
  * the first run's steps and a board, over in-memory stores, at a starting
- * path, with the router's state shown (`LocationState`).
+ * path, with the router's state shown (`LocationState`) and any `ui` a
+ * test adds inside the router.
  *
  * @module
  */
@@ -22,11 +23,12 @@ import { StoresContext } from '@/storage/storesContext';
 
 import { LocationState } from './LocationState';
 
-/** The app's routes at `entry` over `stores` (fresh by default); waits
- * for the persisted cache, so pages render at once. */
+/** The app's routes at `entry` over `stores` (fresh by default), with
+ * `ui`; waits for the persisted cache, so pages render at once. */
 export async function renderFirstRun(
   entry: string | { pathname: string; state: unknown } = HOME_PATH,
   stores: AppStores = createAppStores(memoryStorage()),
+  ui: React.ReactNode = null,
 ): Promise<AppStores> {
   await appQueryEnv(stores).restored;
   await act(async () => {
@@ -36,6 +38,7 @@ export async function renderFirstRun(
         <MemoryRouter initialEntries={[entry]}>
           <AppNavProvider>
             <LocationState />
+            {ui}
             <Suspense fallback={<p>Loading</p>}>
               <Routes>
                 <Route path={HOME_PATH} element={<Home />} />

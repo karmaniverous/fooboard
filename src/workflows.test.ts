@@ -10,10 +10,12 @@
  *   in Chromium against a fresh build;
  * - `amplify.yml` builds with Node 22, `npm ci` and `npm run build`, and
  *   publishes `dist`;
- * - `customHttp.yml` sets the CSP and the security headers (the CSP's style
- *   hashes are checked against the injected styles in `cspStyles.test.tsx`);
- * - `amplify-rewrites.json` serves the page for the app's routes and never
- *   for an asset path.
+ * - `customHttp.yml` sets the CSP, the security headers and the `Link` to
+ *   `/ai` on every path (the CSP's style hashes are checked against the
+ *   injected styles in `cspStyles.test.tsx`), and the markdown type on
+ *   `/ai` and `/ai.md` (spec 0.2.0 §3.J);
+ * - `amplify-rewrites.json` serves `/ai` from `/ai.md`, the page for the
+ *   app's routes, and never the page for an asset path.
  *
  * @module
  */
@@ -156,16 +158,18 @@ describe('Amplify build spec (amplify.yml)', () => {
   });
 });
 
-const headers = parseCustomHttp(customHttpRaw);
+const hosting = parseCustomHttp(customHttpRaw);
+const headers = hosting.every;
 const directives = cspDirectives(headers['Content-Security-Policy']);
 const csp = new Map(directives);
 
 describe('response headers (customHttp.yml)', () => {
-  it('sets the CSP and every security header, and nothing else', () => {
+  it('sets the CSP, every security header and the Link, and nothing else', () => {
     expect(Object.keys(headers).sort()).toEqual([
       'Content-Security-Policy',
       'Cross-Origin-Opener-Policy',
       'Cross-Origin-Resource-Policy',
+      'Link',
       'Permissions-Policy',
       'Referrer-Policy',
       'Strict-Transport-Security',
@@ -181,8 +185,14 @@ describe('response headers (customHttp.yml)', () => {
     ['X-Frame-Options', 'DENY'],
     ['Cross-Origin-Opener-Policy', 'same-origin'],
     ['Cross-Origin-Resource-Policy', 'same-origin'],
+    ['Link', '</ai>; rel="alternate"; type="text/markdown"'],
   ])('sets %s to %s', (name, value) => {
     expect(headers[name]).toBe(value);
+  });
+
+  it('serves /ai and /ai.md, and no other path, as markdown', () => {
+    const markdown = { 'Content-Type': 'text/markdown; charset=utf-8' };
+    expect(hosting.byPath).toEqual({ '/ai': markdown, '/ai.md': markdown });
   });
 
   it('denies camera, microphone and geolocation, among others', () => {
@@ -245,8 +255,12 @@ describe('Content-Security-Policy', () => {
   });
 });
 
-describe('SPA rewrite (amplify-rewrites.json)', () => {
+describe('rewrites (amplify-rewrites.json)', () => {
   const rules = parseRewrites(rewritesRaw);
+
+  it('serves /ai the instructions for assistants, before the page rule', () => {
+    expect(rewrite(rules, '/ai')).toBe('/ai.md');
+  });
 
   it.each([
     '/',
@@ -267,6 +281,9 @@ describe('SPA rewrite (amplify-rewrites.json)', () => {
     '/favicon-32.png',
     '/apple-touch-icon.png',
     '/assets/font.woff2',
+    '/ai.md',
+    '/ai.schema.json',
+    '/llms.txt',
   ])('serves the file itself for the asset path %s', (path) => {
     expect(rewrite(rules, path)).toBe(path);
   });

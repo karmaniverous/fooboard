@@ -14,6 +14,7 @@ import type { Dashboard } from '@/domain/config/dashboard';
 import type { AmplifyReader } from '@/lib/amplify/reader';
 import { OPT_IN_REGIONS } from '@/lib/amplify/regions';
 import { createQueryEnv, type QueryEnv } from '@/query/client';
+import { QueryKeySchema } from '@/query/keys';
 
 import { withoutRetryDelay } from './boardModel';
 import { simProviders, simTransport } from './simDemo';
@@ -72,3 +73,17 @@ export function reloadInto(env: QueryEnv, next: QueryEnv): QueryEnv {
   );
   return next;
 }
+
+/** How many of `env`'s app searches (Amplify `apps` reads) are fetching.
+ * A reload reads every row's roots (an app's branches and their jobs)
+ * again at once, the first poll (Decision 109), but not the searches it
+ * restored. */
+export const searchesFetching = (env: QueryEnv): number =>
+  env.client.isFetching({
+    predicate: ({ queryKey }) => {
+      const key = QueryKeySchema.safeParse(queryKey);
+      return (
+        key.success && key.data[0] === 'amplify' && key.data[2].call === 'apps'
+      );
+    },
+  });

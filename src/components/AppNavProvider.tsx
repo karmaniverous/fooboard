@@ -2,7 +2,8 @@
  * Provides the navigation items' shared state: the *Share / Export* dialog
  * (spec.md C-19, §3.8), which a header button, a menu item or a footer
  * link can open; the *Import* dialog (§3.8), opened the same ways, from
- * the home page, or by a share link; the *Reset* confirmation (§3.9),
+ * the home page, or by a share link; *Set up with an AI assistant* (spec
+ * 0.2.0 §3.J), opened like *Import*; the *Reset* confirmation (§3.9),
  * opened from the menu or the home page's error state; and, beside them,
  * whether the menu's *Release notes* shows its dot (spec 0.2.0 §3.D,
  * `useReleaseNotesSeen`). Each dialog returns focus to what opened it,
@@ -23,12 +24,13 @@ import { ImportDialog } from '@/share/ui/ImportDialog';
 import { useShareLinkArrivals } from '@/share/useShareLinkArrivals';
 import { useStores } from '@/storage/storesContext';
 
+import { AiSetupDialog } from './AiSetupDialog';
 import { NavContext } from './navItems';
 import { ResetDialog } from './ResetDialog';
 import { ShareDialog } from './ShareDialog';
 import { useReleaseNotesSeen } from './useReleaseNotesSeen';
 
-type Opened = 'share' | 'import' | 'reset' | null;
+type Opened = 'share' | 'import' | 'ai' | 'reset' | null;
 
 export function AppNavProvider({
   children,
@@ -65,6 +67,7 @@ export function AppNavProvider({
     return {
       openShare: open('share'),
       openImport: open('import'),
+      openAiSetup: open('ai'),
       openReset: open('reset'),
       ...releaseNotes,
     };
@@ -92,6 +95,7 @@ export function AppNavProvider({
       {children}
       <ShareDialog {...dialog('share')} />
       <ImportDialog key={arrivals} {...dialog('import')} link={link} />
+      <AiSetupDialog {...dialog('ai')} />
       <ResetDialog {...dialog('reset')} />
     </NavContext>
   );

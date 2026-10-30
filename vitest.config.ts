@@ -27,8 +27,9 @@ export default mergeConfig(
       hookTimeout: MIN_TEST_TIMEOUT_MS,
       setupFiles: ['./src/test/setup.ts'],
       // CSS is stubbed in tests, except the theme, whose tokens
-      // theme.test.ts reads (as raw text) to check their contrast.
-      css: { include: [/src\/index\.css/] },
+      // theme.test.ts reads (as raw text) to check their contrast, and the
+      // loading screen's, which loadingScreen.test.ts reads beside them.
+      css: { include: [/src\/index\.css/, /public\/loading\.css/] },
       coverage: {
         enabled: true,
         provider: 'v8',

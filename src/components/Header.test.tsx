@@ -57,6 +57,7 @@ describe('Header', () => {
       'Theme: System',
       'Share / Export',
       'Import',
+      'Set up with an AI assistant',
       'GitHub',
       'Report an issue',
       'Menu',
@@ -88,6 +89,7 @@ describe('Header', () => {
       'Theme: Dark',
       'Share / Export',
       'Import',
+      'Set up with an AI assistant',
       'GitHub',
       'Report an issue',
       'Privacy',
@@ -142,10 +144,24 @@ describe('Header', () => {
   it.each([
     ['Share / Export', 'Share fooboard'],
     ['Import', 'Import dashboards'],
+    ['Set up with an AI assistant', 'Set up with an AI assistant'],
   ])('opens %s in its dialog', (button, dialog) => {
     renderShell(<Header />);
     fireEvent.click(screen.getByRole('button', { name: button }));
     expect(screen.getByRole('dialog', { name: dialog })).toBeInTheDocument();
+  });
+
+  it('opens Set up with an AI assistant from the menu once it has folded', () => {
+    layOut(300);
+    renderShell(<Header />);
+    fireEvent.click(
+      within(openMenu()).getByRole('menuitem', {
+        name: 'Set up with an AI assistant',
+      }),
+    );
+    expect(
+      screen.getByRole('dialog', { name: 'Set up with an AI assistant' }),
+    ).toBeInTheDocument();
   });
 
   it.each(['Light', 'Dark', 'System'] as const)(

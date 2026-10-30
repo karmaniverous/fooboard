@@ -4,12 +4,14 @@
  * require: a relative base would resolve assets against the route path on
  * deep links. A production build fails if it contains the development
  * timing instrumentation or the Query Devtools
- * (`vite/noDevInstrumentation.ts`). `vite preview` serves the committed
- * Amplify headers and SPA rewrite, and a build fails if the rewrite would
- * hide one of its files (`vite/hostingPlugin.ts`). Vendor code is split
+ * (`vite/noDevInstrumentation.ts`). `vite preview` and the dev server
+ * serve the committed Amplify headers and rewrites (the dev server's page
+ * without the CSP), and a build fails if the rewrite would hide one of its
+ * files (`vite/hostingPlugin.ts`). Vendor code is split
  * into cacheable chunks, `src/zodJitless.ts` in zod's (`vite/chunks.ts`).
  * The app's version (`package.json`) is defined as `__APP_VERSION__` (the
- * persisted cache's buster). Vitest extends this config (see
+ * persisted cache's buster), and `virtual:ai-instructions` is the text of
+ * `public/ai.md` (`vite/aiInstructions.ts`). Vitest extends this config (see
  * `vitest.config.ts`).
  *
  * @module
@@ -21,6 +23,7 @@ import tailwindcss from '@tailwindcss/vite';
 import react from '@vitejs/plugin-react';
 import { defineConfig } from 'vite';
 
+import { aiInstructions } from './vite/aiInstructions.ts';
 import { manualChunks } from './vite/chunks.ts';
 import { hosting } from './vite/hostingPlugin.ts';
 import { noDevInstrumentation } from './vite/noDevInstrumentation.ts';
@@ -41,7 +44,13 @@ const version = ((): string => {
 })();
 
 export default defineConfig({
-  plugins: [react(), tailwindcss(), noDevInstrumentation(), hosting()],
+  plugins: [
+    react(),
+    tailwindcss(),
+    noDevInstrumentation(),
+    hosting(),
+    aiInstructions(),
+  ],
   define: { __APP_VERSION__: JSON.stringify(version) },
   resolve: {
     alias: {

@@ -13,8 +13,14 @@ import path from 'node:path';
 import { build, preview, type PreviewServer } from 'vite';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 
-import { parseCustomHttp, parseRewrites, SPA_ENTRY } from './hosting';
 import {
+  headersFor,
+  parseCustomHttp,
+  parseRewrites,
+  SPA_ENTRY,
+} from './hosting';
+import {
+  CSP_HEADER,
   CUSTOM_HTTP_FILE,
   hosting,
   hostingMiddleware,
@@ -30,10 +36,11 @@ const read = (file: string) => readFileSync(path.join(ROOT, file), 'utf8');
 const tempDir = (name: string) =>
   mkdtempSync(path.join(tmpdir(), `fooboard-${name}-`));
 
-/** Runs the middleware on one request; what it did. */
+/** Runs the middleware on one request; what it did. `dev` runs the dev
+ * server's. */
 function serve(
   url: string | undefined,
-  exists: (sitePath: string) => boolean = (p) => p === '/assets/a.js',
+  exists: ((sitePath: string) => boolean) | 'dev' = (p) => p === '/assets/a.js',
 ) {
   const req = { url };
   const headers = new Map<string, string>();
@@ -43,20 +50,72 @@ function serve(
     end: vi.fn(),
   };
   const next = vi.fn();
-  hostingMiddleware({
-    headers: { 'X-A': 'a', 'X-B': 'b' },
+  const config = {
+    headers: {
+      every: { 'X-A': 'a', [CSP_HEADER]: 'csp' },
+      byPath: { '/ai': { 'Content-Type': 'text/markdown' } },
+    },
     rules: parseRewrites(read(REWRITES_FILE)),
-    exists,
-  })(req, res, next);
+  };
+  hostingMiddleware(
+    exists === 'dev'
+      ? { ...config, server: 'dev' }
+      : { ...config, server: 'preview', exists },
+  )(req, res, next);
   return { url: req.url, headers, status: res.statusCode, next, end: res.end };
 }
 
 describe('hostingMiddleware', () => {
   it('sets every header, then serves the page for a route', () => {
     const r = serve('/d/acme?x=1');
-    expect(Object.fromEntries(r.headers)).toEqual({ 'X-A': 'a', 'X-B': 'b' });
+    expect(Object.fromEntries(r.headers)).toEqual({
+      'X-A': 'a',
+      [CSP_HEADER]: 'csp',
+    });
     expect(r.url).toBe(`${SPA_ENTRY}?x=1`);
     expect(r.next).toHaveBeenCalledOnce();
+  });
+
+  it("merges '**' with the requested path's own headers, then serves the rewrite's file", () => {
+    const r = serve('/ai');
+    expect(Object.fromEntries(r.headers)).toEqual({
+      'X-A': 'a',
+      [CSP_HEADER]: 'csp',
+      'Content-Type': 'text/markdown',
+    });
+    expect(r.url).toBe('/ai.md');
+    expect(r.next).toHaveBeenCalledOnce();
+  });
+
+  describe('on the dev server', () => {
+    it("rewrites /ai to /ai.md with every header and the path's own", () => {
+      const r = serve('/ai?x=1', 'dev');
+      expect(Object.fromEntries(r.headers)).toEqual({
+        'X-A': 'a',
+        [CSP_HEADER]: 'csp',
+        'Content-Type': 'text/markdown',
+      });
+      expect(r.url).toBe('/ai.md?x=1');
+      expect(r.next).toHaveBeenCalledOnce();
+    });
+
+    it.each(['/d/acme', '/', SPA_ENTRY, '/@vite/client'])(
+      'leaves %s to Vite, with every header but the CSP',
+      (url) => {
+        const r = serve(url, 'dev');
+        expect(Object.fromEntries(r.headers)).toEqual({ 'X-A': 'a' });
+        expect(r.url).toBe(url);
+        expect(r.next).toHaveBeenCalledOnce();
+      },
+    );
+
+    it('leaves a path that is not a file to Vite, with the CSP', () => {
+      const r = serve('/node_modules/.vite/deps/react.js', 'dev');
+      expect(r.headers.get(CSP_HEADER)).toBe('csp');
+      expect(r.status).toBe(200);
+      expect(r.next).toHaveBeenCalledOnce();
+      expect(r.end).not.toHaveBeenCalled();
+    });
   });
 
   it('serves the page for a request with no URL, as for the root', () => {
@@ -180,6 +239,7 @@ describe('vite preview with the plugin', () => {
       '<!doctype html><p>page</p>',
     );
     writeFileSync(path.join(outDir, 'assets', 'a.js'), 'export {};');
+    writeFileSync(path.join(outDir, 'ai.md'), '# For assistants');
     server = await preview({
       configFile: false,
       root: ROOT,
@@ -201,6 +261,8 @@ describe('vite preview with the plugin', () => {
     ['/d/acme', 200, 'page'],
     ['/assets/a.js', 200, 'export {};'],
     ['/assets/gone.js', 404, ''],
+    ['/ai', 200, '# For assistants'],
+    ['/ai.md', 200, '# For assistants'],
   ])(
     'serves %s as %i with the committed headers',
     async (url, status, body) => {
@@ -208,9 +270,19 @@ describe('vite preview with the plugin', () => {
       expect(res.status).toBe(status);
       expect(await res.text()).toContain(body);
       for (const [name, value] of Object.entries(
-        parseCustomHttp(read(CUSTOM_HTTP_FILE)),
+        headersFor(parseCustomHttp(read(CUSTOM_HTTP_FILE)), url),
       ))
         expect(res.headers.get(name)).toBe(value);
+    },
+  );
+
+  it.each(['/ai', '/ai.md'])(
+    "serves %s as markdown, over the file server's own type",
+    async (url) => {
+      const res = await fetch(new URL(url, base));
+      expect(res.headers.get('content-type')).toBe(
+        'text/markdown; charset=utf-8',
+      );
     },
   );
 });

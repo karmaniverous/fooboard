@@ -18,6 +18,7 @@ import {
   foundByRepoDashboard as dashboard,
   foundByRepoEnv,
   reloadInto,
+  searchesFetching,
 } from '@/test/foundByRepo';
 
 import { createBoardModel } from './boardModel';
@@ -37,10 +38,9 @@ describe('reloading a board with a row found by repo', () => {
     const after = reloadInto(before, realisticEnv());
     const restored = createBoardModel({ dashboard, env: after });
     const first = restored.getModel();
-    // (The demo's failing GitHub repos weren't kept, so they read again.)
-    const amplifyFetching = after.client.isFetching({
-      queryKey: ['amplify'],
-    });
+    // (The demo's failing GitHub repos weren't kept, so they read again;
+    // every row's jobs read again too, the first poll, Decision 109.)
+    const amplifyFetching = searchesFetching(after);
     restored.destroy();
 
     const cellsOf = (model: typeof first, rowId: string) =>

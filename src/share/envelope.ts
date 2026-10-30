@@ -1,5 +1,5 @@
 /**
- * The share envelope (spec.md §3.8 *Share format*, Decisions 39 and 63; a
+ * The share envelope (spec.md A§3.8 *Share format*, Decisions 39 and 63; a
  * public contract from 0.1.0): one JSON document, the same for a file and
  * a link, holding one or more dashboards exactly as stored and, beside
  * them, their secrets when the user includes them.
@@ -8,16 +8,26 @@
  * fooboard share" before a dashboard is parsed), then the envelope's own
  * `formatVersion` and the data model's `schemaVersion`, refusing newer
  * ones; older data models migrate through the chain and are validated by
- * the configuration's own schema. Nothing malformed is defaulted.
+ * the configuration's own schema. Nothing malformed is defaulted. A
+ * refusal of text that is JSON, or isn't, carries its issues, each with
+ * its path (spec 0.2.0 §3.J *Field-level errors*), so an assistant that
+ * built the share can fix it.
  *
  * @module
  */
 import { z } from 'zod';
 
-import type { Dashboard } from '@/domain/config/dashboard';
+import { type Dashboard, DashboardSchema } from '@/domain/config/dashboard';
 import { migrate } from '@/domain/config/migrate';
 import { CURRENT_SCHEMA_VERSION } from '@/domain/config/root';
 
+import {
+  issuePath,
+  notJsonIssue,
+  type ShareIssue,
+  shareIssue,
+  zodIssues,
+} from './issues';
 import {
   type EncryptedCredentials,
   EncryptedCredentialsSchema,
@@ -38,6 +48,9 @@ const ShareCredentialsSchema = z
   .nullable();
 export type ShareCredentials = z.infer<typeof ShareCredentialsSchema>;
 
+/** The fixed tag, checked before anything else. */
+const ShareFormatSchema = z.object({ format: z.literal(SHARE_FORMAT) });
+
 /** The envelope as written; `dashboards` are checked after migration. */
 const ShareEnvelopeSchema = z.object({
   format: z.literal(SHARE_FORMAT),
@@ -46,6 +59,25 @@ const ShareEnvelopeSchema = z.object({
   dashboards: z.array(z.unknown()).min(1),
   credentials: ShareCredentialsSchema,
 });
+
+/**
+ * A share as an assistant writes it (spec 0.2.0 §3.J, Decision 95): this
+ * version's envelope with its dashboards in full and no credentials.
+ * `/ai.schema.json` is its JSON Schema (`src/ai/schema.test.ts`).
+ */
+export const AiShareSchema = z
+  .object({
+    format: z.literal(SHARE_FORMAT),
+    formatVersion: z.literal(SHARE_FORMAT_VERSION),
+    schemaVersion: z.literal(CURRENT_SCHEMA_VERSION),
+    dashboards: z.array(DashboardSchema).min(1),
+    credentials: z.null(),
+  })
+  .meta({
+    title: 'fooboard share',
+    description:
+      'A fooboard share as an AI assistant builds it, with no credentials. Instructions: https://www.fooboard.dev/ai',
+  });
 
 /** A share as written by this version. */
 export interface ShareEnvelope {
@@ -71,8 +103,21 @@ export interface Share {
 /** Why a share was refused. */
 export type ShareRefusal = 'notShare' | 'newer' | 'damaged';
 
-export type ShareRead =
-  { ok: true; share: Share } | { ok: false; reason: ShareRefusal };
+/** A share refused: why, and what is wrong with it, field by field (none
+ * when nothing could be read, e.g. a damaged link). */
+export interface ShareRefused {
+  ok: false;
+  reason: ShareRefusal;
+  issues: ShareIssue[];
+}
+
+export type ShareRead = { ok: true; share: Share } | ShareRefused;
+
+/** A refusal for `reason`, with `issues`. */
+export const refused = (
+  reason: ShareRefusal,
+  issues: ShareIssue[] = [],
+): ShareRefused => ({ ok: false, reason, issues });
 
 /** The envelope for `dashboards` and their `credentials` (`null`: none). */
 export const buildEnvelope = (
@@ -86,24 +131,55 @@ export const buildEnvelope = (
   credentials,
 });
 
-const isRecord = (v: unknown): v is Record<string, unknown> =>
-  typeof v === 'object' && v !== null && !Array.isArray(v);
+/** An issue for each version field above what this app reads. */
+function newerIssues(raw: Record<string, unknown>): ShareIssue[] {
+  const known = {
+    formatVersion: SHARE_FORMAT_VERSION,
+    schemaVersion: CURRENT_SCHEMA_VERSION,
+  };
+  return Object.entries(known).flatMap(([field, max]) => {
+    const v = raw[field];
+    return Number.isInteger(v) && Number(v) > max
+      ? [
+          shareIssue(
+            [field],
+            `newer than this fooboard reads (at most ${String(max)})`,
+          ),
+        ]
+      : [];
+  });
+}
 
-/** Is a version a whole number above what this app knows? */
-const above = (v: unknown, known: number): boolean =>
-  Number.isInteger(v) && Number(v) > known;
+/** Where each id first appears, and an issue for each later repeat. */
+function repeats(
+  places: readonly { id: string; path: PropertyKey[] }[],
+): ShareIssue[] {
+  const first = new Map<string, PropertyKey[]>();
+  return places.flatMap(({ id, path }) => {
+    const seen = first.get(id);
+    if (seen) return [shareIssue(path, `repeats ${issuePath(seen)}`)];
+    first.set(id, path);
+    return [];
+  });
+}
 
-/** Ids repeated across the share's dashboards, or their credentials:
- * either would make two dashboards (or two secrets) one. */
-function repeatsIds(dashboards: readonly Dashboard[]): boolean {
-  const ids = dashboards.map((d) => d.id);
-  const credentialIds = dashboards.flatMap((d) =>
-    d.credentials.map((c) => c.id),
-  );
-  return (
-    new Set(ids).size !== ids.length ||
-    new Set(credentialIds).size !== credentialIds.length
-  );
+/** Ids repeated across the share's dashboards, or their credentials
+ * (either would make two dashboards, or two secrets, one), each naming
+ * both places: `dashboards[2].id: repeats dashboards[0].id`. */
+function repeatedIds(dashboards: readonly Dashboard[]): ShareIssue[] {
+  return [
+    ...repeats(
+      dashboards.map((d, i) => ({ id: d.id, path: ['dashboards', i, 'id'] })),
+    ),
+    ...repeats(
+      dashboards.flatMap((d, i) =>
+        d.credentials.map((c, ci) => ({
+          id: c.id,
+          path: ['dashboards', i, 'credentials', ci, 'id'],
+        })),
+      ),
+    ),
+  ];
 }
 
 const credentialsIn = (c: ShareCredentials): ShareCredentialsIn => {
@@ -113,39 +189,51 @@ const credentialsIn = (c: ShareCredentials): ShareCredentialsIn => {
     : { kind: 'plain', secrets: c.secrets };
 };
 
+/** The dashboards migrated to this data model, or the issues that stop
+ * them: the configuration schema's, at their paths (which start at
+ * `dashboards`), or a step's refusal, about the share as a whole. */
+function migrated(
+  schemaVersion: number,
+  dashboards: unknown[],
+): { ok: true; dashboards: Dashboard[] } | { ok: false; issues: ShareIssue[] } {
+  try {
+    return {
+      ok: true,
+      dashboards: migrate({ schemaVersion, dashboards }).dashboards,
+    };
+  } catch (err) {
+    return {
+      ok: false,
+      issues:
+        err instanceof z.ZodError
+          ? zodIssues(err)
+          : [shareIssue([], err instanceof Error ? err.message : String(err))],
+    };
+  }
+}
+
 /** Read a share from its JSON text. */
 export function readShare(text: string): ShareRead {
   let raw: unknown;
   try {
     raw = JSON.parse(text);
   } catch {
-    return { ok: false, reason: 'damaged' };
+    return refused('damaged', [notJsonIssue(text)]);
   }
-  if (!isRecord(raw) || raw.format !== SHARE_FORMAT) {
-    return { ok: false, reason: 'notShare' };
-  }
-  if (
-    above(raw.formatVersion, SHARE_FORMAT_VERSION) ||
-    above(raw.schemaVersion, CURRENT_SCHEMA_VERSION)
-  ) {
-    return { ok: false, reason: 'newer' };
-  }
+  const format = ShareFormatSchema.safeParse(raw);
+  if (!format.success) return refused('notShare', zodIssues(format.error));
+  const newer = newerIssues(z.record(z.string(), z.unknown()).parse(raw));
+  if (newer.length > 0) return refused('newer', newer);
   const envelope = ShareEnvelopeSchema.safeParse(raw);
-  if (!envelope.success) return { ok: false, reason: 'damaged' };
-  let dashboards: Dashboard[];
-  try {
-    ({ dashboards } = migrate({
-      schemaVersion: envelope.data.schemaVersion,
-      dashboards: envelope.data.dashboards,
-    }));
-  } catch {
-    return { ok: false, reason: 'damaged' };
-  }
-  if (repeatsIds(dashboards)) return { ok: false, reason: 'damaged' };
+  if (!envelope.success) return refused('damaged', zodIssues(envelope.error));
+  const read = migrated(envelope.data.schemaVersion, envelope.data.dashboards);
+  if (!read.ok) return refused('damaged', read.issues);
+  const repeated = repeatedIds(read.dashboards);
+  if (repeated.length > 0) return refused('damaged', repeated);
   return {
     ok: true,
     share: {
-      dashboards,
+      dashboards: read.dashboards,
       credentials: credentialsIn(envelope.data.credentials),
     },
   };

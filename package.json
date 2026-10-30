@@ -44,6 +44,7 @@
     "@axe-core/playwright": "^4.14.0",
     "@dotenvx/dotenvx": "^2.38.2",
     "@eslint/js": "^10.0.1",
+    "@jsquash/oxipng": "^2.3.0",
     "@playwright/test": "^1.64.1",
     "@tailwindcss/vite": "^4.3.3",
     "@tanstack/react-query-devtools": "^5.105.0",
@@ -131,6 +132,7 @@
     "url": "git+https://github.com/karmaniverous/fooboard.git"
   },
   "scripts": {
+    "ai:schema": "vitest run src/ai/schema.test.ts -u",
     "build": "tsc -b --noEmit && vite build",
     "changelog": "git-cliff -o CHANGELOG.md",
     "dev": "vite",
@@ -143,6 +145,7 @@
     "preview": "vite preview",
     "release": "dotenvx run -f .env.local -- release-it",
     "release:pre": "dotenvx run -f .env.local -- release-it --no-git.requireBranch --github.prerelease --preRelease",
+    "screenshots": "npm run build && playwright test --config scripts/screenshots/playwright.config.ts && node scripts/screenshots/compress.ts",
     "test": "vitest run",
     "typecheck": "tsc -b --noEmit"
   },

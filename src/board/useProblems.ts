@@ -15,23 +15,30 @@ import { useStores } from '@/storage/storesContext';
 export interface BoardProblems {
   /** Problems not dismissed. */
   shown: Problem[];
+  /** Of them, the configuration's own (`configProblems`), which a
+   * corrected share can fix (spec 0.2.0 §3.J). */
+  config: Problem[];
   dismiss: (id: string) => void;
 }
 
 export function useProblems(
   dashboard: Dashboard,
-  model: BoardModel,
+  model: Pick<BoardModel, 'problems'>,
 ): BoardProblems {
   const { preferences } = useStores();
   const [dismissed, setDismissed] = useState(
     () => new Set(preferences.getView(dashboard.id).dismissedProblems),
   );
   const own = useMemo(() => configProblems(dashboard), [dashboard]);
-  const shown = [...own, ...model.problems].filter((p) => !dismissed.has(p.id));
+  const config = own.filter((p) => !dismissed.has(p.id));
+  const shown = [
+    ...config,
+    ...model.problems.filter((p) => !dismissed.has(p.id)),
+  ];
   const dismiss = (id: string) => {
     const next = new Set(dismissed).add(id);
     preferences.setView(dashboard.id, { dismissedProblems: [...next] });
     setDismissed(next);
   };
-  return { shown, dismiss };
+  return { shown, config, dismiss };
 }

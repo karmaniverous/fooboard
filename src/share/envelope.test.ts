@@ -29,7 +29,8 @@ const envelope = (): Record<string, unknown> => ({
   ...buildEnvelope([board], null),
 });
 const read = (value: unknown) => readShare(JSON.stringify(value));
-const refused = (reason: string) => ({ ok: false, reason });
+const refused = (reason: string): unknown =>
+  expect.objectContaining({ ok: false, reason });
 
 describe('the share envelope', () => {
   it('writes the approved shape and reads it back unchanged', () => {

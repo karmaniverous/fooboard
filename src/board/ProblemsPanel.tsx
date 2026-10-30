@@ -4,16 +4,28 @@
  * a built-in rule, its one-click actions (*Pin*, *Unpin*, spec.md §3.12),
  * and *Dismiss* for the ones that are only hints. Notes (what the
  * consistency check can't decide, rules for a source no row uses) follow,
- * dismissable.
+ * dismissable. While any of the configuration's own problems is listed,
+ * *Copy problems for your assistant* copies their messages, so the
+ * assistant that built the share can correct it (spec 0.2.0 §3.J).
+ * Problems found while reading are about the providers, not the share,
+ * and aren't copied.
  *
  * @module
  */
+import { CopyForAssistant } from '@/components/CopyForAssistant';
 import { Button } from '@/components/ui/button';
 import type { Dashboard } from '@/domain/config/dashboard';
 import type { Problem } from '@/domain/problems/problem';
 import { changePins } from '@/domain/settings/pins';
 
 import { levelLabel } from './levelLabel';
+
+/** The button that copies the configuration's problems. */
+export const COPY_PROBLEMS = 'Copy problems for your assistant';
+
+/** The line copied above them, so the assistant knows what they are. */
+export const PROBLEMS_PREAMBLE =
+  "fooboard imported the share, but its Problems panel lists these problems with the board's configuration; please correct the share:";
 
 function ProblemItem({
   dashboard,
@@ -96,9 +108,13 @@ export function ProblemsPanel({
   onCustomise,
   canCustomise = () => false,
   onChange,
+  copyable = [],
 }: {
   dashboard: Dashboard;
   problems: readonly Problem[];
+  /** The configuration's own problems among them, which *Copy problems
+   * for your assistant* copies. */
+  copyable?: readonly Problem[];
   onFix: (problem: Problem) => void;
   onDismiss: (id: string) => void;
   /** Customise the built-in rule a problem is in. */
@@ -124,6 +140,13 @@ export function ProblemsPanel({
   const notes = problems.filter((p) => p.severity === 'note');
   return (
     <div className="flex flex-col gap-3 text-sm">
+      {copyable.length > 0 && (
+        <CopyForAssistant
+          label={COPY_PROBLEMS}
+          preamble={PROBLEMS_PREAMBLE}
+          lines={copyable.map((p) => p.message)}
+        />
+      )}
       <ul className="flex flex-col gap-2">
         {problems.filter((p) => p.severity === 'problem').map(item)}
       </ul>

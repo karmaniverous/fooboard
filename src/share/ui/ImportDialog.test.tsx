@@ -67,7 +67,7 @@ describe('the import dialog, from a link', () => {
     [
       'not a share',
       payloadOf('{"schemaVersion":6}'),
-      "This link isn't a fooboard board, or it's damaged.",
+      "This link has problems fooboard can't import:",
     ],
     [
       'newer',
@@ -81,7 +81,7 @@ describe('the import dialog, from a link', () => {
       within(dialog()).queryByText(
         'Ask whoever sent it for a new link, or for a file.',
       ) !== null,
-    ).toBe(!message.includes('newer'));
+    ).toBe(message.includes("isn't"));
     expect(
       within(dialog()).queryByRole('button', { name: 'Import' }),
     ).toBeNull();

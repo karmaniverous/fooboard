@@ -1,8 +1,9 @@
 /**
  * The app's navigation items (spec.md C-19), shared by the header buttons,
  * the header menu and the footer, so all three always agree: News &
- * support, README, Demo, Theme, Share / Export, Import, GitHub, Report an
- * issue, then Privacy and Terms (always in the menu, never buttons).
+ * support, README, Demo, Theme, Share / Export, Import, Set up with an AI
+ * assistant (spec 0.2.0 §3.J, Decision 90), GitHub, Report an issue, then
+ * Privacy and Terms (always in the menu, never buttons).
  *
  * Each item is one of four kinds, and every surface renders a kind the
  * same way: an outbound `link`, an in-app `route`, an `action`, or a
@@ -13,6 +14,7 @@
  */
 import {
   BookOpen,
+  Bot,
   Bug,
   CirclePlay,
   Import,
@@ -32,6 +34,7 @@ import {
 import { site } from '@/lib/site';
 import { DEMO_PATH } from '@/pages/paths';
 
+import { AI_SETUP } from './AiSetupDialog';
 import { GithubLogo, XLogo } from './brandIcons';
 import { useTheme } from './themeContext';
 
@@ -42,6 +45,7 @@ export type NavId =
   | 'theme'
   | 'share'
   | 'import'
+  | 'ai'
   | 'github'
   | 'issue'
   | 'privacy'
@@ -95,6 +99,8 @@ export interface NavDialogs {
   openShare: () => void;
   /** The import dialog, for a file (spec.md §3.8). */
   openImport: () => void;
+  /** *Set up with an AI assistant* (spec 0.2.0 §3.J). */
+  openAiSetup: () => void;
   /** The *Reset* confirmation (spec.md §3.9). */
   openReset: () => void;
   /** Mark this build's release notes seen (following the menu's
@@ -170,6 +176,13 @@ export function useNavItems(): NavItem[] {
       label: 'Import',
       Icon: Import,
       onSelect: nav.openImport,
+    },
+    {
+      id: 'ai',
+      kind: 'action',
+      label: AI_SETUP,
+      Icon: Bot,
+      onSelect: nav.openAiSetup,
     },
     {
       id: 'github',

@@ -1,15 +1,17 @@
 /**
  * Home page: the saved dashboards (or a note that they can't be read,
- * with *Reset* to start again, spec.md §3.9), and the three ways in
- * (§3.9 *First run*): *Create a dashboard* (the guided steps,
- * `FirstRunPage`), *Import from link or file* (the import dialog, §3.8)
- * and *Try the demo* (§3.14). A share link's import dialog opens over this
+ * with *Reset* to start again, spec.md §3.9), and the four ways in
+ * (§3.9 *First run*; spec 0.2.0 §3.J, Q56): *Create a dashboard* (the
+ * guided steps, `FirstRunPage`), *Import from link or file* (the import
+ * dialog, §3.8), *Set up with an AI assistant* (`AiSetupDialog`) and
+ * *Try the demo* (§3.14). A share link's import dialog opens over this
  * page.
  *
  * @module
  */
 import { Link } from 'react-router-dom';
 
+import { AI_SETUP } from '@/components/AiSetupDialog';
 import { useNavDialogs } from '@/components/navItems';
 import { Button } from '@/components/ui/button';
 import { buttonVariants } from '@/components/ui/buttonVariants';
@@ -23,7 +25,7 @@ import { dashboardPath, DEMO_PATH } from './paths';
 export function Home(): React.JSX.Element {
   const loaded = useStores().config.load();
   const dashboards = dashboardsOf(loaded);
-  const { openReset, openImport } = useNavDialogs();
+  const { openReset, openImport, openAiSetup } = useNavDialogs();
   return (
     <div className="mx-auto flex w-full min-w-0 max-w-xl flex-col items-center gap-4 px-6 py-24 text-center">
       <img
@@ -70,7 +72,7 @@ export function Home(): React.JSX.Element {
         fooboard shows the deployment state of every repo &times; stage at a
         glance, filled in from GitHub Actions runs and Amplify jobs &mdash; no
         workflow changes required. Create a dashboard, import one from a link or
-        file, or try the demo to get started.
+        file, set one up with your AI assistant, or try the demo to get started.
       </p>
       <div className="flex flex-wrap justify-center gap-2">
         {loaded.kind === 'ok' && (
@@ -80,6 +82,9 @@ export function Home(): React.JSX.Element {
             </Link>
             <Button variant="outline" onClick={openImport}>
               Import from link or file…
+            </Button>
+            <Button variant="outline" onClick={openAiSetup}>
+              {AI_SETUP}…
             </Button>
           </>
         )}

@@ -3,8 +3,9 @@
  * locally served CSP: axe finds no WCAG 2.1 A or AA violation (contrast
  * included) on the home page, the demo board, the menu, the cell detail
  * sheet, the settings popup, the *Unmapped runs* panel with a *Dismiss…*
- * form open and with *Show dismissed* on, and the error screen, in light and
- * dark; Tab runs header, then body; the dialogs keep Tab inside; group
+ * form open and with *Show dismissed* on, *Set up with an AI assistant*
+ * and an import refusal listing its errors (spec 0.2.0 §3.J), the
+ * loading screen (Decision 106) and the error screen, in light and dark; Tab runs header, then body; the dialogs keep Tab inside; group
  * frames and boundary lines are hidden from assistive technology; and
  * with reduced motion nothing on the board animates.
  *
@@ -13,6 +14,7 @@
 import AxeBuilder from '@axe-core/playwright';
 import type { Page } from '@playwright/test';
 
+import { REFUSED_FRAGMENT } from './aiShare';
 import { firstCell, openDemo, PHONE } from './board';
 import { expect, test } from './guard';
 
@@ -73,6 +75,56 @@ async function expectUnmappedPanelClean(page: Page): Promise<void> {
   await expect(panel).toHaveCount(0);
 }
 
+/** axe finds nothing in *Set up with an AI assistant*, opened from the
+ * home page, at rest and after *Copy prompt* (its check or its failure
+ * announced, the button's tooltip showing; Decision 108), nor in an import
+ * refusal listing its errors (spec 0.2.0
+ * §3.J). */
+async function expectAiSetupClean(page: Page): Promise<void> {
+  await page.goto('/');
+  await page
+    .getByRole('main')
+    .getByRole('button', { name: 'Set up with an AI assistant…' })
+    .click();
+  const dialog = page.getByRole('dialog', {
+    name: 'Set up with an AI assistant',
+  });
+  await expect(dialog).toBeVisible();
+  expect(await violations(page), 'AI setup dialog').toEqual([]);
+  await dialog.getByRole('button', { name: 'Copy prompt' }).click();
+  await expect(dialog.getByRole('status').filter({ hasText: /./ })).toHaveCount(
+    1,
+  );
+  expect(await violations(page), 'AI setup dialog after a copy').toEqual([]);
+  await page.keyboard.press('Escape');
+  await expect(dialog).toHaveCount(0);
+
+  await page.goto(`/${REFUSED_FRAGMENT}`);
+  const refusal = page.getByRole('dialog', { name: 'Import dashboards' });
+  await expect(
+    refusal.getByRole('list', { name: 'Import errors' }),
+  ).toBeVisible();
+  expect(await violations(page), 'import refusal').toEqual([]);
+  await page.keyboard.press('Escape');
+}
+
+/** The loading screen, held on the page by blocking the app's scripts
+ * (spec 0.2.0 §3.J *The loading screen*): it shows before the app
+ * mounts, with the name, the tagline and the link to /ai. */
+async function openLoadingScreen(page: Page): Promise<void> {
+  await page.route('**/assets/*.js', (route) => route.abort());
+  await page.goto('/');
+  await expect(
+    page.getByRole('heading', { level: 1, name: 'fooboard' }),
+  ).toBeVisible();
+  await expect(
+    page.getByText("Welcome to DevOps hell. Here's your map."),
+  ).toBeVisible();
+  await expect(
+    page.getByRole('link', { name: 'https://www.fooboard.dev/ai' }),
+  ).toHaveAttribute('href', '/ai');
+}
+
 for (const colorScheme of ['light', 'dark'] as const)
   test.describe(`in ${colorScheme}`, () => {
     test.use({ colorScheme });
@@ -82,6 +134,7 @@ for (const colorScheme of ['light', 'dark'] as const)
       await page.goto('/');
       await expect(page.getByRole('main')).toBeVisible();
       expect(await violations(page), 'home').toEqual([]);
+      await expectAiSetupClean(page);
 
       await openDemo(page);
       expect(await violations(page), 'demo board').toEqual([]);
@@ -118,6 +171,19 @@ for (const colorScheme of ['light', 'dark'] as const)
         await expectActionTooltipClean(page);
         await expectUnmappedPanelClean(page);
       });
+
+      test('axe finds no WCAG A or AA violation in the AI setup dialog or an import refusal', async ({
+        page,
+      }) => {
+        await expectAiSetupClean(page);
+      });
+    });
+
+    test('axe finds no WCAG A or AA violation on the loading screen', async ({
+      page,
+    }) => {
+      await openLoadingScreen(page);
+      expect(await violations(page)).toEqual([]);
     });
 
     test('axe finds no WCAG A or AA violation on the error screen', async ({
@@ -202,4 +268,22 @@ test.describe('with reduced motion', () => {
     );
     expect(animated).toBe(0);
   });
+
+  test("the loading screen's pulse stands still", async ({ page }) => {
+    await openLoadingScreen(page);
+    await expect(page.locator('.loading-pulse')).toHaveCSS(
+      'animation-name',
+      'none',
+    );
+  });
+});
+
+test("the loading screen's pulse moves without reduced motion", async ({
+  page,
+}) => {
+  await openLoadingScreen(page);
+  await expect(page.locator('.loading-pulse')).toHaveCSS(
+    'animation-name',
+    'loading-pulse',
+  );
 });

@@ -1,0 +1,108 @@
+/*
+ * The loading screen (spec 0.2.0 §3.J *The loading screen*, Decision 106):
+ * the plain HTML inside index.html's #root, shown until React replaces it.
+ * A static file, so the CSP's style-src 'self' allows it with no hash, and
+ * index.html needs no inline style. Every rule is scoped to .loading, so
+ * nothing here touches the app once it has mounted. The colours are the
+ * app's own background, foreground and muted tokens (src/index.css), so the
+ * swap to the app doesn't flash; the screen follows the system's light or
+ * dark setting, as the app's default theme (System) does.
+ */
+.loading {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  padding: 1.5rem;
+  text-align: center;
+  font-family:
+    -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  line-height: 1.5;
+  color-scheme: light;
+  background-color: #ffffff;
+  color: #0a0a0a;
+}
+
+.loading > * {
+  margin: 0;
+}
+
+.loading-name {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 1.875rem;
+  font-weight: 700;
+  letter-spacing: -0.025em;
+}
+
+.loading-tagline,
+.loading-ai {
+  max-width: 32rem;
+  color: #6b6b6b;
+}
+
+.loading-tagline {
+  font-size: 1.125rem;
+}
+
+.loading-ai {
+  font-size: 0.875rem;
+}
+
+.loading-ai a {
+  color: #0a0a0a;
+  text-decoration: underline;
+  text-underline-offset: 0.2em;
+  overflow-wrap: anywhere;
+}
+
+/* A small dot breathing while the app loads. */
+.loading-pulse {
+  width: 0.75rem;
+  height: 0.75rem;
+  border-radius: 50%;
+  background-color: currentColor;
+  animation: loading-pulse 1.2s ease-in-out infinite;
+}
+
+@keyframes loading-pulse {
+  0%,
+  100% {
+    opacity: 0.25;
+    transform: scale(0.8);
+  }
+
+  50% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@media (prefers-color-scheme: dark) {
+  .loading {
+    color-scheme: dark;
+    background-color: #0a0a0a;
+    color: #fafafa;
+  }
+
+  .loading-tagline,
+  .loading-ai {
+    color: #a3a3a3;
+  }
+
+  .loading-ai a {
+    color: #fafafa;
+  }
+}
+
+/* Still under reduced motion: a steady dot. */
+@media (prefers-reduced-motion: reduce) {
+  .loading-pulse {
+    animation: none;
+    opacity: 0.6;
+  }
+}

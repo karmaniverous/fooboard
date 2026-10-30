@@ -113,7 +113,11 @@ describe('opening a share link and pasting it', () => {
   it.each([...NO_SHARE_URLS, FILE_TEXT])(
     'pasting %j, with no #b=, refuses it as a damaged link',
     (text) => {
-      expect(pasted(text)).toEqual({ ok: false, reason: 'damaged' });
+      expect(pasted(text)).toEqual({
+        ok: false,
+        reason: 'damaged',
+        issues: [],
+      });
     },
   );
 });

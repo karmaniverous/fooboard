@@ -28,7 +28,7 @@ import { cspDirectives } from './test/csp';
 /** The CSP's `style-src` sources. */
 const styleSrc =
   new Map(
-    cspDirectives(parseCustomHttp(customHttp)['Content-Security-Policy']),
+    cspDirectives(parseCustomHttp(customHttp).every['Content-Security-Policy']),
   ).get('style-src') ?? [];
 
 /** The CSP source that allows a `<style>` with this text. */

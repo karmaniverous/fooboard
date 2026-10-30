@@ -8,7 +8,10 @@
 import { Link } from 'react-router-dom';
 
 import { Button } from '@/components/ui/button';
-import { buttonVariants } from '@/components/ui/buttonVariants';
+import {
+  buttonVariants,
+  ICON_BUTTON_CLASS,
+} from '@/components/ui/buttonVariants';
 import { WithTooltip } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
 
@@ -29,7 +32,7 @@ export function NavControl({
   const look = cn(
     buttonVariants({ variant: form === 'icon' ? 'ghost' : 'link' }),
     form === 'icon'
-      ? 'size-8 shrink-0 p-0 hover:bg-foreground/10'
+      ? ICON_BUTTON_CLASS
       : 'h-auto px-0 text-xs font-normal text-muted-foreground hover:text-foreground hover:underline',
   );
   let control: React.JSX.Element;
