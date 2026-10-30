@@ -82,6 +82,14 @@ describe('#j= links', () => {
     expect(read.ok && read.share.dashboards[0]?.name).toBe('feat%x 100%');
   });
 
+  it('keeps a literal %25 or %41 in raw JSON, which percent-decoding would change', () => {
+    const named = { ...board, name: '50%25 off feat%41' };
+    const read = readLink(
+      decodeJsonPayload(JSON.stringify(buildEnvelope([named], null))),
+    );
+    expect(read.ok && read.share.dashboards[0]?.name).toBe('50%25 off feat%41');
+  });
+
   it('reads percent-encoded JSON holding an encoded %', () => {
     const named = { ...board, name: 'feat%x' };
     const encoded = encodeURIComponent(

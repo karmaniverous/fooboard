@@ -26,12 +26,15 @@ export const EVERY_PATH = '**';
 /** A header name: an HTTP token (RFC 9110 §5.6.2). */
 const HTTP_TOKEN = /^[!#$%&'*+.^_`|~0-9A-Za-z-]+$/;
 
+/** A path's characters: none a glob or Amplify regular expression uses. */
+const PATH_CHARS = String.raw`[^*?[\]{}<>!\s]*`;
+
 /** One path, as a header pattern or a rewrite's plain source: starts with
  * `/` and holds no glob or regular-expression character. */
-const ONE_PATH = /^\/[^*?[\]{}<>!\s]*$/;
+const ONE_PATH = new RegExp(`^/${PATH_CHARS}$`);
 
 /** A file a plain rewrite serves: one path ending in an extension. */
-const FILE_PATH = /^\/[^*?[\]{}<>!\s]*\.[A-Za-z0-9]+$/;
+const FILE_PATH = new RegExp(String.raw`^/${PATH_CHARS}\.[A-Za-z0-9]+$`);
 
 /** The page every rewritten route is served. */
 export const SPA_ENTRY = '/index.html';
