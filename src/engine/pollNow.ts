@@ -5,11 +5,12 @@
  * click's boost (§3.H). A fetch already running counts as the poll (it
  * isn't cancelled and restarted), so a first visit's mount fetch isn't
  * doubled, and each request still goes through its credential's limiter,
- * so a rate-limited token waits.
+ * so a rate-limited token waits. One pass over the cache serves every
+ * root, and a root two rows share is read once.
  *
  * @module
  */
-import type { QueryClient } from '@tanstack/query-core';
+import { hashKey, type QueryClient } from '@tanstack/query-core';
 
 import type { Need } from './need';
 
@@ -18,10 +19,16 @@ export function pollRootsNow(
   client: QueryClient,
   needs: readonly Need[],
 ): void {
-  for (const { key } of needs.filter((need) => need.root))
-    // refetchQueries reports failures through the query, never by
-    // rejecting; the catch only satisfies the type.
-    client
-      .refetchQueries({ queryKey: key, exact: true }, { cancelRefetch: false })
-      .catch(() => undefined);
+  const roots = new Set(
+    needs.filter((need) => need.root).map(({ key }) => hashKey(key)),
+  );
+  if (roots.size === 0) return;
+  // refetchQueries reports failures through the query, never by
+  // rejecting; the catch only satisfies the type.
+  client
+    .refetchQueries(
+      { predicate: (query) => roots.has(query.queryHash) },
+      { cancelRefetch: false },
+    )
+    .catch(() => undefined);
 }
