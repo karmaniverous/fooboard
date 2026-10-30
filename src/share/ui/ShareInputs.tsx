@@ -5,8 +5,8 @@
  * opening it (Decision 69), or the share's JSON text pasted in (text
  * starting with `{`, as an assistant gives it; spec 0.2.0 §3.J), with the
  * same effect as a file. Each read is handed to `onRead` with its
- * origin, so the dialog's refusals name a link or a file; clearing the
- * paste field clears it.
+ * origin, so the dialog's refusals name a link, a file or (for pasted
+ * JSON) a share; clearing the paste field clears it.
  *
  * @module
  */
@@ -20,11 +20,16 @@ import type { ShareOrigin } from './shareWords';
 /** The paste field's label. */
 export const PASTE_LABEL = 'Or a fooboard link, or its JSON';
 
-/** What pasted text holds: a share's JSON when it starts with `{`, else
- * a link; `null` when it is empty. */
-function readPasted(text: string): ShareRead | null {
-  if (text === '') return null;
-  return text.startsWith('{') ? readShare(text) : readLink(pastedLink(text));
+/** What pasted text holds, and what to call it: a share's JSON when it
+ * starts with `{`, else a link; `null` when it is empty. */
+function readPasted(text: string): {
+  read: ShareRead | null;
+  origin: ShareOrigin;
+} {
+  if (text === '') return { read: null, origin: 'link' };
+  return text.startsWith('{')
+    ? { read: readShare(text), origin: 'share' }
+    : { read: readLink(pastedLink(text)), origin: 'link' };
 }
 
 export function ShareInputs({
@@ -63,7 +68,8 @@ export function ShareInputs({
           spellCheck={false}
           placeholder="https://www.fooboard.dev/#b=…"
           onChange={(e) => {
-            onRead(readPasted(e.target.value.trim()), 'link');
+            const { read, origin } = readPasted(e.target.value.trim());
+            onRead(read, origin);
           }}
         />
       </label>

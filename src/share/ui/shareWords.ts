@@ -10,8 +10,10 @@ import type { Share, ShareRefused } from '../envelope';
 import { SHARE_LINK_MAX_CHARS, X_LINK_MAX_CHARS } from '../link';
 import type { SecretAnswer } from '../secretQuestions';
 
-/** Where a share came from. */
-export type ShareOrigin = 'link' | 'file';
+/** Where a share came from, as the import dialog names it: a link
+ * (opened or pasted), a file, or a share's JSON text pasted in, which is
+ * neither (spec 0.2.0 §3.J). */
+export type ShareOrigin = 'link' | 'file' | 'share';
 
 const count = (n: number) => n.toLocaleString('en-US');
 
@@ -55,9 +57,11 @@ export const ISSUES_PREAMBLE =
 
 /** The hint under a refused (damaged or foreign) share. */
 export const refusalHint = (origin: ShareOrigin): string =>
-  origin === 'link'
-    ? 'Ask whoever sent it for a new link, or for a file.'
-    : 'Ask whoever sent it for a new file.';
+  ({
+    link: 'Ask whoever sent it for a new link, or for a file.',
+    file: 'Ask whoever sent it for a new file.',
+    share: 'Ask whoever gave it to you for a new one.',
+  })[origin];
 
 /** Under the dashboards when one already here will be replaced. */
 export const REPLACE_MINE_NOTE =

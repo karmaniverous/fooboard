@@ -3,6 +3,7 @@
  * §3.J *Pasting JSON*, *Keys on arrival*): JSON text imports as a file
  * would, and the board opens asking for the first credential, by name,
  * whose secret this device lacks; a refused JSON paste lists its errors.
+ * Pasted JSON is called a share, never a link.
  *
  * @module
  */
@@ -42,7 +43,7 @@ describe('the import dialog, from pasted JSON', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Open import' }));
     paste(`\n${json}\n`);
     expect(
-      within(dialog()).getByText('This link holds 1 dashboard.'),
+      within(dialog()).getByText('This share holds 1 dashboard.'),
     ).toBeVisible();
     await importNow();
     expect(savedIds(stores)).toEqual([board.id]);
@@ -60,13 +61,14 @@ describe('the import dialog, from pasted JSON', () => {
     expect(state()).toBe(JSON.stringify({ openCredential: second.id }));
   });
 
-  it('lists the errors of JSON that is refused', () => {
+  it('lists the errors of JSON that is refused, calling it a share', () => {
     renderImport();
     fireEvent.click(screen.getByRole('button', { name: 'Open import' }));
     paste('{"format":"fooboard-share","formatVersion":1}');
     expect(within(dialog()).getByRole('alert')).toHaveTextContent(
-      "This link has problems fooboard can't import:",
+      "This share has problems fooboard can't import:",
     );
+    expect(within(dialog()).queryByText(/This link/)).toBeNull();
     expect(
       within(dialog()).getByRole('list', { name: 'Import errors' }),
     ).toHaveTextContent(/schemaVersion: /);
