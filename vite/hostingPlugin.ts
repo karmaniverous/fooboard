@@ -3,9 +3,11 @@
  * (spec.md §3.10, Decision 40), and checks it at build time:
  *
  * - every preview response carries the headers of `customHttp.yml`, the
- *   CSP included, so the built app is tested under the policy that ships;
- * - a path `amplify-rewrites.json` rewrites is served the page, as on
- *   Amplify; any other path is a file, and a missing file is a 404 (the
+ *   CSP included, so the built app is tested under the policy that ships:
+ *   the `'**'` pattern's, merged with those of the one-path pattern naming
+ *   the requested path, as Amplify merges them (spec 0.2.0 §3.J);
+ * - a path `amplify-rewrites.json` rewrites is served the rule's target
+ *   (the page, or a file such as `/ai.md`), as on Amplify; any other path is a file, and a missing file is a 404 (the
  *   rewrite excludes asset paths, so a missing asset is never answered with
  *   the page);
  * - a build fails if the rewrite would hide one of its files or a file in
@@ -22,7 +24,9 @@ import path from 'node:path';
 import type { Plugin } from 'vite';
 
 import {
+  headersFor,
   hiddenFiles,
+  type HostingHeaders,
   parseCustomHttp,
   parseRewrites,
   type Rewrite,
@@ -32,13 +36,13 @@ import {
 /** The headers file Amplify reads from the repository root. */
 export const CUSTOM_HTTP_FILE = 'customHttp.yml';
 
-/** The app's custom rules (the SPA rewrite), applied in the console. */
+/** The app's custom rules (the rewrites), applied in the console. */
 export const REWRITES_FILE = 'amplify-rewrites.json';
 
 /** What the preview middleware serves. */
 export interface HostingOptions {
-  /** Response headers, by name. */
-  headers: Readonly<Record<string, string>>;
+  /** Response headers: every path's, and each one-path pattern's. */
+  headers: HostingHeaders;
   /** The rewrites, in order. */
   rules: readonly Rewrite[];
   /** Whether a site path (`/assets/x.js`) is a file in the build. */
@@ -78,9 +82,11 @@ export function hostingMiddleware({
   exists,
 }: HostingOptions): Middleware {
   return (req, res, next) => {
-    for (const [name, value] of Object.entries(headers))
-      res.setHeader(name, value);
     const url = new URL(req.url ?? '/', 'http://preview');
+    for (const [name, value] of Object.entries(
+      headersFor(headers, url.pathname),
+    ))
+      res.setHeader(name, value);
     const target = rewrite(rules, url.pathname);
     if (target !== url.pathname) {
       req.url = `${target}${url.search}`;

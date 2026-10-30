@@ -1,8 +1,10 @@
 # Response headers for every path on Amplify Hosting (spec.md §3.10,
 # Decisions 24 and 40). `vite preview` serves these same headers
 # (vite/hostingPlugin.ts), so the CSP is tested locally before a release;
-# src/workflows.test.ts checks each one. Keep one pattern ('**'): the local
-# server reads only that.
+# src/workflows.test.ts checks each one. The '**' pattern comes first; after
+# it, one-path patterns (spec 0.2.0 §3.J) may add headers '**' doesn't set:
+# Amplify merges the headers of every pattern a path matches, and so does
+# the local server (vite/hosting.ts refuses any other shape).
 #
 # Content-Security-Policy, directive by directive:
 # - default-src 'none': nothing loads unless a directive below allows it.
@@ -45,3 +47,18 @@ customHeaders:
       # Other sites can't load this site's files as subresources.
       - key: 'Cross-Origin-Resource-Policy'
         value: 'same-origin'
+      # Points assistants, and anything reading a share link, to the
+      # instructions for AI assistants (spec 0.2.0 §3.J *Discovery*).
+      - key: 'Link'
+        value: '</ai>; rel="alternate"; type="text/markdown"'
+  # The instructions for AI assistants, at /ai (rewritten to /ai.md by
+  # amplify-rewrites.json) and /ai.md: each its own pattern, so the type
+  # arrives whether Amplify matches the requested or the rewritten path.
+  - pattern: '/ai'
+    headers:
+      - key: 'Content-Type'
+        value: 'text/markdown; charset=utf-8'
+  - pattern: '/ai.md'
+    headers:
+      - key: 'Content-Type'
+        value: 'text/markdown; charset=utf-8'

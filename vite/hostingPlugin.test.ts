@@ -13,7 +13,12 @@ import path from 'node:path';
 import { build, preview, type PreviewServer } from 'vite';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 
-import { parseCustomHttp, parseRewrites, SPA_ENTRY } from './hosting';
+import {
+  headersFor,
+  parseCustomHttp,
+  parseRewrites,
+  SPA_ENTRY,
+} from './hosting';
 import {
   CUSTOM_HTTP_FILE,
   hosting,
@@ -44,7 +49,10 @@ function serve(
   };
   const next = vi.fn();
   hostingMiddleware({
-    headers: { 'X-A': 'a', 'X-B': 'b' },
+    headers: {
+      every: { 'X-A': 'a', 'X-B': 'b' },
+      byPath: { '/ai': { 'Content-Type': 'text/markdown' } },
+    },
     rules: parseRewrites(read(REWRITES_FILE)),
     exists,
   })(req, res, next);
@@ -56,6 +64,17 @@ describe('hostingMiddleware', () => {
     const r = serve('/d/acme?x=1');
     expect(Object.fromEntries(r.headers)).toEqual({ 'X-A': 'a', 'X-B': 'b' });
     expect(r.url).toBe(`${SPA_ENTRY}?x=1`);
+    expect(r.next).toHaveBeenCalledOnce();
+  });
+
+  it("merges '**' with the requested path's own headers, then serves the rewrite's file", () => {
+    const r = serve('/ai');
+    expect(Object.fromEntries(r.headers)).toEqual({
+      'X-A': 'a',
+      'X-B': 'b',
+      'Content-Type': 'text/markdown',
+    });
+    expect(r.url).toBe('/ai.md');
     expect(r.next).toHaveBeenCalledOnce();
   });
 
@@ -180,6 +199,7 @@ describe('vite preview with the plugin', () => {
       '<!doctype html><p>page</p>',
     );
     writeFileSync(path.join(outDir, 'assets', 'a.js'), 'export {};');
+    writeFileSync(path.join(outDir, 'ai.md'), '# For assistants');
     server = await preview({
       configFile: false,
       root: ROOT,
@@ -201,6 +221,8 @@ describe('vite preview with the plugin', () => {
     ['/d/acme', 200, 'page'],
     ['/assets/a.js', 200, 'export {};'],
     ['/assets/gone.js', 404, ''],
+    ['/ai', 200, '# For assistants'],
+    ['/ai.md', 200, '# For assistants'],
   ])(
     'serves %s as %i with the committed headers',
     async (url, status, body) => {
@@ -208,9 +230,19 @@ describe('vite preview with the plugin', () => {
       expect(res.status).toBe(status);
       expect(await res.text()).toContain(body);
       for (const [name, value] of Object.entries(
-        parseCustomHttp(read(CUSTOM_HTTP_FILE)),
+        headersFor(parseCustomHttp(read(CUSTOM_HTTP_FILE)), url),
       ))
         expect(res.headers.get(name)).toBe(value);
+    },
+  );
+
+  it.each(['/ai', '/ai.md'])(
+    "serves %s as markdown, over the file server's own type",
+    async (url) => {
+      const res = await fetch(new URL(url, base));
+      expect(res.headers.get('content-type')).toBe(
+        'text/markdown; charset=utf-8',
+      );
     },
   );
 });

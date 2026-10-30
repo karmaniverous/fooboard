@@ -10,7 +10,7 @@ import { readFileSync } from 'node:fs';
 import { parseCustomHttp } from '../vite/hosting';
 import { expect, test } from './guard';
 
-const HEADERS = parseCustomHttp(readFileSync('customHttp.yml', 'utf8'));
+const HEADERS = parseCustomHttp(readFileSync('customHttp.yml', 'utf8')).every;
 
 test('every response carries the headers of customHttp.yml', async ({
   page,
