@@ -36,6 +36,12 @@ const sizeClasses: Record<ButtonSize, string> = {
 export const CLOSE_BUTTON_CLASS =
   'rounded-md p-1 hover:bg-current/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring';
 
+/** An icon-only ghost button's size and hover, added to the `ghost`
+ * variant: the header's navigation buttons (`NavControl`) and the copy
+ * buttons (`CopyButton`). Its hover is a tint of the text colour, so it
+ * shows on the header's chrome and on a dialog alike. */
+export const ICON_BUTTON_CLASS = 'size-8 shrink-0 p-0 hover:bg-foreground/10';
+
 /** Compose the classes for a button of the given variant and size. */
 export function buttonVariants({
   variant = 'default',

@@ -11,8 +11,10 @@
  * link, a one-dashboard share with one credential, imports and lands on the board
  * with the credentials panel open on that credential; pasting the same
  * share's JSON into *Import* imports it; the dialog opens from the header
- * and from the home page, names the preview site's own `/ai`, and its
- * *Copy instructions* copies the site's `/ai.md` (Decision 107).
+ * and from the home page and names the preview site's own `/ai`; its
+ * icon buttons copy the address, the prompt pointing at it and the site's
+ * `/ai.md`, each showing its check (Decisions 107 and 108), and its open
+ * button opens `/ai` in a new tab.
  *
  * @module
  */
@@ -154,7 +156,7 @@ test('Set up with an AI assistant opens from the header and the home page', asyn
   await expect(dialog).toBeVisible();
 });
 
-test("Copy instructions copies this site's /ai.md, off production", async ({
+test("the AI dialog's buttons copy this site's address, prompt and /ai.md", async ({
   page,
   context,
   request,
@@ -168,14 +170,32 @@ test("Copy instructions copies this site's /ai.md, off production", async ({
   const dialog = page.getByRole('dialog', {
     name: 'Set up with an AI assistant',
   });
-  await expect(dialog).toContainText("An assistant can't reach this site");
-  await dialog.getByRole('button', { name: 'Copy instructions' }).click();
-  await expect(dialog).toContainText('Instructions copied.');
-  const copied = await page.evaluate(() => navigator.clipboard.readText());
+  const ai = `${new URL(page.url()).origin}/ai`;
   // Windows' clipboard hands text back with CRLF line ends.
-  expect(copied.replaceAll('\r\n', '\n')).toBe(
-    await (await request.get('/ai.md')).text(),
-  );
+  const clipboard = async () =>
+    (await page.evaluate(() => navigator.clipboard.readText())).replaceAll(
+      '\r\n',
+      '\n',
+    );
+  for (const [name, text] of [
+    ['Copy link', ai],
+    ['Copy prompt', `Follow the instructions at ${ai}`],
+    ['Copy instructions', await (await request.get('/ai.md')).text()],
+  ] as const) {
+    const button = dialog.getByRole('button', { name });
+    await button.click();
+    await expect(button.locator('[data-copied]')).toBeVisible();
+    await expect(
+      dialog.getByRole('status').filter({ hasText: 'Copied' }).first(),
+    ).toHaveText('Copied');
+    expect(await clipboard()).toBe(text);
+  }
+  const open = dialog.getByRole('link', {
+    name: 'Open instructions in a new tab',
+  });
+  await expect(open).toHaveAttribute('href', ai);
+  await expect(open).toHaveAttribute('target', '_blank');
+  await expect(open).toHaveAttribute('rel', 'noopener noreferrer');
 });
 
 test('a page that fails to load shows the error screen', async ({ page }) => {

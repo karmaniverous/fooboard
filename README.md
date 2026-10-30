@@ -91,8 +91,14 @@ New dashboards use the built-in source rules and status sets. Add Amplify rows, 
 
 Paste fooboard.dev/ai into your assistant. Any assistant that can read a web page will do (ChatGPT, Claude, Gemini and the like): fooboard has no assistant of its own and sends nothing to one.
 
-1. Open _Set up with an AI assistant_ (in the header, the menu or the footer, or on the home page) and press _Copy prompt_, or copy the address alone with _Copy link_: [https://www.fooboard.dev/ai](https://www.fooboard.dev/ai).
-   - The dialog names the site it is running on, so on another fooboard site (dev.fooboard.dev, release.fooboard.dev, a preview or your own copy) the instructions and the link the assistant builds are that site's, matching its version. No assistant can reach those sites (dev and release are password-protected, and a local copy isn't on the internet), so there the dialog says so and offers _Copy instructions_: it copies that site's instructions, to paste into your assistant before the prompt, and the prompt then refers to the pasted instructions and has the link built on that site.
+1. Open _Set up with an AI assistant_ (in the header, the menu or the footer, or on the home page) and press _Copy prompt_, or _Copy link_ for the address alone. The dialog has two rows:
+   - _Instructions for your assistant_: the address of fooboard's instructions for assistants, [https://www.fooboard.dev/ai](https://www.fooboard.dev/ai), with three buttons: _Open instructions in a new tab_, _Copy link_ (the address) and _Copy instructions_ (the instructions' full text).
+   - _Try this prompt_: "Follow the instructions at https://www.fooboard.dev/ai", with _Copy prompt_.
+
+   The buttons are icons; hover or focus one to see its name. A copy button turns into a green check for a moment once it has copied (a screen reader hears "Copied"), and says so if the browser wouldn't copy.
+
+   The dialog names the site it is running on, so on another fooboard site (dev.fooboard.dev, release.fooboard.dev, a preview or your own copy) the instructions and the link the assistant builds are that site's, matching its version. No assistant can reach those sites (dev and release are password-protected, and a local copy isn't on the internet), so there press _Copy instructions_ and paste the instructions into your assistant instead of the prompt.
+
 2. Paste it into your assistant. It reads fooboard's instructions there, then asks you about your repos, Amplify apps, stages and the branches that feed them, groups, and your credentials by name only.
 3. It gives you a link (`https://www.fooboard.dev/#j=…`). Open it and choose _Import_. If it can't build a link, it gives you the board's JSON instead: paste that into _Import_ (_Or a fooboard link, or its JSON_).
 4. The board opens with _Credentials_ open on the first credential that has no secret on this device: enter each token and key there ([Credentials](#credentials)). Your keys never pass through the assistant, and the instructions tell it never to ask for them.
@@ -514,7 +520,7 @@ The header stays at the top of the window. Its buttons, each with a tooltip:
 - **Theme**: _System_ (follows your device's light or dark setting), _Light_ or _Dark_. The button cycles through them and the menu offers all three; the choice is saved on this device.
 - **Share / Export**: shares and exports your dashboards ([Sharing, export and import](#sharing-export-and-import)), and the demo (your device's share menu where there is one, _Copy link_, _Post on X_).
 - **Import**: imports dashboards from a fooboard file, link or JSON.
-- **Set up with an AI assistant** (a robot): the address of fooboard's instructions for assistants and a ready prompt, each with a copy button, and off production _Copy instructions_ ([Set up with an AI assistant](#set-up-with-an-ai-assistant)).
+- **Set up with an AI assistant** (a robot): the address of fooboard's instructions for assistants, with buttons to open it, copy it and copy the instructions' text, and a ready prompt with a copy button ([Set up with an AI assistant](#set-up-with-an-ai-assistant)).
 - **GitHub**: this repo.
 - **Report an issue**: [GitHub Issues](https://github.com/karmaniverous/fooboard/issues).
 

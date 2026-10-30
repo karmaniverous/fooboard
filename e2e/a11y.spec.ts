@@ -76,7 +76,9 @@ async function expectUnmappedPanelClean(page: Page): Promise<void> {
 }
 
 /** axe finds nothing in *Set up with an AI assistant*, opened from the
- * home page, nor in an import refusal listing its errors (spec 0.2.0
+ * home page, at rest and after *Copy prompt* (its check or its failure
+ * announced, the button's tooltip showing; Decision 108), nor in an import
+ * refusal listing its errors (spec 0.2.0
  * §3.J). */
 async function expectAiSetupClean(page: Page): Promise<void> {
   await page.goto('/');
@@ -89,6 +91,11 @@ async function expectAiSetupClean(page: Page): Promise<void> {
   });
   await expect(dialog).toBeVisible();
   expect(await violations(page), 'AI setup dialog').toEqual([]);
+  await dialog.getByRole('button', { name: 'Copy prompt' }).click();
+  await expect(dialog.getByRole('status').filter({ hasText: /./ })).toHaveCount(
+    1,
+  );
+  expect(await violations(page), 'AI setup dialog after a copy').toEqual([]);
   await page.keyboard.press('Escape');
   await expect(dialog).toHaveCount(0);
 

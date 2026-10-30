@@ -4,8 +4,9 @@
  * surfaces they sit on (WCAG 2.2 SC 1.4.11, non-text contrast), the group
  * frame lines at least 3:1 on the background they are drawn on (spec.md
  * §3.7), a pressed button's fill at least 3:1 on the background and on
- * the hover fill (*Show dismissed*, spec 0.2.0 §3.I), and muted text at
- * least 4.5:1 (SC 1.4.3). The tokens are parsed from the CSS, so a change
+ * the hover fill (*Show dismissed*, spec 0.2.0 §3.I), a copy button's
+ * green check at least 3:1 on the dialog, at rest and hovered (Decision
+ * 108), and muted text at least 4.5:1 (SC 1.4.3). The tokens are parsed from the CSS, so a change
  * that fades them fails here.
  *
  * @module
@@ -63,6 +64,26 @@ function tokens(selector: string): Record<string, string> {
   );
 }
 
+/** `ICON_BUTTON_CLASS`'s hover: the text colour at this opacity. */
+const HOVER_TINT = 0.1;
+
+/** `top` at `alpha` over `under`, as #rrggbb. */
+function mix(top: string, under: string, alpha: number): string {
+  const channels = (hex: string) => {
+    const match = HEX_COLOUR.exec(hex);
+    if (!match) throw new Error(`not a #rrggbb colour: ${hex}`);
+    return match.slice(1).map((part) => parseInt(part, HEX_RADIX));
+  };
+  const below = channels(under);
+  return `#${channels(top)
+    .map((c, i) =>
+      Math.round(alpha * c + (1 - alpha) * (below[i] ?? 0))
+        .toString(HEX_RADIX)
+        .padStart(2, '0'),
+    )
+    .join('')}`;
+}
+
 const light = tokens(':root');
 /** Dark mode overrides some tokens; the rest are the light ones. */
 const dark = { ...light, ...tokens('.dark') };
@@ -93,6 +114,17 @@ describe.each(Object.entries(MODES))('%s theme contrast', (_, mode) => {
     for (const under of ['background', 'accent'])
       expect(
         contrast(token(mode, 'primary'), token(mode, under)),
+      ).toBeGreaterThanOrEqual(NON_TEXT);
+  });
+
+  it("a copy button's green check (status-success) reaches 3:1 on the dialog, at rest and hovered", () => {
+    // A dialog is drawn on the background; an icon button's hover is the
+    // text colour at 10% over it (ICON_BUTTON_CLASS).
+    const dialog = token(mode, 'background');
+    const hovered = mix(token(mode, 'foreground'), dialog, HOVER_TINT);
+    for (const under of [dialog, hovered])
+      expect(
+        contrast(token(mode, 'status-success'), under),
       ).toBeGreaterThanOrEqual(NON_TEXT);
   });
 
