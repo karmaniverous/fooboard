@@ -1,17 +1,18 @@
 /**
  * The poll boost's test board (spec 0.2.0 §3.H): three of the demo's rows
  * with nothing in progress at the opening (two GitHub rows and an Amplify
- * row), so they poll at the idle baseline. Every timer and the clock are fake, so TanStack's own
- * interval timers decide when a row polls. Each root query's polls are
- * recorded with the time they started, and responses can be held back
- * (`hold`) to make a poll complete late.
+ * row), so they poll at the idle baseline. Every timer and the clock are
+ * fake, so TanStack's own interval timers decide when a row polls. Each
+ * root query's polls are recorded with the time they started, and
+ * responses can be held back (`hold`) to make a poll complete late.
  *
  * @module
  */
 import type { Query, QueryClient } from '@tanstack/query-core';
 import { vi } from 'vitest';
 
-import { measureBoard } from '@/demo/scenarios/measure';
+import { measureBoard, measureScenario } from '@/demo/scenarios/measure';
+import type { DemoScenario } from '@/demo/sim/scenario';
 import type { Dashboard } from '@/domain/config/dashboard';
 import type { Row } from '@/domain/config/row';
 import { createBoardModel } from '@/engine';
@@ -88,9 +89,9 @@ export interface BoostBoard {
   board: BoardModelHandle;
   /** `row`'s root queries that are observed. */
   roots: (row: Row) => Query[];
-  /** When each poll of `row`'s first root query started, in ms after
-   * `since`. */
-  polls: (row: Row, since: number) => number[];
+  /** When each poll of `row`'s first root query (reading with
+   * `credentialId`, if given) started, in ms after `since`. */
+  polls: (row: Row, since: number, credentialId?: string) => number[];
   /** The interval each of `row`'s root queries polls at. */
   intervals: (row: Row) => (number | false | undefined)[];
   /** Hold every response until `release`. */
@@ -131,16 +132,26 @@ async function drain(env: QueryEnv): Promise<void> {
 const A_MOMENT_MS = 1_000;
 
 /** Fake every timer and the clock, read `dashboard` (the boost board
- * unless given) in full, and, a moment later, record its root queries'
- * polls from then on. */
+ * unless given) in full from `scenario` (the demo's measurement scenario
+ * unless given), and, a moment later, record its root queries' polls from
+ * then on. */
 export async function boostBoard(
   dashboard: Dashboard = boostDashboard,
+  scenario: DemoScenario = measureScenario,
 ): Promise<BoostBoard> {
   vi.useFakeTimers({ now: START });
   const gate: Gate = { held: false, waiting: [] };
   const env = withoutRetryDelay(
     createQueryEnv({
-      providers: (hooks) => simProviders(hooks, holding(simTransport(), gate)),
+      providers: (hooks) =>
+        simProviders(
+          hooks,
+          holding(
+            simTransport(() => 0, {}, scenario),
+            gate,
+          ),
+          scenario,
+        ),
     }),
   );
   // Mounted, as QueryProvider mounts it: the tab's return refetches.
@@ -160,8 +171,10 @@ export async function boostBoard(
     env,
     board,
     roots,
-    polls: (row, since) => {
-      const first = roots(row).at(0);
+    polls: (row, since, credentialId) => {
+      const first = roots(row).find(
+        (q) => credentialId === undefined || q.queryKey[1] === credentialId,
+      );
       if (!first) throw new Error(`no root query for ${row.id}`);
       return (started.get(first.queryHash) ?? [])
         .filter((at) => at >= since)

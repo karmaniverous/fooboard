@@ -4,16 +4,20 @@
  * a query two rows share polls at the boosted row's interval; a boost never
  * marks a row refreshing by itself; the root needs of a GitHub and an
  * Amplify row take the boost, backed off four times past half a token's
- * budget, where a dwell's restart is judged at that pace; rows the dashboard doesn't have, or a destroyed board, boost
- * nothing.
+ * budget, where a dwell's restart is judged at that pace unless another
+ * of the row's tokens is under its share; rows the dashboard doesn't
+ * have, or a destroyed board, boost nothing.
  *
  * @module
  */
 import { QueryClient } from '@tanstack/query-core';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { measureBoard } from '@/demo/scenarios/measure';
-import { MEASURE_AMPLIFY_APPS } from '@/demo/scenarios/measureBoard';
+import { measureBoard, measureScenario } from '@/demo/scenarios/measure';
+import {
+  MEASURE_AMPLIFY_APPS,
+  MEASURE_GITHUB,
+} from '@/demo/scenarios/measureBoard';
 import type { Dashboard } from '@/domain/config/dashboard';
 import {
   ACTIVE_INTERVAL_MS,
@@ -29,6 +33,7 @@ import {
   demoRuns,
   seedRuns,
 } from '@/test/githubCache';
+import { withAliases } from '@/test/simDemo';
 
 import { deriveAmplifyRow } from './amplifyRow';
 import { deriveGithubRow } from './githubRow';
@@ -112,6 +117,35 @@ describe('the poll boost, at its limits', () => {
     board.attend([row.id], 'dwell');
     await vi.advanceTimersByTimeAsync(50 * SECOND);
     expect(polls(row, since)).toEqual(at(40, 100));
+    done();
+  });
+
+  it('never postpones the poll of a token under its share, when another of the row’s tokens is past it', async () => {
+    const OTHER = 'other-github';
+    const [first, ...rest] = measureBoard.stages;
+    const split: Dashboard = {
+      ...boardOf([row]),
+      stages: [{ ...first, settings: { githubToken: OTHER } }, ...rest],
+    };
+    const { env, board, polls, done } = await boostBoard(
+      split,
+      withAliases(measureScenario, { [OTHER]: MEASURE_GITHUB }),
+    );
+    const budget = env.budgets.get.bind(env.budgets);
+    vi.spyOn(env.budgets, 'get').mockImplementation((id) =>
+      id === MEASURE_GITHUB ? OVER_SHARE : budget(id),
+    );
+    board.refresh();
+    const since = Date.now();
+    board.attend([row.id], 'dwell');
+    // The row's step lasts until its slower token's poll, at 40 s; its
+    // 20 s step then has the faster token's poll due at 60 s. A dwell at
+    // 55 s waits for it: restarting at once would bring it to 65 s.
+    await vi.advanceTimersByTimeAsync(55 * SECOND);
+    board.attend([row.id], 'dwell');
+    await vi.advanceTimersByTimeAsync(10 * SECOND);
+    expect(polls(row, since, MEASURE_GITHUB)).toEqual(at(40));
+    expect(polls(row, since, OTHER)).toEqual(at(10, 20, 30, 60));
     done();
   });
 
