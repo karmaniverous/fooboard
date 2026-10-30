@@ -20,6 +20,22 @@ const APEX = {
 };
 
 describe('parseRewrites', () => {
+  it('reads a redirect from a bare origin with its slash', () => {
+    expect(
+      parseRewrites(rules({ ...APEX, source: 'https://fooboard.dev/' }, RULE))
+        .redirects,
+    ).toHaveLength(1);
+  });
+
+  it.each(['https://fooboard.dev/a', 'https://fooboard.dev/?a'])(
+    'refuses a full-URL source that is not a bare origin: %s',
+    (source) => {
+      expect(() => parseRewrites(rules({ ...APEX, source }, RULE))).toThrow(
+        'not a plain path or a bare http(s) origin (no path or query)',
+      );
+    },
+  );
+
   it('reads a redirect from a full URL, which matches no local path', () => {
     expect(parseRewrites(rules(APEX, AI, RULE)).redirects).toEqual([
       { path: undefined, status: '302', target: 'https://www.fooboard.dev' },

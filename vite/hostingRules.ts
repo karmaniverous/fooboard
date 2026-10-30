@@ -7,7 +7,7 @@
  * The parser accepts only the subset fooboard uses and throws on anything
  * else, so the local server can never quietly serve less than Amplify
  * would: the console's whole list of rules, in order (Decision 110):
- * redirects first (301 or 302, from a plain path or a full URL such
+ * redirects first (301 or 302, from a plain path or a bare origin such
  * as the apex `https://fooboard.dev`, to a path or a URL), then 200
  * rewrites from one plain path to one file (`/ai` → `/ai.md`), then 200
  * rewrites to the page from an Amplify regular expression (`</regex/>`),
@@ -63,9 +63,16 @@ const isHttpUrl = (text: string): boolean =>
   /^https?:\/\//.test(text) && URL.canParse(text);
 
 /** Whether `text` is one plain path or an absolute http(s) URL: a
- * redirect's source or target. */
+ * redirect's target. */
 const isPathOrUrl = (text: string): boolean =>
   ONE_PATH.test(text) || isHttpUrl(text);
+
+/** Whether `text` is one plain path or a bare http(s) origin
+ * (`https://fooboard.dev`, no path or query): a redirect's source. Amplify
+ * silently ignores a full-URL source with a path. */
+const isPathOrOrigin = (text: string): boolean =>
+  ONE_PATH.test(text) ||
+  (isHttpUrl(text) && new URL(text).origin === text.replace(/\/$/, ''));
 
 /** A rule's `condition`: absent or `null` (as the console writes it) for
  * every visitor, or a country code (Amplify's `<US>`) for visitors from
@@ -127,7 +134,10 @@ const RewritesSchema = StatusSchema.pipe(
           .strictObject({
             source: z
               .string()
-              .refine(isPathOrUrl, 'not a plain path or an http(s) URL'),
+              .refine(
+                isPathOrOrigin,
+                'not a plain path or a bare http(s) origin (no path or query)',
+              ),
             status: z.enum(REDIRECT_STATUSES),
             target: z
               .string()
@@ -214,7 +224,8 @@ export interface HostingRules {
  * and the CLI's `update-app --custom-rules` take them (Decision 110).
  *
  * @throws When a rule is none of a redirect (status in
- * {@link REDIRECT_STATUSES}, from a plain path or an http(s) URL to either),
+ * {@link REDIRECT_STATUSES}, from a plain path or a bare http(s) origin to
+ * a path or a URL),
  * a 200 rewrite from a plain path to a file and a 200 rewrite to
  * {@link SPA_ENTRY} from an Amplify regular expression, each with an
  * optional `condition` (`null` or a country code); or when the rules
