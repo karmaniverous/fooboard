@@ -11,7 +11,8 @@
  * link, a one-dashboard share with one credential, imports and lands on the board
  * with the credentials panel open on that credential; pasting the same
  * share's JSON into *Import* imports it; the dialog opens from the header
- * and from the home page.
+ * and from the home page, names the preview site's own `/ai`, and its
+ * *Copy instructions* copies the site's `/ai.md` (Decision 107).
  *
  * @module
  */
