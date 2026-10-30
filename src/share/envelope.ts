@@ -166,7 +166,7 @@ function repeats(
 /** Ids repeated across the share's dashboards, or their credentials
  * (either would make two dashboards, or two secrets, one), each naming
  * both places: `dashboards[2].id: repeats dashboards[0].id`. */
-export function repeatedIds(dashboards: readonly Dashboard[]): ShareIssue[] {
+function repeatedIds(dashboards: readonly Dashboard[]): ShareIssue[] {
   return [
     ...repeats(
       dashboards.map((d, i) => ({ id: d.id, path: ['dashboards', i, 'id'] })),
