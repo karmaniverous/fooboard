@@ -139,12 +139,25 @@ export function jsonExtent(text: string): number {
   return text.length;
 }
 
-/** A pasted `#j=` payload cut where the link ends, so text after it (a
- * full stop, a line break, more words) is never read. */
-function pastedJsonPayload(rest: string): string {
-  if (rest.startsWith(OPEN)) return rest.slice(0, jsonExtent(rest));
-  const run = (ENCODED_OPEN.test(rest) ? TO_WHITESPACE : BASE64_RUN).exec(rest);
-  return run?.[0] ?? '';
+/** `text` cut just after the `}` that balances its first `{`. */
+const toBalancingBrace = (text: string): string =>
+  text.slice(0, jsonExtent(text));
+
+/** A pasted `#j=` payload decoded, cut where the link ends, so text after
+ * it (a full stop, Slack's `>`, a line break, more words) is never read:
+ * raw JSON at its balancing brace; percent-encoded JSON percent-decoded
+ * up to the first whitespace and then cut the same way (spec 0.2.0 §3.J
+ * *Pasted percent-encoded links*); base64 at the end of its run. */
+function pastedJsonPayload(rest: string): LinkPayload {
+  if (ENCODED_OPEN.test(rest)) {
+    const decoded = percentDecoded(TO_WHITESPACE.exec(rest)?.[0] ?? '');
+    return {
+      kind: 'text',
+      text: decoded.startsWith(OPEN) ? toBalancingBrace(decoded) : decoded,
+    };
+  }
+  if (rest.startsWith(OPEN)) return decodeJsonPayload(toBalancingBrace(rest));
+  return decodeJsonPayload(BASE64_RUN.exec(rest)?.[0] ?? '');
 }
 
 /** Each kind of share link: its fragment prefix and how its payload is
@@ -171,9 +184,7 @@ export function pastedLink(text: string): LinkPayload {
   if (b < 0 && j < 0) return DAMAGED;
   return j < 0 || (b >= 0 && b < j)
     ? decodePayload(text.slice(b + SHARE_LINK_PREFIX.length))
-    : decodeJsonPayload(
-        pastedJsonPayload(text.slice(j + SHARE_JSON_LINK_PREFIX.length)),
-      );
+    : pastedJsonPayload(text.slice(j + SHARE_JSON_LINK_PREFIX.length));
 }
 
 /**

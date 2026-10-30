@@ -485,7 +485,7 @@ _Share / Export_ in the header (or the menu) shares your saved dashboards; _Impo
 
 Opening the link in your browser does the same: the same dashboards listed, the same passphrase step, the same import. Pasting tolerates spaces around the link, and takes the link at any path or its `#b=…` part alone; text with no `#b=` or `#j=` in it is refused as a damaged link.
 
-**`#j=` links.** fooboard makes `#b=` links, compressed. It also opens `#j=` links, which hold the share's JSON itself, as an AI assistant builds them ([Set up with an AI assistant](#set-up-with-an-ai-assistant)): base64 of the JSON (base64url or standard, padded or not), or the JSON as it is, percent-encoded or not. Like `#b=`, the fragment is cleared before anything else, and pasted text after the link is ignored. fooboard 0.1.0 ignores `#j=` links: the app just opens.
+**`#j=` links.** fooboard makes `#b=` links, compressed. It also opens `#j=` links, which hold the share's JSON itself, as an AI assistant builds them ([Set up with an AI assistant](#set-up-with-an-ai-assistant)): base64 of the JSON (base64url or standard, padded or not), or the JSON as it is, percent-encoded or not. Like `#b=`, the fragment is cleared before anything else, and pasted text after the link is ignored, even a full stop or a `>` right after it (the JSON, once percent-decoded, ends at the brace that closes it). fooboard 0.1.0 ignores `#j=` links: the app just opens.
 
 **Keys on arrival.** After importing one dashboard, its board opens; if any of its credentials has no secret on this device (always so for a board an assistant built), _Credentials_ opens with the first of them, by name, expanded to enter its secret.
 
