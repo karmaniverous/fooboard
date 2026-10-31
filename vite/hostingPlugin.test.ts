@@ -3,7 +3,6 @@ import {
   copyFileSync,
   mkdirSync,
   mkdtempSync,
-  readFileSync,
   rmSync,
   writeFileSync,
 } from 'node:fs';
@@ -13,57 +12,21 @@ import path from 'node:path';
 import { build, preview, type PreviewServer } from 'vite';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 
-import {
-  headersFor,
-  parseCustomHttp,
-  parseRewrites,
-  SPA_ENTRY,
-} from './hosting';
+import { headersFor, parseCustomHttp } from './hosting';
 import {
   CSP_HEADER,
   CUSTOM_HTTP_FILE,
   hosting,
-  hostingMiddleware,
   REWRITES_FILE,
   sitePaths,
   within,
 } from './hostingPlugin';
-
-const ROOT = path.resolve(import.meta.dirname, '..');
-const read = (file: string) => readFileSync(path.join(ROOT, file), 'utf8');
+import { SPA_ENTRY } from './hostingRules';
+import { read, ROOT, serve } from './serveProbe';
 
 /** A fresh temporary directory. */
 const tempDir = (name: string) =>
   mkdtempSync(path.join(tmpdir(), `fooboard-${name}-`));
-
-/** Runs the middleware on one request; what it did. `dev` runs the dev
- * server's. */
-function serve(
-  url: string | undefined,
-  exists: ((sitePath: string) => boolean) | 'dev' = (p) => p === '/assets/a.js',
-) {
-  const req = { url };
-  const headers = new Map<string, string>();
-  const res = {
-    statusCode: 200,
-    setHeader: (name: string, value: string) => headers.set(name, value),
-    end: vi.fn(),
-  };
-  const next = vi.fn();
-  const config = {
-    headers: {
-      every: { 'X-A': 'a', [CSP_HEADER]: 'csp' },
-      byPath: { '/ai': { 'Content-Type': 'text/markdown' } },
-    },
-    rules: parseRewrites(read(REWRITES_FILE)),
-  };
-  hostingMiddleware(
-    exists === 'dev'
-      ? { ...config, server: 'dev' }
-      : { ...config, server: 'preview', exists },
-  )(req, res, next);
-  return { url: req.url, headers, status: res.statusCode, next, end: res.end };
-}
 
 describe('hostingMiddleware', () => {
   it('sets every header, then serves the page for a route', () => {

@@ -1,19 +1,17 @@
 /**
- * The committed Amplify Hosting configuration, read the way Amplify reads it
+ * The committed Amplify Hosting headers, read the way Amplify reads them
  * (spec.md §3.10, Decisions 24 and 40; spec 0.2.0 §3.J *Serving them*):
- * the response headers of `customHttp.yml` and the rewrites of
- * `amplify-rewrites.json`. One source for the hosted site, `vite preview`
- * and the dev server, so the CSP is tested locally against the headers
- * that ship.
+ * the response headers of `customHttp.yml`. One source for the hosted
+ * site, `vite preview` and the dev server, so the CSP is tested locally
+ * against the headers that ship. The rules of `amplify-rewrites.json` are
+ * read by `hostingRules.ts`.
  *
- * The parsers accept only the subset fooboard uses and throw on anything
+ * The parser accepts only the subset fooboard uses and throws on anything
  * else, so the local server can never quietly serve less than Amplify
  * would: a first header pattern `'**'` (every path), then any number of
- * one-path patterns (`/ai`) that set no header `'**'` sets; and 200
- * rewrites, either to the page from an Amplify regular expression
- * (`</regex/>`) or from one plain path to one file (`/ai` → `/ai.md`).
- * Amplify merges the headers of every pattern a path matches, so a path
- * with a pattern of its own is served both.
+ * one-path patterns (`/ai`) that set no header `'**'` sets. Amplify
+ * merges the headers of every pattern a path matches, so a path with a
+ * pattern of its own is served both.
  *
  * @module
  */
@@ -27,17 +25,11 @@ export const EVERY_PATH = '**';
 const HTTP_TOKEN = /^[!#$%&'*+.^_`|~0-9A-Za-z-]+$/;
 
 /** A path's characters: none a glob or Amplify regular expression uses. */
-const PATH_CHARS = String.raw`[^*?[\]{}<>!\s]*`;
+export const PATH_CHARS = String.raw`[^*?[\]{}<>!\s]*`;
 
 /** One path, as a header pattern or a rewrite's plain source: starts with
  * `/` and holds no glob or regular-expression character. */
-const ONE_PATH = new RegExp(`^/${PATH_CHARS}$`);
-
-/** A file a plain rewrite serves: one path ending in an extension. */
-const FILE_PATH = new RegExp(String.raw`^/${PATH_CHARS}\.[A-Za-z0-9]+$`);
-
-/** The page every rewritten route is served. */
-export const SPA_ENTRY = '/index.html';
+export const ONE_PATH = new RegExp(`^/${PATH_CHARS}$`);
 
 const CustomHttpSchema = z.strictObject({
   customHeaders: z
@@ -67,46 +59,6 @@ export interface HostingHeaders {
   every: HeaderMap;
   /** Each one-path pattern's own headers, by path. */
   byPath: Readonly<Record<string, HeaderMap>>;
-}
-
-/** An Amplify regular-expression source: `</...regex.../>`. */
-const REGEX_SOURCE = /^<\/(.+)\/>$/;
-
-/** `text` matched literally in a regular expression. */
-const literal = (text: string): string =>
-  text.replace(/[.*+?^${}()|[\]\\/]/g, '\\$&');
-
-const RewritesSchema = z
-  .array(
-    z.union([
-      z.strictObject({
-        source: z.string().transform((source, ctx) => {
-          const body = REGEX_SOURCE.exec(source)?.[1];
-          if (body !== undefined) return new RegExp(body);
-          ctx.addIssue({ code: 'custom', message: 'not a </regex/> source' });
-          return z.NEVER;
-        }),
-        status: z.literal('200'),
-        target: z.literal(SPA_ENTRY),
-      }),
-      z.strictObject({
-        source: z
-          .string()
-          .regex(ONE_PATH, 'not a plain path')
-          .transform((source) => new RegExp(`^${literal(source)}$`)),
-        status: z.literal('200'),
-        target: z.string().regex(FILE_PATH, 'not a file path'),
-      }),
-    ]),
-  )
-  .min(1);
-
-/** One 200 rewrite: the paths it matches are served its target. */
-export interface Rewrite {
-  /** The source's regular expression. */
-  source: RegExp;
-  /** Where a matching path is served from. */
-  target: string;
 }
 
 /** One pattern's headers by name, refusing a header named twice (header
@@ -165,34 +117,3 @@ export const headersFor = (
   ...hosting.every,
   ...hosting.byPath[path],
 });
-
-/**
- * The rewrites of an `amplify-rewrites.json`: the app's custom rules, as
- * the Amplify console's rewrites text editor and the CLI's
- * `update-app --custom-rules` take them.
- *
- * @throws When a rule is neither a 200 rewrite to {@link SPA_ENTRY} from
- * an Amplify regular expression nor a 200 rewrite from a plain path to a
- * file.
- */
-export function parseRewrites(text: string): Rewrite[] {
-  return RewritesSchema.parse(JSON.parse(text));
-}
-
-/** Where a request path is served from: the first matching rewrite's
- * target, or the path itself when none matches. */
-export function rewrite(rules: readonly Rewrite[], path: string): string {
-  return rules.find(({ source }) => source.test(path))?.target ?? path;
-}
-
-/**
- * The files a rewrite would hide: each site path (`/assets/x.js`) that a
- * rule serves something else for instead of the file. Must be empty for a
- * build, or the site would answer that file with the page.
- */
-export function hiddenFiles(
-  rules: readonly Rewrite[],
-  paths: readonly string[],
-): string[] {
-  return paths.filter((path) => rewrite(rules, path) !== path);
-}

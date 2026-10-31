@@ -12,7 +12,7 @@ npx lefthook install   # install Git hooks (once, after cloning)
 ## Commands
 
 ```bash
-npm run dev          # start the Vite dev server (the hosted headers and rewrites, but no CSP on the page)
+npm run dev          # start the Vite dev server (the hosted headers, redirects and rewrites, but no CSP on the page)
 npm run build        # type-check (tsc -b) and build the static site to dist/
 npm run preview      # the production build, with the hosted headers and CSP
 npm run lint         # ESLint (+ Prettier), then lint:md
@@ -52,6 +52,8 @@ Amplify Hosting serves three sites, one per long-running branch:
 | www.fooboard.dev (fooboard.dev redirects there) | `prod`, production                    | none      | none       |
 
 The password isn't a secret: it guards against opening the wrong version by accident, not against access. Production is public: its password came off once the first release was deployed to `prod`.
+
+The three sites share one _Rewrites and redirects_ list in the Amplify console, and `amplify-rewrites.json` mirrors it: every rule, redirects included (such as the apex `https://fooboard.dev` 302 to `https://www.fooboard.dev`), in the console's order: redirects first, then one-path rewrites such as `/ai`, then the SPA rule. A rule changed in the console is changed in the file, and the file is pasted into the console as it is (README _Hosting_). The dev and preview servers and the tests refuse to start, and the build fails, if it holds a rule `vite/hostingRules.ts` doesn't read or breaks that order.
 
 ## Quality gate (every commit)
 

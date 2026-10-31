@@ -14,8 +14,10 @@
  *   `/ai` on every path (the CSP's style hashes are checked against the
  *   injected styles in `cspStyles.test.tsx`), and the markdown type on
  *   `/ai` and `/ai.md` (spec 0.2.0 §3.J);
- * - `amplify-rewrites.json` serves `/ai` from `/ai.md`, the page for the
- *   app's routes, and never the page for an asset path.
+ * - `amplify-rewrites.json` parses, so every Vite server starts (Decision
+ *   110): it holds the apex redirect first, then serves `/ai` from
+ *   `/ai.md`, the page for the app's routes, and never the page for an
+ *   asset path.
  *
  * @module
  */
@@ -31,12 +33,8 @@ import rewritesRaw from '../amplify-rewrites.json?raw';
 import customHttpRaw from '../customHttp.yml?raw';
 import packageJsonRaw from '../package.json?raw';
 import viteConfigRaw from '../vite.config.ts?raw';
-import {
-  parseCustomHttp,
-  parseRewrites,
-  rewrite,
-  SPA_ENTRY,
-} from '../vite/hosting';
+import { parseCustomHttp } from '../vite/hosting';
+import { parseRewrites, rewrite, SPA_ENTRY } from '../vite/hostingRules';
 import { FIRST_RUN_PATH } from './firstRun/paths';
 import { AMPLIFY_REGIONS } from './lib/amplify/regions';
 import { cspDirectives } from './test/csp';
@@ -256,7 +254,13 @@ describe('Content-Security-Policy', () => {
 });
 
 describe('rewrites (amplify-rewrites.json)', () => {
-  const rules = parseRewrites(rewritesRaw);
+  const { redirects, rewrites: rules } = parseRewrites(rewritesRaw);
+
+  it("holds the console's apex redirect, from a full URL, so it matches no local path", () => {
+    expect(redirects).toEqual([
+      { path: undefined, status: '302', target: 'https://www.fooboard.dev' },
+    ]);
+  });
 
   it('serves /ai the instructions for assistants, before the page rule', () => {
     expect(rewrite(rules, '/ai')).toBe('/ai.md');

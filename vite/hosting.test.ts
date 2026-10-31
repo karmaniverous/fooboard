@@ -1,13 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import {
-  headersFor,
-  hiddenFiles,
-  parseCustomHttp,
-  parseRewrites,
-  rewrite,
-  SPA_ENTRY,
-} from './hosting';
+import { headersFor, parseCustomHttp } from './hosting';
 
 /** A customHttp.yml with these header entries under one pattern. */
 const customHttp = (pattern: string, ...entries: [string, string][]): string =>
@@ -135,92 +128,5 @@ describe('headersFor', () => {
 
   it("gives any other path only '**'", () => {
     expect(headersFor(hosting, '/ai.md')).toEqual({ 'X-A': 'a', 'X-B': 'b' });
-  });
-});
-
-/** An amplify-rewrites.json with one rule. */
-const rules = (rule: Record<string, string>): string => JSON.stringify([rule]);
-const RULE = { source: '</^[^.]+$/>', status: '200', target: SPA_ENTRY };
-
-describe('parseRewrites', () => {
-  it('reads a 200 rewrite to the page from an Amplify regular expression', () => {
-    const [rule] = parseRewrites(rules(RULE));
-    expect(rule.source.source).toBe('^[^.]+$');
-    expect(rule.target).toBe(SPA_ENTRY);
-  });
-
-  it('reads a 200 rewrite from one plain path to a file, matching only that path', () => {
-    const [rule] = parseRewrites(
-      rules({ source: '/ai', status: '200', target: '/ai.md' }),
-    );
-    expect(rule.target).toBe('/ai.md');
-    expect(rule.source.test('/ai')).toBe(true);
-    expect(rule.source.test('/ai/')).toBe(false);
-    expect(rule.source.test('/aix')).toBe(false);
-    expect(rule.source.test('/x/ai')).toBe(false);
-  });
-
-  it('reads a plain source literally, a dot included', () => {
-    const [rule] = parseRewrites(
-      rules({ source: '/a.b', status: '200', target: '/c.md' }),
-    );
-    expect(rule.source.test('/a.b')).toBe(true);
-    expect(rule.source.test('/axb')).toBe(false);
-  });
-
-  it.each([
-    ['a glob source', { ...RULE, source: '/<*>' }],
-    ['a redirect', { ...RULE, status: '301' }],
-    ['another target', { ...RULE, target: '/404.html' }],
-    [
-      'a plain source rewritten to a path with no extension',
-      { source: '/ai', status: '200', target: '/ai' },
-    ],
-    [
-      'a plain-path redirect',
-      { source: '/ai', status: '301', target: '/ai.md' },
-    ],
-    [
-      'a plain source with a wildcard',
-      { source: '/ai*', status: '200', target: '/ai.md' },
-    ],
-  ])('refuses %s', (_why, rule) => {
-    expect(() => parseRewrites(rules(rule))).toThrow();
-  });
-
-  it('refuses no rules', () => {
-    expect(() => parseRewrites('[]')).toThrow();
-  });
-});
-
-describe('rewrite', () => {
-  const two = parseRewrites(
-    JSON.stringify([
-      { ...RULE, source: '</^\\/a$/>' },
-      { ...RULE, source: '</^\\/b$/>' },
-    ]),
-  );
-
-  it("serves any matching rule's target, else the path itself", () => {
-    expect(rewrite(two, '/a')).toBe(SPA_ENTRY);
-    expect(rewrite(two, '/b')).toBe(SPA_ENTRY);
-    expect(rewrite(two, '/c.js')).toBe('/c.js');
-  });
-});
-
-describe('hiddenFiles', () => {
-  const noDots = parseRewrites(rules(RULE));
-
-  it('lists the files a rule would answer with the page', () => {
-    expect(hiddenFiles(noDots, ['/a.js', '/LICENSE', SPA_ENTRY])).toEqual([
-      '/LICENSE',
-    ]);
-  });
-
-  it('lists a file a plain rewrite would answer with another file', () => {
-    const plain = parseRewrites(
-      rules({ source: '/ai.txt', status: '200', target: '/ai.md' }),
-    );
-    expect(hiddenFiles(plain, ['/ai.md', '/ai.txt'])).toEqual(['/ai.txt']);
   });
 });
