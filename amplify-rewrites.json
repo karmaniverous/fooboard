@@ -1,7 +1,7 @@
 [
   {
     "source": "https://fooboard.dev",
-    "status": "302",
+    "status": "301",
     "target": "https://www.fooboard.dev"
   },
   {
