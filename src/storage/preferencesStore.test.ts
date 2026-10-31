@@ -1,6 +1,6 @@
 /**
  * Device preferences version 3 (spec.md §3.10, C-20): the last version
- * whose What's new was seen, with version 2 migrating to it unchanged
+ * whose release notes were seen, with version 2 migrating to it unchanged
  * otherwise.
  *
  * @module

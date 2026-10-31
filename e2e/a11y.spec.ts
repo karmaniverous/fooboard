@@ -1,9 +1,11 @@
 /**
  * The accessibility pass's automated part (spec.md §3.10), under the
  * locally served CSP: axe finds no WCAG 2.1 A or AA violation (contrast
- * included) on the home page, the demo board, What's new, the cell
- * detail sheet, the settings popup and the error screen, in light and
- * dark; Tab runs header, then body; the dialogs keep Tab inside; group
+ * included) on the home page, the demo board, the menu, the cell detail
+ * sheet, the settings popup, the *Unmapped runs* panel with a *Dismiss…*
+ * form open and with *Show dismissed* on, *Set up with an AI assistant*
+ * and an import refusal listing its errors (spec 0.2.0 §3.J), the
+ * loading screen (Decision 106) and the error screen, in light and dark; Tab runs header, then body; the dialogs keep Tab inside; group
  * frames and boundary lines are hidden from assistive technology; and
  * with reduced motion nothing on the board animates.
  *
@@ -12,7 +14,8 @@
 import AxeBuilder from '@axe-core/playwright';
 import type { Page } from '@playwright/test';
 
-import { firstCell, openDemo } from './board';
+import { REFUSED_FRAGMENT } from './aiShare';
+import { firstCell, openDemo, PHONE } from './board';
 import { expect, test } from './guard';
 
 const WCAG = ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'];
@@ -43,6 +46,85 @@ async function violations(page: Page): Promise<string[]> {
   );
 }
 
+/** axe finds nothing on a board action's tooltip, shown by keyboard
+ * focus (spec 0.2.0 §3.A). */
+async function expectActionTooltipClean(page: Page): Promise<void> {
+  await page.getByRole('button', { name: 'Edit dashboard' }).focus();
+  await expect(page.getByRole('tooltip')).toHaveText('Edit dashboard');
+  expect(await violations(page), 'board action tooltip').toEqual([]);
+  await page.keyboard.press('Escape');
+}
+
+/** axe finds nothing in the *Unmapped runs* panel with an entry's
+ * *Dismiss…* form open, then with *Show dismissed* on (spec 0.2.0
+ * §3.I). */
+async function expectUnmappedPanelClean(page: Page): Promise<void> {
+  await page.getByRole('button', { name: /^Unmapped runs \(\d+\)$/ }).click();
+  const panel = page.getByRole('dialog', { name: 'Unmapped runs' });
+  await expect(panel).toBeVisible();
+  await panel.getByRole('button', { name: 'Dismiss…' }).first().click();
+  await expect(panel.getByRole('form')).toBeVisible();
+  expect(await violations(page), 'dismiss form').toEqual([]);
+  await panel.getByRole('button', { name: 'Dismiss', exact: true }).click();
+  await panel.getByRole('button', { name: 'Show dismissed' }).click();
+  await expect(
+    panel.getByRole('list', { name: 'Dismissed runs' }),
+  ).toBeVisible();
+  expect(await violations(page), 'show dismissed').toEqual([]);
+  await page.keyboard.press('Escape');
+  await expect(panel).toHaveCount(0);
+}
+
+/** axe finds nothing in *Set up with an AI assistant*, opened from the
+ * home page, at rest and after *Copy prompt* (its check or its failure
+ * announced, the button's tooltip showing; Decision 108), nor in an import
+ * refusal listing its errors (spec 0.2.0
+ * §3.J). */
+async function expectAiSetupClean(page: Page): Promise<void> {
+  await page.goto('/');
+  await page
+    .getByRole('main')
+    .getByRole('button', { name: 'Set up with an AI assistant…' })
+    .click();
+  const dialog = page.getByRole('dialog', {
+    name: 'Set up with an AI assistant',
+  });
+  await expect(dialog).toBeVisible();
+  expect(await violations(page), 'AI setup dialog').toEqual([]);
+  await dialog.getByRole('button', { name: 'Copy prompt' }).click();
+  await expect(dialog.getByRole('status').filter({ hasText: /./ })).toHaveCount(
+    1,
+  );
+  expect(await violations(page), 'AI setup dialog after a copy').toEqual([]);
+  await page.keyboard.press('Escape');
+  await expect(dialog).toHaveCount(0);
+
+  await page.goto(`/${REFUSED_FRAGMENT}`);
+  const refusal = page.getByRole('dialog', { name: 'Import dashboards' });
+  await expect(
+    refusal.getByRole('list', { name: 'Import errors' }),
+  ).toBeVisible();
+  expect(await violations(page), 'import refusal').toEqual([]);
+  await page.keyboard.press('Escape');
+}
+
+/** The loading screen, held on the page by blocking the app's scripts
+ * (spec 0.2.0 §3.J *The loading screen*): it shows before the app
+ * mounts, with the name, the tagline and the link to /ai. */
+async function openLoadingScreen(page: Page): Promise<void> {
+  await page.route('**/assets/*.js', (route) => route.abort());
+  await page.goto('/');
+  await expect(
+    page.getByRole('heading', { level: 1, name: 'fooboard' }),
+  ).toBeVisible();
+  await expect(
+    page.getByText("Welcome to DevOps hell. Here's your map."),
+  ).toBeVisible();
+  await expect(
+    page.getByRole('link', { name: 'https://www.fooboard.dev/ai' }),
+  ).toHaveAttribute('href', '/ai');
+}
+
 for (const colorScheme of ['light', 'dark'] as const)
   test.describe(`in ${colorScheme}`, () => {
     test.use({ colorScheme });
@@ -52,16 +134,16 @@ for (const colorScheme of ['light', 'dark'] as const)
       await page.goto('/');
       await expect(page.getByRole('main')).toBeVisible();
       expect(await violations(page), 'home').toEqual([]);
+      await expectAiSetupClean(page);
 
       await openDemo(page);
       expect(await violations(page), 'demo board').toEqual([]);
+      await expectActionTooltipClean(page);
+      await expectUnmappedPanelClean(page);
 
       const menu = page.getByRole('button', { name: 'Menu' });
       await menu.click();
       expect(await violations(page), 'menu').toEqual([]);
-      await page.getByRole('menuitem', { name: /^What's new/ }).click();
-      await expect(page.getByRole('dialog')).toBeVisible();
-      expect(await violations(page), "What's new").toEqual([]);
       await page.keyboard.press('Escape');
 
       await firstCell(page).focus();
@@ -76,6 +158,32 @@ for (const colorScheme of ['light', 'dark'] as const)
       await expect(page.getByRole('dialog')).toBeVisible();
       expect(await violations(page), 'settings popup').toEqual([]);
       await page.keyboard.press('Escape');
+    });
+
+    test.describe('on a phone', () => {
+      test.use({ viewport: PHONE, hasTouch: true });
+
+      test("axe finds no WCAG A or AA violation on the board's actions", async ({
+        page,
+      }) => {
+        await openDemo(page);
+        expect(await violations(page), 'demo board').toEqual([]);
+        await expectActionTooltipClean(page);
+        await expectUnmappedPanelClean(page);
+      });
+
+      test('axe finds no WCAG A or AA violation in the AI setup dialog or an import refusal', async ({
+        page,
+      }) => {
+        await expectAiSetupClean(page);
+      });
+    });
+
+    test('axe finds no WCAG A or AA violation on the loading screen', async ({
+      page,
+    }) => {
+      await openLoadingScreen(page);
+      expect(await violations(page)).toEqual([]);
     });
 
     test('axe finds no WCAG A or AA violation on the error screen', async ({
@@ -110,10 +218,7 @@ test('Tab runs through the header, then the board', async ({ page }) => {
 test('dialogs keep Tab inside until closed', async ({ page }) => {
   await openDemo(page);
   const menu = page.getByRole('button', { name: 'Menu' });
-  for (const [item, role] of [
-    ["What's new", 'dialog'],
-    ['Reset…', 'alertdialog'],
-  ] as const) {
+  for (const [item, role] of [['Reset…', 'alertdialog']] as const) {
     await menu.click();
     await page.getByRole('menuitem', { name: new RegExp(`^${item}`) }).click();
     const dialog = page.getByRole(role);
@@ -150,8 +255,11 @@ test.describe('with reduced motion', () => {
 
   test('nothing on the board animates', async ({ page }) => {
     await openDemo(page);
-    // Long enough for a run to start and its cell to be marked.
-    await page.waitForTimeout(2_000);
+    // A run has started: under reduced motion nothing visible marks its
+    // cell, so wait for the cell's marker, not for a fixed pause.
+    await expect(
+      page.locator('main [data-in-progress]').first(),
+    ).toBeAttached();
     const animated = await page.evaluate(
       () =>
         [...document.querySelectorAll('main *')].filter(
@@ -160,4 +268,22 @@ test.describe('with reduced motion', () => {
     );
     expect(animated).toBe(0);
   });
+
+  test("the loading screen's pulse stands still", async ({ page }) => {
+    await openLoadingScreen(page);
+    await expect(page.locator('.loading-pulse')).toHaveCSS(
+      'animation-name',
+      'none',
+    );
+  });
+});
+
+test("the loading screen's pulse moves without reduced motion", async ({
+  page,
+}) => {
+  await openLoadingScreen(page);
+  await expect(page.locator('.loading-pulse')).toHaveCSS(
+    'animation-name',
+    'loading-pulse',
+  );
 });

@@ -3,7 +3,8 @@
  * default row rules, its *Settings* (the shared settings editor, spec.md
  * §3.11), duplicate and delete (which also
  * drops the dashboard's device preferences and its credentials' secrets),
- * and requests in flight per platform (spec.md §3.2). The demo's
+ * requests in flight per platform (spec.md §3.2), and the dismissed
+ * unmapped-run patterns (spec 0.2.0 §3.I). The demo's
  * dashboard isn't saved, so it offers no duplicate or delete (§3.14).
  *
  * @module
@@ -18,8 +19,10 @@ import { deleteWithSecrets, saveDuplicate } from '@/credentials/credentialOps';
 import { useInDemo } from '@/demo/inDemo';
 import type { Dashboard } from '@/domain/config/dashboard';
 import { targetKey } from '@/editors/editTarget';
+import { dashboardPath, HOME_PATH } from '@/pages/paths';
 import { useStores } from '@/storage/storesContext';
 
+import { DismissalList } from './DismissalList';
 import { duplicateDashboard } from './edit';
 import { CommitInput } from './fields';
 import { RequestsInFlight } from './RequestsInFlight';
@@ -68,6 +71,7 @@ export function GeneralEditor({
         onChange={onChange}
       />
       <RequestsInFlight dashboard={dashboard} onChange={onChange} />
+      <DismissalList dashboard={dashboard} onChange={onChange} />
       <ActionError error={error} />
       {saved && (
         <div className="flex flex-wrap gap-2">
@@ -89,7 +93,7 @@ export function GeneralEditor({
                       rekey,
                     ),
                 );
-                navigate(`/d/${copy.id}`);
+                navigate(dashboardPath(copy.id));
               });
             }}
           >
@@ -107,7 +111,7 @@ export function GeneralEditor({
                   },
                   dashboard,
                 );
-                navigate('/');
+                navigate(HOME_PATH);
               });
             }}
           >

@@ -2,12 +2,15 @@
  * A board's fixes open the dashboard editor (spec.md §2.4), shown on the
  * demo's board (`DashboardView` over the simulator): a row's problem mark
  * opens the editor at the problem, an unmapped run's *Add rule* and *Add
- * override* open it on their drafts, and closing the editor closes it.
+ * override* open it on their drafts, and closing the editor closes it;
+ * dismissing the last unmapped entry closes its panel and focuses the
+ * board's title.
  */
-import { fireEvent, render, screen, within } from '@testing-library/react';
+import { act, fireEvent, render, screen, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { describe, expect, it } from 'vitest';
 
+import { BOARD_TITLE_ID } from '@/board/BoardScreen';
 import { createAppStores } from '@/storage';
 import { memoryStorage } from '@/storage/keyValue';
 import { DEVICE_PREFERENCES_KEY } from '@/storage/preferencesStore';
@@ -16,12 +19,15 @@ import { DEMO_RENDER_TIMEOUT_MS } from '@/test/demoRender';
 import { WAIT } from '@/test/timeouts';
 
 import { DemoPage } from './DemoPage';
+import { DEMO_PATH } from './paths';
 
 const FIND = WAIT;
+/** Long enough for a closed panel's focus return (Radix's 0 ms timer). */
+const PANEL_CLOSE_MS = 50;
 
 function renderDemo(storage = memoryStorage()) {
   render(
-    <MemoryRouter initialEntries={['/demo']}>
+    <MemoryRouter initialEntries={[DEMO_PATH]}>
       <StoresContext value={createAppStores(storage)}>
         <DemoPage />
       </StoresContext>
@@ -58,9 +64,13 @@ describe('board fixes', () => {
     "opens the editor from an unmapped run's %s",
     async (fix) => {
       renderDemo();
-      // Text queries: role queries over the whole board are slow in jsdom.
-      const label = await screen.findByText(/^Unmapped \(\d+\)$/, {}, FIND);
-      fireEvent.click(label.closest('button') ?? label);
+      // Label queries: role queries over the whole board are slow in jsdom.
+      const button = await screen.findByLabelText(
+        /^Unmapped runs \(\d+\)$/,
+        {},
+        FIND,
+      );
+      fireEvent.click(button);
       const panel = await screen.findByRole('dialog', {}, FIND);
       expect(editor()).toBeNull();
       fireEvent.click(within(panel).getAllByText(fix)[0]);
@@ -73,16 +83,60 @@ describe('board fixes', () => {
     async () => {
       const storage = memoryStorage();
       renderDemo(storage);
-      const label = await screen.findByText(/^Problems \(\d+\)$/, {}, FIND);
-      const before = label.textContent;
-      fireEvent.click(label.closest('button') ?? label);
+      const button = await screen.findByLabelText(
+        /^Problems \(\d+\)$/,
+        {},
+        FIND,
+      );
+      const before = button.getAttribute('aria-label');
+      fireEvent.click(button);
       const panel = await screen.findByRole('dialog', {}, FIND);
       fireEvent.click(within(panel).getAllByText('Dismiss')[0]);
       // One fewer problem shown, and nothing dismissed on the device.
-      expect(label.textContent).not.toBe(before);
+      expect(button.getAttribute('aria-label')).not.toBe(before);
       expect(storage.getItem(DEVICE_PREFERENCES_KEY) ?? '').not.toMatch(
         /"dismissedProblems":\["/,
       );
+    },
+    DEMO_RENDER_TIMEOUT_MS,
+  );
+
+  it(
+    'counts the unmapped entries shown, and hides the button at zero',
+    async () => {
+      renderDemo();
+      const count = () => {
+        const label =
+          screen
+            .queryByLabelText(/^Unmapped runs \(\d+\)$/)
+            ?.getAttribute('aria-label') ?? '';
+        return Number(/\d+/.exec(label)?.[0] ?? 0);
+      };
+      fireEvent.click(
+        await screen.findByLabelText(/^Unmapped runs \(\d+\)$/, {}, FIND),
+      );
+      const panel = await screen.findByRole('dialog', {}, FIND);
+      const total = count();
+      expect(total).toBeGreaterThan(0);
+      // Dismiss each entry left with its first preset, until none is shown.
+      const counts = [total];
+      for (let left = total; left > 0 && count() > 0; left -= 1) {
+        fireEvent.click(within(panel).getAllByText('Dismiss…')[0]);
+        fireEvent.click(within(panel).getByRole('button', { name: 'Dismiss' }));
+        counts.push(count());
+      }
+      // Each dismissal hid at least one entry; the last left none.
+      expect(counts.every((n, i) => i === 0 || n < (counts[i - 1] ?? 0))).toBe(
+        true,
+      );
+      expect(counts.at(-1)).toBe(0);
+      expect(screen.queryByLabelText(/^Unmapped runs/)).toBeNull();
+      // The panel gone with its button, focus is on the board's title, and
+      // stays there once the panel's own close has run.
+      await act(async () => {
+        await new Promise((done) => setTimeout(done, PANEL_CLOSE_MS));
+      });
+      expect(document.activeElement?.id).toBe(BOARD_TITLE_ID);
     },
     DEMO_RENDER_TIMEOUT_MS,
   );

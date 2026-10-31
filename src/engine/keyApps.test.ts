@@ -40,6 +40,7 @@ function env(): DeriveEnv {
     client: new QueryClient(),
     now: () => 0,
     fetchStartedAt: () => undefined,
+    boostOf: () => undefined,
   };
 }
 

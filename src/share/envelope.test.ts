@@ -1,7 +1,7 @@
 /**
  * Tests for the share envelope (spec.md §3.8 *Share format*): a round
  * trip; the format tag checked first; newer envelope or data model
- * versions refused; older data models (v4, v5) migrated to v6; malformed
+ * versions refused; older data models (v4, v5) migrated to v7; malformed
  * envelopes, dashboards and credentials refused rather than defaulted;
  * repeated ids refused.
  *
@@ -29,14 +29,16 @@ const envelope = (): Record<string, unknown> => ({
   ...buildEnvelope([board], null),
 });
 const read = (value: unknown) => readShare(JSON.stringify(value));
-const refused = (reason: string) => ({ ok: false, reason });
+const refused = (reason: string): unknown =>
+  expect.objectContaining({ ok: false, reason });
 
 describe('the share envelope', () => {
   it('writes the approved shape and reads it back unchanged', () => {
     expect(envelope()).toEqual({
       format: 'fooboard-share',
       formatVersion: 1,
-      schemaVersion: 6,
+      // Every share 0.2.0 makes carries v7 (spec 0.2.0 §3.I).
+      schemaVersion: 7,
       dashboards: [board],
       credentials: null,
     });
@@ -74,7 +76,7 @@ describe('the share envelope', () => {
   it.each([
     ['v4', v4Board],
     ['v5', v5Board],
-  ])('migrates %s dashboards through the chain to v6', (_, root) => {
+  ])('migrates %s dashboards through the chain to v7', (_, root) => {
     const result = read({
       ...envelope(),
       schemaVersion: root.schemaVersion,

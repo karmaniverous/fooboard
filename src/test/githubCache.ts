@@ -44,6 +44,7 @@ export const demoContext = (
   overBudget: false,
   now: 0,
   fetchStartedAt: () => undefined,
+  boostOf: () => undefined,
   ...overrides,
 });
 

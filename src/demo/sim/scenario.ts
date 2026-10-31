@@ -4,7 +4,7 @@
  * with durations and outcome patterns), AWS keys and Amplify apps by
  * account and region, the promotions that move commits dev → release →
  * prod, pinned events that guarantee what the demo must show, and the
- * demo dashboard (data model v6) that reads part of it. One module per
+ * demo dashboard (data model v7) that reads part of it. One module per
  * scenario under `src/demo/scenarios/`, validated by `parseScenario`.
  * The engine reads only this shape, so adding a repo or an app, with its
  * row, needs no engine change.

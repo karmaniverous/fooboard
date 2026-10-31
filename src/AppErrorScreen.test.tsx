@@ -9,6 +9,7 @@ import { render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { describe, expect, it, vi } from 'vitest';
 
+import { HOME_PATH } from '@/pages/paths';
 import { createAppStores } from '@/storage';
 import { memoryStorage } from '@/storage/keyValue';
 import { StoresContext } from '@/storage/storesContext';
@@ -32,7 +33,7 @@ describe('App', () => {
     stores.credentials.set('gh', { kind: 'github', token: TOKEN }, true);
     render(
       <StoresContext value={stores}>
-        <MemoryRouter initialEntries={['/']}>
+        <MemoryRouter initialEntries={[HOME_PATH]}>
           <App />
         </MemoryRouter>
       </StoresContext>,

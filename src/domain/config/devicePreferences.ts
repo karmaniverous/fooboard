@@ -1,7 +1,7 @@
 /**
  * Zod schema for device preferences (spec.md C-13, C-14, C-20): zoom
  * and density per dashboard, the theme, and the last version whose
- * What's new this browser has seen. This is a **separate** schema from
+ * release notes this browser has seen. This is a **separate** schema from
  * the config root and is never part of an export or share link (spec.md
  * step 1, E-15); Reset clears it with every other `fooboard:` key.
  *
@@ -50,13 +50,14 @@ const devicePreferencesFields = {
 export const DevicePreferencesSchema = z.object({
   schemaVersion: z.literal(CURRENT_DEVICE_PREFERENCES_VERSION),
   ...devicePreferencesFields,
-  /** The newest version whose What's new this browser has seen (spec.md
-   * C-20, §3.10); none until What's new is first opened. */
+  /** The last version whose release notes this browser has seen (spec
+   * 0.2.0 §3.D); none until the app first loads in this browser, which
+   * stores its own version. */
   lastSeenVersion: z.string().optional(),
 });
 export type DevicePreferences = z.infer<typeof DevicePreferencesSchema>;
 
-/** Version 2: the same, before What's new. */
+/** Version 2: the same, before the last version seen was kept. */
 const V2Schema = z.object({
   schemaVersion: z.literal(2),
   ...devicePreferencesFields,
@@ -73,7 +74,7 @@ const V1Schema = z.object({
 
 /**
  * Bring stored preferences to the current version. Version 2 keeps
- * everything and has seen no What's new (spec.md §3.10). Version 1
+ * everything and has stored no version seen (spec.md §3.10). Version 1
  * (spec.md step 11a): Full becomes Default, Compact stays Compact, and
  * every saved zoom resets to 100% (the old value meant grid
  * magnification). Anything unreadable gives undefined, so the caller

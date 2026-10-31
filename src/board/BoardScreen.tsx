@@ -3,18 +3,27 @@
  * fit/zoom viewport over the live grid. Shared by *Try the demo* and saved
  * dashboards, which differ only in their query environment, header
  * extras and where settings edits go (spec.md §3.11: saved, or the demo's
- * in-memory copy).
+ * in-memory copy). It provides the model's `attend` to the grid and the
+ * settings popup (`AttentionContext`), so the user's interest in a row
+ * boosts its polling (spec 0.2.0 §3.H).
  *
  * @module
  */
+import { useCallback } from 'react';
 
 import type { Dashboard } from '@/domain/config/dashboard';
 import type { Problem } from '@/domain/problems/problem';
 import type { BoardModel } from '@/engine';
 import { cn, PINNED_X } from '@/lib/utils';
 import type { Around } from '@/query/instrument';
+import type { BoostKind } from '@/query/intervals';
 import { useQueryEnv } from '@/query/queryEnvContext';
 
+import {
+  attendedRows,
+  AttentionContext,
+  type AttentionTarget,
+} from './attentionContext';
 import { BoardSummary, BudgetMeter } from './BoardChrome';
 import { BoardViewport } from './BoardViewport';
 import { ProblemMark } from './ProblemMark';
@@ -59,10 +68,16 @@ export function BoardScreen({
   /** Open the editor at a problem (clicking a marker); none in the demo. */
   onOpenProblem?: (problem: Problem) => void;
 }): React.JSX.Element {
-  const { model, now } = useBoardModel(dashboard, useQueryEnv(), {
+  const { model, now, attend } = useBoardModel(dashboard, useQueryEnv(), {
     around,
     refreshKey,
   });
+  const attendTarget = useCallback(
+    (target: AttentionTarget, kind: BoostKind) => {
+      attend(attendedRows(dashboard, target), kind);
+    },
+    [attend, dashboard],
+  );
   const view = useBoardView(
     dashboard.id,
     dashboard.rows.length,
@@ -100,39 +115,43 @@ export function BoardScreen({
           data-testid="board-actions"
           className="flex flex-wrap items-center justify-end gap-x-3 gap-y-1"
         >
-          <StatusLegend dashboard={dashboard} />
+          {/* The batteries first, then Legend and the actions (Decision
+              104). */}
           <BudgetMeter
             model={model}
             labels={Object.fromEntries(
               dashboard.credentials.map((c) => [c.id, c.label]),
             )}
           />
+          <StatusLegend dashboard={dashboard} />
           {typeof actions === 'function' ? actions(model, problems) : actions}
         </div>
       </div>
       {intro && <div className={PINNED_X}>{intro(model, problems)}</div>}
       <ProblemMarksContext value={marks}>
-        <SettingsPopupProvider
-          dashboard={dashboard}
-          onChange={onChange}
-          onOpenSettings={onOpenSettings}
-        >
-          <BoardViewport
+        <AttentionContext value={attendTarget}>
+          <SettingsPopupProvider
             dashboard={dashboard}
-            model={model}
-            now={now}
-            view={view}
-            filter={filter}
-            lead={({ words }) => (
-              <BoardSummary
-                model={model}
-                filter={filter}
-                onFilter={setFilter}
-                words={words}
-              />
-            )}
-          />
-        </SettingsPopupProvider>
+            onChange={onChange}
+            onOpenSettings={onOpenSettings}
+          >
+            <BoardViewport
+              dashboard={dashboard}
+              model={model}
+              now={now}
+              view={view}
+              filter={filter}
+              lead={({ words }) => (
+                <BoardSummary
+                  model={model}
+                  filter={filter}
+                  onFilter={setFilter}
+                  words={words}
+                />
+              )}
+            />
+          </SettingsPopupProvider>
+        </AttentionContext>
       </ProblemMarksContext>
     </div>
   );

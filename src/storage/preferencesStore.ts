@@ -1,7 +1,7 @@
 /**
  * Device-preferences store (spec.md C-13, C-14, C-20): per-dashboard view
  * settings on this device (zoom, density), the theme, and the last
- * version whose What's new was seen. Never exported or shared. Unlike the
+ * version whose release notes were seen. Never exported or shared. Unlike the
  * configuration, these are disposable: unreadable data falls back to the
  * defaults.
  *
@@ -37,9 +37,9 @@ export interface PreferencesStore {
   getTheme(): ThemeChoice;
   /** Save the theme choice on this device. */
   setTheme(theme: ThemeChoice): void;
-  /** The newest version whose What's new this browser has seen. */
+  /** The last version whose release notes this browser has seen. */
   getLastSeenVersion(): string | undefined;
-  /** Record that What's new was seen up to `version`. */
+  /** Record that the release notes were seen up to `version`. */
   setLastSeenVersion(version: string): void;
 }
 

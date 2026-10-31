@@ -18,9 +18,12 @@ import { shareLink } from '../link';
 
 const board = shareBoard();
 const paste = (text: string) => {
-  fireEvent.change(within(dialog()).getByLabelText('Or a fooboard link'), {
-    target: { value: text },
-  });
+  fireEvent.change(
+    within(dialog()).getByLabelText('Or a fooboard link, or its JSON'),
+    {
+      target: { value: text },
+    },
+  );
 };
 
 describe('the import dialog, from a pasted link', () => {

@@ -24,11 +24,14 @@ import { githubCredentialIds } from './model';
 
 const [TOKEN = ''] = githubCredentialIds(measureBoard);
 const LIMIT = 5_000;
-const budget = (used: number): RateLimitBudget => ({
+/** A rate-limit window long after the sim's own, so the readings the test
+ * reports outrank the sim's (Decision 109: a later `reset` wins). */
+const WINDOW = 4_000_000_000;
+const budget = (used: number, reset = WINDOW): RateLimitBudget => ({
   limit: LIMIT,
   used,
   remaining: LIMIT - used,
-  reset: 0,
+  reset,
   status: 'ok',
 });
 
@@ -86,7 +89,9 @@ describe('board model polling', () => {
       new Set([IDLE_INTERVAL_MS * BUDGET_BACKOFF]),
     );
 
-    report(budget(1));
+    // A new window: fewer used again (within one window a reading with
+    // more left is ignored).
+    report(budget(1, WINDOW + 1));
     await Promise.resolve();
     expect(intervalsOf(all(), 'compare')).toEqual(new Set([IDLE_INTERVAL_MS]));
     board.destroy();

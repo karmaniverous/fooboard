@@ -23,6 +23,7 @@ import {
   foundByRepoDashboard as dashboard,
   foundByRepoEnv,
   reloadInto,
+  searchesFetching,
 } from '@/test/foundByRepo';
 
 import { createBoardModel } from './boardModel';
@@ -97,7 +98,8 @@ describe('a silent opt-in region in the app search', () => {
     const after = reloadInto(env, silentEnv(again));
     const restored = createBoardModel({ dashboard, env: after });
     const first = restored.getModel();
-    const amplifyFetching = after.client.isFetching({ queryKey: ['amplify'] });
+    // Every row's jobs read again at once (Decision 109); no search does.
+    const amplifyFetching = searchesFetching(after);
     await settle(after, restored);
     restored.destroy();
 

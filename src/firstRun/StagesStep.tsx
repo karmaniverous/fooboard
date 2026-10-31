@@ -25,6 +25,7 @@ import { suggestPreset } from '@/domain/config/presetSuggestion';
 import { discoverBranches } from '@/editors/branches';
 import { LoadStatus } from '@/editors/LoadStatus';
 import { useLoad } from '@/editors/useLoad';
+import { dashboardPath } from '@/pages/paths';
 import { useQueryEnv } from '@/query/queryEnvContext';
 
 import { withStages } from './edits';
@@ -77,7 +78,7 @@ function StageChoices({
           onClick={() => {
             run(() => {
               onSave(withStages(dashboard, stages));
-              navigate(`/d/${dashboard.id}`, { state: FIRST_RUN_STATE });
+              navigate(dashboardPath(dashboard.id), { state: FIRST_RUN_STATE });
             });
           }}
         >

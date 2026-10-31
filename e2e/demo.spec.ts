@@ -3,17 +3,28 @@
  * 53), under the locally served CSP: the board fills in and no request
  * leaves for another host (the guard fails any, and is shown to catch
  * one); every dialog, sheet, popover and drag opens, works and closes,
- * with no CSP violation; on a phone, the settings popup is a bottom sheet.
+ * with no CSP violation; an unmapped run is dismissed with a preset,
+ * listed under *Show dismissed* and brought back with *Undo* (spec 0.2.0
+ * §3.I); on a phone, the settings popup is a bottom sheet.
  *
  * @module
  */
 import type { Locator, Page } from '@playwright/test';
 
+import { MIN_TEST_TIMEOUT_MS } from '../src/test/timeouts';
 import { firstCell, openDemo } from './board';
 import { expect, test } from './guard';
 
 /** Time for dnd-kit's keyboard sensor between keys. */
 const KEY_SETTLE_MS = 300;
+
+/** How many lost `ArrowDown` presses the drag retry allows for: each
+ * waits `MIN_TEST_TIMEOUT_MS` for the item to move (Decision 99). */
+const DRAG_TRIES = 3;
+
+/** The editor tour's whole budget, in `MIN_TEST_TIMEOUT_MS`: the drag
+ * retry's `DRAG_TRIES`, plus room for every other step. */
+const TOUR_TIMEOUTS = 6;
 
 /** `locator`'s box once it has stopped moving (a drop animates). */
 async function settledBox(locator: Locator) {
@@ -84,7 +95,7 @@ test('every dialog, sheet, popover and drag works under the CSP', async ({
   page,
 }) => {
   // Many steps: room for a busy machine running the others alongside.
-  test.setTimeout(90_000);
+  test.setTimeout(TOUR_TIMEOUTS * MIN_TEST_TIMEOUT_MS);
   await openDemo(page);
   const cell = firstCell(page);
   await expect(cell).toHaveAttribute('aria-keyshortcuts', 'Space ,');
@@ -109,7 +120,6 @@ test('every dialog, sheet, popover and drag works under the CSP', async ({
   // The header's menu dialogs.
   const menu = page.getByRole('button', { name: 'Menu' });
   for (const [item, dialog, role] of [
-    ["What's new", "What's new", 'dialog'],
     ['Reset…', 'Reset fooboard?', 'alertdialog'],
   ] as const)
     await roundTrip(
@@ -142,13 +152,17 @@ test('every dialog, sheet, popover and drag works under the CSP', async ({
   // here), and would take the next key press with it.
   await expect(legend).toBeFocused();
   // The counts change as the demo's story plays.
-  for (const panel of [/^Problems/, /^Unmapped/, /^Credentials$/]) {
+  for (const panel of [
+    /^Problems \(\d+\)$/,
+    /^Unmapped runs \(\d+\)$/,
+    /^Credentials$/,
+  ]) {
     const opener = page.getByRole('button', { name: panel });
     await roundTrip(page, () => press(page, opener), /./, opener);
   }
 
   // The dashboard editor: a select, a keyboard drag and a pointer drag.
-  await page.getByRole('button', { name: 'Edit', exact: true }).click();
+  await page.getByRole('button', { name: 'Edit dashboard' }).click();
   const editor = page.getByRole('dialog', { name: 'Edit dashboard' });
   // The panel focuses its selected tab once open (late in Firefox here);
   // wait, so it can't take focus from the drag handle.
@@ -173,9 +187,9 @@ test('every dialog, sheet, popover and drag works under the CSP', async ({
   await expect(async () => {
     await page.keyboard.press('ArrowDown');
     await expect(live).toContainText('moved over droppable area mobile-web', {
-      timeout: 2_000,
+      timeout: MIN_TEST_TIMEOUT_MS,
     });
-  }).toPass({ timeout: 15_000 });
+  }).toPass({ timeout: DRAG_TRIES * MIN_TEST_TIMEOUT_MS });
   await page.keyboard.press('Space');
   await expect(rows.nth(1)).toContainText('storefront');
   // Measure once the drop has finished moving the item.
@@ -194,6 +208,31 @@ test('every dialog, sheet, popover and drag works under the CSP', async ({
   await page.keyboard.press('Escape');
   await page.keyboard.press('Escape');
   await expect(page.getByRole('dialog')).toHaveCount(0);
+});
+
+test('dismisses an unmapped run with a preset, shows it and undoes it', async ({
+  page,
+}) => {
+  await openDemo(page);
+  await page.getByRole('button', { name: /^Unmapped runs \(\d+\)$/ }).click();
+  const panel = page.getByRole('dialog', { name: 'Unmapped runs' });
+  const entries = panel.getByRole('list').first();
+  const first = entries.getByRole('listitem').first();
+  const title = (await first.getByRole('link').first().innerText()).trim();
+  const runLink = (scope: Locator) =>
+    scope.getByRole('link', { name: title, exact: true });
+  await first.getByRole('button', { name: 'Dismiss…' }).click();
+  await expect(panel.getByRole('radio').first()).toBeFocused();
+  await panel.getByRole('button', { name: 'Dismiss', exact: true }).click();
+  await expect(panel.getByRole('heading', { level: 3 })).toBeFocused();
+  await expect(runLink(entries)).toHaveCount(0);
+  await panel.getByRole('button', { name: 'Show dismissed' }).click();
+  const dismissed = panel.getByRole('list', { name: 'Dismissed runs' });
+  await expect(runLink(dismissed).first()).toBeVisible();
+  await dismissed.getByRole('button', { name: 'Undo' }).first().click();
+  await expect(runLink(entries).first()).toBeVisible();
+  // Focus is on a restored entry's Dismiss… button.
+  await expect(page.locator(':focus')).toHaveAccessibleName('Dismiss…');
 });
 
 test.describe('on a phone', () => {

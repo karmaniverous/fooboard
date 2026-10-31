@@ -7,6 +7,9 @@
  * the cache at once, so the board never blanks; a token passing half its
  * budget slows its polling. A fetch that runs longer than the
  * refreshing delay re-derives the rows it feeds once the delay passes.
+ * The user's interest in a row (`attend`) boosts its polling, stepping on
+ * as its root queries' polls complete (spec 0.2.0 §3.H; `attention.ts`).
+ * Opening a board polls every row's roots at once (Decision 109).
  * React only subscribes to it.
  *
  * @module
@@ -16,12 +19,16 @@ import { unique } from 'radash';
 import type { Dashboard } from '@/domain/config/dashboard';
 import { rowCredentials } from '@/domain/settings/credentials';
 import type { QueryEnv } from '@/query/client';
+import { type BoostKind, BUDGET_BACKOFF } from '@/query/intervals';
 
+import { createAttention, rootCompletions } from './attention';
 import { createFetchStarts } from './fetchStarts';
 import { computeGroup, type GroupEntry, planGroups } from './groups';
 import { keyApps } from './keyApps';
 import { emptyModel, githubCredentialIds } from './model';
+import type { Need } from './need';
 import { createObserverSet, mergeNeeds } from './observers';
+import { pollRootsNow } from './pollNow';
 import {
   type DeriveEnv,
   deriveRow,
@@ -43,6 +50,18 @@ const DERIVING_ACTIONS = new Set([
   'continue',
 ]);
 
+/** How many times slower than a boost's intervals `needs`' root queries
+ * poll: `BUDGET_BACKOFF` when each is a GitHub read with a token past half
+ * its budget, else 1. A row's fastest root decides, so a dwell's restart
+ * never postpones any of its polls. */
+const backoffOf = (env: QueryEnv, needs: readonly Need[]): number => {
+  const roots = needs.filter((need) => need.root);
+  return roots.length > 0 &&
+    roots.every(({ key }) => key[0] === 'github' && overBudget(env, key[1]))
+    ? BUDGET_BACKOFF
+    : 1;
+};
+
 export interface BoardModelHandle {
   getModel(): BoardModel;
   /** Hear every published model; returns the unsubscribe. */
@@ -51,6 +70,9 @@ export interface BoardModelHandle {
   setDashboard(dashboard: Dashboard): void;
   /** Re-derive every row (a secret was entered or changed). */
   refresh(): void;
+  /** Boost `rowIds`' polling for the user's `kind` of interest (spec
+   * 0.2.0 §3.H); a click also polls their root queries at once. */
+  attend(rowIds: readonly string[], kind: BoostKind): void;
   destroy(): void;
 }
 
@@ -67,6 +89,7 @@ export function createBoardModel({
   let destroyed = false;
   let scheduled = false;
   let model = emptyModel(githubCredentialIds(dashboard));
+  const attention = createAttention();
   const fetches = createFetchStarts({
     cache: env.client.getQueryCache(),
     now,
@@ -80,6 +103,7 @@ export function createBoardModel({
     budgets: env.budgets,
     now,
     fetchStartedAt: fetches.startedAt,
+    boostOf: (rowId) => attention.intervalOf(rowId),
   };
   const rows = new Map<string, RowEntry>();
   const groups = new Map<string, GroupEntry>();
@@ -140,13 +164,22 @@ export function createBoardModel({
     if (destroyed) return;
     const byId = new Map(dashboard.rows.map((row) => [row.id, row]));
     const touched = new Set<string>();
+    attention.keep(new Set(byId.keys()));
     for (const rowId of dirty) {
-      for (const group of rows.get(rowId)?.groups ?? []) touched.add(group);
+      const before = rows.get(rowId);
+      for (const group of before?.groups ?? []) touched.add(group);
       const row = byId.get(rowId);
       if (!row) {
         rows.delete(rowId);
         continue;
       }
+      // A boost steps on once its row's root queries have polled.
+      if (before && attention.intervalOf(rowId) !== undefined)
+        attention.advance(
+          rowId,
+          rootCompletions(env.client, before.needs),
+          now(),
+        );
       const entry = deriveSafely(row);
       rows.set(rowId, entry);
       for (const group of entry.groups) touched.add(group);
@@ -209,6 +242,11 @@ export function createBoardModel({
   env.limiters.configure(dashboard);
   markAll();
   flush();
+  // The first poll is now, not an interval after a restore (Decision 109).
+  pollRootsNow(
+    env.client,
+    [...rows.values()].flatMap((entry) => entry.needs),
+  );
 
   return {
     getModel: () => model,
@@ -229,8 +267,29 @@ export function createBoardModel({
       markAll();
       flush();
     },
+    attend(rowIds, kind) {
+      if (destroyed) return;
+      // A row the board doesn't have (yet) has no root needs to poll; its
+      // boost is dropped at the flush.
+      const roots = rowIds.flatMap((rowId) => {
+        const needs = rows.get(rowId)?.needs ?? [];
+        const started = attention.attend(
+          rowId,
+          kind,
+          now(),
+          rootCompletions(env.client, needs),
+          backoffOf(env, needs),
+        );
+        if (started) dirty.add(rowId);
+        return started ? needs.filter((need) => need.root) : [];
+      });
+      flush();
+      if (kind !== 'click') return;
+      pollRootsNow(env.client, roots);
+    },
     destroy() {
       destroyed = true;
+      attention.clear();
       unsubscribeCache();
       unsubscribeBudgets();
       fetches.destroy();

@@ -19,6 +19,7 @@ import { LoadStatus } from '@/editors/LoadStatus';
 import { RepoList } from '@/editors/RepoList';
 import { useLoad } from '@/editors/useLoad';
 import { readmeSection } from '@/lib/site';
+import { dashboardPath } from '@/pages/paths';
 import { fetchRepoNames } from '@/query/lookups';
 import { useQueryEnv } from '@/query/queryEnvContext';
 
@@ -65,7 +66,7 @@ export function ReposStep({
           This tab no longer holds the dashboard&apos;s token (it was kept for a
           tab that has closed). Open the board and enter it again under
           Credentials.{' '}
-          <Link to={`/d/${dashboard.id}`} className="underline">
+          <Link to={dashboardPath(dashboard.id)} className="underline">
             Open the board
           </Link>
         </p>

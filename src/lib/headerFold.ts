@@ -1,7 +1,9 @@
 /**
  * Which header parts fold into the menu as the app header narrows
  * (spec.md C-19): buttons from the right, then the tagline, then README
- * and News & support. Pure, so it is tested without a browser.
+ * and News & support. *Set up with an AI assistant* folds just before
+ * *Import*, so the two ways to bring a board in stay side by side (spec
+ * 0.2.0 §3.J). Pure, so it is tested without a browser.
  *
  * @module
  */
@@ -11,6 +13,7 @@ import type { NavId } from '@/components/navItems';
 export const FOLD_ORDER: readonly (NavId | 'tagline')[] = [
   'issue',
   'github',
+  'ai',
   'import',
   'share',
   'theme',

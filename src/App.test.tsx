@@ -1,11 +1,12 @@
 /**
  * Smoke test for the app shell: each route renders inside the shared
- * header and footer (board pages once they have loaded); the removed
- * spike pages are gone.
+ * header and footer (board pages once they have loaded); any other
+ * address, the removed spike pages included, shows *Page not found* with a
+ * working link home (spec.md §2.16, Scope item 6, row P7).
  *
  * @module
  */
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { beforeAll, describe, expect, it } from 'vitest';
 
@@ -39,13 +40,29 @@ function renderAt(path: string): void {
 }
 
 describe('App', () => {
-  it.each(['/spike/amplify', '/spike/github'])(
-    'no longer serves the browser spike at %s',
+  it.each(['/spike/amplify', '/spike/github', '/x/y'])(
+    'shows Page not found at %s, linking home',
     async (path) => {
       renderAt(path);
-      expect(await screen.findByRole('contentinfo')).toBeInTheDocument();
+      const heading = await screen.findByRole('heading', {
+        name: 'Page not found',
+      });
+      // Inside the shell: in its main region, above its footer.
+      expect(screen.getByRole('main')).toContainElement(heading);
+      expect(screen.getByRole('contentinfo')).toBeInTheDocument();
       expect(screen.queryByText(/browser spike/i)).toBeNull();
-      expect(screen.getByRole('main')).toBeEmptyDOMElement();
+      expect(
+        screen.getByText("There's nothing at this address."),
+      ).toBeInTheDocument();
+      const home = screen.getByRole('link', {
+        name: 'Back to your dashboards',
+      });
+      expect(home).toHaveAttribute('href', '/');
+      fireEvent.click(home);
+      expect(await screen.findByText('No dashboards yet')).toBeInTheDocument();
+      expect(
+        screen.queryByRole('heading', { name: 'Page not found' }),
+      ).toBeNull();
     },
   );
 

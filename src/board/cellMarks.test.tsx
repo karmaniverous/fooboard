@@ -2,7 +2,9 @@
  * Tests for cell marks (spec.md §3.1, Decision 37): a provisional cell is
  * dashed, in its status's look or neutral when its set has no status of
  * that name; a refreshing cell carries a corner dot; both join the cell's
- * accessible name, and neither changes the cell's layout classes.
+ * accessible name, and neither changes the cell's layout classes. An
+ * in-progress cell is marked `data-in-progress` (spec 0.2.0 §3.F), which
+ * reduced motion doesn't still.
  *
  * @module
  */
@@ -87,5 +89,34 @@ describe('cell marks on the board', () => {
     expect(screen.getByRole('link')).not.toHaveAccessibleName(
       /provisional|refreshing/,
     );
+  });
+});
+
+describe('an in-progress cell', () => {
+  const withStatus = (id: string): BoardCell => {
+    const base = cell();
+    return base.derivation.kind === 'ok'
+      ? {
+          ...base,
+          derivation: {
+            ...base.derivation,
+            status: resolveStatus(
+              githubSet,
+              githubSet.cell.find((c) => c.id === id),
+            ),
+          },
+        }
+      : base;
+  };
+  const root = (): Element | null => screen.getByRole('link').parentElement;
+
+  it('is marked in progress while its summary status is in progress', () => {
+    renderCell(withStatus('testing'));
+    expect(root()).toHaveAttribute('data-in-progress', 'true');
+  });
+
+  it('carries no mark when its summary status is not in progress', () => {
+    renderCell(withStatus('testFailed'));
+    expect(root()).not.toHaveAttribute('data-in-progress');
   });
 });

@@ -30,8 +30,8 @@ export interface RateLimitBudget {
 const LOW_BUDGET_FRACTION = 0.1;
 
 /** A budget from the rate-limit headers' numbers, flagged low at 10%
- * left. */
-function budgetFrom({
+ * left (also how a saved reading is read back). */
+export function budgetFrom({
   limit,
   remaining,
   reset,
@@ -40,6 +40,21 @@ function budgetFrom({
   const status: RateLimitBudget['status'] =
     remaining <= limit * LOW_BUDGET_FRACTION ? 'low' : 'ok';
   return { limit, remaining, reset, used, status };
+}
+
+/** Whether reading `next` should replace `current` (spec 0.2.0 §3.J
+ * *Batteries and the first poll*, Decision 109): responses land out of
+ * order, so GitHub's own counters decide (the browser can't read the
+ * `Date` header under CORS). A later `reset` is a new window and wins;
+ * within one window the fewer requests left win; an earlier `reset`
+ * loses. */
+export function supersedes(
+  next: RateLimitBudget,
+  current: RateLimitBudget | undefined,
+): boolean {
+  if (!current) return true;
+  if (next.reset !== current.reset) return next.reset > current.reset;
+  return next.remaining < current.remaining;
 }
 
 /**

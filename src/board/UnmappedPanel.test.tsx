@@ -29,6 +29,13 @@ const dashboard = DashboardSchema.parse({
   name: 'D',
   rows: [{ type: 'github', id: 'api', repo: 'acme/api', displayName: 'api' }],
 });
+/** What every panel here shares: the dashboard, no dismissals listed. */
+const base = {
+  dashboard,
+  onChange: vi.fn(),
+  showDismissed: false,
+  onShowDismissed: vi.fn(),
+};
 const runs: UnmappedRun[] = [
   {
     provider: 'github',
@@ -58,7 +65,8 @@ describe('UnmappedPanel', () => {
   it('lists runs with their reasons, offering Add rule only where it can help', () => {
     render(
       <UnmappedPanel
-        runs={runs}
+        {...base}
+        unmapped={runs}
         onAddTest={(r) => (draftFor(r, dashboard) ? vi.fn() : undefined)}
       />,
     );
@@ -71,7 +79,9 @@ describe('UnmappedPanel', () => {
   });
 
   it('says so when every run has a cell', () => {
-    render(<UnmappedPanel runs={[]} onAddTest={() => undefined} />);
+    render(
+      <UnmappedPanel {...base} unmapped={[]} onAddTest={() => undefined} />,
+    );
     expect(
       screen.getByText('Every recent run has a cell.'),
     ).toBeInTheDocument();
@@ -81,7 +91,8 @@ describe('UnmappedPanel', () => {
     const [first] = runs;
     render(
       <UnmappedPanel
-        runs={[
+        {...base}
+        unmapped={[
           {
             ...first,
             rows: [
@@ -128,7 +139,8 @@ describe('UnmappedPanel', () => {
     const add = vi.fn();
     render(
       <UnmappedPanel
-        runs={branchRuns}
+        {...base}
+        unmapped={branchRuns}
         onAddTest={() => undefined}
         onAddOverride={(r) =>
           overrideDraftFor(r, dashboard) ? add : undefined
@@ -157,7 +169,8 @@ describe('UnmappedPanel', () => {
         />
       ) : (
         <UnmappedPanel
-          runs={runs}
+          {...base}
+          unmapped={runs}
           onAddTest={(r) => {
             const next = draftFor(r, d);
             return next

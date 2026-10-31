@@ -34,6 +34,7 @@ import {
   createPreferencesStore,
   type PreferencesStore,
 } from './preferencesStore';
+import { createSavedBudgets, type SavedBudgets } from './savedBudgets';
 
 /** What the stores reach beyond local storage. */
 export interface StoreIo {
@@ -51,6 +52,8 @@ export interface AppStores extends Omit<StoreIo, 'reload'> {
   config: ConfigStore;
   preferences: PreferencesStore;
   credentials: CredentialStore;
+  /** Each GitHub credential's last battery reading (Decision 109). */
+  budgets: SavedBudgets;
   /** False when browser storage is unavailable: nothing outlives the tab. */
   persistent: boolean;
   /** *Reset* (C-4, §3.9): in every open tab, every fooboard key, every
@@ -129,6 +132,7 @@ export function createAppStores(
     config: createConfigStore(store),
     preferences: createPreferencesStore(store),
     credentials,
+    budgets: createSavedBudgets(store),
     persistent,
     cache,
     tabs,

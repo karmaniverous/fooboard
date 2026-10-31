@@ -30,6 +30,7 @@ import { HeaderGearsContext } from './headerGears';
 import type { BoardPlace } from './settingsGearWords';
 import { gearLabel } from './settingsGearWords';
 import { useSettingsPopup } from './settingsPopupContext';
+import { SETTINGS_GEAR_PROPS } from './useAttentionEvents';
 
 /** Where the gear sits. */
 export type GearSpot = 'header' | 'corner' | 'sheet';
@@ -75,6 +76,7 @@ export function SettingsGear({
       aria-label={gearLabel(popup.dashboard, place)}
       aria-haspopup="dialog"
       aria-expanded={expanded}
+      {...SETTINGS_GEAR_PROPS}
       {...marks}
       className={cn(
         'flex shrink-0 items-center justify-center rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',

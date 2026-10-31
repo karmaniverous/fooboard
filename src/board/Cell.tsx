@@ -232,6 +232,9 @@ export function Cell({
         look.className,
       )}
       style={look.style}
+      // Marks an in-progress cell even when reduced motion stills its
+      // glyph's pulse (the e2e reduced-motion check waits for one).
+      data-in-progress={status.summary.inProgress || undefined}
       {...inspect}
     >
       <CellCover

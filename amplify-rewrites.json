@@ -1,6 +1,16 @@
 [
   {
-    "source": "</^[^.]+$|\\.(?!(css|js|map|json|png|svg|ico|txt|webmanifest|woff2?)$)([^.]+$)/>",
+    "source": "https://fooboard.dev",
+    "status": "302",
+    "target": "https://www.fooboard.dev"
+  },
+  {
+    "source": "/ai",
+    "status": "200",
+    "target": "/ai.md"
+  },
+  {
+    "source": "</^[^.]+$|\\.(?!(css|js|map|json|md|png|svg|ico|txt|webmanifest|woff2?)$)([^.]+$)/>",
     "status": "200",
     "target": "/index.html"
   }

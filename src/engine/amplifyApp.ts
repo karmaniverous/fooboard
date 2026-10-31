@@ -24,6 +24,7 @@ import { amplifySnapshot } from '@/query/cache';
 import type { AmplifyRequest } from '@/query/keys';
 
 import { type FailureOutcome, failureOutcome } from './providerOutcome';
+import type { ReadBranch } from './windowHints';
 
 type AmplifySource = SourceRuleOf<'amplify'>;
 
@@ -38,8 +39,12 @@ export interface AppState {
   keyProblems: KeyProblem[];
   /** The branch list's entries, for the branch rule's sample. */
   branches: JSONValue[];
-  /** A branch's read came back full (window hints). */
+  /** Some branch's read came back full (window hints for cells whose
+   * stage rule isn't a branch pattern): the OR of `readBranches`. */
   full: boolean;
+  /** Each branch whose jobs landed, and whether its own read came back
+   * full (window hints for branch-pattern cells, Decision 94). */
+  readBranches: ReadBranch[];
   /** The branch list and every chosen branch's jobs have landed. */
   complete: boolean;
   /** When the branch list last landed (ms; 0 when never). */
@@ -95,6 +100,7 @@ export function appState(
     keyProblems: [],
     branches: [],
     full: false,
+    readBranches: [],
     complete: false,
     updatedAt: list.updatedAt,
   };
@@ -117,7 +123,9 @@ export function appState(
     const found = translated(app, branch, jobs.data.data, source);
     state.records.push(...found.records);
     state.keyProblems.push(...found.keyProblems);
-    state.full ||= jobs.data.data.length >= max;
+    const full = jobs.data.data.length >= max;
+    state.readBranches.push({ name: branch, full });
+    state.full ||= full;
   }
   return { ...state, complete };
 }

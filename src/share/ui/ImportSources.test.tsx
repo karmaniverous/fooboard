@@ -1,6 +1,6 @@
 /**
  * Tests for where an import comes from (spec.md §3.8): a file chosen in
- * the dialog (a v4 file opening as v6, a damaged file in the error
+ * the dialog (a v4 file opening as v7, a damaged file in the error
  * state, and another file chosen after it), and a share link pasted into
  * an open tab, whose fragment is cleared as it arrives before the dialog
  * opens over the home page.
@@ -44,7 +44,7 @@ afterEach(() => {
 });
 
 describe('importing from a file', () => {
-  it('opens a v4 file as v6 and imports it', async () => {
+  it('opens a v4 file as v7 and imports it', async () => {
     const stores = renderImport();
     fireEvent.click(screen.getByRole('button', { name: 'Open import' }));
     await chooseFile(
@@ -67,7 +67,7 @@ describe('importing from a file', () => {
     });
     expect(savedIds(stores)).toEqual(['fabrikam']);
     const loaded = stores.config.load();
-    expect(loaded.kind === 'ok' && loaded.root.schemaVersion).toBe(6);
+    expect(loaded.kind === 'ok' && loaded.root.schemaVersion).toBe(7);
   });
 
   it('shows the error state for a damaged file, then reads another', async () => {
@@ -75,11 +75,11 @@ describe('importing from a file', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Open import' }));
     await chooseFile('{"dashboards": [');
     expect(await within(dialog()).findByRole('alert')).toHaveTextContent(
-      "This file isn't a fooboard board, or it's damaged.",
+      "This file has problems fooboard can't import:",
     );
     expect(
-      within(dialog()).getByText('Ask whoever sent it for a new file.'),
-    ).toBeVisible();
+      within(dialog()).getByRole('list', { name: 'Import errors' }),
+    ).toHaveTextContent(/^share: not JSON: /);
     await chooseFile(JSON.stringify(buildEnvelope([shareBoard()], null)));
     await waitFor(() => {
       expect(within(dialog()).queryByRole('alert')).toBeNull();

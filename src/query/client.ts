@@ -22,6 +22,7 @@
 import { QueryClient } from '@tanstack/query-core';
 
 import type { RateLimitBudget } from '@/lib/github';
+import type { SavedBudgets } from '@/storage/savedBudgets';
 
 import { type BudgetStore, createBudgetStore } from './budgets';
 import { retryDelay, shouldRetry } from './errors';
@@ -64,6 +65,7 @@ export function createQueryEnv({
   now = Date.now,
   timers,
   gcTime,
+  savedBudgets,
 }: {
   providers: (hooks: ProviderHooks) => QueryProviders;
   now?: () => number;
@@ -71,8 +73,14 @@ export function createQueryEnv({
   /** How long an unobserved query is kept (the persisted app's 24 h);
    * TanStack's default otherwise. */
   gcTime?: number;
+  /** Where battery readings are kept across reloads (the app's local
+   * storage); none for the demo, which persists nothing. */
+  savedBudgets?: SavedBudgets;
 }): QueryEnv {
-  const budgets = createBudgetStore();
+  const budgets = createBudgetStore({
+    now,
+    ...(savedBudgets ? { saved: savedBudgets } : {}),
+  });
   const limiters = createLimiters({ now, timers });
   const readWith = createReadWith();
   const providers = build({

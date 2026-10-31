@@ -7,6 +7,7 @@
  *
  * @module
  */
+import { isEqual } from 'radash';
 import type { z } from 'zod';
 
 import { type Provider, PROVIDER_LABELS } from '@/domain/config/providers';
@@ -15,6 +16,7 @@ import { BUILTIN_KEYS, RESERVED_KEYS, STATES } from './keys';
 import { all, any, copy, exists, give, is, not } from './ruleBuilders';
 import {
   isSourceRuleFor,
+  type KeyDef,
   type SourceRule,
   type SourceRuleOf,
   SourceRuleSchema,
@@ -147,6 +149,11 @@ const amplify = builtin({
 /** The built-in source rules. */
 export const BUILTIN_SOURCES: readonly SourceRule[] = [github, amplify];
 
+/** Is `id` a built-in source rule's (a dashboard's own rules can't take
+ * one)? */
+export const isBuiltinSourceId = (id: string): boolean =>
+  BUILTIN_SOURCES.some((s) => s.id === id);
+
 /** The built-in source rule for `provider`. */
 export function builtinSourceFor<P extends Provider>(
   provider: P,
@@ -155,4 +162,21 @@ export function builtinSourceFor<P extends Provider>(
   if (!isSourceRuleFor(rule, provider))
     throw new Error(`no built-in source rule for ${provider}`);
   return rule;
+}
+
+/** The `branch` key of `rule`, if it has one. */
+const branchKey = (rule: SourceRule): KeyDef | undefined =>
+  rule.keys.find((key) => key.name === RESERVED_KEYS.branch);
+
+/** Does `rule` give each record the branch its provider's built-in rule
+ * gives (its `branch` key's translations and its `items` equal the
+ * built-in's)? Then a record's branch is the branch name the provider
+ * lists, whatever else a custom rule changes (spec 0.2.0 §3.B;
+ * Decision 103). */
+export function keepsBuiltinBranch(rule: SourceRule): boolean {
+  const builtin = builtinSourceFor(rule.provider);
+  return (
+    isEqual(branchKey(rule)?.translations, branchKey(builtin)?.translations) &&
+    isEqual(rule.items, builtin.items)
+  );
 }

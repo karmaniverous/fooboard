@@ -117,7 +117,9 @@ describe('DashboardPage dismissal', () => {
       name: 'D',
       stages: [{ id: 'dev', name: 'Dev', rules: branchRules('dev') }],
     });
-    const before = screen.getByRole('button', { name: /^Notes/ }).textContent;
+    const before = screen
+      .getByRole('button', { name: /^Notes/ })
+      .getAttribute('aria-label');
     const panel = openPanel(/^Notes \(\d+\)$/);
     fireEvent.click(
       within(panel).getAllByRole('button', { name: 'Dismiss' })[0],
@@ -125,7 +127,9 @@ describe('DashboardPage dismissal', () => {
     expect(stores.preferences.getView('d').dismissedProblems).toHaveLength(1);
     fireEvent.click(within(panel).getByRole('button', { name: 'Close' }));
     expect(
-      screen.queryByRole('button', { name: /^Notes/ })?.textContent,
+      screen
+        .queryByRole('button', { name: /^Notes/ })
+        ?.getAttribute('aria-label'),
     ).not.toBe(before);
   });
 });
@@ -162,7 +166,7 @@ describe('DashboardPage dismissing an unresolvable AWS key', () => {
 describe('DashboardPage editor', () => {
   it('opens at General from Edit', async () => {
     await renderDashboardPage({ id: 'e', name: 'E' });
-    fireEvent.click(screen.getByRole('button', { name: 'Edit' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Edit dashboard' }));
     expect(selectedTab()).toBe('General');
   });
 
@@ -177,7 +181,7 @@ describe('DashboardPage editor', () => {
           .dashboards,
       );
     expect(dashboardsWithPreferences()).toEqual(['x', 'kept']);
-    fireEvent.click(screen.getByRole('button', { name: 'Edit' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Edit dashboard' }));
     fireEvent.click(screen.getByRole('button', { name: 'Delete dashboard' }));
     fireEvent.click(screen.getByRole('button', { name: 'Delete Gone' }));
     const loaded = stores.config.load();

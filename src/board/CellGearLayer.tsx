@@ -22,6 +22,10 @@
  * where it went), so the cell's tooltip can stay open while it moves
  * between the cell and its gear (issue #42).
  *
+ * Its element also hears the board's attention events, the clicks, keys
+ * and dwells that boost a row's polling (spec 0.2.0 §3.H,
+ * `useAttentionEvents`).
+ *
  * @module
  */
 import { useId, useLayoutEffect, useRef, useState } from 'react';
@@ -35,6 +39,7 @@ import {
 import { CELL_SETTINGS_KEY } from './cellView';
 import { SettingsGear } from './SettingsGear';
 import { useSettingsPopup } from './settingsPopupContext';
+import { useAttentionEvents } from './useAttentionEvents';
 
 /** Keyboard focus, not focus a click left behind. */
 const keyboardFocus = (node: EventTarget): boolean =>
@@ -54,6 +59,7 @@ export function CellGearLayer({
   const popup = useSettingsPopup();
   const gearId = useId();
   const layer = useRef<HTMLDivElement>(null);
+  useAttentionEvents(layer);
   const gear = useRef<HTMLButtonElement>(null);
   const hovered = useRef<GearTarget | null>(null);
   const focused = useRef<GearTarget | null>(null);

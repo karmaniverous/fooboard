@@ -2,10 +2,12 @@
  * The first run's words (spec.md §3.9, C-22): each step's place in the
  * walk-through, the presets as the stages step names them, the
  * suggestion, and what the board's note says of unmapped runs and rule
- * problems.
+ * problems (the buttons' names it shows with their icons are in
+ * `board/actionLabels.ts`).
  *
  * @module
  */
+import { PROBLEMS, UNMAPPED_RUNS } from '@/board/actionLabels';
 import {
   type BranchPresetId,
   BranchPresetIdSchema,
@@ -52,14 +54,30 @@ export const suggestionText = (
 export const PRESET_IDS: readonly BranchPresetId[] =
   BranchPresetIdSchema.options;
 
-/** What the note says of the unmapped runs. */
-export const unmappedText = (unmapped: number): string =>
-  unmapped > 0
-    ? `${plural(unmapped, 'run lands', 'runs land')} in no cell: Unmapped (${String(unmapped)}) lists them, with a fix for each.`
-    : 'Runs that land in no cell will be listed under Unmapped.';
+/** What the note says of the unmapped runs, when there are some: the
+ * words before the button's name (`unmappedLabel`, shown with its icon,
+ * spec 0.2.0 §3.A), and the words that follow the name directly (with
+ * their own leading space). */
+export const unmappedText = (
+  unmapped: number,
+): { before: string; after: string } => ({
+  before: `${plural(unmapped, 'run lands', 'runs land')} in no cell:`,
+  after: ' lists them, with a fix for each.',
+});
 
-/** What the note says of the rule problems. */
-export const problemsText = (problems: number): string =>
-  problems > 0
-    ? `${plural(problems, 'rule problem is', 'rule problems are')} marked ! on the board and listed under Problems (${String(problems)}).`
-    : 'No rule problems so far; any would be marked ! and listed under Problems.';
+/** What the note says while no run is unmapped (there's no button yet). */
+export const NO_UNMAPPED_TEXT = `Runs that land in no cell will be listed under ${UNMAPPED_RUNS}.`;
+
+/** What the note says of the rule problems, when there are some: the
+ * words before the button's name (`problemsLabel`, shown with its icon,
+ * spec 0.2.0 §3.A), and the words that follow the name directly. */
+export const problemsText = (
+  problems: number,
+): { before: string; after: string } => ({
+  before: `${plural(problems, 'rule problem is', 'rule problems are')} marked ! on the board and listed under`,
+  after: '.',
+});
+
+/** What the note says while there are no rule problems (there's no
+ * button yet). */
+export const NO_PROBLEMS_TEXT = `No rule problems so far; any would be marked ! and listed under ${PROBLEMS}.`;

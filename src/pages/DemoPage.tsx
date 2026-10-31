@@ -7,8 +7,8 @@
  * environment (never persisted) and its own stores for the dashboard and
  * its credentials, in memory for the tab: every edit, from the board's
  * gears or the dashboard editor, changes this visit's copy only, gone on
- * reload or on leaving the demo; only the view settings (zoom, row
- * height) are saved, per device. Its settings popup offers *Open in
+ * reload or on leaving the demo; only the view settings (zoom,
+ * density) are saved, per device. Its settings popup offers *Open in
  * dashboard settings* like any board's (§3.11 *Demo*). In development,
  * `?latency=300` delays every response and `?scenario=measure` plays the
  * measurement scenario (§3.5).

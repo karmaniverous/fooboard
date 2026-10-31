@@ -32,6 +32,7 @@ import { type Fetched, pagesFor, type WorkflowRun } from '@/lib/github';
 import { githubSnapshot, type Snapshot } from '@/query/cache';
 import {
   ACTIVE_INTERVAL_MS,
+  boostedRootFreshness,
   pollEvery,
   rootFreshness,
   SETTLED,
@@ -70,6 +71,8 @@ export interface GithubContext extends RefreshClock {
   stages: readonly Stage[];
   rulesFor: (row: GithubRow, stageId: string) => CellRules;
   overBudget: boolean;
+  /** A row's boost interval, if it is boosted (spec 0.2.0 §3.H). */
+  boostOf: (rowId: string) => number | undefined;
 }
 
 /** A repo's runs as far as they've landed. */
@@ -202,10 +205,12 @@ export function deriveGithubRow(
 ): RowDerivation {
   const runs = runsPages(ctx);
   const setFor = (stageId: string) => ctx.rulesFor(row, stageId).set;
+  const boost = ctx.boostOf(row.id);
   const rootNeeds = (active: boolean): Need[] =>
     runs.requests.map((request) => ({
       key: githubKey(ctx.credentialId, request),
-      freshness: rootFreshness(active, ctx.overBudget),
+      freshness: boostedRootFreshness(active, ctx.overBudget, boost),
+      root: true,
     }));
   const failure = failureOutcome(runs.first.failed, runs.first.error);
   if (failure)
