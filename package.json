@@ -150,7 +150,7 @@
     "typecheck": "tsc -b --noEmit"
   },
   "type": "module",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "overrides": {
     "json-p3": {
       "typescript": "$typescript"

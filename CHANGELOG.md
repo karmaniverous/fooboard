@@ -2,6 +2,140 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.2.0] - 2026-10-31
+
+### 🚀 Features
+
+- *(app)* Show Page not found for addresses with no route
+- *(header)* Release notes links to the releases page; drop the bundled What's new
+- *(board)* Board actions as icon buttons named and tooltipped by their panels
+- *(first-run)* The note shows Problems' and Edit dashboard's icons before their names, as for Unmapped runs
+- *(engine)* Boost a row's polling when the user shows interest in it (spec 0.2.0 §3.H)
+- *(board)* Boost a row on a click, a key or a dwell, and on opening its settings (spec 0.2.0 §3.H)
+- *(config)* Dismissed unmapped-run patterns, data model v7 (spec 0.2.0 §3.I)
+- *(unmapped)* Dismiss unmapped runs by pattern, show and undo (spec 0.2.0 §3.I)
+- *(board)* A dot on the key marks Add a credential (Decision 105)
+- *(hosting)* Serve /ai from /ai.md as markdown, with a Link header on every path (spec 0.2.0 §3.J)
+- *(share)* Read #j= links and pasted JSON, refuse with field-level errors, ask for keys on arrival (spec 0.2.0 §3.J)
+- *(ai)* Add Set up with an AI assistant to the header, menu, footer and home page (spec 0.2.0 §3.J)
+- *(ai)* Publish /ai, /ai.schema.json and /llms.txt, with discovery pointers (spec 0.2.0 §3.J)
+- *(ai)* A styled loading screen carrying the assistant pointer (Decision 106)
+- *(ai)* The AI dialog uses the site it runs on; Copy instructions off production (Decision 107)
+- *(docs)* Npm run screenshots retakes every README screenshot from the build (R4)
+- *(ai)* The AI dialog's two rows and icon copy buttons (Decision 108, R4)
+- *(budgets)* Battery readings survive a reload (Decision 109, R4)
+
+### 🐛 Bug Fixes
+
+- *(engine)* Window hint only where a matching branch's own read came back full
+- *(persist)* Write the cache at once after a removal
+- *(engine)* Custom Amplify rules keeping the built-in branch mapping get the per-branch window hint
+- *(first-run)* A saved dashboard at an unknown step shows Page not found
+- *(build)* ZodJitless goes in zod's chunk, so it runs before any shared app chunk
+- *(persist)* A removal heard while the cache is restored is written as soon as the tab takes the persisting lock
+- *(test)* The timeout scan takes a factor as a name only if it is one, else a decimal literal of at least 1, so .5 and 0x0 are refused
+- *(unmapped)* Name the preset choice Which runs to dismiss
+- *(unmapped)* Count only the entries shown in the Dismiss form's match count
+- *(unmapped)* Focus the restored entry's Dismiss button after Undo
+- *(unmapped)* Show Show dismissed pressed as filled with a check, unlike its hover
+- *(engine)* Never let a dwell's restart postpone the running step's poll
+- *(engine)* End a deferred restart whose poll lands 75 s or more after the dwell
+- *(engine)* Judge a dwell's restart at the row's budget pace
+- *(board)* Focus the entry Undo restores only if it is shown
+- *(hosting)* Serve the Amplify rewrites and headers from npm run dev too, so /ai works locally
+- *(ai)* Read /ai.md as a virtual module, since Vite refuses imports from public/
+- *(budgets)* A battery's reading moves only forward (Decision 109, R4)
+- *(engine)* Opening a board polls every row at once (Decision 109, R4)
+- *(share)* A not-JSON message gives only the error's position (#61 review B1)
+- *(share)* A pasted percent-encoded #j= link ends at its closing brace (#61 review B2)
+- *(share)* A refusal's dark red is the theme's destructive token (#61 review B3)
+- *(share)* Refused pasted JSON is called a share, not a link (#61 review B4)
+- *(pages)* An import replacing the open board lands on it afresh, asking for its key (#61 review B6)
+- *(ai)* Copied instructions name their site, and /ai.md builds links there (#61 review A-S1, B)
+- *(budgets)* Loading deletes the readings of credentials not kept (#61 review A-N2)
+- *(import)* Every import landing opens the imported dashboard afresh, asking for a key or not (#61 second review 1)
+- *(share)* A stray malformed escape after a pasted link no longer stops the link decoding (#61 second review 3)
+- *(hosting)* Read the console's redirects in amplify-rewrites.json (Decision 110)
+- *(hosting)* Read 301 and 302 redirects only, refusing 307 by name
+- *(hosting)* Accept a condition on any rule; local servers skip conditioned rules
+- *(hosting)* Refuse a full-URL redirect source with a path or query
+- *(hosting)* Refuse a redirect to itself
+- *(hosting)* Carry the query string over on a local path redirect
+
+### 🔨 Refactoring
+
+- Remove unused branchPatternPrefix and correct stale module comments
+- One board-action panel and label module, release-notes state in its own hook; docs agree
+- *(pages)* The home and dashboard addresses named once in pages/paths; Page not found asserted inside the shell
+- *(pages)* The home, demo and first-run addresses named once, in the header and the test routers too
+- *(board)* The Problems and Notes names and counted labels come from actionLabels, in the board and the first-run note
+- Share the dismissal reason choices and text fields; read completions only for boosted rows; unexport internals
+- *(engine)* Drop attend's redundant row check; test that a destroyed board polls nothing
+- *(unmapped)* Move focus-to-title after the last dismissal to DashboardView, on the panel's close
+- *(share)* Keep repeatedIds private to the envelope
+- *(hosting)* Move the rules' parser to vite/hostingRules.ts
+
+### ⚡ Performance
+
+- *(engine)* Poll every root in one cache pass, a shared root once (#61 review A-N1)
+
+### 📚 Documentation
+
+- *(readme)* Live at fooboard.dev, shorter paragraphs, real screenshots
+- *(readme)* Add the live-demo badge
+- *(readme)* Restore the characters a Windows-1252 round trip garbled; test the docs for mojibake
+- *(readme)* Follow-on bullets nest under their item, so each list has the items its lead-in names
+- *(readme)* Lead-in labels match their items
+- *(readme)* Hero and settings-editor alt text say what the screenshots show
+- *(screenshots)* Compress the PNGs losslessly (oxipng -o 4 --strip safe)
+- *(readme)* Say which custom Amplify rules keep the app-wide window hint
+- *(privacy)* The release-notes version is stored on a first visit and again after Reset
+- *(build)* Reflow vite.config.ts's header comment
+- Interaction poll boost, dismissing unmapped runs, data model v7, board actions; e2e and demo tests
+- *(config)* Remove an orphan doc comment
+- *(readme)* Note that another tab's save can drop a dismissal and an old tab can't save until reloaded
+- *(readme)* A dwell's restart keeps a poll already due sooner
+- *(test)* A literal TAB for title, and over-long doc lines re-wrapped (PR #60 final review #2, #3)
+- Set up with an AI assistant, #j= links, field-level errors, keys on arrival, hosting rules and headers (spec 0.2.0 §3.J)
+- *(screenshots)* Retake every README screenshot, light and dark, with the AI nav item (Decision 102)
+- *(ai)* Say where Import is on a narrow screen
+- *(privacy)* A battery reading also goes with its credential or dashboard (#61 review A-N3)
+- *(vite)* The instructions chunk loads on every site (#61 review A-N4, B7)
+- *(ai)* Ids are letters, digits and hyphens, since a dashboard's becomes its address (#61 review A-N5)
+- *(privacy)* Effective 30 October 2026, the 0.2.0 release (R4)
+- *(contributing)* Screenshot reruns can differ by a few antialiased pixels (#61 second review)
+- *(hosting)* The hidden-file build check covers rewrites only
+
+### 🧪 Testing
+
+- No Playwright timeout under 30 s; the release runs e2e on a server of its own
+- *(e2e)* The timeout scan checks every Playwright timeout option and setter, and allows only the floor or a multiple of it
+- *(persist)* The late-granting locks keep the shared locks' type
+- *(build)* ManualChunks in its own module, with a test that zodJitless shares zod's chunk
+- *(pages)* Test routers start at DEMO_PATH and HOME_PATH, as paths.ts says
+- *(e2e)* Undo focuses the restored entry's Dismiss button
+- *(components)* A side panel's close handler keeps focus off the trigger
+- *(engine)* A dwell never postpones the poll of a row's token under its share (PR #60 final review #1)
+- Cover #j= links, field-level errors, keys on arrival, the AI dialog and copying for an assistant (spec 0.2.0 §3.J)
+- *(e2e)* Serve /ai and point to it, import /ai's #j= example and pasted JSON, axe the AI dialog and a refusal (spec 0.2.0 §3.J)
+- Kill surviving mutants (literal % in raw #j= JSON, the board's copy of config problems); refactor(hosting): one path character class
+- *(e2e)* Say what the shell suite checks of the AI dialog (Decision 107)
+- *(ai)* The AI dialog's icon buttons show their names as tooltips on hover too (R4)
+- *(pages)* A reload carries the state history holds, so it proves keys aren't asked twice (#61 review B5)
+- *(hosting)* Add a redirect by parsing the committed rules, not by regex
+
+### 🎨 Styling
+
+- *(board)* Batteries first; board actions ghost, emphasis by icon colour (Decision 104)
+- *(unmapped)* Show Show dismissed's pressed state
+
+### 🔧 Build & CI
+
+- *(screenshots)* Compress with WebAssembly oxipng (@jsquash/oxipng), dropping oxipng-bin and its install script (#61 second review 2)
+
+### 💼 Other
+
+- Updated rewrites
 ## [0.1.0] - 2026-10-28
 
 ### 🚀 Features
