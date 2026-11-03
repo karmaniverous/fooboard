@@ -1,7 +1,7 @@
 [
   {
     "source": "https://fooboard.dev",
-    "status": "302",
+    "status": "301",
     "target": "https://www.fooboard.dev"
   },
   {
@@ -10,7 +10,12 @@
     "target": "/ai.md"
   },
   {
-    "source": "</^[^.]+$|\\.(?!(css|js|map|json|md|png|svg|ico|txt|webmanifest|woff2?)$)([^.]+$)/>",
+    "source": "/demo",
+    "status": "200",
+    "target": "/demo.html"
+  },
+  {
+    "source": "</^[^.]+$|\\.(?!(css|js|map|json|md|png|svg|ico|txt|xml|html|webmanifest|woff2?)$)([^.]+$)/>",
     "status": "200",
     "target": "/index.html"
   }

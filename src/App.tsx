@@ -4,7 +4,8 @@
  * for any other address (spec.md §2.16, Scope item 6), and the share
  * link the page was opened with; under the theme, the error boundary
  * (spec.md §3.10), which shows the error screen in place of the whole
- * app if any of it throws while rendering.
+ * app if any of it throws while rendering. The document's head follows the
+ * route (`useDocumentHead`, spec 0.2.0 §3.K).
  *
  * @module
  */
@@ -18,6 +19,7 @@ import { Header } from '@/components/Header';
 import { StorageBanner } from '@/components/StorageBanner';
 import { ThemeProvider } from '@/components/ThemeProvider';
 import { FIRST_RUN_PATH, FIRST_RUN_STEP_ROUTE } from '@/firstRun/paths';
+import { useDocumentHead } from '@/lib/useDocumentHead';
 import { useViewportWidthVar } from '@/lib/useViewportWidthVar';
 import { Home } from '@/pages/Home';
 import { PageNotFound } from '@/pages/PageNotFound';
@@ -49,6 +51,7 @@ export default function App({
   link?: LinkPayload | null;
 }): React.JSX.Element {
   useViewportWidthVar();
+  useDocumentHead();
   // The shell grows to the board's width, so the window scrolls sideways
   // while header, warning and footer stay pinned (C-13).
   return (

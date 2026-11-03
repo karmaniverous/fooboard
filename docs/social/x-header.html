@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>fooboard X header</title>
+<style>
+  :root { --bg: #0a0a0a; --fg: #fafafa; --muted: #a1a1aa; --edge: #27272a; --accent: #22c55e; }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { width: 1500px; height: 500px; overflow: hidden; }
+  body {
+    background: var(--bg); color: var(--fg); position: relative;
+    font-family: "Segoe UI", system-ui, -apple-system, "Helvetica Neue", Arial, sans-serif;
+  }
+  .shot {
+    position: absolute; left: 760px; top: 70px; width: 820px; height: 360px;
+    border: 1px solid var(--edge); border-right: none; border-radius: 14px 0 0 14px;
+    overflow: hidden; box-shadow: 0 20px 60px rgba(0,0,0,.45);
+  }
+  .shot img { position: absolute; left: 0; top: -24px; width: 1320px; height: auto; display: block; }
+  .shot::after {
+    content: ""; position: absolute; inset: auto 0 0 0; height: 70px;
+    background: linear-gradient(to bottom, transparent, var(--bg));
+  }
+  .brand {
+    position: absolute; left: 400px; top: 0; bottom: 0; width: 330px;
+    display: flex; flex-direction: column; justify-content: center; gap: 14px;
+  }
+  .row { display: flex; align-items: center; gap: 16px; }
+  .logo { width: 64px; height: 64px; border-radius: 12px; display: block; }
+  h1 { font-size: 54px; font-weight: 800; letter-spacing: -1.5px; line-height: 1; }
+  .tag { font-size: 28px; line-height: 1.25; font-weight: 600; }
+  .url { font-size: 22px; font-weight: 600; color: var(--accent); }
+</style>
+</head>
+<body>
+  <div class="shot"><img src="../screenshots/demo-dark.png" alt=""></div>
+  <section class="brand">
+    <div class="row"><img class="logo" src="../../public/favicon.svg" alt=""><h1>fooboard</h1></div>
+    <p class="tag">Welcome to DevOps&nbsp;hell.<br>Here's your map.</p>
+    <p class="url">fooboard.dev</p>
+  </section>
+</body>
+</html>

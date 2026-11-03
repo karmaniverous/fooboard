@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>fooboard social preview</title>
+<style>
+  :root { --bg: #0a0a0a; --fg: #fafafa; --muted: #a1a1aa; --edge: #27272a; --accent: #22c55e; }
+  body.light { --bg: #ffffff; --fg: #0a0a0a; --muted: #52525b; --edge: #e4e4e7; }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { width: 1280px; height: 640px; overflow: hidden; }
+  body {
+    background: var(--bg); color: var(--fg);
+    font-family: "Segoe UI", system-ui, -apple-system, "Helvetica Neue", Arial, sans-serif;
+    display: grid; grid-template-columns: 430px 1fr; position: relative;
+  }
+  .brand { padding: 64px 0 64px 64px; display: flex; flex-direction: column; justify-content: center; gap: 22px; }
+  .logo { width: 120px; height: 120px; border-radius: 22px; display: block; }
+  h1 { font-size: 68px; font-weight: 800; letter-spacing: -2px; line-height: 1; }
+  .tag { font-size: 30px; line-height: 1.25; color: var(--fg); font-weight: 600; max-width: 360px; }
+  .sub { font-size: 20px; line-height: 1.4; color: var(--muted); max-width: 330px; }
+  .url { font-size: 22px; font-weight: 600; color: var(--accent); margin-top: 6px; }
+  .shot {
+    margin: 48px 0 48px 8px; border: 1px solid var(--edge); border-right: none;
+    border-radius: 16px 0 0 16px; overflow: hidden; position: relative;
+    box-shadow: 0 20px 60px rgba(0,0,0,.45);
+  }
+  .shot img { position: absolute; left: 0; top: -28px; width: 1490px; height: auto; display: block; }
+  .shot::after {
+    content: ""; position: absolute; inset: auto 0 0 0; height: 90px;
+    background: linear-gradient(to bottom, transparent, var(--bg));
+  }
+</style>
+</head>
+<body>
+  <section class="brand">
+    <img class="logo" src="../../public/favicon.svg" alt="">
+    <h1>fooboard</h1>
+    <p class="tag">Welcome to DevOps&nbsp;hell.<br>Here's your map.</p>
+    <p class="sub">A browser-only deployment board for GitHub Actions and AWS Amplify. No backend, no accounts, no tracking.</p>
+    <p class="url">fooboard.dev</p>
+  </section>
+  <div class="shot"><img id="shot" src="../screenshots/demo-dark.png" alt=""></div>
+  <script>
+    if (location.hash === '#light') { document.body.classList.add('light'); document.getElementById('shot').src = '../screenshots/demo-light.png'; }
+  </script>
+</body>
+</html>

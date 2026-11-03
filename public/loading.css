@@ -7,6 +7,12 @@
  * app's own background, foreground and muted tokens (src/index.css), so the
  * swap to the app doesn't flash; the screen follows the system's light or
  * dark setting, as the app's default theme (System) does.
+ *
+ * .loading-about, a few paragraphs on what fooboard is with links to the
+ * demo, /ai, /llms.txt, the repository and the article, is in the HTML for
+ * readers that run no script (crawlers and AI assistants, spec 0.2.0 §3.K)
+ * but shown only where scripting is off (the scripting: none media query),
+ * so a browser that will start the app never shows it while the app loads.
  */
 .loading {
   position: fixed;
@@ -40,6 +46,7 @@
 }
 
 .loading-tagline,
+.loading-about,
 .loading-ai {
   max-width: 32rem;
   color: #6b6b6b;
@@ -53,6 +60,21 @@
   font-size: 0.875rem;
 }
 
+.loading-about {
+  display: none;
+  font-size: 0.875rem;
+}
+
+.loading-about > * {
+  margin: 0 0 0.75rem;
+}
+
+.loading-about ul {
+  padding: 0;
+  list-style: none;
+}
+
+.loading-about a,
 .loading-ai a {
   color: #0a0a0a;
   text-decoration: underline;
@@ -90,12 +112,31 @@
   }
 
   .loading-tagline,
+  .loading-about,
   .loading-ai {
     color: #a3a3a3;
   }
 
+  .loading-about a,
   .loading-ai a {
     color: #fafafa;
+  }
+}
+
+/* No script will run: no app is coming, so the pulse goes and the page
+ * says what fooboard is, scrolling if it is taller than the window. */
+@media (scripting: none) {
+  .loading {
+    justify-content: safe center;
+    overflow-y: auto;
+  }
+
+  .loading-pulse {
+    display: none;
+  }
+
+  .loading-about {
+    display: block;
   }
 }
 

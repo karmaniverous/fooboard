@@ -2,6 +2,37 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.3.0] - 2026-11-03
+
+### 🚀 Features
+
+- Search and AI-crawler visibility (robots, sitemap, meta, JSON-LD, no-JS content, /demo page)
+
+### 🐛 Bug Fixes
+
+- Keep the head in step on route changes from one source (pageHead), and serve /demo as an app route on the dev server
+
+### 📚 Documentation
+
+- *(social)* Repository social preview and X profile header, with their HTML sources
+- *(social)* Add the images and their HTML sources (unignore docs/social/)
+
+### 🧪 Testing
+
+- E2e reads the demo head from vite/demoPage; docs: the JSON-LD block under the CSP
+- Read the demo board once a minute in the coverage test, and name its timeout
+- State the coverage test's measured times in its timeout's doc
+- *(e2e)* Give the phone axe test on the board's actions a named timeout, and name the axe tour's
+- *(e2e)* Express the axe timeouts as multiples of the floor, as the timeout scan requires ([#69](https://github.com/karmaniverous/fooboard/pull/69))
+
+### 🎨 Styling
+
+- Prettier on index.html
+
+### 💼 Other
+
+- Switched redirect from 302 to 301
+- Updated dependencies
 ## [0.2.0] - 2026-10-31
 
 ### 🚀 Features

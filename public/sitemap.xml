@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- The site's public pages on production's canonical host (spec 0.2.0
+     §3.K): the app, the demo, the instructions for AI assistants and
+     llms.txt. Dashboards (/d/<id>) live in each visitor's browser and are
+     never listed; the privacy policy and terms are on GitHub. -->
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url>
+    <loc>https://www.fooboard.dev/</loc>
+  </url>
+  <url>
+    <loc>https://www.fooboard.dev/demo</loc>
+  </url>
+  <url>
+    <loc>https://www.fooboard.dev/ai</loc>
+  </url>
+  <url>
+    <loc>https://www.fooboard.dev/llms.txt</loc>
+  </url>
+</urlset>

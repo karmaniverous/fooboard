@@ -15,12 +15,22 @@ import { PRESET_IDS, UNKNOWN_STATUS_ID } from '@/domain/config/statusSets';
 import { presetById } from '@/domain/statuses/presets';
 import { createBoardModel } from '@/engine';
 import { type BoardModel, cellKey } from '@/engine/types';
+import { IDLE_INTERVAL_MS } from '@/query/intervals';
 import { demoEnv, settle } from '@/test/boardModel';
+import { DEMO_COVERAGE_TIMEOUT_MS } from '@/test/timeouts';
 
 import { acmeScenario } from './acme';
 import { ACME_FRONTEND, ACME_GITHUB, ACME_INFRA } from './acmeBoard';
 
-const STEP_MS = 15_000;
+/** How far the clock moves between reads of the board: the idle poll
+ * interval, the longest a visitor's board within its budget goes
+ * without reading a row again. It is also the scenario's shortest job (a
+ * minute), so a state lasting a step or longer is read at least once; a
+ * shorter one may fall between two reads, and then the test fails rather
+ * than passes. Each step re-reads and re-derives the whole board, which
+ * is where the test's time goes, so a shorter step costs time and finds
+ * nothing more. */
+const STEP_MS = IDLE_INTERVAL_MS;
 const board = acmeScenario.dashboard;
 
 /** The preset each row reads with. */
@@ -73,7 +83,7 @@ function record(seen: Seen, model: BoardModel): void {
     seen.unmapped.add(`${u.where} ${u.branch ?? ''}`);
 }
 
-describe('the demo scenario', () => {
+describe('the demo scenario', { timeout: DEMO_COVERAGE_TIMEOUT_MS }, () => {
   it('shows everything §3.14 lists within the coverage window', async () => {
     let rel = 0;
     const held: (() => void)[] = [];
@@ -145,5 +155,5 @@ describe('the demo scenario', () => {
       (runs) => runs.size > 1,
     ).length;
     expect(changed).toBeGreaterThan(board.rows.length);
-  }, 120_000);
+  });
 });
