@@ -14,6 +14,7 @@
 import AxeBuilder from '@axe-core/playwright';
 import type { Page } from '@playwright/test';
 
+import { AXE_DEMO_TIMEOUT_MS, AXE_TOUR_TIMEOUT_MS } from '../src/test/timeouts';
 import { REFUSED_FRAGMENT } from './aiShare';
 import { firstCell, openDemo, PHONE } from './board';
 import { expect, test } from './guard';
@@ -130,7 +131,7 @@ for (const colorScheme of ['light', 'dark'] as const)
     test.use({ colorScheme });
 
     test('axe finds no WCAG A or AA violation', async ({ page }) => {
-      test.setTimeout(180_000);
+      test.setTimeout(AXE_TOUR_TIMEOUT_MS);
       await page.goto('/');
       await expect(page.getByRole('main')).toBeVisible();
       expect(await violations(page), 'home').toEqual([]);
@@ -166,6 +167,7 @@ for (const colorScheme of ['light', 'dark'] as const)
       test("axe finds no WCAG A or AA violation on the board's actions", async ({
         page,
       }) => {
+        test.setTimeout(AXE_DEMO_TIMEOUT_MS);
         await openDemo(page);
         expect(await violations(page), 'demo board').toEqual([]);
         await expectActionTooltipClean(page);
