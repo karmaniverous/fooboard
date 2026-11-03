@@ -8,13 +8,14 @@
  *
  * @module
  */
+import { DEMO_HEAD } from '../vite/demoPage';
 import { expect, test } from './guard';
 
 /** The home page's title. */
 const HOME_TITLE = "fooboard: Welcome to DevOps hell. Here's your map.";
 
-/** The demo page's title (vite/demoPage.ts). */
-const DEMO_TITLE = 'fooboard demo: a simulated deployment status board';
+/** The demo page's title. */
+const DEMO_TITLE = DEMO_HEAD.title;
 
 test('robots.txt and sitemap.xml are served as themselves', async ({
   request,
@@ -37,9 +38,7 @@ test('/demo has its own title before and after the app starts', async ({
 }) => {
   const raw = await (await request.get('/demo')).text();
   expect(raw).toContain(`<title>${DEMO_TITLE}</title>`);
-  expect(raw).toContain(
-    '<link rel="canonical" href="https://www.fooboard.dev/demo" />',
-  );
+  expect(raw).toContain(`<link rel="canonical" href="${DEMO_HEAD.url}" />`);
   await page.goto('/demo');
   await expect(page.getByText('Acme platform (demo)')).toBeVisible();
   await expect(page).toHaveTitle(DEMO_TITLE);
