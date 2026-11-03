@@ -203,6 +203,8 @@ describe('vite preview with the plugin', () => {
     );
     writeFileSync(path.join(outDir, 'assets', 'a.js'), 'export {};');
     writeFileSync(path.join(outDir, 'ai.md'), '# For assistants');
+    writeFileSync(path.join(outDir, 'demo.html'), '<!doctype html><p>demo</p>');
+    writeFileSync(path.join(outDir, 'sitemap.xml'), '<urlset></urlset>');
     server = await preview({
       configFile: false,
       root: ROOT,
@@ -220,8 +222,10 @@ describe('vite preview with the plugin', () => {
 
   it.each([
     ['/', 200, 'page'],
-    ['/demo', 200, 'page'],
+    ['/demo', 200, 'demo'],
     ['/d/acme', 200, 'page'],
+    ['/sitemap.xml', 200, '<urlset>'],
+    ['/robots.txt', 404, ''],
     ['/assets/a.js', 200, 'export {};'],
     ['/assets/gone.js', 404, ''],
     ['/ai', 200, '# For assistants'],

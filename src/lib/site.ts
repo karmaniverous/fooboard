@@ -5,12 +5,7 @@
  *
  * @module
  */
-
-/** Production's origin: the canonical host, and the only fooboard site an
- * AI assistant can reach (dev and release are password-protected, and the
- * bare domain only redirects here; spec 0.2.0 §3.J, Decisions 96 and
- * 107). */
-export const PRODUCTION_ORIGIN = 'https://www.fooboard.dev';
+import { PRODUCTION_ORIGIN } from './productionOrigin';
 
 /** Product identity and outbound links. */
 export const site = {
