@@ -14,12 +14,19 @@
 import AxeBuilder from '@axe-core/playwright';
 import type { Page } from '@playwright/test';
 
-import { AXE_DEMO_TIMEOUT_MS, AXE_TOUR_TIMEOUT_MS } from '../src/test/timeouts';
+import { MIN_TEST_TIMEOUT_MS } from '../src/test/timeouts';
 import { REFUSED_FRAGMENT } from './aiShare';
 import { firstCell, openDemo, PHONE } from './board';
 import { expect, test } from './guard';
 
 const WCAG = ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'];
+
+/** Floors (`MIN_TEST_TIMEOUT_MS`) the axe tests on the demo may take:
+ * each full scan of the 21-row board takes seconds, and with four workers
+ * running axe at once on a busy machine the 60 s default ran out on the
+ * phone test's three scans (2026-11-03); the tour makes seven. */
+const AXE_DEMO_TIMEOUTS = 4;
+const AXE_TOUR_TIMEOUTS = 6;
 
 /** axe's violations on the page once its opening and closing
  * transitions have ended (colours mid-fade aren't the page's): rule, and
@@ -131,7 +138,7 @@ for (const colorScheme of ['light', 'dark'] as const)
     test.use({ colorScheme });
 
     test('axe finds no WCAG A or AA violation', async ({ page }) => {
-      test.setTimeout(AXE_TOUR_TIMEOUT_MS);
+      test.setTimeout(AXE_TOUR_TIMEOUTS * MIN_TEST_TIMEOUT_MS);
       await page.goto('/');
       await expect(page.getByRole('main')).toBeVisible();
       expect(await violations(page), 'home').toEqual([]);
@@ -167,7 +174,7 @@ for (const colorScheme of ['light', 'dark'] as const)
       test("axe finds no WCAG A or AA violation on the board's actions", async ({
         page,
       }) => {
-        test.setTimeout(AXE_DEMO_TIMEOUT_MS);
+        test.setTimeout(AXE_DEMO_TIMEOUTS * MIN_TEST_TIMEOUT_MS);
         await openDemo(page);
         expect(await violations(page), 'demo board').toEqual([]);
         await expectActionTooltipClean(page);

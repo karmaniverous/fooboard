@@ -20,18 +20,5 @@ export const MIN_TEST_TIMEOUT_MS = 30_000;
  * idle poll interval, it ran past 120 s). */
 export const DEMO_COVERAGE_TIMEOUT_MS = 4 * MIN_TEST_TIMEOUT_MS;
 
-/** The timeout of an e2e test that opens the demo board and runs axe on
- * it and its board actions (`e2e/a11y.spec.ts`, *on a phone*): four times
- * the minimum. Each full axe scan of the 21-row demo board takes seconds
- * on a quiet machine, and the test makes three; with four Playwright
- * workers each running axe on a busy machine, the 60 s default ran out. */
-export const AXE_DEMO_TIMEOUT_MS = 4 * MIN_TEST_TIMEOUT_MS;
-
-/** The timeout of the e2e axe tour (`e2e/a11y.spec.ts`): six times the
- * minimum. It scans home, the AI setup dialog, the demo board and its
- * actions, the menu, the cell detail sheet and the settings popup in one
- * test, about 2.5 min on a busy machine. */
-export const AXE_TOUR_TIMEOUT_MS = 6 * MIN_TEST_TIMEOUT_MS;
-
 /** Options for `vi.waitFor` and Testing Library's `find*`/`waitFor`. */
 export const WAIT = { timeout: MIN_TEST_TIMEOUT_MS } as const;
