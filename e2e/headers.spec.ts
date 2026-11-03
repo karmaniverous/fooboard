@@ -35,6 +35,9 @@ test('every response carries the headers of customHttp.yml', async ({
     ['/ai.md', 200],
     ['/ai.schema.json', 200],
     ['/llms.txt', 200],
+    ['/robots.txt', 200],
+    ['/sitemap.xml', 200],
+    ['/social-preview.png', 200],
   ] as const) {
     const response = await request.get(path);
     expect(response.status(), path).toBe(status);

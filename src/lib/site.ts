@@ -5,18 +5,14 @@
  *
  * @module
  */
-
-/** Production's origin: the canonical host, and the only fooboard site an
- * AI assistant can reach (dev and release are password-protected, and the
- * bare domain only redirects here; spec 0.2.0 §3.J, Decisions 96 and
- * 107). */
-export const PRODUCTION_ORIGIN = 'https://www.fooboard.dev';
+import { TAGLINE } from './pageHead';
+import { PRODUCTION_ORIGIN } from './productionOrigin';
 
 /** Product identity and outbound links. */
 export const site = {
   name: 'fooboard',
   /** Product tagline (spec.md C-19); also the X bio. */
-  tagline: "Welcome to DevOps hell. Here's your map.",
+  tagline: TAGLINE,
   license: 'BSD-3-Clause',
   xHandle: '@fooboarding',
   xUrl: 'https://x.com/fooboarding',

@@ -12,6 +12,7 @@
       href="/ai"
       title="Instructions for AI assistants"
     />
+    <link rel="canonical" href="https://www.fooboard.dev/" />
     <meta
       name="viewport"
       content="width=device-width, initial-scale=1.0, minimum-scale=1.0"
@@ -20,11 +21,71 @@
       name="description"
       content="Welcome to DevOps hell. Here&#39;s your map. A free, open-source, client-only browser app showing the deployment state of every repo x stage at a glance. fooboard: a deployment status board. To set up a board with an AI assistant, read https://www.fooboard.dev/ai."
     />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="fooboard" />
+    <meta
+      property="og:title"
+      content="fooboard: Welcome to DevOps hell. Here&#39;s your map."
+    />
     <meta
       property="og:description"
       content="fooboard: a deployment status board. To set up a board with an AI assistant, read https://www.fooboard.dev/ai."
     />
+    <meta property="og:url" content="https://www.fooboard.dev/" />
+    <meta
+      property="og:image"
+      content="https://www.fooboard.dev/social-preview.png"
+    />
+    <meta property="og:image:type" content="image/png" />
+    <meta property="og:image:width" content="1280" />
+    <meta property="og:image:height" content="640" />
+    <meta
+      property="og:image:alt"
+      content="fooboard: Welcome to DevOps hell. Here&#39;s your map. A browser-only deployment board for GitHub Actions and AWS Amplify, beside the demo board: repos by stage, each cell coloured by its deployment&#39;s status."
+    />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:site" content="@fooboarding" />
+    <meta
+      name="twitter:title"
+      content="fooboard: Welcome to DevOps hell. Here&#39;s your map."
+    />
+    <meta
+      name="twitter:description"
+      content="fooboard: a deployment status board. To set up a board with an AI assistant, read https://www.fooboard.dev/ai."
+    />
+    <meta
+      name="twitter:image"
+      content="https://www.fooboard.dev/social-preview.png"
+    />
+    <meta
+      name="twitter:image:alt"
+      content="fooboard: Welcome to DevOps hell. Here&#39;s your map. A browser-only deployment board for GitHub Actions and AWS Amplify, beside the demo board: repos by stage, each cell coloured by its deployment&#39;s status."
+    />
     <title>fooboard: Welcome to DevOps hell. Here&#39;s your map.</title>
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "SoftwareApplication",
+        "name": "fooboard",
+        "description": "A free, open-source, client-only browser app showing the deployment state of every repo x stage at a glance, fed directly from GitHub Actions runs and AWS Amplify jobs.",
+        "url": "https://www.fooboard.dev/",
+        "image": "https://www.fooboard.dev/social-preview.png",
+        "applicationCategory": "DeveloperApplication",
+        "operatingSystem": "Any (runs in a web browser)",
+        "isAccessibleForFree": true,
+        "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
+        "license": "https://spdx.org/licenses/BSD-3-Clause.html",
+        "author": {
+          "@type": "Person",
+          "name": "Jason Williscroft",
+          "url": "https://github.com/karmaniverous"
+        },
+        "sameAs": [
+          "https://github.com/karmaniverous/fooboard",
+          "https://x.com/fooboarding"
+        ]
+      }
+    </script>
   </head>
   <body>
     <div id="root">
@@ -42,6 +103,46 @@
           assistant, read
           <a href="/ai">https://www.fooboard.dev/ai</a>.
         </p>
+        <div class="loading-about">
+          <p>
+            fooboard shows the deployment state of every repo × stage at a
+            glance: the status of each repo&#39;s latest deployment to each
+            environment, and whether a stage&#39;s branch is behind, or has
+            diverged from, the stage it is promoted from. It fills itself in
+            from your GitHub Actions runs and, if you use them, AWS Amplify
+            builds, with no workflow changes.
+          </p>
+          <p>
+            It is a free, open-source (BSD-3-Clause), static web app: no
+            backend, no account, no cookies or telemetry. Your tokens and keys
+            never leave your browser except in the calls it makes directly to
+            GitHub and AWS.
+          </p>
+          <p>
+            An AI assistant can set up a board with you from the instructions at
+            /ai: it asks about your repos and stages and gives you a link, and
+            fooboard asks for your keys when you open it, so they never pass
+            through the assistant.
+          </p>
+          <ul>
+            <li>
+              <a href="/demo">Try the demo</a>: a simulated board, no account or
+              token needed.
+            </li>
+            <li><a href="/ai">Instructions for AI assistants</a></li>
+            <li><a href="/llms.txt">llms.txt</a></li>
+            <li>
+              <a href="https://github.com/karmaniverous/fooboard"
+                >Source code and user guide on GitHub</a
+              >
+            </li>
+            <li>
+              <a href="https://karmanivero.us/welcome-to-devops-hell/"
+                >Welcome to DevOps hell</a
+              >, the article on karmanivero.us
+            </li>
+          </ul>
+        </div>
       </div>
     </div>
     <script type="module" src="/src/main.tsx"></script>

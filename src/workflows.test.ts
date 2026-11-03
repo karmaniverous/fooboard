@@ -16,8 +16,8 @@
  *   `/ai` and `/ai.md` (spec 0.2.0 §3.J);
  * - `amplify-rewrites.json` parses, so every Vite server starts (Decision
  *   110): it holds the apex redirect first, then serves `/ai` from
- *   `/ai.md`, the page for the app's routes, and never the page for an
- *   asset path.
+ *   `/ai.md` and `/demo` from `demo.html` (spec 0.2.0 §3.K), the page for
+ *   the app's routes, and never the page for an asset path.
  *
  * @module
  */
@@ -33,10 +33,12 @@ import rewritesRaw from '../amplify-rewrites.json?raw';
 import customHttpRaw from '../customHttp.yml?raw';
 import packageJsonRaw from '../package.json?raw';
 import viteConfigRaw from '../vite.config.ts?raw';
+import { DEMO_HTML } from '../vite/demoPage';
 import { parseCustomHttp } from '../vite/hosting';
 import { parseRewrites, rewrite, SPA_ENTRY } from '../vite/hostingRules';
 import { FIRST_RUN_PATH } from './firstRun/paths';
 import { AMPLIFY_REGIONS } from './lib/amplify/regions';
+import { DEMO_PATH } from './pages/paths';
 import { cspDirectives } from './test/csp';
 
 const Trigger = z.object({
@@ -258,17 +260,17 @@ describe('rewrites (amplify-rewrites.json)', () => {
 
   it("holds the console's apex redirect, from a full URL, so it matches no local path", () => {
     expect(redirects).toEqual([
-      { path: undefined, status: '302', target: 'https://www.fooboard.dev' },
+      { path: undefined, status: '301', target: 'https://www.fooboard.dev' },
     ]);
   });
 
-  it('serves /ai the instructions for assistants, before the page rule', () => {
+  it('serves /ai the instructions for assistants and the demo its own page, before the page rule', () => {
     expect(rewrite(rules, '/ai')).toBe('/ai.md');
+    expect(rewrite(rules, DEMO_PATH)).toBe(`/${DEMO_HTML}`);
   });
 
   it.each([
     '/',
-    '/demo',
     FIRST_RUN_PATH,
     `${FIRST_RUN_PATH}/a1b2/repos`,
     '/d/northwind',
@@ -288,6 +290,10 @@ describe('rewrites (amplify-rewrites.json)', () => {
     '/ai.md',
     '/ai.schema.json',
     '/llms.txt',
+    '/robots.txt',
+    '/sitemap.xml',
+    '/social-preview.png',
+    `/${DEMO_HTML}`,
   ])('serves the file itself for the asset path %s', (path) => {
     expect(rewrite(rules, path)).toBe(path);
   });

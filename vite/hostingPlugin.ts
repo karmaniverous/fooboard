@@ -17,11 +17,14 @@
  *   (the page, or a file such as `/ai.md`), as on Amplify; any other path
  *   is a file, and a missing file is a 404 (the rewrite excludes asset
  *   paths, so a missing asset is never answered with the page);
- * - the dev server runs the same middleware with two differences: the page
- *   goes without the CSP, since Vite's inline React preamble needs a script
- *   the CSP rightly refuses; and Vite itself serves the page and answers
- *   missing paths, since its own modules (`/@vite/client`, `/src/main.tsx`)
- *   are not files of a build. So `npm run dev` serves `/ai` from
+ * - the dev server runs the same middleware with two differences: an app
+ *   page (`index.html`, or the demo's `demo.html` a build writes from it,
+ *   {@link APP_PAGES}) goes without the CSP, since Vite's inline React
+ *   preamble needs a script the CSP rightly refuses; and Vite itself serves
+ *   the page and answers missing paths, since its own modules
+ *   (`/@vite/client`, `/src/main.tsx`) are not files of a build, and it has
+ *   no `demo.html`: a path rewritten to an app page (`/demo` included) is
+ *   left as it is, for Vite to answer with its own `index.html`. So `npm run dev` serves `/ai` from
  *   `public/ai.md` as markdown with every header, as on Amplify;
  * - a build fails if a rewrite (not a redirect) would hide one of its
  *   files or a file in `public/`.
@@ -33,6 +36,7 @@ import path from 'node:path';
 
 import type { Plugin } from 'vite';
 
+import { DEMO_HTML } from './demoPage.ts';
 import { headersFor, type HostingHeaders, parseCustomHttp } from './hosting.ts';
 import {
   hiddenFiles,
@@ -51,6 +55,11 @@ export const REWRITES_FILE = 'amplify-rewrites.json';
 
 /** The header the dev server leaves off the page (see the module). */
 export const CSP_HEADER = 'Content-Security-Policy';
+
+/** The app's pages, as a rewrite targets them: the SPA entry and the
+ * demo's page a build writes from it (`vite/demoPage.ts`). The dev server
+ * treats a path served either as an app route (see the module). */
+export const APP_PAGES: readonly string[] = [SPA_ENTRY, `/${DEMO_HTML}`];
 
 /** What the middleware serves, the same on both servers: the response
  * headers (every path's, and each one-path pattern's) and the rules. */
@@ -118,7 +127,7 @@ export function hostingMiddleware(options: HostingOptions): Middleware {
     const url = new URL(req.url ?? '/', 'http://localhost');
     const redirect = redirects.find(({ path }) => path === url.pathname);
     const target = rewrite(rewrites, url.pathname);
-    const page = target === SPA_ENTRY;
+    const page = APP_PAGES.includes(target);
     for (const [name, value] of Object.entries(
       headersFor(headers, url.pathname),
     ))
@@ -130,7 +139,7 @@ export function hostingMiddleware(options: HostingOptions): Middleware {
       return;
     }
     if (target !== url.pathname) {
-      if (!(dev && target === SPA_ENTRY)) req.url = `${target}${url.search}`;
+      if (!(dev && page)) req.url = `${target}${url.search}`;
       next();
       return;
     }

@@ -22,7 +22,8 @@ import {
 } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { PRODUCTION_ORIGIN, site } from '@/lib/site';
+import { PRODUCTION_ORIGIN } from '@/lib/productionOrigin';
+import { site } from '@/lib/site';
 import { clickToCopy, mockClipboard, unmockClipboard } from '@/test/clipboard';
 import { focusElement } from '@/test/focus';
 import { renderShell } from '@/test/renderShell';

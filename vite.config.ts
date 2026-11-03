@@ -7,7 +7,9 @@
  * (`vite/noDevInstrumentation.ts`). `vite preview` and the dev server
  * serve the committed Amplify headers, redirects and rewrites (the dev
  * server's page without the CSP), and a build fails if a rewrite would
- * hide one of its files (`vite/hostingPlugin.ts`). Vendor code is split
+ * hide one of its files (`vite/hostingPlugin.ts`). A build also emits
+ * `demo.html`, the page with the demo's own title and description, which
+ * `/demo` is served (`vite/demoPage.ts`). Vendor code is split
  * into cacheable chunks, `src/zodJitless.ts` in zod's (`vite/chunks.ts`).
  * The app's version (`package.json`) is defined as `__APP_VERSION__` (the
  * persisted cache's buster), and `virtual:ai-instructions` is the text of
@@ -25,6 +27,7 @@ import { defineConfig } from 'vite';
 
 import { aiInstructions } from './vite/aiInstructions.ts';
 import { manualChunks } from './vite/chunks.ts';
+import { demoPage } from './vite/demoPage.ts';
 import { hosting } from './vite/hostingPlugin.ts';
 import { noDevInstrumentation } from './vite/noDevInstrumentation.ts';
 
@@ -49,6 +52,7 @@ export default defineConfig({
     tailwindcss(),
     noDevInstrumentation(),
     hosting(),
+    demoPage(),
     aiInstructions(),
   ],
   define: { __APP_VERSION__: JSON.stringify(version) },
