@@ -8,39 +8,21 @@
  *
  * The head is rewritten tag by tag ({@link withHead}), each tag found
  * exactly once as `index.html` writes it, or the build fails, so the demo's
- * page can never quietly keep a home-page tag.
+ * page can never quietly keep a home-page tag. The values and the list of
+ * tags are `src/lib/pageHead.ts`'s, which the app also sets as it moves
+ * between routes.
  *
  * @module
  */
 import type { Plugin } from 'vite';
 
-import { PRODUCTION_ORIGIN } from '../src/lib/productionOrigin.ts';
-import { DEMO_PATH } from '../src/pages/paths.ts';
-
-/** A page's own head: what a search result, a link preview and the
- * browser's tab show for it. */
-export interface PageHead {
-  /** The `<title>`, `og:title` and `twitter:title`. */
-  title: string;
-  /** The description, `og:description` and `twitter:description`. */
-  description: string;
-  /** Its canonical address (`<link rel="canonical">` and `og:url`). */
-  url: string;
-}
+import { DEMO_HEAD, HEAD_META, type PageHead } from '../src/lib/pageHead.ts';
 
 /** The built page every other page starts from. */
 export const INDEX_HTML = 'index.html';
 
 /** The demo's page in the build, which `/demo` is served. */
 export const DEMO_HTML = 'demo.html';
-
-/** The demo's head. */
-export const DEMO_HEAD: PageHead = {
-  title: 'fooboard demo: a simulated deployment status board',
-  description:
-    'Try fooboard with no account or token: a demo board for a fictional company, acme, reading a GitHub and an AWS simulated in your browser, so nothing leaves it.',
-  url: `${PRODUCTION_ORIGIN}${DEMO_PATH}`,
-};
 
 /** `text` as an HTML attribute value or element text. */
 const escapeHtml = (text: string): string =>
@@ -76,23 +58,20 @@ const meta = (
 });
 
 /** Every tag of the head a page gives its own value. */
-const headTags = ({ title, description, url }: PageHead): HeadTag[] => [
+const headTags = (head: PageHead): HeadTag[] => [
   {
     name: '<title>',
     pattern: /<title>[^<]*<\/title>/,
-    replacement: `<title>${escapeHtml(title)}</title>`,
+    replacement: `<title>${escapeHtml(head.title)}</title>`,
   },
   {
     name: '<link rel="canonical">',
     pattern: /<link\s+rel="canonical"\s+href="[^"]*"\s*\/?>/,
-    replacement: `<link rel="canonical" href="${escapeHtml(url)}" />`,
+    replacement: `<link rel="canonical" href="${escapeHtml(head.url)}" />`,
   },
-  meta('name', 'description', description),
-  meta('property', 'og:title', title),
-  meta('property', 'og:description', description),
-  meta('property', 'og:url', url),
-  meta('name', 'twitter:title', title),
-  meta('name', 'twitter:description', description),
+  ...HEAD_META.map(({ attribute, key, field }) =>
+    meta(attribute, key, head[field]),
+  ),
 ];
 
 /**

@@ -12,6 +12,7 @@ import path from 'node:path';
 import { build, preview, type PreviewServer } from 'vite';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 
+import { DEMO_HTML } from './demoPage';
 import { headersFor, parseCustomHttp } from './hosting';
 import {
   CSP_HEADER,
@@ -50,6 +51,13 @@ describe('hostingMiddleware', () => {
     expect(r.next).toHaveBeenCalledOnce();
   });
 
+  it("serves /demo the demo's built page, with the CSP", () => {
+    const r = serve('/demo?x=1');
+    expect(r.headers.get(CSP_HEADER)).toBe('csp');
+    expect(r.url).toBe(`/${DEMO_HTML}?x=1`);
+    expect(r.next).toHaveBeenCalledOnce();
+  });
+
   describe('on the dev server', () => {
     it("rewrites /ai to /ai.md with every header and the path's own", () => {
       const r = serve('/ai?x=1', 'dev');
@@ -62,7 +70,7 @@ describe('hostingMiddleware', () => {
       expect(r.next).toHaveBeenCalledOnce();
     });
 
-    it.each(['/d/acme', '/', SPA_ENTRY, '/@vite/client'])(
+    it.each(['/d/acme', '/', SPA_ENTRY, '/@vite/client', '/demo', '/demo?x=1'])(
       'leaves %s to Vite, with every header but the CSP',
       (url) => {
         const r = serve(url, 'dev');

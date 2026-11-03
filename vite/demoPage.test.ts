@@ -6,13 +6,12 @@ import path from 'node:path';
 import { build } from 'vite';
 import { describe, expect, it, vi } from 'vitest';
 
+import { DEMO_HEAD, type PageHead } from '../src/lib/pageHead';
 import {
-  DEMO_HEAD,
   DEMO_HTML,
   demoPage,
   emitDemoPage,
   INDEX_HTML,
-  type PageHead,
   withHead,
 } from './demoPage';
 import { read } from './serveProbe';
@@ -46,17 +45,21 @@ const headOf = (html: string): Record<string, string | undefined> => ({
 
 describe('withHead', () => {
   it("gives every title, description and address tag the page's own", () => {
-    const head = headOf(withHead(INDEX, DEMO_HEAD));
-    const { title, description, url } = DEMO_HEAD;
-    expect(head).toMatchObject({
-      title,
-      canonical: url,
-      description,
-      'og:title': title,
-      'og:description': description,
-      'og:url': url,
-      'twitter:title': title,
-      'twitter:description': description,
+    const sample: PageHead = {
+      title: 'T',
+      description: 'for search',
+      shareDescription: 'for previews',
+      url: 'https://x.test/p',
+    };
+    expect(headOf(withHead(INDEX, sample))).toMatchObject({
+      title: 'T',
+      canonical: 'https://x.test/p',
+      description: 'for search',
+      'og:title': 'T',
+      'og:description': 'for previews',
+      'og:url': 'https://x.test/p',
+      'twitter:title': 'T',
+      'twitter:description': 'for previews',
     });
   });
 
@@ -73,6 +76,7 @@ describe('withHead', () => {
     const head: PageHead = {
       title: 'a <b> & "c"',
       description: "it's",
+      shareDescription: 'x',
       url: 'https://x.test/?a=1&b=2',
     };
     const page = withHead(INDEX, head);

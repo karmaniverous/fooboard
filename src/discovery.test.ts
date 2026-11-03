@@ -10,6 +10,7 @@
  */
 import { describe, expect, it } from 'vitest';
 
+import { HEAD_META, HOME_HEAD } from '@/lib/pageHead';
 import { PRODUCTION_ORIGIN } from '@/lib/productionOrigin';
 import { site } from '@/lib/site';
 import { DEMO_PATH, HOME_PATH } from '@/pages/paths';
@@ -63,12 +64,15 @@ describe("index.html's head", () => {
     expect(meta('og:url')).toBe(home);
   });
 
-  it('gives link previews the title, description and type', () => {
-    const title = head.querySelector('title')?.textContent;
-    expect(meta('og:title')).toBe(title);
-    expect(meta('twitter:title')).toBe(title);
-    expect(meta('og:description')).toMatch(/\S/);
-    expect(meta('twitter:description')).toBe(meta('og:description'));
+  it("carries the home page's head, the one the app sets on its routes", () => {
+    expect(head.querySelector('title')?.textContent).toBe(HOME_HEAD.title);
+    expect(only('link[rel="canonical"]', 'href')).toBe(HOME_HEAD.url);
+    expect(HEAD_META.map(({ key }) => [key, meta(key)])).toEqual(
+      HEAD_META.map(({ key, field }) => [key, HOME_HEAD[field]]),
+    );
+  });
+
+  it('gives link previews their type, card and site', () => {
     expect(meta('og:type')).toBe('website');
     expect(meta('og:site_name')).toBe(site.name);
     expect(meta('twitter:card')).toBe('summary_large_image');

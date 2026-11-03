@@ -3,7 +3,7 @@
  * `npm run dev` serves the committed Amplify configuration too (spec 0.2.0
  * §3.J *Serving them*): a real dev server with the plugin serves `/ai`
  * from `public/ai.md` as markdown with every header of `customHttp.yml`,
- * and the page with all of them but the CSP.
+ * and the page, for a route and for `/demo`, with all of them but the CSP.
  *
  * @module
  */
@@ -55,11 +55,20 @@ describe('the dev server with the plugin', () => {
     },
   );
 
-  it('serves the page for a route with every header but the CSP', async () => {
-    const res = await fetch(new URL('/d/acme', base));
-    expect(res.status).toBe(200);
-    expect(await res.text()).toContain('<div id="root">');
-    expect(res.headers.get(CSP_HEADER)).toBeNull();
-    expect(res.headers.get('link')).toBe(committed('/d/acme')['Link']);
-  });
+  // /demo is rewritten to the build's demo.html on Amplify and in preview;
+  // the dev server has no demo.html and serves its own page, without the
+  // CSP, so the demo mounts (spec 0.2.0 §3.K).
+  it.each(['/d/acme', '/demo'])(
+    'serves the app page with its scripts for %s, with every header but the CSP',
+    async (url) => {
+      const res = await fetch(new URL(url, base));
+      expect(res.status).toBe(200);
+      const html = await res.text();
+      expect(html).toContain('<div id="root">');
+      expect(html).toContain('/@vite/client');
+      expect(html).toContain('src="/src/main.tsx"');
+      expect(res.headers.get(CSP_HEADER)).toBeNull();
+      expect(res.headers.get('link')).toBe(committed(url)['Link']);
+    },
+  );
 });
