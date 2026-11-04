@@ -3,9 +3,9 @@
  * Tests that a release runs the Playwright suite on a server of its own
  * (spec 0.2.0 §3.F; Decisions 88 and 99): release-it's `after:init` ends
  * with `npm run e2e:release`, after the build; `e2e:release` runs the same
- * tests as `e2e`; and `playwright.config.ts`, loaded as npm runs it under
- * that script, never reuses a preview server already on its port, while
- * under `e2e` outside CI it still does.
+ * tests as `e2e`, on two workers; and `playwright.config.ts`, loaded as
+ * npm runs it under that script, never reuses a preview server already on
+ * its port, while under `e2e` outside CI it still does.
  *
  * @module
  */
@@ -68,9 +68,11 @@ describe('the release hooks', () => {
     ]);
   });
 
-  it('run the same Playwright tests as e2e', async () => {
-    expect(packageJson.scripts[await releaseScript()]).toBe('playwright test');
+  it('run the same Playwright tests as e2e, on two workers', async () => {
     expect(packageJson.scripts.e2e).toBe('playwright test');
+    expect(packageJson.scripts[await releaseScript()]).toBe(
+      `${packageJson.scripts.e2e} --workers=2`,
+    );
   });
 });
 

@@ -137,7 +137,7 @@
     "changelog": "git-cliff -o CHANGELOG.md",
     "dev": "vite",
     "e2e": "playwright test",
-    "e2e:release": "playwright test",
+    "e2e:release": "playwright test --workers=2",
     "knip": "knip",
     "lint": "eslint . && npm run lint:md",
     "lint:fix": "eslint --fix . && prettier --write \"**/*.md\"",

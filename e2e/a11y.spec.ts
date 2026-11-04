@@ -1,120 +1,21 @@
 /**
  * The accessibility pass's automated part (spec.md §3.10), under the
  * locally served CSP: axe finds no WCAG 2.1 A or AA violation (contrast
- * included) on the home page, the demo board, the menu, the cell detail
- * sheet, the settings popup, the *Unmapped runs* panel with a *Dismiss…*
- * form open and with *Show dismissed* on, *Set up with an AI assistant*
- * and an import refusal listing its errors (spec 0.2.0 §3.J), the
- * loading screen (Decision 106) and the error screen, in light and dark; Tab runs header, then body; the dialogs keep Tab inside; group
- * frames and boundary lines are hidden from assistive technology; and
- * with reduced motion nothing on the board animates.
+ * included) on the home page, *Set up with an AI assistant* and an import
+ * refusal listing its errors (spec 0.2.0 §3.J), the loading screen
+ * (Decision 106) and the error screen, in light and dark (the demo
+ * board's own checks are in `a11yDemo.spec.ts`); Tab runs header, then
+ * body; the dialogs keep Tab inside; group frames and boundary lines are
+ * hidden from assistive technology; and with reduced motion nothing on
+ * the board animates.
  *
  * @module
  */
-import AxeBuilder from '@axe-core/playwright';
 import type { Page } from '@playwright/test';
 
-import { MIN_TEST_TIMEOUT_MS } from '../src/test/timeouts';
-import { REFUSED_FRAGMENT } from './aiShare';
-import { firstCell, openDemo, PHONE } from './board';
+import { expectAiSetupClean, violations } from './axe';
+import { openDemo, PHONE } from './board';
 import { expect, test } from './guard';
-
-const WCAG = ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'];
-
-/** Floors (`MIN_TEST_TIMEOUT_MS`) the axe tests on the demo may take:
- * each full scan of the 21-row board takes seconds, and with four workers
- * running axe at once on a busy machine the 60 s default ran out on the
- * phone test's three scans (2026-11-03); the tour makes seven. */
-const AXE_DEMO_TIMEOUTS = 4;
-const AXE_TOUR_TIMEOUTS = 6;
-
-/** axe's violations on the page once its opening and closing
- * transitions have ended (colours mid-fade aren't the page's): rule, and
- * where. */
-async function violations(page: Page): Promise<string[]> {
-  await page.waitForFunction(() =>
-    document
-      .getAnimations()
-      .every(
-        (a) =>
-          a.playState !== 'running' ||
-          a.effect?.getTiming().iterations === Infinity,
-      ),
-  );
-  const { violations: found } = await new AxeBuilder({ page })
-    .withTags(WCAG)
-    // Experimental in axe (WCAG 2.5.3, label in name), so off by default;
-    // the tags turn it on. Its findings on the board are recorded in the
-    // accessibility pass for the owner (the diverged badge's "1/2", named
-    // "diverged: 1 commit behind, 2 commits ahead of its source").
-    .disableRules(['label-content-name-mismatch'])
-    .analyze();
-  return found.flatMap((v) =>
-    v.nodes.map((n) => `${v.id}: ${n.target.join(' ')}`),
-  );
-}
-
-/** axe finds nothing on a board action's tooltip, shown by keyboard
- * focus (spec 0.2.0 §3.A). */
-async function expectActionTooltipClean(page: Page): Promise<void> {
-  await page.getByRole('button', { name: 'Edit dashboard' }).focus();
-  await expect(page.getByRole('tooltip')).toHaveText('Edit dashboard');
-  expect(await violations(page), 'board action tooltip').toEqual([]);
-  await page.keyboard.press('Escape');
-}
-
-/** axe finds nothing in the *Unmapped runs* panel with an entry's
- * *Dismiss…* form open, then with *Show dismissed* on (spec 0.2.0
- * §3.I). */
-async function expectUnmappedPanelClean(page: Page): Promise<void> {
-  await page.getByRole('button', { name: /^Unmapped runs \(\d+\)$/ }).click();
-  const panel = page.getByRole('dialog', { name: 'Unmapped runs' });
-  await expect(panel).toBeVisible();
-  await panel.getByRole('button', { name: 'Dismiss…' }).first().click();
-  await expect(panel.getByRole('form')).toBeVisible();
-  expect(await violations(page), 'dismiss form').toEqual([]);
-  await panel.getByRole('button', { name: 'Dismiss', exact: true }).click();
-  await panel.getByRole('button', { name: 'Show dismissed' }).click();
-  await expect(
-    panel.getByRole('list', { name: 'Dismissed runs' }),
-  ).toBeVisible();
-  expect(await violations(page), 'show dismissed').toEqual([]);
-  await page.keyboard.press('Escape');
-  await expect(panel).toHaveCount(0);
-}
-
-/** axe finds nothing in *Set up with an AI assistant*, opened from the
- * home page, at rest and after *Copy prompt* (its check or its failure
- * announced, the button's tooltip showing; Decision 108), nor in an import
- * refusal listing its errors (spec 0.2.0
- * §3.J). */
-async function expectAiSetupClean(page: Page): Promise<void> {
-  await page.goto('/');
-  await page
-    .getByRole('main')
-    .getByRole('button', { name: 'Set up with an AI assistant…' })
-    .click();
-  const dialog = page.getByRole('dialog', {
-    name: 'Set up with an AI assistant',
-  });
-  await expect(dialog).toBeVisible();
-  expect(await violations(page), 'AI setup dialog').toEqual([]);
-  await dialog.getByRole('button', { name: 'Copy prompt' }).click();
-  await expect(dialog.getByRole('status').filter({ hasText: /./ })).toHaveCount(
-    1,
-  );
-  expect(await violations(page), 'AI setup dialog after a copy').toEqual([]);
-  await page.keyboard.press('Escape');
-  await expect(dialog).toHaveCount(0);
-
-  await page.goto(`/${REFUSED_FRAGMENT}`);
-  const refusal = page.getByRole('dialog', { name: 'Import dashboards' });
-  await expect(
-    refusal.getByRole('list', { name: 'Import errors' }),
-  ).toBeVisible();
-  expect(await violations(page), 'import refusal').toEqual([]);
-  await page.keyboard.press('Escape');
-}
 
 /** The loading screen, held on the page by blocking the app's scripts
  * (spec 0.2.0 §3.J *The loading screen*): it shows before the app
@@ -137,49 +38,22 @@ for (const colorScheme of ['light', 'dark'] as const)
   test.describe(`in ${colorScheme}`, () => {
     test.use({ colorScheme });
 
-    test('axe finds no WCAG A or AA violation', async ({ page }) => {
-      test.setTimeout(AXE_TOUR_TIMEOUTS * MIN_TEST_TIMEOUT_MS);
+    test('axe finds no WCAG A or AA violation on the home page', async ({
+      page,
+    }) => {
       await page.goto('/');
       await expect(page.getByRole('main')).toBeVisible();
       expect(await violations(page), 'home').toEqual([]);
+    });
+
+    test('axe finds no WCAG A or AA violation in the AI setup dialog or an import refusal', async ({
+      page,
+    }) => {
       await expectAiSetupClean(page);
-
-      await openDemo(page);
-      expect(await violations(page), 'demo board').toEqual([]);
-      await expectActionTooltipClean(page);
-      await expectUnmappedPanelClean(page);
-
-      const menu = page.getByRole('button', { name: 'Menu' });
-      await menu.click();
-      expect(await violations(page), 'menu').toEqual([]);
-      await page.keyboard.press('Escape');
-
-      await firstCell(page).focus();
-      await page.keyboard.press('Space');
-      await expect(page.getByRole('dialog')).toBeVisible();
-      expect(await violations(page), 'cell detail sheet').toEqual([]);
-      await page.keyboard.press('Escape');
-
-      await expect(page.getByRole('dialog')).toHaveCount(0);
-      await firstCell(page).focus();
-      await page.keyboard.press(',');
-      await expect(page.getByRole('dialog')).toBeVisible();
-      expect(await violations(page), 'settings popup').toEqual([]);
-      await page.keyboard.press('Escape');
     });
 
     test.describe('on a phone', () => {
       test.use({ viewport: PHONE, hasTouch: true });
-
-      test("axe finds no WCAG A or AA violation on the board's actions", async ({
-        page,
-      }) => {
-        test.setTimeout(AXE_DEMO_TIMEOUTS * MIN_TEST_TIMEOUT_MS);
-        await openDemo(page);
-        expect(await violations(page), 'demo board').toEqual([]);
-        await expectActionTooltipClean(page);
-        await expectUnmappedPanelClean(page);
-      });
 
       test('axe finds no WCAG A or AA violation in the AI setup dialog or an import refusal', async ({
         page,
