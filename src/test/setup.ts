@@ -7,9 +7,10 @@
 import '@testing-library/jest-dom/vitest';
 
 import { configure } from '@testing-library/react';
-import { afterAll, afterEach } from 'vitest';
+import { afterAll, afterEach, beforeEach } from 'vitest';
 
 import { assertNoActWarnings, watchActWarnings } from './actGuard';
+import { installFocusVisible } from './focusVisible';
 import { MIN_TEST_TIMEOUT_MS } from './timeouts';
 
 // Testing Library's find* queries and waitFor wait 1 s by default.
@@ -31,6 +32,16 @@ if (typeof window !== 'undefined') {
     hasPointerCapture: () => false,
     releasePointerCapture: () => undefined,
     scrollIntoView: () => undefined,
+  });
+
+  // jsdom 31 matches :focus-visible wherever :focus matches; browsers
+  // follow the last input. Each test starts as a page does, with no input.
+  let restoreFocusVisible: () => void = () => undefined;
+  beforeEach(() => {
+    restoreFocusVisible = installFocusVisible();
+  });
+  afterEach(() => {
+    restoreFocusVisible();
   });
 
   // jsdom lacks matchMedia (the theme follows prefers-color-scheme).
