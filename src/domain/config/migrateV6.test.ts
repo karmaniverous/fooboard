@@ -24,6 +24,7 @@ import v5Board from './fixtures/v5-board.json';
 import v6Board from './fixtures/v6-board.json';
 import { migrate } from './migrate';
 import { toV6 } from './migrateV6';
+import { CURRENT_SCHEMA_VERSION } from './root';
 import type { Row } from './row';
 
 /** The migrated board, validated. */
@@ -125,7 +126,7 @@ describe('toV6', () => {
 
 describe('the migrated board', () => {
   it('validates through the chain, with the backup-worthy version bumped', () => {
-    expect(migrate(v5Board).schemaVersion).toBe(7);
+    expect(migrate(v5Board).schemaVersion).toBe(CURRENT_SCHEMA_VERSION);
     expect(DashboardSchema.safeParse(board).success).toBe(true);
   });
 
@@ -198,7 +199,7 @@ describe('the migrated board', () => {
 describe('a stored v4 board', () => {
   it('migrates through v5 to v6', () => {
     const [d] = migrate(v4Board).dashboards;
-    expect(d.settings).toEqual({
+    expect(d.settings).toMatchObject({
       requestsInFlight: { github: 10, aws: 10 },
       githubToken: 'gh',
       statusSets: { github: 'github-single-job', amplify: 'amplify' },

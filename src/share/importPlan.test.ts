@@ -10,6 +10,7 @@
 import { describe, expect, it } from 'vitest';
 
 import type { Dashboard } from '@/domain/config/dashboard';
+import { defaultSettings } from '@/domain/config/settings';
 import { levelsNamed, namedCredentials, shareBoard } from '@/test/shareBoard';
 
 import { type ImportChoice, planImport } from './importPlan';
@@ -35,7 +36,7 @@ const other = (): Dashboard => ({
   rows: [],
   rowGroups: [],
   columnGroups: [],
-  settings: { requestsInFlight: { github: 10, aws: 10 } },
+  settings: defaultSettings(),
   stages: shareBoard().stages.map((s) => ({ ...s, settings: {} })),
   credentials: [{ id: 'other-gh', kind: 'github', label: 'Other token' }],
 });

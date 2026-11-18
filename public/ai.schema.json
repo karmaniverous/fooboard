@@ -12,7 +12,7 @@
     },
     "schemaVersion": {
       "type": "number",
-      "const": 7
+      "const": 8
     },
     "dashboards": {
       "minItems": 1,
@@ -145,6 +145,10 @@
             "requestsInFlight": {
               "github": 10,
               "aws": 10
+            },
+            "hiddenPolling": {
+              "periodMs": 300000,
+              "rampFactor": 0.25
             }
           },
           "type": "object",
@@ -199,6 +203,27 @@
                   "type": "integer",
                   "minimum": 1,
                   "maximum": 100
+                }
+              }
+            },
+            "hiddenPolling": {
+              "default": {
+                "periodMs": 300000,
+                "rampFactor": 0.25
+              },
+              "type": "object",
+              "properties": {
+                "periodMs": {
+                  "default": 300000,
+                  "type": "integer",
+                  "minimum": 60000,
+                  "maximum": 3600000
+                },
+                "rampFactor": {
+                  "default": 0.25,
+                  "type": "number",
+                  "minimum": 0.01,
+                  "maximum": 1
                 }
               }
             }

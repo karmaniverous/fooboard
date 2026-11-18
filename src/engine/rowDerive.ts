@@ -20,6 +20,7 @@ import { appKey } from '@/lib/amplify/rowJobs';
 import { isOverPollingShare } from '@/lib/github';
 import type { BudgetStore } from '@/query/budgets';
 import type { QueryProviders } from '@/query/fetchers';
+import { BUDGET_BACKOFF } from '@/query/intervals';
 
 import { rowApps } from './amplifyAccess';
 import { type AmplifyContext, deriveAmplifyRow } from './amplifyRow';
@@ -65,6 +66,21 @@ export const overBudget = (
   env: Pick<DeriveEnv, 'budgets'>,
   credentialId: string,
 ): boolean => isOverPollingShare(env.budgets.get(credentialId));
+
+/** How many times slower than a boost's intervals `needs`' root queries
+ * poll: `BUDGET_BACKOFF` when each is a GitHub read with a token past half
+ * its budget, else 1. A row's fastest root decides, so a dwell's restart
+ * never postpones any of its polls. */
+export const backoffOf = (
+  env: Pick<DeriveEnv, 'budgets'>,
+  needs: readonly Need[],
+): number => {
+  const roots = needs.filter((need) => need.root);
+  return roots.length > 0 &&
+    roots.every(({ key }) => key[0] === 'github' && overBudget(env, key[1]))
+    ? BUDGET_BACKOFF
+    : 1;
+};
 
 export function githubContext(
   env: DeriveEnv,

@@ -7,11 +7,9 @@
  * running poll (judged in real time, past half a budget too) begins it
  * when that poll completes, its cap counted from the dwell; boosts of
  * rows no longer kept are dropped.
- * The cache reader takes only root needs, with data or an error.
  *
  * @module
  */
-import { QueryClient } from '@tanstack/query-core';
 import { describe, expect, it } from 'vitest';
 
 import {
@@ -19,16 +17,10 @@ import {
   BOOST_MAX_MS,
   BUDGET_BACKOFF,
   DWELL_BOOST_START_MS,
-  rootFreshness,
 } from '@/query/intervals';
-import { githubKey } from '@/query/keys';
 
-import {
-  type Completions,
-  createAttention,
-  rootCompletions,
-} from './attention';
-import type { Need } from './need';
+import { createAttention } from './attention';
+import type { Completions } from './completions';
 
 const ROW = 'api';
 /** Completions of the row's two root queries, `a` and `b`. */
@@ -166,35 +158,5 @@ describe('the attention store', () => {
     expect(store.intervalOf('other')).toBe(ACTIVE_INTERVAL_MS);
     store.clear();
     expect(store.intervalOf('other')).toBeUndefined();
-  });
-});
-
-describe('rootCompletions', () => {
-  it('reads when each root query last completed, with data or an error', async () => {
-    const client = new QueryClient();
-    const need = (page: number, root: boolean): Need => ({
-      key: githubKey('gh', { call: 'runs', repo: 'acme/api', page }),
-      freshness: rootFreshness(false, false),
-      ...(root ? { root } : {}),
-    });
-    const landed = need(1, true);
-    const failed = need(2, true);
-    client.setQueryData(landed.key, 'runs', { updatedAt: 10 });
-    await client
-      .query({
-        queryKey: failed.key,
-        queryFn: () => Promise.reject(new Error('down')),
-        retry: false,
-      })
-      .catch(() => undefined);
-    const failedAt = client.getQueryState(failed.key)?.errorUpdatedAt ?? 0;
-    expect(failedAt).toBeGreaterThan(0);
-    const out = rootCompletions(client, [
-      landed,
-      failed,
-      need(3, true),
-      need(4, false),
-    ]);
-    expect([...out.values()]).toEqual([10, failedAt, 0]);
   });
 });

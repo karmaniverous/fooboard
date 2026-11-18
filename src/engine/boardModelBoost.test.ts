@@ -102,7 +102,10 @@ describe('the poll boost, as polled', () => {
     await vi.advanceTimersByTimeAsync(89 * SECOND);
     focusManager.setFocused(true);
     await vi.advanceTimersByTimeAsync(WATCH_MS);
-    expect(polls(row, since).slice(0, 3)).toEqual(at(0, 90, 150));
+    // Hidden, the row fell back to its own 60 s (spec §3.L), polling at
+    // 61 s; the return, 29 s later, finds nothing due and ends the boost,
+    // so the next poll is a baseline interval after the return.
+    expect(polls(row, since).slice(0, 3)).toEqual(at(0, 61, 150));
     done();
   });
 
