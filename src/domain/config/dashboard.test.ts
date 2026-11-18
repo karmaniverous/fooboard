@@ -10,6 +10,7 @@ import { describe, expect, it } from 'vitest';
 import { branchRules } from '@/domain/config/placement';
 
 import { DashboardSchema } from './dashboard';
+import { defaultSettings } from './settings';
 import { PRESET_IDS } from './statusSets';
 
 describe('DashboardSchema', () => {
@@ -21,9 +22,7 @@ describe('DashboardSchema', () => {
     });
     expect(dashboard.customSourceRules).toEqual([]);
     // No setting is set: the built-in applies (spec.md §3.11).
-    expect(dashboard.settings).toEqual({
-      requestsInFlight: { github: 10, aws: 10 },
-    });
+    expect(dashboard.settings).toEqual(defaultSettings());
     expect(dashboard.customStatusSets).toEqual([]);
     expect(dashboard.rowGroups).toEqual([]);
     expect(dashboard.columnGroups).toEqual([]);

@@ -23,6 +23,9 @@ vi.mock('./settings', async (importOriginal) => ({
  * today's defaults can't move them. */
 const V5_SETTINGS = { requestsInFlight: { github: 10, aws: 10 } };
 
+/** The hidden polling v8 gives every dashboard: literal too. */
+const V8_SETTINGS = { hiddenPolling: { periodMs: 300_000, rampFactor: 0.25 } };
+
 /** The status sets v6 gives a dashboard v5 stored none for: literal too. */
 const V5_STATUS_SETS = { github: 'github-deploy-test', amplify: 'amplify' };
 
@@ -81,8 +84,12 @@ describe('migrate', () => {
     const out = migrate(v4);
     expect(out.schemaVersion).toBe(CURRENT_SCHEMA_VERSION);
     expect(out.dashboards.map((d) => d.settings)).toEqual([
-      { ...V5_SETTINGS, statusSets: V5_STATUS_SETS },
-      { requestsInFlight: { github: 3, aws: 4 }, statusSets: V5_STATUS_SETS },
+      { ...V5_SETTINGS, ...V8_SETTINGS, statusSets: V5_STATUS_SETS },
+      {
+        requestsInFlight: { github: 3, aws: 4 },
+        ...V8_SETTINGS,
+        statusSets: V5_STATUS_SETS,
+      },
     ]);
     expect(out.dashboards.map((d) => d.name)).toEqual(['A', 'B']);
   });

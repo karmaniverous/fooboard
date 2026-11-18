@@ -1,6 +1,6 @@
 /**
  * Tests for where an import comes from (spec.md §3.8): a file chosen in
- * the dialog (a v4 file opening as v7, a damaged file in the error
+ * the dialog (a v4 file opening as the current data model, a damaged file in the error
  * state, and another file chosen after it), and a share link pasted into
  * an open tab, whose fragment is cleared as it arrives before the dialog
  * opens over the home page.
@@ -17,6 +17,7 @@ import {
 import { afterEach, describe, expect, it } from 'vitest';
 
 import v4Board from '@/domain/config/fixtures/v4-board.json';
+import { CURRENT_SCHEMA_VERSION } from '@/domain/config/root';
 import {
   dialog,
   fragmentOf,
@@ -44,7 +45,7 @@ afterEach(() => {
 });
 
 describe('importing from a file', () => {
-  it('opens a v4 file as v7 and imports it', async () => {
+  it('opens a v4 file as the current data model and imports it', async () => {
     const stores = renderImport();
     fireEvent.click(screen.getByRole('button', { name: 'Open import' }));
     await chooseFile(
@@ -67,7 +68,9 @@ describe('importing from a file', () => {
     });
     expect(savedIds(stores)).toEqual(['fabrikam']);
     const loaded = stores.config.load();
-    expect(loaded.kind === 'ok' && loaded.root.schemaVersion).toBe(7);
+    expect(loaded.kind === 'ok' && loaded.root.schemaVersion).toBe(
+      CURRENT_SCHEMA_VERSION,
+    );
   });
 
   it('shows the error state for a damaged file, then reads another', async () => {

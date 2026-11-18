@@ -12,19 +12,13 @@
  * from now, that poll keeps its time and the restarted boost's first step
  * begins when it completes. For this board in this
  * tab only; the model drops it on `destroy` and for rows it no longer has.
- * Pure but for the cache reader `rootCompletions`.
+ * Pure.
  *
  * @module
  */
-import { hashKey, type QueryClient } from '@tanstack/query-core';
-
 import { BOOST_MAX_MS, boostInterval, type BoostKind } from '@/query/intervals';
 
-import type { Need } from './need';
-
-/** When each root query of a row last completed a fetch (ms; 0: never),
- * by query hash. */
-export type Completions = ReadonlyMap<string, number>;
+import { type Completions, polledSince } from './completions';
 
 /** One row's boost. */
 interface Boost {
@@ -71,26 +65,6 @@ export interface Attention {
   clear(): void;
 }
 
-/** When `need`'s query last completed a fetch (0: never). */
-const completedAt = (client: QueryClient, hash: string): number => {
-  const state = client.getQueryCache().get(hash)?.state;
-  return state ? Math.max(state.dataUpdatedAt, state.errorUpdatedAt) : 0;
-};
-
-/** The completions of the root queries among `needs`. */
-export const rootCompletions = (
-  client: QueryClient,
-  needs: readonly Need[],
-): Completions =>
-  new Map(
-    needs
-      .filter((need) => need.root)
-      .map((need) => {
-        const hash = hashKey(need.key);
-        return [hash, completedAt(client, hash)];
-      }),
-  );
-
 export function createAttention(): Attention {
   const boosts = new Map<string, Boost>();
   const current = (boost: Boost) => boostInterval(boost.kind, boost.polls);
@@ -121,12 +95,11 @@ export function createAttention(): Attention {
     },
     advance(rowId, completions, at) {
       const boost = boosts.get(rowId);
-      if (!boost || completions.size === 0) return;
-      const done = [...completions].every(
-        ([hash, completed]) =>
-          completed > (boost.baseline.get(hash) ?? boost.stepStartedAt),
-      );
-      if (!done) return;
+      if (
+        !boost ||
+        !polledSince(completions, boost.baseline, boost.stepStartedAt)
+      )
+        return;
       if (boost.restart) {
         // No step begins `BOOST_MAX_MS` or more after the dwell either.
         if (at - boost.restart.startedAt >= BOOST_MAX_MS) {

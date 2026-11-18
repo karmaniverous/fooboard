@@ -13,6 +13,7 @@ import { omit } from 'radash';
 import type { Dashboard } from '@/domain/config/dashboard';
 import { ownOverride } from '@/domain/config/ownOverride';
 import type { Row } from '@/domain/config/row';
+import { dashboardOnly } from '@/domain/config/settings';
 
 import type { Settings } from './schema';
 
@@ -70,7 +71,8 @@ const update = <T extends { id: string }>(
 ): T[] => items.map((item) => (item.id === id ? change(item) : item));
 
 /** `d` with `place`'s object replaced by `settings` (pure; the caller
- * validates and saves). The dashboard keeps its requests in flight. */
+ * validates and saves). The dashboard keeps its dashboard-only fields
+ * (requests in flight, hidden polling). */
 export function setSettings(
   d: Dashboard,
   place: SettingsPlace,
@@ -80,10 +82,7 @@ export function setSettings(
     case 'dashboard':
       return {
         ...d,
-        settings: {
-          ...settings,
-          requestsInFlight: d.settings.requestsInFlight,
-        },
+        settings: { ...settings, ...dashboardOnly(d.settings) },
       };
     case 'rowGroup':
       return {

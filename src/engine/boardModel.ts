@@ -9,34 +9,37 @@
  * refreshing delay re-derives the rows it feeds once the delay passes.
  * The user's interest in a row (`attend`) boosts its polling, stepping on
  * as its root queries' polls complete (spec 0.2.0 §3.H; `attention.ts`).
- * Opening a board polls every row's roots at once (Decision 109).
+ * While the tab is hidden, rows poll ever more slowly and no boost runs
+ * (spec §3.L; `hiddenRamp.ts`). Opening a board polls every row's roots
+ * at once (Decision 109).
  * React only subscribes to it.
  *
  * @module
  */
-import { unique } from 'radash';
-
 import type { Dashboard } from '@/domain/config/dashboard';
 import { rowCredentials } from '@/domain/settings/credentials';
 import type { QueryEnv } from '@/query/client';
-import { type BoostKind, BUDGET_BACKOFF } from '@/query/intervals';
+import type { BoostKind } from '@/query/intervals';
+import { tabVisibility, type Visibility } from '@/query/visibility';
 
-import { createAttention, rootCompletions } from './attention';
+import { createAttention } from './attention';
+import { rootCompletions } from './completions';
 import { createFetchStarts } from './fetchStarts';
 import { computeGroup, type GroupEntry, planGroups } from './groups';
+import { createHiddenRamps } from './hiddenRamp';
 import { keyApps } from './keyApps';
-import { emptyModel, githubCredentialIds } from './model';
-import type { Need } from './need';
+import { buildModel, emptyModel, githubCredentialIds } from './model';
 import { createObserverSet, mergeNeeds } from './observers';
 import { pollRootsNow } from './pollNow';
 import {
+  backoffOf,
   type DeriveEnv,
   deriveRow,
   overBudget,
   type RowEntry,
 } from './rowDerive';
 import { failedRow } from './rowFailure';
-import { type BoardModel, cellKey } from './types';
+import type { BoardModel } from './types';
 
 /** The query actions that change what a row derives: its data or error
  * landing, and a fetch starting, pausing or resuming (refreshing,
@@ -49,18 +52,6 @@ const DERIVING_ACTIONS = new Set([
   'pause',
   'continue',
 ]);
-
-/** How many times slower than a boost's intervals `needs`' root queries
- * poll: `BUDGET_BACKOFF` when each is a GitHub read with a token past half
- * its budget, else 1. A row's fastest root decides, so a dwell's restart
- * never postpones any of its polls. */
-const backoffOf = (env: QueryEnv, needs: readonly Need[]): number => {
-  const roots = needs.filter((need) => need.root);
-  return roots.length > 0 &&
-    roots.every(({ key }) => key[0] === 'github' && overBudget(env, key[1]))
-    ? BUDGET_BACKOFF
-    : 1;
-};
 
 export interface BoardModelHandle {
   getModel(): BoardModel;
@@ -80,16 +71,21 @@ export function createBoardModel({
   dashboard: initial,
   env,
   now = Date.now,
+  visibility = tabVisibility,
 }: {
   dashboard: Dashboard;
   env: QueryEnv;
   now?: () => number;
+  /** Whether the tab is visible (spec §3.L): the tab's own unless given. */
+  visibility?: Visibility;
 }): BoardModelHandle {
   let dashboard = initial;
   let destroyed = false;
   let scheduled = false;
   let model = emptyModel(githubCredentialIds(dashboard));
   const attention = createAttention();
+  const ramps = createHiddenRamps();
+  let visible = visibility.isVisible();
   const fetches = createFetchStarts({
     cache: env.client.getQueryCache(),
     now,
@@ -103,7 +99,8 @@ export function createBoardModel({
     budgets: env.budgets,
     now,
     fetchStartedAt: fetches.startedAt,
-    boostOf: (rowId) => attention.intervalOf(rowId),
+    // No boost runs while the tab is hidden (spec §3.L).
+    boostOf: (rowId) => (visible ? attention.intervalOf(rowId) : undefined),
   };
   const rows = new Map<string, RowEntry>();
   const groups = new Map<string, GroupEntry>();
@@ -114,38 +111,12 @@ export function createBoardModel({
   const wasOverBudget = new Map<string, boolean>();
 
   const publish = () => {
-    const cells: BoardModel['cells'] = {};
-    const refreshedAt: BoardModel['refreshedAt'] = {};
-    for (const [rowId, entry] of rows) {
-      for (const cell of entry.cells)
-        cells[cellKey(cell.rowId, cell.stageId)] = cell;
-      const at = entry.derivation.refreshedAt;
-      if (at !== undefined) refreshedAt[rowId] = at;
-    }
-    const all = [...groups.values()];
-    // A run one token's cells place isn't unmapped because another
-    // token's cells don't (spec.md §3.11).
-    const mapped = new Set(all.flatMap((g) => g.mapped));
-    model = {
-      cells,
-      refreshedAt,
-      unmapped: unique(
-        all.flatMap((g) => g.unmapped),
-        (u) => u.id,
-      ).filter((u) => !mapped.has(u.id)),
-      problems: unique(
-        [
-          ...[...rows.values()].flatMap((r) => r.derivation.problems),
-          ...all.flatMap((g) => g.problems),
-        ],
-        (p) => p.id,
-      ),
-      amplifyBranches: all.flatMap((g) => g.branches),
+    model = buildModel(rows, [...groups.values()], {
       amplifyKeyApps: keyApps(derive, dashboard),
       budgets: Object.fromEntries(
         githubCredentialIds(dashboard).map((id) => [id, env.budgets.get(id)]),
       ),
-    };
+    });
     for (const listener of listeners) listener();
   };
 
@@ -165,6 +136,7 @@ export function createBoardModel({
     const byId = new Map(dashboard.rows.map((row) => [row.id, row]));
     const touched = new Set<string>();
     attention.keep(new Set(byId.keys()));
+    ramps.keep(new Set(byId.keys()));
     for (const rowId of dirty) {
       const before = rows.get(rowId);
       for (const group of before?.groups ?? []) touched.add(group);
@@ -174,13 +146,23 @@ export function createBoardModel({
         continue;
       }
       // A boost steps on once its row's root queries have polled.
-      if (before && attention.intervalOf(rowId) !== undefined)
+      if (visible && before && attention.intervalOf(rowId) !== undefined)
         attention.advance(
           rowId,
           rootCompletions(env.client, before.needs),
           now(),
         );
-      const entry = deriveSafely(row);
+      const derived = deriveSafely(row);
+      // Hidden, the row polls ever more slowly (spec §3.L).
+      const entry = visible
+        ? derived
+        : ramps.hide(
+            rowId,
+            derived,
+            env.client,
+            now(),
+            dashboard.settings.hiddenPolling,
+          );
       rows.set(rowId, entry);
       for (const group of entry.groups) touched.add(group);
     }
@@ -239,6 +221,16 @@ export function createBoardModel({
     schedule();
   });
 
+  // Hiding or showing the tab re-derives every row at its cadence: each
+  // ramp starts afresh, and the visible cadence resumes at once.
+  const unsubscribeVisibility = visibility.subscribe(() => {
+    if (destroyed || visibility.isVisible() === visible) return;
+    visible = !visible;
+    ramps.clear();
+    markAll();
+    flush();
+  });
+
   env.limiters.configure(dashboard);
   markAll();
   flush();
@@ -268,7 +260,7 @@ export function createBoardModel({
       flush();
     },
     attend(rowIds, kind) {
-      if (destroyed) return;
+      if (destroyed || !visible) return;
       // A row the board doesn't have (yet) has no root needs to poll; its
       // boost is dropped at the flush.
       const roots = rowIds.flatMap((rowId) => {
@@ -290,6 +282,8 @@ export function createBoardModel({
     destroy() {
       destroyed = true;
       attention.clear();
+      ramps.clear();
+      unsubscribeVisibility();
       unsubscribeCache();
       unsubscribeBudgets();
       fetches.destroy();

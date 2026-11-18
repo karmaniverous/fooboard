@@ -37,8 +37,8 @@ describe('the share envelope', () => {
     expect(envelope()).toEqual({
       format: 'fooboard-share',
       formatVersion: 1,
-      // Every share 0.2.0 makes carries v7 (spec 0.2.0 §3.I).
-      schemaVersion: 7,
+      // Every share this version makes carries v8 (spec §3.L).
+      schemaVersion: 8,
       dashboards: [board],
       credentials: null,
     });
