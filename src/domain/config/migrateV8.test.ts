@@ -25,8 +25,9 @@ describe('toV8', () => {
     v7Board.dashboards.forEach((before, index) => {
       const after = v8Board.dashboards[index];
       expect(after.settings.hiddenPolling).toEqual(V8_HIDDEN_POLLING);
-      for (const [field, value] of Object.entries(before))
-        if (field !== 'settings') expect(after).toHaveProperty([field], value);
+      const fields = Object.entries(before).filter(([f]) => f !== 'settings');
+      for (const [field, value] of fields)
+        expect(after).toHaveProperty([field], value);
       for (const [field, value] of Object.entries(before.settings))
         expect(after.settings).toHaveProperty([field], value);
       expect(Object.keys(after.settings).sort()).toEqual(

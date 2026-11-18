@@ -18,9 +18,9 @@ import {
 import {
   ACTIVE_INTERVAL_MS,
   BUDGET_BACKOFF,
-  type HiddenRamp,
   hiddenFreshness,
   hiddenInterval,
+  type HiddenRamp,
   IDLE_INTERVAL_MS,
   pollEvery,
   rootFreshness,
