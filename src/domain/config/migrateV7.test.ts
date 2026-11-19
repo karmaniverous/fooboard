@@ -4,7 +4,7 @@
  * an empty `unmappedDismissals`; the step is idempotent, keeps a list
  * already there, and leaves a malformed dashboard list (or a malformed
  * dismissal list) for validation to refuse; a stored v6 board migrates
- * through `migrate` to a valid v7 one.
+ * through `migrate` to a valid current one.
  *
  * @module
  */
@@ -59,10 +59,9 @@ describe('toV7', () => {
     expect(() => migrate(input)).toThrow();
   });
 
-  it('migrates a stored v6 board to a valid v7 one', () => {
+  it('migrates a stored v6 board to a valid current one', () => {
     const root = migrate({ ...v6Board, schemaVersion: 6 });
     expect(root.schemaVersion).toBe(CURRENT_SCHEMA_VERSION);
-    expect(root.schemaVersion).toBe(7);
     for (const dashboard of root.dashboards)
       expect(dashboard.unmappedDismissals).toEqual([]);
   });

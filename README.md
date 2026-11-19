@@ -144,7 +144,7 @@ A quicker read, as most polls are, shows no dot, so polling doesn't make cells f
 
 Answers are kept, so an edit, opening a board again, or reloading the page shows what is known at once. Opening a board (a reload included) polls every row at once, its runs or its Amplify apps' branches and jobs, however recent the kept answers, and its poll interval runs from there; an edit reads only what is due. A GitHub answer that hasn't changed costs no request budget. After a reload the board shows the answers kept in this browser (see [Your data](#your-data)), with the dot on whatever is older than its poll interval.
 
-**Polling.** A row polls every 5 s while one of its cells is in progress (a provisional _Running_ included) and every 60 s otherwise, four times slower for a token past half its budget, and nothing polls while the tab is hidden; coming back reads only what fell due. A finished run's jobs are never read again.
+**Polling.** A row polls every 5 s while one of its cells is in progress (a provisional _Running_ included) and every 60 s otherwise, four times slower for a token past half its budget. While the tab is hidden, every row keeps polling, each poll a quarter later than the last (the dashboard's _hidden polling ramp_), from its usual interval until it reaches the _hidden polling period_, 5 minutes by default: an idle row polls 60, 75, 94 s apart and so on, reaching 5 minutes after about 20 minutes hidden. So the board is close to current the moment you look; coming back polls at the usual rate at once and reads only what fell due. Browsers slow timers in hidden tabs, so hidden polls under a minute apart may come later. A finished run's jobs are never read again.
 
 A row you show interest in polls faster for a while (its runs, or its Amplify apps' branches and jobs):
 
@@ -153,7 +153,7 @@ A row you show interest in polls faster for a while (its runs, or its Amplify ap
 - **Each step** starts when the row's previous poll completes, so a slow answer delays the next poll rather than overlapping it, and no step starts 75 s or more after the boost did; then the row is back at 60 s. A new click starts it again; resting on a cell never slows a click's boost, and when it starts a boost again, a poll already due sooner keeps its time, the new boost's steps following it.
 - **What doesn't**: a stage header, a column group's label, a column's settings, the middle or right mouse button, passing over a cell and touch without a tap. A boost never marks a cell refreshing by itself.
 
-A row already in progress stays at 5 s (a click still reads it at once), a token past half its budget polls four times slower here too, and nothing polls while the tab is hidden: coming back within 75 s carries a boost on from where it was. Boosts are for this tab only, and are never saved or shared.
+A row already in progress stays at 5 s (a click still reads it at once), a token past half its budget polls four times slower here too, and no boost runs while the tab is hidden: coming back within 75 s carries a boost on from where it was. Boosts are for this tab only, and are never saved or shared.
 
 When GitHub says a token is rate-limited, or AWS throttles a key, fooboard pauses that credential until the provider says to retry (a throttled AWS key pauses 5 s, since Amplify doesn't let the browser read its suggested delay; fooboard would use that delay if it could). Each credential's requests wait in one queue: the editors' lookups and a row's first read go to its front, while polls wait their turn with run jobs and behind counts.
 
@@ -203,6 +203,7 @@ Any other region is waited for, however long it takes, since a partial list coul
 _Edit dashboard_ (the pencil on the board) opens the editor in a side panel, like _Credentials_, _Problems_ and _Unmapped runs_. Each panel's title and _Close_ (and the editor's tabs) stay at its top while its content scrolls beneath them, so they are always in reach, and _Fix_ or a drag scrolls only the content. The editor has these tabs:
 
 - **General**: rename, duplicate or delete the dashboard, its default row rules, its [settings](#settings), and its **requests in flight**: how many requests each credential may have running at once in this tab, for GitHub and AWS separately (1 to 100, 10 by default). A change applies at once and reads nothing again.
+  - **While the tab is hidden**: the _hidden polling period_ (1 to 60 minutes, 5 by default), where each row's polling slows to while the tab is hidden, and the _hidden polling ramp_ (1% to 100% per poll, 25% by default), how much later each hidden poll comes than the last. A change applies at once. An idle 20-row board reads about 1,200 times an hour visible and about 240 an hour hidden once it has slowed down.
   - **Requests in flight, in practice**: higher fills the board faster; a burst can trigger GitHub's secondary rate limits or AWS throttling, after which fooboard pauses that credential (see _Polling_). The limit is per credential per tab: two tabs on the same token can each have that many running.
 - **Rows**: add GitHub rows from the repos a token can see (the dashboard's default token unless you choose another; the row keeps the one you chose), or Amplify rows from the apps your AWS key can see.
   - _List Amplify apps_ lists the key's apps in every region that has Amplify Hosting, each with its region, from the same requests as the board's [search](#reading-the-board) (one per region; a list less than 5 minutes old isn't read again).
@@ -315,7 +316,7 @@ Notes (among them a pinned app under a key no column of its row reads with, a pi
 
 The _Statuses_ tab lists the records no status matches; _Add status_ drafts a status for an Unknown record at the top of its set (a built-in set is first copied into the dashboard).
 
-**Versions**: a board records the version of fooboard's data model that saved it (now 6); a release that changes the data model migrates older boards automatically. Version 5 gave each board its _requests in flight_, 10 for GitHub and AWS.
+**Versions**: a board records the version of fooboard's data model that saved it (now 8); a release that changes the data model migrates older boards automatically. Version 5 gave each board its _requests in flight_, 10 for GitHub and AWS; version 8 its _hidden polling_ settings, 5 minutes and 25%.
 
 Version 6 moved every default credential, status set choice, item rule and row token into the [settings](#settings) at its level, and an Amplify row's sources into its pinned apps, with a row whose sources all named one key keeping it as its own AWS key; a row whose sources named several keys reads the key its cells inherit, and a note on the other pins says to set that key on the columns that use it.
 
@@ -508,7 +509,7 @@ Opening the link in your browser does the same: the same dashboards listed, the 
 - **Older and newer**: a link or file from an older fooboard opens and is upgraded; one from a newer fooboard is refused ("reload to update"; fooboard 0.1.0 refuses the shares of 0.2.0, which carry version 7). A link that can't be decoded says "This link isn't a fooboard board, or it's damaged".
 - **Errors, field by field**: a share that can be read but not imported (not JSON, not a fooboard share, the wrong shape, a repeated id) says "This link has problems fooboard can't import:" ("This file…" for a file, "This share…" for pasted JSON) and lists the first 20 problems, each a path into the share and a message (`dashboards[0].stages[3].id: …`; `share: …` for the share as a whole), with "and N more" beyond them. _Copy errors for your assistant_ copies them all, one per line, after a line saying what they are. No message holds a credential's secret: text that isn't JSON is described only by where its error is (position, line and column), never by quoting it.
 
-The format is public and versioned: `{ "format": "fooboard-share", "formatVersion": 1, "schemaVersion": 7, "dashboards": [ … ], "credentials": null }`, where `credentials` holds the secrets by credential id, plain or encrypted, beside the dashboards and never inside them.
+The format is public and versioned: `{ "format": "fooboard-share", "formatVersion": 1, "schemaVersion": 8, "dashboards": [ … ], "credentials": null }`, where `credentials` holds the secrets by credential id, plain or encrypted, beside the dashboards and never inside them.
 
 ## Header, menu and footer
 
@@ -580,7 +581,7 @@ Dev and release stay password-protected; production's password came off once the
 
 **The first release** is `npm run release -- 0.1.0`, not a bare `npm run release`. release-it bumps from the version in `package.json`, which stays `0.0.0` until the first release, so the bare command would open its _Select increment_ prompt with `patch (0.0.1)` first and selected (with `--ci`, it would release `0.0.1` without asking). Passing the version makes it release `0.1.0`. Every later release bumps from the last one, so the bare command is right for a patch from then on.
 
-**The release's e2e run** uses a preview server of its own, serving the build the release has just made: `e2e:release` never reuses a server already on the tests' port (`npm run e2e` does, outside CI), so stop any `npm run preview` left running first, or the run fails at once. Chromium must be installed on the releasing machine (`npx playwright install chromium`); the suite adds several minutes to each release.
+**The release's e2e run** uses a preview server of its own, serving the build the release has just made: `e2e:release` never reuses a server already on the tests' port (`npm run e2e` does, outside CI), so stop any `npm run preview` left running first, or the run fails at once. It runs on two Playwright workers (`--workers=2`), not the default of half the machine's cores (four on an eight-core machine), so its axe scans of the demo board, each of which takes several seconds of CPU, keep inside their timeouts while other programs are busy. Chromium must be installed on the releasing machine (`npx playwright install chromium`); the suite adds several minutes to each release.
 
 **Deploy to production.** Open a PR from `release/x.y.z` into `prod` and merge it. release-it never touches `prod`. The _prod PR from release/x.y.z_ check fails any PR into `prod` whose head isn't a stable `release/x.y.z` branch of this repo. It runs on `pull_request_target`, so its workflow always comes from `prod` and a PR can't edit away the guard that checks it; it never checks out or runs PR code.
 

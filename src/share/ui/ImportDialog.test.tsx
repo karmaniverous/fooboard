@@ -18,6 +18,7 @@ import {
 import { describe, expect, it } from 'vitest';
 
 import type { Dashboard } from '@/domain/config/dashboard';
+import { dashboardOnly } from '@/domain/config/settings';
 import { createAppStores } from '@/storage';
 import { memoryStorage } from '@/storage/keyValue';
 import { choose } from '@/test/choose';
@@ -40,7 +41,7 @@ const strip = (d: Dashboard): Dashboard => ({
   rowGroups: [],
   columnGroups: [],
   stages: d.stages.map((s) => ({ ...s, settings: {} })),
-  settings: { requestsInFlight: d.settings.requestsInFlight },
+  settings: dashboardOnly(d.settings),
 });
 const two = strip(other);
 const press = async (name: string) => {

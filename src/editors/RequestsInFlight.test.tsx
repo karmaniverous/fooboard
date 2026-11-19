@@ -105,7 +105,7 @@ describe('RequestsInFlight', () => {
   it('shows a value changed from outside, such as an undo', () => {
     const at = (github: number): Dashboard => ({
       ...board,
-      settings: { requestsInFlight: { github, aws: 10 } },
+      settings: { ...board.settings, requestsInFlight: { github, aws: 10 } },
     });
     const { rerender } = render(
       <RequestsInFlight dashboard={at(10)} onChange={() => undefined} />,

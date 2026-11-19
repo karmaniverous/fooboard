@@ -21,6 +21,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { ShareDialog } from '@/components/ShareDialog';
 import type { Dashboard } from '@/domain/config/dashboard';
 import { CURRENT_SCHEMA_VERSION } from '@/domain/config/root';
+import { dashboardOnly } from '@/domain/config/settings';
 import { createAppStores } from '@/storage';
 import { memoryStorage } from '@/storage/keyValue';
 import { windowAt } from '@/test/linkWindow';
@@ -45,7 +46,7 @@ const many = (count: number): Dashboard[] =>
       ...c,
       id: crypto.randomUUID(),
     })),
-    settings: { requestsInFlight: board.settings.requestsInFlight },
+    settings: dashboardOnly(board.settings),
     rowGroups: [],
     columnGroups: [],
     stages: board.stages.map((s) => ({ ...s, settings: {} })),

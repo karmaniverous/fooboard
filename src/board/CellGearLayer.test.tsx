@@ -126,6 +126,8 @@ describe('the cell gear', () => {
     const cells = gridCells();
     // Focus a click leaves behind doesn't take it.
     hover(cells[4]);
+    fireEvent.pointerDown(linkIn(cells[4]), { pointerType: 'mouse' });
+    fireEvent.mouseDown(linkIn(cells[4]));
     focusElement(linkIn(cells[4]));
     fireEvent.pointerLeave(layerOf());
     expect(shownCellGear()).toBeNull();

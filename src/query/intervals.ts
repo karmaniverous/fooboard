@@ -13,6 +13,13 @@
  * from `DWELL_BOOST_START_MS` (10, 20 and 40 s), each step lasting one
  * completed poll, none beginning `BOOST_MAX_MS` after the boost started.
  *
+ * While the tab is hidden, a row keeps polling, ever more slowly (spec
+ * §3.L, Decision 113): from its own interval when the tab was
+ * hidden, each hidden poll's interval is the last one times
+ * (1 + the dashboard's ramp factor), up to the dashboard's hidden polling
+ * period (`hiddenInterval`), and no query polls faster hidden than
+ * visible (`hiddenFreshness`).
+ *
  * @module
  */
 
@@ -112,6 +119,43 @@ export function boostInterval(
 ): number | undefined {
   const step = FIRST_STEP[kind] + (kind === 'click' ? polls - 1 : polls);
   return BOOST_STEPS[Math.max(step, FIRST_STEP[kind])];
+}
+
+/** How a hidden row's polling slows (a dashboard's `hiddenPolling`). */
+export interface HiddenRamp {
+  /** Each hidden poll's interval is the last one times (1 + this). */
+  rampFactor: number;
+  /** Where the ramp stops: the steady hidden interval (ms). */
+  periodMs: number;
+}
+
+/**
+ * A hidden row's interval (ms) once `polls` of its hidden polls have
+ * completed, its ramp having started from `start` (its own interval when
+ * the tab was hidden): `start` times (1 + `rampFactor`) per poll, rounded
+ * to the millisecond, and never past `periodMs`.
+ */
+export const hiddenInterval = (
+  start: number,
+  polls: number,
+  { rampFactor, periodMs }: HiddenRamp,
+): number => Math.min(Math.round(start * (1 + rampFactor) ** polls), periodMs);
+
+/**
+ * A query's cadence while the tab is hidden: the slower of its own
+ * interval and its row's hidden `interval`, so nothing polls faster hidden
+ * than visible. A query that never polls still never polls, and its
+ * `staleTime` stays its own, so the return re-reads exactly what is due
+ * by the visible cadence.
+ */
+export function hiddenFreshness(
+  freshness: Freshness,
+  interval: number,
+): Freshness {
+  const own = freshness.refetchInterval;
+  return own === false || own >= interval
+    ? freshness
+    : { refetchInterval: interval, staleTime: freshness.staleTime };
 }
 
 /** A root query's cadence with a row's boost (spec 0.2.0 §3.H): the

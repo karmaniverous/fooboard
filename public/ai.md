@@ -29,7 +29,7 @@ A share is one JSON object:
 ```text
 format         "fooboard-share"
 formatVersion  1
-schemaVersion  7
+schemaVersion  8
 dashboards     an array of one dashboard (or more)
 credentials    null
 ```
@@ -41,6 +41,7 @@ Its full JSON Schema (draft 2020-12): https://www.fooboard.dev/ai.schema.json. F
 - `id` and `name`.
 - `credentials`: `[{ "id": "gh", "kind": "github", "label": "acme GitHub" }, { "id": "aws-prod", "kind": "aws", "label": "acme AWS prod" }]`.
 - `settings`: `{ "githubToken": "gh" }`, and `"awsKey": "aws-prod"` when there are Amplify rows: which credential cells read with. A column, row, group or cell can set its own `settings` with the same fields, for example `{ "awsKey": "aws-staging" }` on the stages of another AWS account.
+- Leave `settings.hiddenPolling` out unless the user asks how the board polls while its browser tab is hidden. It is `{ "periodMs": 300000, "rampFactor": 0.25 }` by default: hidden, each row polls ever more slowly, each poll `rampFactor` (0.01 to 1) times later than the last, until polls are `periodMs` apart (60000 to 3600000 ms, 1 minute to 1 hour). Only the dashboard's own `settings` has it.
 - `rows`, in board order:
   - a GitHub row: `{ "type": "github", "id": "api-core", "displayName": "api-core", "repo": "acme/api-core" }`;
   - an Amplify row: `{ "type": "amplify", "id": "web", "displayName": "web", "repo": "acme/web" }`, or, for an app with no repo, `"pinnedApps": [{ "region": "us-east-1", "appId": "d1a2b3c4d5e6f7" }]` instead of `repo`.
@@ -100,7 +101,7 @@ Three repos, three stages: `dev` from branch `dev`, `release` from `release/**` 
 {
   "format": "fooboard-share",
   "formatVersion": 1,
-  "schemaVersion": 7,
+  "schemaVersion": 8,
   "dashboards": [
     {
       "id": "acme",
@@ -214,7 +215,7 @@ Two API repos deployed by GitHub Actions and two web apps on Amplify Hosting, gr
 {
   "format": "fooboard-share",
   "formatVersion": 1,
-  "schemaVersion": 7,
+  "schemaVersion": 8,
   "dashboards": [
     {
       "id": "acme-platform",

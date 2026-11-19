@@ -9,7 +9,14 @@
  * @module
  */
 import { render, screen } from '@testing-library/react';
+import type { LucideIcon } from 'lucide-react';
 import { describe, expect, it } from 'vitest';
+
+import {
+  EDIT_DASHBOARD_ICON,
+  PROBLEMS_ICON,
+  UNMAPPED_RUNS_ICON,
+} from '@/board/actionIcons';
 
 import { FirstRunNote } from './FirstRunNote';
 
@@ -23,6 +30,18 @@ const renderNote = (unmapped: number, problems = 0): HTMLElement => {
   );
   return screen.getByText(/^Cells fill in/);
 };
+
+/** The lucide class `Icon` renders, read from the icon itself, so a
+ * rename in lucide (`triangle-alert` became `triangle-exclamation-point`
+ * in 1.75) can't break the test. */
+function lucideClass(Icon: LucideIcon): string {
+  const { container } = render(<Icon />);
+  const svg = container.querySelector('svg');
+  const name =
+    [...(svg?.classList ?? [])].find((c) => c.startsWith('lucide-')) ?? 'none';
+  container.remove();
+  return name;
+}
 
 /** The decorative icons in `note`, each as the lucide icon it is and the
  * text that follows it up to the next icon. */
@@ -48,9 +67,9 @@ describe('FirstRunNote', () => {
     );
     const icons = iconsIn(note);
     expect(icons.map((i) => i.icon)).toEqual([
-      'lucide-unlink',
-      'lucide-triangle-alert',
-      'lucide-pencil',
+      lucideClass(UNMAPPED_RUNS_ICON),
+      lucideClass(PROBLEMS_ICON),
+      lucideClass(EDIT_DASHBOARD_ICON),
     ]);
     expect(icons[0]?.before).toMatch(/^Unmapped runs \(3\)/);
     expect(icons[1]?.before).toMatch(/^Problems \(2\)/);
@@ -65,6 +84,8 @@ describe('FirstRunNote', () => {
     expect(note).toHaveTextContent(
       'No rule problems so far; any would be marked ! and listed under Problems.',
     );
-    expect(iconsIn(note).map((i) => i.icon)).toEqual(['lucide-pencil']);
+    expect(iconsIn(note).map((i) => i.icon)).toEqual([
+      lucideClass(EDIT_DASHBOARD_ICON),
+    ]);
   });
 });

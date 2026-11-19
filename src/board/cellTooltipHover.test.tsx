@@ -229,6 +229,8 @@ describe('focus over the cell as a whole', () => {
     // The pointer brings the gear to the first cell; a click's focus (not
     // the keyboard's) on the second leaves it there.
     move(null, first);
+    fireEvent.pointerDown(second, { pointerType: 'mouse' });
+    fireEvent.mouseDown(second);
     focusElement(second);
     expect(gear()).toHaveAccessibleName(/Bali/);
     const text = tip();

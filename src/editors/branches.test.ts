@@ -8,6 +8,7 @@
 import { describe, expect, it, vi } from 'vitest';
 
 import { DashboardSchema } from '@/domain/config/dashboard';
+import { dashboardOnly } from '@/domain/config/settings';
 import { fakeGitHubApi, fetched, ghBranch } from '@/test/fakeReaders';
 import { testQueryEnv } from '@/test/queryEnv';
 
@@ -100,7 +101,7 @@ describe('discoverBranches', () => {
 
     const noToken = {
       ...dashboard,
-      settings: { requestsInFlight: dashboard.settings.requestsInFlight },
+      settings: dashboardOnly(dashboard.settings),
       rowGroups: [],
     };
     const env2 = testQueryEnv({ github: () => undefined });

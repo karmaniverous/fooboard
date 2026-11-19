@@ -2,6 +2,23 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.3.1] - 2026-11-19
+
+### 🚀 Features
+
+- *(polling)* Poll while the tab is hidden, ramping to a per-dashboard period (wip)
+
+### 🧪 Testing
+
+- *(e2e)* One view per axe test, and the release's e2e run on two workers
+- Compare a v8 migration's fields without the unused binding
+- The hidden polling settings' editor, and the demo reading while hidden; docs: README for polling while hidden
+- [JSDOM-31] test: keep the scroll helper and the first-run icons working on jsdom 31 and lucide-react 1.75
+- [JSDOM-31] test: match :focus-visible by the last input, as browsers do, now that jsdom 31 matches it wherever :focus matches
+
+### 💼 Other
+
+- Updated dependencies
 ## [0.3.0] - 2026-11-03
 
 ### 🚀 Features

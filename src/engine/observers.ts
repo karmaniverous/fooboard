@@ -1,6 +1,8 @@
 /**
  * The board's query observers (spec.md §3.1): exactly one per query its
- * rows need, polling at the fastest cadence any of those rows asks for.
+ * rows need, polling at the fastest cadence any of those rows asks for,
+ * whether or not the tab is visible: while it is hidden, the board model
+ * gives each need its hidden cadence (spec §3.L).
  * A need whose version changed invalidates its query once (a run that
  * completed refetches its jobs one last time; a compare refetches on a
  * new commit). Versions are kept per QueryClient, so they outlive a
@@ -77,6 +79,8 @@ export function createObserverSet(client: QueryClient): ObserverSet {
         const options: QueryObserverOptions = {
           queryKey: need.key,
           ...need.freshness,
+          // Hidden, the board polls at its hidden cadence (spec §3.L).
+          refetchIntervalInBackground: true,
         };
         let known = observed.get(hash);
         if (

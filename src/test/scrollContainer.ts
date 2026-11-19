@@ -13,6 +13,25 @@ import { vi } from 'vitest';
 /** The utility class that makes an element scroll vertically. */
 const OVERFLOW_Y_AUTO = 'overflow-y-auto';
 
+/** `style` as read, but computing `overflow-y` (in either spelling) to
+ * `auto`. A computed style is read-only (jsdom 31, as in browsers), so
+ * this wraps it rather than setting the property. */
+function scrollingStyle(style: CSSStyleDeclaration): CSSStyleDeclaration {
+  return new Proxy(style, {
+    get(target, property) {
+      if (property === 'overflowY') return 'auto';
+      if (property === 'getPropertyValue')
+        return (name: string) =>
+          name === 'overflow-y' ? 'auto' : target.getPropertyValue(name);
+      const value: unknown = Reflect.get(target, property, target);
+      if (!(value instanceof Function)) return value;
+      // A method, such as `item` or `getPropertyPriority`, on the real style.
+      return (...args: unknown[]): unknown =>
+        Reflect.apply(value, target, args);
+    },
+  });
+}
+
 /** Make `overflow-y-auto` compute to `overflow-y: auto`; returns the
  * restore. */
 export function applyOverflowUtility(): () => void {
@@ -21,8 +40,9 @@ export function applyOverflowUtility(): () => void {
     .spyOn(window, 'getComputedStyle')
     .mockImplementation((el, pseudo) => {
       const style = real(el, pseudo);
-      if (el.classList.contains(OVERFLOW_Y_AUTO)) style.overflowY = 'auto';
-      return style;
+      return el.classList.contains(OVERFLOW_Y_AUTO)
+        ? scrollingStyle(style)
+        : style;
     });
   return () => {
     spy.mockRestore();

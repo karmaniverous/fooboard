@@ -1,7 +1,7 @@
 /**
  * A dashboard's dismissed unmapped-run patterns travel with it (spec
  * 0.2.0 §3.I *Sharing*): through a share (export, a link or a file, all
- * one envelope, which carries data model v7), an import's *Add* and
+ * one envelope, which carries the current data model), an import's *Add* and
  * *Keep as a copy* (their ids kept: unique within their dashboard only),
  * *Replace the whole setup*, and *Duplicate*.
  *
@@ -10,6 +10,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { DashboardSchema } from '@/domain/config/dashboard';
+import { CURRENT_SCHEMA_VERSION } from '@/domain/config/root';
 import { duplicateDashboard } from '@/editors/edit';
 
 import { buildEnvelope, readShare } from './envelope';
@@ -26,9 +27,9 @@ const board = DashboardSchema.parse({
 });
 
 describe('dismissals travel with their dashboard', () => {
-  it('through a share, as data model v7', () => {
+  it('through a share, as the current data model', () => {
     const envelope = buildEnvelope([board], null);
-    expect(envelope.schemaVersion).toBe(7);
+    expect(envelope.schemaVersion).toBe(CURRENT_SCHEMA_VERSION);
     const read = readShare(JSON.stringify(envelope));
     if (!read.ok) throw new Error('refused');
     expect(read.share.dashboards[0]?.unmappedDismissals).toEqual(DISMISSALS);
